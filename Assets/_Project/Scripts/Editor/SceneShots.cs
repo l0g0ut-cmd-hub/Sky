@@ -71,9 +71,31 @@ namespace SkyTide.EditorTools
                 VolumetricClouds vol = cam.GetComponent<VolumetricClouds>();
                 if (vol != null) Debug.Log("SkyTide: облака — " + vol.Probe());
 
-                RenderTexture rt = new RenderTexture(1600, 760, 24, RenderTextureFormat.ARGB32);
-                rt.antiAliasing = 4;
+                // Только в GitHub CI: 3 кадра (рисованный, объём против солнца и вид сверху)
+                // вместо ~30 тяжёлых проходов software llvmpipe. В ручной проверке остаётся полный набор.
+                bool quickShots = File.Exists(Path.GetFullPath(Path.Combine(Application.dataPath, "../ci-fast-shots.flag")));
+                RenderTexture rt = new RenderTexture(quickShots ? 960 : 1600,
+                                                     quickShots ? 456 : 760, 24, RenderTextureFormat.ARGB32);
+                rt.antiAliasing = quickShots ? 1 : 4;
                 Texture2D tex = new Texture2D(rt.width, rt.height, TextureFormat.RGB24, false);
+                if (quickShots)
+                {
+                    // При первом кадре объёма Impostors.Bake() делал CPU-рендер 16 ракурсов
+                    // для каждого шаблона. В CI без GPU это огромная задержка. В APK настройки не меняются.
+                    if (vol != null) vol.impostors = false;
+                    boot.SetVolumetric(false);
+                    Render(oc, cam, boot, rt, tex, dir, new Shot("01_chase", 0f, 14f, 62f));
+                    boot.SetVolumetric(true);
+                    if (vol != null) vol.ResetTowers(boot.Ship.transform.position);
+                    // В игре дальние башни показывают импосторы; в CI отключаем и их, и спрайты,
+                    // чтобы оценить именно настоящее объёмное море без выпекания атласов.
+                    if (boot.World != null) boot.World.SetSpriteCloudsVisible(false);
+                    Render(oc, cam, boot, rt, tex, dir, new Shot("30_vol_toward_sun", 35f, 8f, 75f));
+                    Render(oc, cam, boot, rt, tex, dir, new Shot("37_vol_high", 140f, 50f, 115f));
+                    Debug.Log("SkyTide: FAST CI — " + Directory.GetFiles(dir, "*.jpg").Length
+                            + " кадра(ов) 960x456, без Impostors.Bake; расширенный тест отключён");
+                    return; // finally восстановит сцену с диска
+                }
                 Shot[] debugShots =
                 {
                     new Shot("90_dbg_fields", 35f, 8f, 75f),
