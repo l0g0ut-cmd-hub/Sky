@@ -231,7 +231,10 @@ Shader "Hidden/SkyTide/VolumetricClouds"
         if (tB <= tA) return haze;
 
         int steps = (int)_DensityParams.z;
-        float stepLen = (tB - tA) / steps;
+        float stepBase = (tB - tA) / steps;
+        // Шаги растут с расстоянием: у камеры мелкие (без зерна внутри облака), вдали крупнее.
+        float stepGrow = 1.3 / steps;
+        float stepLen = stepBase * 0.35;
         float t = tA + stepLen * jit;
 
         float3 sunDir = normalize(_SkyTideSunDir.xyz);
@@ -272,6 +275,7 @@ Shader "Hidden/SkyTide/VolumetricClouds"
             }
             // Пустота вдали от поверхности — шагаем шире (поле ≈ доля радиуса сферы до поверхности).
             t += stepLen * (1.0 + 2.0 * saturate((-fld - 0.45) * 2.0));
+            stepLen += stepBase * stepGrow;
             if (t > tB) break;
         }
 

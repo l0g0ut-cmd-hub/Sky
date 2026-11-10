@@ -245,6 +245,8 @@ namespace SkyTide
                 new Vector3(0f, 0.7f, 0.7f), new Vector3(0f, 0.7f, -0.7f),
             };
             byte[] data = new byte[nx * ny * nz * 4];
+            float[] tauA = new float[nx * ny * nz];
+            float[] skyA = new float[nx * ny * nz];
             for (int tz = 0; tz < Templates; tz++)
             {
                 for (int z = 0; z < FieldXZ; z++)
@@ -259,13 +261,24 @@ namespace SkyTide
                             float sky = 0f;
                             for (int d = 0; d < skyDirs.Length; d++) sky += Mathf.Exp(-Optical(f, tz, p, skyDirs[d].normalized, 0.12f) * 6f);
                             sky /= skyDirs.Length;
-                            data[i * 4 + 0] = (byte)Mathf.Clamp(Mathf.RoundToInt((f[i] + 1f) * 0.5f * 255f), 0, 255);
-                            data[i * 4 + 1] = (byte)Mathf.Clamp(Mathf.RoundToInt(tauSun / 5f * 255f), 0, 255);
-                            data[i * 4 + 2] = (byte)Mathf.Clamp(Mathf.RoundToInt(sky * 255f), 0, 255);
-                            data[i * 4 + 3] = 255;
+                            tauA[i] = tauSun;
+                            skyA[i] = sky;
                         }
                     }
                 }
+            }
+            // Сглаживание запечённого света (по шаблону, [1 2 1] по трём осям, дважды): без полос по вокселям.
+            for (int pass = 0; pass < 2; pass++)
+            {
+                Blur(tauA, nx, ny, FieldXZ, Templates);
+                Blur(skyA, nx, ny, FieldXZ, Templates);
+            }
+            for (int i = 0; i < f.Length; i++)
+            {
+                data[i * 4 + 0] = (byte)Mathf.Clamp(Mathf.RoundToInt((f[i] + 1f) * 0.5f * 255f), 0, 255);
+                data[i * 4 + 1] = (byte)Mathf.Clamp(Mathf.RoundToInt(tauA[i] / 5f * 255f), 0, 255);
+                data[i * 4 + 2] = (byte)Mathf.Clamp(Mathf.RoundToInt(skyA[i] * 255f), 0, 255);
+                data[i * 4 + 3] = 255;
             }
             Texture3D t = new Texture3D(nx, ny, nz, TextureFormat.RGBA32, false);
             t.name = "TowerField";
@@ -274,6 +287,46 @@ namespace SkyTide
             t.SetPixelData(data, 0);
             t.Apply(false, false);
             return t;
+        }
+
+        static void Blur(float[] a, int nx, int ny, int nzPer, int templates)
+        {
+            float[] b = new float[a.Length];
+            int[] strides = { 1, nx, nx * ny };
+            int[] sizes = { nx, ny, nzPer };
+            for (int axis = 0; axis < 3; axis++)
+            {
+                int st = strides[axis], n = sizes[axis];
+                for (int i = 0; i < a.Length; i++)
+                {
+                    int x = i % nx, y = (i / nx) % ny, z = (i / (nx * ny)) % nzPer;
+                    int c = axis == 0 ? x : axis == 1 ? y : z;
+                    float l = c > 0 ? a[i - st] : a[i];
+                    float r = c < n - 1 ? a[i + st] : a[i];
+                    b[i] = (l + 2f * a[i] + r) * 0.25f;
+                }
+                System.Array.Copy(b, a, a.Length);
+            }
+        }
+
+        static float SampleField(float[] f, int tz, Vector3 q, out bool inside)
+        {
+            int nx = FieldXZ, ny = FieldY;
+            float cx = 2f * FieldHalf / FieldXZ, cy = FieldHeight / ny;
+            float gx = (q.x + FieldHalf) / cx - 0.5f, gy = (q.y - FieldBottom) / cy - 0.5f, gz = (q.z + FieldHalf) / cx - 0.5f;
+            inside = gx > -0.5f && gy > -0.5f && gz > -0.5f && gx < nx - 0.5f && gy < ny - 0.5f && gz < FieldXZ - 0.5f;
+            if (!inside) return -1f;
+            int x0 = Mathf.Clamp(Mathf.FloorToInt(gx), 0, nx - 2), y0 = Mathf.Clamp(Mathf.FloorToInt(gy), 0, ny - 2), z0 = Mathf.Clamp(Mathf.FloorToInt(gz), 0, FieldXZ - 2);
+            float fx = Mathf.Clamp01(gx - x0), fy = Mathf.Clamp01(gy - y0), fz = Mathf.Clamp01(gz - z0);
+            float v = 0f;
+            for (int dz = 0; dz < 2; dz++)
+                for (int dy = 0; dy < 2; dy++)
+                    for (int dx = 0; dx < 2; dx++)
+                    {
+                        float w = (dx == 0 ? 1f - fx : fx) * (dy == 0 ? 1f - fy : fy) * (dz == 0 ? 1f - fz : fz);
+                        v += w * f[(x0 + dx) + (y0 + dy) * nx + (z0 + dz + tz * FieldXZ) * nx * ny];
+                    }
+            return v;
         }
 
         /// <summary>Оптическая толщина (в радиусах башни при плотности 1) от точки до выхода из коробки шаблона.</summary>
@@ -285,11 +338,9 @@ namespace SkyTide
             Vector3 q = p + dir * (ds * 0.5f);
             for (int n = 0; n < 200; n++)
             {
-                int ix = Mathf.FloorToInt((q.x + FieldHalf) / cx);
-                int iy = Mathf.FloorToInt((q.y - FieldBottom) / cy);
-                int iz = Mathf.FloorToInt((q.z + FieldHalf) / cx);
-                if (ix < 0 || iy < 0 || iz < 0 || ix >= nx || iy >= ny || iz >= FieldXZ) break;
-                float v = f[ix + iy * nx + (iz + tz * FieldXZ) * nx * ny];
+                bool inside;
+                float v = SampleField(f, tz, q, out inside);
+                if (!inside) break;
                 sum += Mathf.Clamp01(v * 4f) * ds;
                 q += dir * ds;
             }
@@ -454,6 +505,8 @@ namespace SkyTide
             blurred.filterMode = FilterMode.Point;
             Graphics.Blit(src, clouds, mat, 0);       // марш луча
             Graphics.Blit(clouds, blurred, mat, 3);   // мягкое размытие в низком разрешении
+            Graphics.Blit(blurred, clouds, mat, 3);   // второй проход — без зерна внутри облака
+            Graphics.Blit(clouds, blurred, mat, 3);
             Graphics.Blit(src, lowDepth, mat, 2);     // глубина сцены в низком разрешении
             mat.SetTexture("_CloudTex", blurred);
             mat.SetTexture("_LowDepthTex", lowDepth);

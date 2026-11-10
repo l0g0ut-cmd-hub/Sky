@@ -285,7 +285,11 @@ namespace SkyTide
                 GUI.DrawTexture(new Rect(cr.x, cr.yMax - 2f, cr.width, 2f), Texture2D.whiteTexture);
                 GUI.color = new Color(1f, 0.92f, 0.8f, 1f);
                 GUI.Label(cr, "Облака: " + (game.volumetricClouds ? "объёмные (тест)" : "рисованные"), buttonStyle);
-                GUI.Label(new Rect(cr.x, cr.yMax + 2f, cr.width, cr.height * 0.6f), Mathf.RoundToInt(fps) + " FPS", buttonStyle);
+                Rect fr = new Rect(cr.x + cr.width * 0.25f, cr.yMax + 6f, cr.width * 0.5f, cr.height * 0.6f);
+                GUI.color = new Color(0.08f, 0.05f, 0.05f, 0.55f);
+                GUI.DrawTexture(fr, Texture2D.whiteTexture);
+                GUI.color = new Color(1f, 0.92f, 0.8f, 1f);
+                GUI.Label(fr, Mathf.RoundToInt(fps) + " FPS", buttonStyle);
             }
 
             {
@@ -297,10 +301,12 @@ namespace SkyTide
                     buildStyle.alignment = TextAnchor.LowerRight;
                 }
                 buildStyle.fontSize = Mathf.RoundToInt(u * 0.03f);
-                Rect vr = new Rect(Screen.width - u * 0.6f - u * 0.03f, Screen.height - u * 0.08f - u * 0.02f, u * 0.6f, u * 0.08f);
-                GUI.color = new Color(0f, 0f, 0f, 0.55f);
-                GUI.Label(new Rect(vr.x + 2f, vr.y + 2f, vr.width, vr.height), buildText, buildStyle);
-                GUI.color = new Color(1f, 0.92f, 0.8f, 0.85f);
+                buildStyle.alignment = TextAnchor.MiddleCenter;
+                Vector2 sz = buildStyle.CalcSize(new GUIContent(buildText));
+                Rect vr = new Rect(Screen.width - sz.x - u * 0.06f - u * 0.03f, Screen.height - sz.y - u * 0.02f - u * 0.03f, sz.x + u * 0.06f, sz.y + u * 0.02f);
+                GUI.color = new Color(0.08f, 0.05f, 0.05f, 0.55f);
+                GUI.DrawTexture(vr, Texture2D.whiteTexture);
+                GUI.color = new Color(1f, 0.92f, 0.8f, 1f);
                 GUI.Label(vr, buildText, buildStyle);
             }
 
