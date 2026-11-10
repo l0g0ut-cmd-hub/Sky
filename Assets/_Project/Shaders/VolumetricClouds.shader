@@ -467,7 +467,11 @@ Shader "Hidden/SkyTide/VolumetricClouds"
                 if (diff < nearestDifference) { nearestDifference = diff; nearestCloud = cloud; }
             }
         }
-        float4 c = totalWeight > 1e-5 ? result / totalWeight : nearestCloud;
+        // Ни один соседний пиксель облаков не совпал по глубине (тонкие части корабля: снасти, баллоны,
+        // край корпуса) — пиксель принадлежит кораблю, облака за ним. Раньше брался ближайший — и море облаков
+        // позади корабля ложилось на него «призраком».
+        bool sceneObject = referenceDepth < 4000.0 && nearestDifference > max(4.0, referenceDepth * 0.08);
+        float4 c = totalWeight > 1e-5 ? result / totalWeight : (sceneObject ? float4(0, 0, 0, 1) : nearestCloud);
         if (_Debug > 0.5 && _Debug < 2.5) return half4(c.rgb, 1);
         if (_Debug > 2.5) return half4(c.aaa, 1);
         return half4(scene.rgb * c.a + c.rgb, scene.a);

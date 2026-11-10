@@ -73,7 +73,7 @@ namespace SkyTide
                     vel = dir * Random.Range(6f, 24f) + jitter * 2.5f + shipVel * 0.85f,
                     life = Random.Range(2.6f, 4.2f), size0 = Random.Range(1.2f, 2.2f), size1 = Random.Range(7f, 11f),
                     rot = Random.Range(0f, 6.28f), spin = Random.Range(-0.4f, 0.4f), drag = 2.2f, rise = 0.9f,
-                    color = new Color(0.93f, 0.84f, 0.8f), alpha = Random.Range(0.45f, 0.7f), seed = Random.value * 10f
+                    color = new Color(0.68f, 0.62f, 0.6f), alpha = Random.Range(0.45f, 0.7f), seed = Random.value * 10f
                 });
             }
         }
@@ -106,7 +106,7 @@ namespace SkyTide
                     p.pos += p.vel * dt;
                     // Шлейф: клочки дыма вдоль пути через равные промежутки.
                     p.trailAcc += Vector3.Distance(prev, p.pos);
-                    float spacing = 2.4f;
+                    float spacing = 1.1f;
                     while (p.trailAcc > spacing && p.age < 4.5f)
                     {
                         p.trailAcc -= spacing;
@@ -115,8 +115,8 @@ namespace SkyTide
                         Add(new P
                         {
                             kind = Kind.Smoke, pos = at, vel = Random.insideUnitSphere * 0.6f, life = Random.Range(1.4f, 2.2f),
-                            size0 = 0.7f, size1 = Random.Range(3f, 4.5f), rot = Random.Range(0f, 6.28f), spin = Random.Range(-0.6f, 0.6f),
-                            drag = 1f, rise = 0.4f, color = new Color(0.9f, 0.82f, 0.8f), alpha = 0.32f * fade, seed = Random.value * 10f
+                            size0 = 1.5f, size1 = Random.Range(3.5f, 5f), rot = Random.Range(0f, 6.28f), spin = Random.Range(-0.6f, 0.6f),
+                            drag = 1f, rise = 0.4f, color = new Color(0.62f, 0.57f, 0.56f), alpha = 0.22f * fade, seed = Random.value * 10f
                         });
                     }
                     if (p.pos.y < deckTop - 15f) p.life = 0f;   // ушло в море облаков

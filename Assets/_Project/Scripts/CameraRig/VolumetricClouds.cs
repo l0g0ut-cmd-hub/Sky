@@ -63,7 +63,7 @@ namespace SkyTide
         public float deckDistance = 5000f;
         public float deckAbsorption = 1.7f;
         [Tooltip("Яркость солнца на море облаков: тонкий слой освещён почти целиком — без этого пересвет")]
-        public float deckSunScale = 0.4f;
+        public float deckSunScale = 0.26f;
 
         [Header("Дымка у моря облаков (не используется — заменена объёмным морем)")]
         public float hazeDensity = 0.00045f;
