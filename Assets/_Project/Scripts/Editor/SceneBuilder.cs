@@ -96,7 +96,7 @@ namespace SkyTide.EditorTools
         /// <summary>Настраивает импорт текстур и делает из них материалы. Чего нет — остаётся пустым (запасные варианты).</summary>
         static void ApplyArt(GameMaterials mats)
         {
-            Texture2D sky = Tex(Art + "SkyPanorama.png", false, false, TextureWrapMode.Repeat, TextureWrapMode.Clamp, 2048, false);
+            Texture2D sky = Tex(Art + "SkyPanorama.jpg", false, false, TextureWrapMode.Repeat, TextureWrapMode.Clamp, 8192, false);
             if (sky != null) mats.skybox = MaterialFactory.PanoramicSkybox(sky);
 
             Texture2D sea = Tex(Art + "CloudSea.jpg", false, false, TextureWrapMode.Repeat, TextureWrapMode.Repeat, 1024, true, true);

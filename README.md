@@ -33,7 +33,7 @@ python3 tools/convert_glb.py model.glb --name Corsair --length 38
 Если файлов модели нет, корабль собирается из примитивов (`Ship/ShipFactory.cs`).
 
 ## Небо и облака
-`Assets/_Project/Art/`: `SkyPanorama.png` (панорама 2:1, солнце в центре = направление +X, по нему выставлен свет),
+`Assets/_Project/Art/`: `SkyPanorama.jpg` (панорама 6144×3072, сшита из 4 кусков tools/stitch_sky.py, солнце в центре = направление +X, по нему выставлен свет),
 `CloudSea.jpg` (бесшовный тайл моря облаков), `CloudLayer.png` (тот же тайл с прозрачностью — верхний слой),
 `CloudSprites.png` (атлас из 6 облаков; прямоугольники в `World/CloudSea.cs`). Цвета тумана и фонового света сняты с панорамы.
 
