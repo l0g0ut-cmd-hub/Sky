@@ -169,10 +169,8 @@ namespace SkyTide
             mesh.triangles = new int[] { 0, 1, 2, 0, 2, 3 };
             mesh.normals = new Vector3[] { Vector3.back, Vector3.back, Vector3.back, Vector3.back };
             mesh.RecalculateBounds();
-            // Облако дышит и поворачивается — запас по границам, чтобы не отсекалось по краю кадра.
-            Bounds b = mesh.bounds;
-            b.Expand(0.3f);
-            mesh.bounds = b;
+            // Разворачивается в шейдере в любую сторону — границы с запасом по всем осям, чтобы не отсекалось.
+            mesh.bounds = new Bounds(new Vector3(0f, h * 0.5f, 0f), new Vector3(1.4f, h * 1.4f, 1.4f));
             return mesh;
         }
 
@@ -232,15 +230,9 @@ namespace SkyTide
             Step(cp, dt, cam != null ? cam.transform.forward : Vector3.forward);
         }
 
-        /// <summary>
-        /// Спрайты разворачиваются по направлению ВЗГЛЯДА камеры (все параллельно экрану), а не к её позиции:
-        /// при облёте корабля облака не крутятся каждое по-своему и не «дрожат».
-        /// </summary>
+        /// <summary>Шаг поля: ветер, перенос вокруг камеры, «дыхание». Разворот к камере — в шейдере.</summary>
         public void Step(Vector3 cp, float dt, Vector3 camForward)
         {
-            Vector3 face = new Vector3(camForward.x, 0f, camForward.z);
-            if (face.sqrMagnitude < 1e-4f) face = Vector3.forward;
-            Quaternion faceRot = Quaternion.LookRotation(face.normalized, Vector3.up);
             // Море едет за камерой (UV мировые — рисунок стоит на месте).
             if (shaderSea)
             {
@@ -272,7 +264,7 @@ namespace SkyTide
 
                 float s = c.baseScale * (1f + c.breathe * Mathf.Sin(time * 0.13f + c.phase));
                 c.t.localScale = new Vector3(s, s * (1f + c.breathe * 0.6f * Mathf.Sin(time * 0.09f + c.phase * 1.7f)), s);
-                c.t.rotation = faceRot;
+                // Разворот к камере делает шейдер (SkyTide/CloudSprite) — здесь только позиция и «дыхание».
             }
         }
 

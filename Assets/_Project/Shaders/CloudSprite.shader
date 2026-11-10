@@ -65,14 +65,22 @@ Shader "SkyTide/CloudSprite"
             v2f vert (appdata v)
             {
                 v2f o;
-                o.pos = UnityObjectToClipPos(v.vertex);
+                // Разворот к камере — прямо в шейдере по текущей матрице вида (без отставания на кадр, без дрожи):
+                // цилиндрический билборд, ось — мировая вертикаль, ширина — вдоль «правой» оси камеры.
+                float3 center = float3(unity_ObjectToWorld._m03, unity_ObjectToWorld._m13, unity_ObjectToWorld._m23);
+                float sx = length(float3(unity_ObjectToWorld._m00, unity_ObjectToWorld._m10, unity_ObjectToWorld._m20));
+                float sy = length(float3(unity_ObjectToWorld._m01, unity_ObjectToWorld._m11, unity_ObjectToWorld._m21));
+                float3 camRight = float3(UNITY_MATRIX_V[0].x, 0.0, UNITY_MATRIX_V[0].z);
+                camRight = normalize(camRight + float3(1e-5, 0, 0));
+                float3 wpos = center + camRight * (v.vertex.x * sx) + float3(0, v.vertex.y * sy, 0);
+                o.pos = mul(UNITY_MATRIX_VP, float4(wpos, 1.0));
                 o.uvLit = v.uvLit;
                 o.uvMid = v.uvMid;
                 o.uvShadow = v.uvShadow;
                 o.color = v.color;
-                o.worldPos = mul(unity_ObjectToWorld, v.vertex).xyz;
+                o.worldPos = wpos;
 
-                float3 origin = float3(unity_ObjectToWorld._m03, unity_ObjectToWorld._m13, unity_ObjectToWorld._m23);
+                float3 origin = center;
                 float phase = frac(sin(dot(origin.xz, float2(12.9898, 78.233))) * 43758.5453);
                 // Шум в локальных координатах квада: узор живёт вместе с облаком и не «едет» при повороте к камере.
                 o.noiseUV = v.vertex.xy * _NoiseScale + phase * 7.31;
