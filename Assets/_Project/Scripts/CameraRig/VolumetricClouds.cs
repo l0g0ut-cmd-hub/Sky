@@ -23,12 +23,12 @@ namespace SkyTide
         [Header("Форма")]
         public float layerBottom = 25f;
         public float layerTop = 175f;
-        public float shapeScale = 900f;
+        public float shapeScale = 1100f;
         public float detailScale = 170f;
-        [Range(0f, 1f)] public float coverage = 0.52f;
-        public float coverageScale = 4200f;
-        public float density = 0.035f;
-        public float erosion = 0.45f;
+        [Range(0f, 1f)] public float coverage = 0.45f;
+        public float coverageScale = 5200f;
+        public float density = 0.022f;
+        public float erosion = 0.6f;
         public Vector3 wind = new Vector3(-6f, 0f, 2.6f);
 
         [Header("Свет")]

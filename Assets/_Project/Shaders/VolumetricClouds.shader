@@ -63,19 +63,25 @@ Shader "Hidden/SkyTide/VolumetricClouds"
     {
         float h = saturate((p.y - _Layer.x) / (_Layer.y - _Layer.x));
         // Профиль кучевых: плоское дно, пухлая середина, сходящийся верх.
-        float profile = saturate(Remap(h, 0.0, 0.12, 0.0, 1.0)) * saturate(Remap(h, 0.55, 1.0, 1.0, 0.0));
+        float profile = saturate(h / 0.12) * saturate((1.0 - h) / 0.45);
         float3 wp = p + _Wind.xyz * _Wind.w;
-        float cover = tex2Dlod(_SkyTideNoise, float4(wp.xz / _Shape.w, 0, 0)).r;
-        cover = saturate(Remap(cover, 1.0 - _Shape.z, 1.0, 0.0, 1.0));
-        float base = tex3Dlod(_Noise3D, float4(wp / _Shape.x, 0)).r;
-        float d = saturate(Remap(base * profile, 1.0 - cover, 1.0, 0.0, 1.0));
+        // Погода: облака только в пятнах покрытия (два масштаба — без заметного повтора).
+        float w = tex2Dlod(_SkyTideNoise, float4(wp.xz / _Shape.w, 0, 0)).r * 0.7
+                + tex2Dlod(_SkyTideNoise, float4(wp.xz / (_Shape.w * 0.365) + 0.37, 0, 0)).g * 0.3;
+        float cover = smoothstep(0.62 - _Shape.z * 0.25, 0.92 - _Shape.z * 0.2, w);
+        if (cover <= 0.0) return 0.0;
+        // Форма: 3D Perlin-Worley в двух масштабах (второй повёрнут) — против повтора тайла.
+        float3 q2 = float3(wp.z * 0.8 + wp.x * 0.6, wp.y, wp.x * 0.8 - wp.z * 0.6);
+        float base = tex3Dlod(_Noise3D, float4(wp / _Shape.x, 0)).r * 0.6
+                   + tex3Dlod(_Noise3D, float4(q2 / (_Shape.x * 2.45) + 0.31, 0)).r * 0.4;
+        float d = saturate((base * profile - (1.0 - 0.62 * cover)) * 4.0);
         if (detail && d > 0.0)
         {
             float3 dp = (wp + float3(0, _Wind.w * 1.5, 0)) / _Shape.y;   // детали медленно клубятся вверх
             float4 n = tex3Dlod(_Noise3D, float4(dp, 0));
             float det = n.g * 0.65 + n.b * 0.35;
             float edge = lerp(det, 1.0 - det, saturate(h * 6.0));        // у дна — пушистые клочья, выше — завитки
-            d = saturate(Remap(d, edge * _DensityParams.y, 1.0, 0.0, 1.0));
+            d = saturate(d - edge * _DensityParams.y * (1.0 - d));
         }
         return d * _DensityParams.x;
     }
@@ -94,10 +100,12 @@ Shader "Hidden/SkyTide/VolumetricClouds"
         return sum;
     }
 
-    // Шум для смещения начала шагов (убирает полосы, остаток размывается апскейлом).
-    float IGN(float2 px)
+    // Белый шум для смещения начала шагов (убирает ступени; зерно размывается апскейлом).
+    float Hash(float2 px)
     {
-        return frac(52.9829189 * frac(dot(px, float2(0.06711056, 0.00583715))));
+        float3 p3 = frac(float3(px.xyx) * 0.1031);
+        p3 += dot(p3, p3.yzx + 33.33);
+        return frac((p3.x + p3.y) * p3.z);
     }
 
     float4 fragMarch (v2f i) : SV_Target
@@ -135,7 +143,7 @@ Shader "Hidden/SkyTide/VolumetricClouds"
 
         int steps = (int)_Layer.w;
         float stepLen = (tB - tA) / steps;
-        float t = tA + stepLen * IGN(i.uv * _ScreenParams.xy);
+        float t = tA + stepLen * Hash(floor(i.uv * _ScreenParams.xy));
 
         float3 sunDir = normalize(_SkyTideSunDir.xyz);
         float cosT = dot(rd, sunDir);
