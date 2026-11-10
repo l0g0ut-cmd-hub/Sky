@@ -226,25 +226,30 @@ Shader "Hidden/SkyTide/VolumetricClouds"
     // Слой между _Deck.x и _Deck.y (м): покрытие — 2D-«погода», верх слоя бугрится 3D-шумом (клубы),
     // края разъедает детализация. Свет: одна проба к солнцу вместо двух (бока освещены, ядра в тени),
     // верх ярче низа, фиолетовое заполнение в глубине — та же палитра, что у башен.
-    float DeckDensity(float3 p, bool detail, float mip)
+    float DeckDensity(float3 p, bool detail, float mip, float footprintMeters)
     {
         // Световые пробы вне слоя не должны возвращать фиктивную плотность.
         if (p.y < _Deck.x || p.y > _Deck.y) return 0.0;
         float h = saturate((p.y - _Deck.x) / max(_Deck.y - _Deck.x, 1.0));
         float2 drift = _Wind.xz * _Wind.w;
         float2 wuv = (p.xz + drift) / _Deck2.x;
-        float w = tex2Dlod(_SkyTideNoise, float4(wuv, 0, 0)).r * 0.6 + tex2Dlod(_SkyTideNoise, float4(wuv * 2.7 + 0.37, 0, 0)).g * 0.4;
+        // Вдоль длинного шага нельзя читать высокочастотную погоду из mip=0:
+        // это aliasing, видимый на море как регулярные гребни.
+        float weatherMip = clamp(log2(max(footprintMeters / max(_Deck2.x / 64.0, 1.0), 1.0)), 0.0, 3.0);
+        float w = tex2Dlod(_SkyTideNoise, float4(wuv, 0, weatherMip)).r * 0.6
+                + tex2Dlod(_SkyTideNoise, float4(wuv * 2.7 + 0.37, 0, weatherMip)).g * 0.4;
         float cov = saturate((w - _Deck2.y) / 0.35);
         float3 wp = p + float3(drift.x, _Wind.w * 0.4, drift.y);
-        // Немного mip-фильтрации на дальних шагах исключает пространственный aliasing.
         float n = tex3Dlod(_Noise3D, float4(wp / _Deck2.z, mip)).r;
         float topH = cov * (0.45 + 0.55 * n) + 0.12;
-        float m = saturate((topH - h) * 6.0);
-        // Плавный верх и низ: нет искусственной горизонтальной полки на y=deckTop.
-        m *= smoothstep(0.0, 0.08, h) * (1.0 - smoothstep(0.88, 1.0, h));
+        // Ширина перехода растёт вместе с длиной лучевого сегмента: его интеграл
+        // не должен превращать тонкую границу в отдельные полосы.
+        float filter = min(0.095, max(footprintMeters - 12.0, 0.0) * 0.001);
+        float m = smoothstep(-0.02 - filter, 0.15 + filter, topH - h);
+        m *= smoothstep(0.0, 0.08, h) * (1.0 - smoothstep(0.94, 1.0, h));
         if (detail && m > 0.0 && m < 0.9)
         {
-            float dn = tex3Dlod(_Noise3D, float4(wp / _Deck2.w, min(mip, 1.0))).g;
+            float dn = tex3Dlod(_Noise3D, float4(wp / _Deck2.w, min(mip, 2.0))).g;
             m = saturate(m - dn * 0.45 * (1.0 - m));
         }
         return m * _Deck.z;
@@ -265,11 +270,12 @@ Shader "Hidden/SkyTide/VolumetricClouds"
         t1 = min(t1, t0 + _Deck3.y);              // у горизонта слой не тянется бесконечно
         if (t1 <= t0) return float4(0, 0, 0, 1);
 
-        int n = (int)_Deck.w;
+        int n = max(2, (int)_Deck.w);
         float stepBase = (t1 - t0) / n;
         float stepLen = stepBase * 0.4;
-        float grow = 1.2 / n;
-        float t = t0 + stepLen * jitter;
+        // Сумма сегментов РОВНО равна (t1-t0), предыдущая версия не доходила до конца.
+        float grow = 1.2 / max(n - 1, 1);
+        float t = t0;
         float3 L = normalize(_SkyTideSunDir.xyz);
         float3 light = 0;
         float trans = 1;
@@ -277,18 +283,22 @@ Shader "Hidden/SkyTide/VolumetricClouds"
         [loop]
         for (int k = 0; k < n; k++)
         {
-            if (t > t1) break;
-            float3 p = ro + rd * t;
             float segment = min(stepLen, t1 - t);
             if (segment <= 0.0) break;
-            float farFade = 1.0 - smoothstep(_Deck3.y * 0.80, _Deck3.y, t - t0);
-            // Шаг >60 м не может разрешить мелкую эрозию: срезаем этот диапазон по LOD.
-            float mip = clamp(log2(max(stepLen / 42.0, 1.0)), 0.0, 1.5);
-            float d = DeckDensity(p, t < 520.0 && stepLen < 58.0, mip) * ClearFactor(p, ro) * farFade;
+            // Правильная квадратура: sample ВНУТРИ интегрируемого сегмента, не на его границе.
+            float jitterOffset = (jitter - 0.5) * min(segment * 0.30, 12.0);
+            float sampleT = t + segment * 0.5 + jitterOffset;
+            float3 p = ro + rd * sampleT;
+            float farFade = 1.0 - smoothstep(_Deck3.y * 0.80, _Deck3.y, sampleT - t0);
+            // Одна 64^3 текстура покрывает _Deck2.z метров; сравниваем шаг с
+            // характерной длиной облачной формы, а не с отдельным texel.
+            float mip = clamp(log2(max(segment / max(_Deck2.z * 0.10, 1.0), 1.0)), 0.0, 4.0);
+            float d = DeckDensity(p, sampleT < 500.0 && segment < 22.0, mip, segment)
+                    * ClearFactor(p, ro) * farFade;
             if (d > 1e-5)
             {
                 // Один световой образец на середине пути: дешевле, чем 2× DeckDensity.
-                float dSun = DeckDensity(p + L * 35.0, false, mip);
+                float dSun = DeckDensity(p + L * 35.0, false, mip, segment);
                 float tau = dSun * 55.0 * _Deck3.z;
                 float sunT = exp(-tau);
                 float ms = exp(-tau * 0.25) * _MultiScatter.a;
@@ -301,12 +311,12 @@ Shader "Hidden/SkyTide/VolumetricClouds"
                 float st = exp(-d * segment);
                 float wgt = trans * (1.0 - st);
                 light += src * 0.86 * wgt;
-                distAcc += t * wgt;
+                distAcc += sampleT * wgt;
                 wAcc += wgt;
                 trans *= st;
                 if (trans < 0.03) { trans = 0; break; }
             }
-            t += stepLen;
+            t += segment;
             stepLen += stepBase * grow;
         }
         float meanDist = wAcc > 1e-4 ? distAcc / wAcc : t1;

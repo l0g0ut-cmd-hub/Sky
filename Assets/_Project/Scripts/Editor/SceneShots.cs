@@ -188,6 +188,16 @@ namespace SkyTide.EditorTools
                     vol.blurEnabled = oldBlur;
                 }
                 Render(oc, cam, boot, rt, tex, dir, new Shot("56_vol_grazing_sea", -25f, -5f, 95f));
+                // Диагностика зависимости ряби от размера шага: тот же ракурс, одинаковый мир.
+                if (vol != null)
+                {
+                    int originalDeckSteps = vol.deckSteps;
+                    vol.deckSteps = 12;
+                    Render(oc, cam, boot, rt, tex, dir, new Shot("57_vol_12_decksteps", -25f, -5f, 95f));
+                    vol.deckSteps = 32;
+                    Render(oc, cam, boot, rt, tex, dir, new Shot("58_vol_32_decksteps", -25f, -5f, 95f));
+                    vol.deckSteps = originalDeckSteps;
+                }
                 boot.SetVolumetric(false);
 
                 int shipCount = boot.ships != null ? boot.ships.Length : 0;
