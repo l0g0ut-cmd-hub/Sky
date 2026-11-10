@@ -44,6 +44,8 @@ namespace SkyTide.EditorTools
 
         public static void Build()
         {
+            // Линейное пространство цвета — основа для HDR, блума и тонмаппинга.
+            if (PlayerSettings.colorSpace != ColorSpace.Linear) PlayerSettings.colorSpace = ColorSpace.Linear;
             EnsureFolder("Assets/_Project/Scenes");
             if (AssetDatabase.IsValidFolder(MaterialFolder)) AssetDatabase.DeleteAsset(MaterialFolder);
             EnsureFolder(MaterialFolder);
@@ -66,6 +68,7 @@ namespace SkyTide.EditorTools
             SkyTideBootstrap b = boot.AddComponent<SkyTideBootstrap>();
             b.materials = mats;
             b.shipMesh = AssetDatabase.LoadAssetAtPath<TextAsset>(Models + "Corsair.bytes");
+            b.postShader = AssetDatabase.LoadAssetAtPath<Shader>("Assets/_Project/Shaders/PostFX.shader");
             b.noiseTexture = Tex(Art + "Noise.png", false, false, TextureWrapMode.Repeat, TextureWrapMode.Repeat, 256, true, true, true);
             Debug.Log("SkyTide: модель корабля " + (b.shipMesh != null && mats.shipBody != null ? "подключена" : "не найдена — будет заглушка"));
 

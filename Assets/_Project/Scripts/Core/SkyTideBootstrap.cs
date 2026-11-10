@@ -18,6 +18,9 @@ namespace SkyTide
         [Tooltip("Бесшовный шум RG для анимации облаков (Art/Noise.png). Пусто — генерируется.")]
         public Texture2D noiseTexture;
 
+        [Tooltip("Шейдер постобработки (Hidden/SkyTide/Post) — ссылка нужна, чтобы он попал в сборку.")]
+        public Shader postShader;
+
         [Header("Старт")]
         public Vector3 spawnPosition = new Vector3(0f, 60f, 0f);
         [Tooltip("Курс на старте. Солнце на панораме — в направлении +X (курс 90°).")]
@@ -54,6 +57,10 @@ namespace SkyTide
             SetShaderGlobals(materials, sun, noiseTexture);
             OrbitCamera cam = SetupCamera();
             Cam = cam;
+            SkyTidePost post = cam.GetComponent<SkyTidePost>();
+            if (post == null) post = cam.gameObject.AddComponent<SkyTidePost>();
+            post.shader = postShader;
+            post.sun = sun;
 
             World = gameObject.AddComponent<CloudSea>();
             World.Build(materials);

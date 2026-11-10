@@ -4,6 +4,8 @@ using System.IO;
 using UnityEditor;
 using UnityEditor.Build;
 using UnityEditor.Build.Reporting;
+using UnityEditor.Rendering;
+using UnityEngine.Rendering;
 using UnityEngine;
 
 namespace SkyTide.EditorTools
@@ -87,6 +89,19 @@ namespace SkyTide.EditorTools
             PlayerSettings.Android.useCustomKeystore = false;
 
             ForceLegacyInputManager();
+            EnableHdrOnAllTiers();
+        }
+
+        /// <summary>HDR-камера нужна постобработке (блум, тонмаппинг) — включаем на всех уровнях графики Android.</summary>
+        static void EnableHdrOnAllTiers()
+        {
+            foreach (GraphicsTier tier in new[] { GraphicsTier.Tier1, GraphicsTier.Tier2, GraphicsTier.Tier3 })
+            {
+                TierSettings ts = EditorGraphicsSettings.GetTierSettings(BuildTargetGroup.Android, tier);
+                ts.hdr = true;
+                ts.hdrMode = CameraHDRMode.R11G11B10;
+                EditorGraphicsSettings.SetTierSettings(BuildTargetGroup.Android, tier, ts);
+            }
         }
 
         /// <summary>Прототип читает касания через старый Input Manager — включаем его явно.</summary>
