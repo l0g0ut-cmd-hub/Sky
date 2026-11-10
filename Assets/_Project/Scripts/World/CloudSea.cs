@@ -38,7 +38,6 @@ namespace SkyTide
         Material seaMat;
         Material layerMat;
         bool shaderSea;
-        bool volumetricSeaMode;
         float time;
 
         public void Build(GameMaterials m)
@@ -130,25 +129,6 @@ namespace SkyTide
             for (int i = 0; i < spriteClouds.Count; i++) spriteClouds[i].SetActive(visible);
             // Низкие полосы дымки заменяет объёмное море облаков.
             for (int i = 0; i < lowStrips.Count; i++) lowStrips[i].SetActive(visible);
-        }
-
-        /// <summary>При объёмном рендере верхняя плоскость отключена, нижняя служит подложкой ниже deck.</summary>
-        public void SetVolumetricSeaMode(bool enabled, float deckBottom)
-        {
-            if (seaPlanes.Count < 2) return;
-            volumetricSeaMode = enabled;
-            Transform basePlane = seaPlanes[0];
-            Vector3 p = basePlane.position;
-            basePlane.position = new Vector3(p.x, enabled ? deckBottom - 12f : -14f, p.z);
-            basePlane.gameObject.SetActive(true);
-            seaPlanes[1].gameObject.SetActive(!enabled);
-        }
-
-        /// <summary>Только диагностические CI-кадры без плоских слоёв.</summary>
-        public void SetSeaPlanesVisible(bool visible)
-        {
-            for (int i = 0; i < seaPlanes.Count; i++)
-                seaPlanes[i].gameObject.SetActive(visible && (i == 0 || !volumetricSeaMode));
         }
 
         /// <summary>Спрайты на высоте полёта: прячутся, когда включены объёмные облака.</summary>

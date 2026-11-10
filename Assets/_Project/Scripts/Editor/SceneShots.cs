@@ -71,39 +71,9 @@ namespace SkyTide.EditorTools
                 VolumetricClouds vol = cam.GetComponent<VolumetricClouds>();
                 if (vol != null) Debug.Log("SkyTide: облака — " + vol.Probe());
 
-                // Только в GitHub CI: 3 кадра (рисованный, объём против солнца и вид сверху)
-                // вместо ~30 тяжёлых проходов software llvmpipe. В ручной проверке остаётся полный набор.
-                bool quickShots = File.Exists(Path.GetFullPath(Path.Combine(Application.dataPath, "../ci-fast-shots.flag")));
-                RenderTexture rt = new RenderTexture(quickShots ? 960 : 1600,
-                                                     quickShots ? 456 : 760, 24, RenderTextureFormat.ARGB32);
-                rt.antiAliasing = quickShots ? 1 : 4;
+                RenderTexture rt = new RenderTexture(1600, 760, 24, RenderTextureFormat.ARGB32);
+                rt.antiAliasing = 4;
                 Texture2D tex = new Texture2D(rt.width, rt.height, TextureFormat.RGB24, false);
-                if (quickShots)
-                {
-                    // При первом кадре объёма Impostors.Bake() делал CPU-рендер 16 ракурсов
-                    // для каждого шаблона. В CI без GPU это огромная задержка. В APK настройки не меняются.
-                    if (vol != null) vol.impostors = false;
-                    boot.SetVolumetric(false);
-                    Render(oc, cam, boot, rt, tex, dir, new Shot("01_chase", 0f, 14f, 62f));
-                    boot.SetVolumetric(true);
-                    if (vol != null) vol.ResetTowers(boot.Ship.transform.position);
-                    // В игре дальние башни показывают импосторы; в CI отключаем и их, и спрайты,
-                    // чтобы оценить именно настоящее объёмное море без выпекания атласов.
-                    if (boot.World != null) boot.World.SetSpriteCloudsVisible(false);
-                    Render(oc, cam, boot, rt, tex, dir, new Shot("30_vol_toward_sun", 35f, 8f, 75f));
-                    Render(oc, cam, boot, rt, tex, dir, new Shot("37_vol_high", 140f, 50f, 115f));
-                    // Прямое сравнение того же ракурса со старым raymarch deck.
-                    if (vol != null)
-                    {
-                        bool oldSeaMode = vol.cloudSeaSurface;
-                        vol.cloudSeaSurface = false;
-                        Render(oc, cam, boot, rt, tex, dir, new Shot("38_vol_legacy_sea_high", 140f, 50f, 115f));
-                        vol.cloudSeaSurface = oldSeaMode;
-                    }
-                    Debug.Log("SkyTide: FAST CI — " + Directory.GetFiles(dir, "*.jpg").Length
-                            + " кадра(ов) 960x456, без Impostors.Bake; расширенный тест отключён");
-                    return; // finally восстановит сцену с диска
-                }
                 Shot[] debugShots =
                 {
                     new Shot("90_dbg_fields", 35f, 8f, 75f),
@@ -188,46 +158,6 @@ namespace SkyTide.EditorTools
                 Render(oc, cam, boot, rt, tex, dir, new Shot("34_vol_nopost_toward_sun", 35f, 8f, 75f));
                 Render(oc, cam, boot, rt, tex, dir, new Shot("35_vol_nopost_wide", 60f, 22f, 140f));
                 if (post != null) post.enabled = true;
-                // Изолируем причины дефектов при следующей сборке (не меняет игровой режим).
-                boot.SetVolumetric(true);
-                if (vol != null)
-                {
-                    bool oldBlur = vol.blurEnabled;
-                    vol.blurEnabled = false;
-                    Render(oc, cam, boot, rt, tex, dir, new Shot("50_vol_raw_high", 140f, 50f, 115f));
-                    Render(oc, cam, boot, rt, tex, dir, new Shot("51_vol_raw_side", 90f, 10f, 60f));
-                    vol.blurEnabled = oldBlur;
-                    bool oldImpostors = vol.impostors;
-                    vol.impostors = false;
-                    Render(oc, cam, boot, rt, tex, dir, new Shot("54_vol_noimpostors_side", 90f, 10f, 60f));
-                    vol.impostors = oldImpostors;
-                }
-                if (boot.World != null)
-                {
-                    boot.World.SetSeaPlanesVisible(false);
-                    Render(oc, cam, boot, rt, tex, dir, new Shot("52_vol_no_planes_high", 140f, 50f, 115f));
-                    Render(oc, cam, boot, rt, tex, dir, new Shot("53_vol_no_planes_wide", 60f, 22f, 140f));
-                    boot.World.SetSeaPlanesVisible(true);
-                }
-                // Контроль aliasing: направленный свет на башни и низкий угол над морем.
-                if (vol != null)
-                {
-                    bool oldBlur = vol.blurEnabled;
-                    vol.blurEnabled = false;
-                    Render(oc, cam, boot, rt, tex, dir, new Shot("55_vol_raw_backlit", 35f, 8f, 75f));
-                    vol.blurEnabled = oldBlur;
-                }
-                Render(oc, cam, boot, rt, tex, dir, new Shot("56_vol_grazing_sea", -25f, -5f, 95f));
-                // Диагностика зависимости ряби от размера шага: тот же ракурс, одинаковый мир.
-                if (vol != null)
-                {
-                    int originalDeckSteps = vol.deckSteps;
-                    vol.deckSteps = 12;
-                    Render(oc, cam, boot, rt, tex, dir, new Shot("57_vol_12_decksteps", -25f, -5f, 95f));
-                    vol.deckSteps = 32;
-                    Render(oc, cam, boot, rt, tex, dir, new Shot("58_vol_32_decksteps", -25f, -5f, 95f));
-                    vol.deckSteps = originalDeckSteps;
-                }
                 boot.SetVolumetric(false);
 
                 int shipCount = boot.ships != null ? boot.ships.Length : 0;
@@ -236,7 +166,7 @@ namespace SkyTide.EditorTools
                     boot.NextShip();
                     foreach (Shot s in shipShots) Render(oc, cam, boot, rt, tex, dir, s);
                 }
-                Debug.Log("SkyTide: кадров снято: " + Directory.GetFiles(dir, "*.jpg").Length + " → " + dir + ", моделей: " + shipCount);
+                Debug.Log("SkyTide: кадров снято: " + (all.Length + (shipCount > 1 ? shipShots.Length : 0)) + " → " + dir + ", моделей: " + shipCount);
             }
             catch (System.Exception e)
             {

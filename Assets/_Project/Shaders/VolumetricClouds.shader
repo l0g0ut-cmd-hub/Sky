@@ -72,7 +72,6 @@ Shader "Hidden/SkyTide/VolumetricClouds"
     float4 _Deck;                 // x низ слоя, y верх (м), z плотность (1/м), w шагов
     float4 _Deck2;                // x масштаб «погоды», y порог покрытия, z масштаб клубов, w масштаб детали (м)
     float4 _Deck3;                // x дальность (м), y макс. длина пути в слое (м), z поглощение к солнцу
-    float _DeckSurfaceMode;       // 1 — непрерывная поверхность облачного моря; 0 — старый slab для A/B
     float _Bake;                  // 1 — запекание снимков-импосторов (ортографический луч, без сцены и дымки)
     float4 _BakeOrigin, _BakeRight, _BakeUp, _BakeFwd;            // x начало, y конец растворения у камеры (м)
 
@@ -96,11 +95,12 @@ Shader "Hidden/SkyTide/VolumetricClouds"
         return (1.0 - g2) / (12.566 * pow(max(1.0 + g2 - 2.0 * g * c, 1e-3), 1.5));
     }
 
-    // Нерегулярная стратификация вместо периодической 4x4 матрицы Bayer.
-    // Не привязана к кадру: нет временного мерцания при неподвижной камере.
-    float CloudJitter(float2 px)
+    // Упорядоченный сдвиг 4×4 (Байер): после размытия усредняется почти без остатка — нет «грязного стекла».
+    static const float kBayer[16] = { 0, 8, 2, 10, 12, 4, 14, 6, 3, 11, 1, 9, 15, 7, 13, 5 };
+    float Bayer4(float2 px)
     {
-        return frac(52.9829189 * frac(dot(px, float2(0.06711056, 0.00583715))));
+        int2 q = int2(fmod(px, 4.0));
+        return (kBayer[q.y * 4 + q.x] + 0.5) / 16.0;
     }
 
     float Hash(float2 px)
@@ -225,38 +225,28 @@ Shader "Hidden/SkyTide/VolumetricClouds"
 
     // ---------- объёмное море облаков ----------
     // Слой между _Deck.x и _Deck.y (м): покрытие — 2D-«погода», верх слоя бугрится 3D-шумом (клубы),
-    // края разъедает детализация. Свет: одна проба к солнцу вместо двух (бока освещены, ядра в тени),
+    // края разъедает детализация. Свет: два шага к солнцу (бока клубов к солнцу светятся, задние — в тени),
     // верх ярче низа, фиолетовое заполнение в глубине — та же палитра, что у башен.
-    float DeckDensity(float3 p, bool detail, float mip, float footprintMeters)
+    float DeckDensity(float3 p, bool detail)
     {
-        // Световые пробы вне слоя не должны возвращать фиктивную плотность.
-        if (p.y < _Deck.x || p.y > _Deck.y) return 0.0;
-        float h = saturate((p.y - _Deck.x) / max(_Deck.y - _Deck.x, 1.0));
+        float h = saturate((p.y - _Deck.x) / (_Deck.y - _Deck.x));
         float2 drift = _Wind.xz * _Wind.w;
         float2 wuv = (p.xz + drift) / _Deck2.x;
-        // Вдоль длинного шага нельзя читать высокочастотную погоду из mip=0:
-        // это aliasing, видимый на море как регулярные гребни.
-        float weatherMip = clamp(log2(max(footprintMeters / max(_Deck2.x / 64.0, 1.0), 1.0)), 0.0, 3.0);
-        float w = tex2Dlod(_SkyTideNoise, float4(wuv, 0, weatherMip)).r * 0.6
-                + tex2Dlod(_SkyTideNoise, float4(wuv * 2.7 + 0.37, 0, weatherMip)).g * 0.4;
+        float w = tex2Dlod(_SkyTideNoise, float4(wuv, 0, 0)).r * 0.6 + tex2Dlod(_SkyTideNoise, float4(wuv * 2.7 + 0.37, 0, 0)).g * 0.4;
         float cov = saturate((w - _Deck2.y) / 0.35);
         float3 wp = p + float3(drift.x, _Wind.w * 0.4, drift.y);
-        float n = tex3Dlod(_Noise3D, float4(wp / _Deck2.z, mip)).r;
+        float n = tex3Dlod(_Noise3D, float4(wp / _Deck2.z, 0)).r;
         float topH = cov * (0.45 + 0.55 * n) + 0.12;
-        // Ширина перехода растёт вместе с длиной лучевого сегмента: его интеграл
-        // не должен превращать тонкую границу в отдельные полосы.
-        float filter = min(0.095, max(footprintMeters - 12.0, 0.0) * 0.001);
-        float m = smoothstep(-0.02 - filter, 0.15 + filter, topH - h);
-        m *= smoothstep(0.0, 0.08, h) * (1.0 - smoothstep(0.94, 1.0, h));
+        float m = saturate((topH - h) * 6.0) * saturate(h * 5.0 + 0.2);
         if (detail && m > 0.0 && m < 0.9)
         {
-            float dn = tex3Dlod(_Noise3D, float4(wp / _Deck2.w, min(mip, 2.0))).g;
+            float dn = tex3Dlod(_Noise3D, float4(wp / _Deck2.w, 0)).g;
             m = saturate(m - dn * 0.45 * (1.0 - m));
         }
         return m * _Deck.z;
     }
 
-    float4 DeckLegacy(float3 ro, float3 rd, float tEnd, float jitter, float phase)
+    float4 Deck(float3 ro, float3 rd, float tEnd, float jitter, float phase)
     {
         float base = _Deck.x, top = _Deck.y;
         float t0 = 0.0, t1 = min(tEnd, _Deck3.x);
@@ -271,12 +261,11 @@ Shader "Hidden/SkyTide/VolumetricClouds"
         t1 = min(t1, t0 + _Deck3.y);              // у горизонта слой не тянется бесконечно
         if (t1 <= t0) return float4(0, 0, 0, 1);
 
-        int n = max(2, (int)_Deck.w);
+        int n = (int)_Deck.w;
         float stepBase = (t1 - t0) / n;
         float stepLen = stepBase * 0.4;
-        // Сумма сегментов РОВНО равна (t1-t0), предыдущая версия не доходила до конца.
-        float grow = 1.2 / max(n - 1, 1);
-        float t = t0;
+        float grow = 1.2 / n;
+        float t = t0 + stepLen * jitter;
         float3 L = normalize(_SkyTideSunDir.xyz);
         float3 light = 0;
         float trans = 1;
@@ -284,180 +273,35 @@ Shader "Hidden/SkyTide/VolumetricClouds"
         [loop]
         for (int k = 0; k < n; k++)
         {
-            float segment = min(stepLen, t1 - t);
-            if (segment <= 0.0) break;
-            // Правильная квадратура: sample ВНУТРИ интегрируемого сегмента, не на его границе.
-            float jitterOffset = (jitter - 0.5) * min(segment * 0.30, 12.0);
-            float sampleT = t + segment * 0.5 + jitterOffset;
-            float3 p = ro + rd * sampleT;
-            float farFade = 1.0 - smoothstep(_Deck3.y * 0.80, _Deck3.y, sampleT - t0);
-            // Одна 64^3 текстура покрывает _Deck2.z метров; сравниваем шаг с
-            // характерной длиной облачной формы, а не с отдельным texel.
-            float mip = clamp(log2(max(segment / max(_Deck2.z * 0.10, 1.0), 1.0)), 0.0, 4.0);
-            float d = DeckDensity(p, sampleT < 500.0 && segment < 22.0, mip, segment)
-                    * ClearFactor(p, ro) * farFade;
+            if (t > t1) break;
+            float3 p = ro + rd * t;
+            float d = DeckDensity(p, t < 1500.0) * ClearFactor(p, ro);
             if (d > 1e-5)
             {
-                // Один световой образец на середине пути: дешевле, чем 2× DeckDensity.
-                float dSun = DeckDensity(p + L * 35.0, false, mip, segment);
-                float tau = dSun * 55.0 * _Deck3.z;
+                float d1 = DeckDensity(p + L * 18.0, false);
+                float d2 = DeckDensity(p + L * 55.0, false);
+                float tau = (d1 * 18.0 + d2 * 37.0) * _Deck3.z;
                 float sunT = exp(-tau);
                 float ms = exp(-tau * 0.25) * _MultiScatter.a;
                 float h = saturate((p.y - base) / (top - base));
                 float3 sunCol = lerp(_SunEmber.rgb, _SunGold.rgb, pow(sunT, 0.6));
                 float3 amb = lerp(_AmbientBottom.rgb, _AmbientTop.rgb, h) * lerp(0.3, 0.85, h);
                 amb *= lerp(float3(0.6, 0.42, 0.85), float3(1, 1, 1), h);
-                amb *= lerp(0.70, 1.0, sunT);
                 float3 src = (sunCol * sunT * min(phase, 1.6) + _MultiScatter.rgb * ms * h) * _Deck3.w + amb + SkyTideFlashLight(p);
-                float st = exp(-d * segment);
+                float st = exp(-d * stepLen);
                 float wgt = trans * (1.0 - st);
                 light += src * 0.86 * wgt;
-                distAcc += sampleT * wgt;
+                distAcc += t * wgt;
                 wAcc += wgt;
                 trans *= st;
                 if (trans < 0.03) { trans = 0; break; }
             }
-            t += segment;
+            t += stepLen;
             stepLen += stepBase * grow;
         }
         float meanDist = wAcc > 1e-4 ? distAcc / wAcc : t1;
         light = lerp(light, SkyTidePanorama(rd) * (1.0 - trans), _Aerial.x * saturate(SkyTideAerial(meanDist)));
         return float4(light, trans);
-    }
-
-
-    // --------------------------------------------------------------------------
-    // SEA OF CLOUDS V2: cloud-top heightfield, NOT a periodically sampled slab.
-    // A 24-step optical raymarch across a shallow layer generated visible wave
-    // contours when the ray was grazing the deck. The continuous world-space
-    // height surface below is solved by bracketing + 5 binary refinements.
-    // It has no integration slices, no periodic jitter and no specular response.
-    // Real 3D raymarched hero cumulonimbus towers are left unchanged.
-    // --------------------------------------------------------------------------
-    float DeckSurfaceLOD(float dist)
-    {
-        float voxelMeters = max(_Deck2.z / 64.0, 1.0);
-        return clamp(log2(max(dist * 0.003 / voxelMeters, 1.0)), 0.0, 3.0);
-    }
-
-    // x=height (metres), y=weather coverage, z=rounded cloud-top bump.
-    // Important: XZ-anchored at a FIXED 3D noise slice. Sampling 3D noise at
-    // the marching ray's changing Y caused vertical sampling bands.
-    float3 DeckSurfaceData(float2 xz, float mip)
-    {
-        float2 drift = _Wind.xz * _Wind.w;
-        float2 uv = (xz + drift) / max(_Deck2.x, 1.0);
-        float weatherMip = clamp(mip * 0.75, 0.0, 3.0);
-        float a = tex2Dlod(_SkyTideNoise, float4(uv, 0, weatherMip)).r;
-        float b = tex2Dlod(_SkyTideNoise, float4(uv * 2.7 + 0.37, 0, weatherMip + 0.5)).g;
-        float cover = saturate((a * 0.65 + b * 0.35 - _Deck2.y + 0.04) / 0.42);
-
-        // Rounded lobes; no wave-like surface normals from high frequencies.
-        float3 noisePos = float3((xz.x + drift.x) / max(_Deck2.z, 1.0),
-                                 0.371,
-                                 (xz.y + drift.y) / max(_Deck2.z, 1.0));
-        float4 cloudNoise = tex3Dlod(_Noise3D, float4(noisePos, mip));
-        float billow = smoothstep(0.28, 0.74, cloudNoise.r * 0.78 + cloudNoise.g * 0.22);
-        float h = 0.07 + 0.89 * cover * (0.31 + 0.69 * billow);
-        float height = lerp(_Deck.x, _Deck.y, h);
-        return float3(height, cover, billow);
-    }
-
-    float4 DeckSurface(float3 ro, float3 rd, float sceneEnd, float phase)
-    {
-        float t0 = 0.0;
-        float t1 = min(sceneEnd, _Deck3.x);
-        float base = _Deck.x, top = _Deck.y;
-
-        // Restrict work to an actual ray/slab intersection.
-        if (abs(rd.y) > 1e-4)
-        {
-            float ta = (base - ro.y) / rd.y;
-            float tb = (top - ro.y) / rd.y;
-            t0 = max(t0, min(ta, tb));
-            t1 = min(t1, max(ta, tb));
-        }
-        else if (ro.y < base || ro.y > top) return float4(0, 0, 0, 1);
-        t1 = min(t1, t0 + _Deck3.y);
-        if (t1 <= t0) return float4(0, 0, 0, 1);
-
-        const int SEARCH_STEPS = 18;
-        float lastT = t0;
-        float firstMip = DeckSurfaceLOD(lastT);
-        float3 start = ro + rd * lastT;
-        float lastF = start.y - DeckSurfaceData(start.xz, firstMip).x;
-        float nearT = t0;
-        float farT = t0;
-        bool hit = lastF <= 0.0;
-
-        // When the camera starts above the deck, find the FIRST cloud-top
-        // crossing, then refine a continuous intersection. No marching stripes.
-        [loop] for (int k = 1; k <= SEARCH_STEPS; k++)
-        {
-            if (hit) break;
-            float nextT = lerp(t0, t1, (float)k / SEARCH_STEPS);
-            float3 pos = ro + rd * nextT;
-            float f = pos.y - DeckSurfaceData(pos.xz, DeckSurfaceLOD(nextT)).x;
-            if (lastF > 0.0 && f <= 0.0)
-            {
-                nearT = lastT;
-                farT = nextT;
-                hit = true;
-                break;
-            }
-            lastF = f;
-            lastT = nextT;
-        }
-        if (!hit) return float4(0, 0, 0, 1);
-
-        [unroll] for (int j = 0; j < 5; j++)
-        {
-            float midT = (nearT + farT) * 0.5;
-            float3 pMid = ro + rd * midT;
-            float signedHeight = pMid.y - DeckSurfaceData(pMid.xz, DeckSurfaceLOD(midT)).x;
-            if (signedHeight > 0.0) nearT = midT;
-            else farT = midT;
-        }
-
-        float surfaceT = (nearT + farT) * 0.5;
-        float3 p = ro + rd * surfaceT;
-        float mip = DeckSurfaceLOD(surfaceT);
-        float3 surface = DeckSurfaceData(p.xz, mip);
-
-        // Two finite differences supply a stable broad-lobe normal, rather
-        // than micro-normal ripples (which previously read as water).
-        float e = max(9.0, surfaceT * 0.008);
-        float hx = DeckSurfaceData(p.xz + float2(e, 0), mip).x;
-        float hz = DeckSurfaceData(p.xz + float2(0, e), mip).x;
-        float3 normal = normalize(float3(surface.x - hx, e, surface.x - hz));
-        float3 L = normalize(_SkyTideSunDir.xyz);
-        float litSide = saturate(0.12 + 2.5 * dot(normal, L));
-
-        // Low sunset occlusion: a taller neighbouring puff blocks grazing
-        // light. One world-space query, no costly full lightmarch.
-        float2 sunXZ = normalize(L.xz + float2(1e-5, 0));
-        float blockerHeight = DeckSurfaceData(p.xz + sunXZ * 90.0, mip + 0.3).x;
-        float sunVisible = smoothstep(-8.0, 22.0, surface.x + max(L.y, 0.06) * 90.0 - blockerHeight);
-        float sunAmount = litSide * sunVisible;
-        float aboveBase = saturate((surface.x - base) / max(top - base, 1.0));
-
-        float3 amb = lerp(_AmbientBottom.rgb, _AmbientTop.rgb, aboveBase) * (0.78 + 0.32 * surface.z);
-        amb *= lerp(float3(0.65, 0.44, 0.88), float3(1, 1, 1), sunAmount);
-        float3 sunlight = lerp(_SunEmber.rgb, _SunGold.rgb, sunAmount)
-                        * (_Deck3.w * 0.75) * sunAmount * (0.82 + 0.10 * min(phase, 1.6));
-        float3 cloudColor = amb + sunlight
-                          + _MultiScatter.rgb * (0.018 + 0.022 * surface.z)
-                          + SkyTideFlashLight(p);
-
-        // Soft gaps through the cloud carpet and smooth fade into the painted
-        // horizon. Neither specular BRDF nor repeated optical integration.
-        float alpha = saturate(0.42 + 0.70 * surface.y)
-                    * (1.0 - smoothstep(_Deck3.y * 0.65, _Deck3.y, surfaceT))
-                    * ClearFactor(p, ro);
-        float3 panorama = SkyTidePanorama(rd);
-        float haze = _Aerial.x * smoothstep(650.0, 1650.0, surfaceT);
-        cloudColor = lerp(cloudColor, panorama, haze);
-        return float4(cloudColor * alpha, 1.0 - alpha);
     }
 
     float4 fragMarch (v2f i) : SV_Target
@@ -487,7 +331,7 @@ Shader "Hidden/SkyTide/VolumetricClouds"
             sceneDist = LinearEyeDepth(rawDepth) / max(dot(rd, fwd), 1e-3);
         }
         float2 jpx = floor(i.uv * _LowRes.xy);
-        float jit = bake ? Hash(jpx) : lerp(0.5, CloudJitter(jpx), 0.72);  // стабильная непериодическая стратификация
+        float jit = bake ? Hash(jpx) : Bayer4(jpx);  // в кадре — Байер (размытие его съедает), в снимках — хэш
         float3 sunDirH = normalize(_SkyTideSunDir.xyz);
         float cosH = dot(rd, sunDirH);
         float phaseH = min(lerp(HG(cosH, _Phase.y), HG(cosH, _Phase.x), _Phase.z) * 12.566, 2.6);
@@ -533,7 +377,6 @@ Shader "Hidden/SkyTide/VolumetricClouds"
                         float3 amb = lerp(_AmbientBottom.rgb, _AmbientTop.rgb, hh) * (0.6 + 0.4 * hh);
                         // Тень — фиолетовая, как на рисованных облаках, а не серая: глушим яркость, но не насыщенность.
                         amb *= lerp(float3(0.55, 0.38, 0.8), float3(1.0, 1.0, 1.0), sky);
-                        amb *= lerp(0.35, 1.0, smoothstep(0.08, 0.85, sky));
                         float3 src = sunCol * (sunT * phase * (1.0 + _Phase.w * edge * rimDir)) + _MultiScatter.rgb * ms * sky + amb
                                    + (bake ? float3(0, 0, 0) : SkyTideFlashLight(p));
                         float st = exp(-d * stepLen);
@@ -558,9 +401,7 @@ Shader "Hidden/SkyTide/VolumetricClouds"
 
         // 2) Объёмное море облаков — до башни (за плотной башней его не видно) или до сцены.
         float deckEnd = min(sceneDist, trans < 0.9 ? firstHit : 1e7);
-        float4 deck;
-        [branch] if (_DeckSurfaceMode > 0.5) deck = DeckSurface(ro, rd, deckEnd, phaseH);
-        else deck = DeckLegacy(ro, rd, deckEnd, jit, phaseH);
+        float4 deck = Deck(ro, rd, deckEnd, jit, phaseH);
         return float4(deck.rgb + light * deck.a, trans * deck.a);
     }
 
@@ -571,36 +412,16 @@ Shader "Hidden/SkyTide/VolumetricClouds"
         return float4(sqrt(saturate(c.rgb / 6.0)), 1.0 - c.a);
     }
 
-    // Границу облака бережём, а внутри плотной массы мягче подавляем aliasing.
-    // Depth-aware коэффициент по-прежнему запрещает перенос облаков через корпус.
+    // Мягкое размытие облаков в низком разрешении (тент 3×3): убирает зерно и «пиксельные» кромки.
     float4 fragBlur (v2f i) : SV_Target
     {
         float2 d = _LowRes.zw;
-        float4 center = tex2D(_MainTex, i.uv);
-        float centerDepth = tex2D(_LowDepthTex, i.uv).r;
-        float4 accum = center * 3.0;
-        float weights = 3.0;
-        float centerInterior = smoothstep(0.12, 0.48, 1.0 - center.a);
-        [unroll] for (int y = -1; y <= 1; y++)
-        {
-            [unroll] for (int x = -1; x <= 1; x++)
-            {
-                if (x == 0 && y == 0) continue;
-                float2 uv = clamp(i.uv + float2(x, y) * d, d * 0.5, 1.0 - d * 0.5);
-                float4 neighbor = tex2D(_MainTex, uv);
-                float neighborDepth = tex2D(_LowDepthTex, uv).r;
-                float spatial = (x == 0 || y == 0) ? 2.0 : 1.0;
-                float neighborInterior = smoothstep(0.12, 0.48, 1.0 - neighbor.a);
-                float interior = min(centerInterior, neighborInterior);
-                float alphaSharpness = lerp(14.0, 2.2, interior);
-                float alphaWeight = rcp(1.0 + alphaSharpness * abs(neighbor.a - center.a));
-                float depthWeight = rcp(1.0 + abs(neighborDepth - centerDepth) / max(3.0, centerDepth * 0.02));
-                float weight = spatial * alphaWeight * depthWeight;
-                accum += neighbor * weight;
-                weights += weight;
-            }
-        }
-        return accum / weights;
+        float4 c = tex2D(_MainTex, i.uv) * 4.0;
+        c += (tex2D(_MainTex, i.uv + float2(d.x, 0)) + tex2D(_MainTex, i.uv - float2(d.x, 0))
+            + tex2D(_MainTex, i.uv + float2(0, d.y)) + tex2D(_MainTex, i.uv - float2(0, d.y))) * 2.0;
+        c += tex2D(_MainTex, i.uv + d) + tex2D(_MainTex, i.uv - d)
+           + tex2D(_MainTex, i.uv + float2(d.x, -d.y)) + tex2D(_MainTex, i.uv + float2(-d.x, d.y));
+        return c / 16.0;
     }
 
     float SceneDepthForClouds(float2 uv)
@@ -680,7 +501,6 @@ Shader "Hidden/SkyTide/VolumetricClouds"
         Pass { CGPROGRAM
             #pragma vertex vert
             #pragma fragment fragBlur
-            #pragma target 3.5
             ENDCG }
         Pass { CGPROGRAM
             #pragma vertex vert

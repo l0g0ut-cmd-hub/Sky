@@ -126,11 +126,7 @@ namespace SkyTide
             volumetricClouds = on;
             if (Volumetric != null) Volumetric.enabled = on;
             // В объёмном режиме кучевые спрайты заменяют импосторы — снимки настоящих объёмных облаков.
-            if (World != null)
-            {
-                World.SetVolumetricSeaMode(on && Volumetric != null, Volumetric != null ? Volumetric.deckBase : -60f);
-                World.SetSpriteCloudsVisible(!on || Volumetric == null || !Volumetric.impostors);
-            }
+            if (World != null) World.SetSpriteCloudsVisible(!on || Volumetric == null || !Volumetric.impostors);
             // Объёмные башни дополняют рисованные облака, а не заменяют их — средний ярус спрайтов остаётся.
         }
 

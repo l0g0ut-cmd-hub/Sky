@@ -7,10 +7,10 @@ on:
   push:
     branches: [apk-build]
 
-# Одна сборка за раз: новый запуск отменяет зависший предыдущий (Unity Personal — одно место).
+# Одна сборка за раз: лицензия Personal — одно место.
 concurrency:
   group: build-android
-  cancel-in-progress: true
+  cancel-in-progress: false
 
 permissions:
   contents: write   # для веток apk-latest и ci-logs
@@ -74,8 +74,6 @@ jobs:
         run: |
           mkdir -p Assets/_Project/Resources
           echo -n "${GITHUB_RUN_NUMBER}" > Assets/_Project/Resources/BuildNumber.txt
-          # CI-снимки не должны блокировать выпуск APK: быстрая проверка вместо 30+ кадров.
-          echo 1 > ci-fast-shots.flag
 
       - name: Build APK
         env:
