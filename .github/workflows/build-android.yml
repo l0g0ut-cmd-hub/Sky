@@ -1,0 +1,150 @@
+name: Build Android APK
+
+# Сборка запускается вручную (Actions → Run workflow) или пушем в ветку apk-build.
+# Пуши в main сборку не запускают: образ Unity тяжёлый, минуты дорогие.
+on:
+  workflow_dispatch:
+  push:
+    branches: [apk-build]
+
+# Одна сборка за раз: лицензия Personal — одно место.
+concurrency:
+  group: build-android
+  cancel-in-progress: false
+
+permissions:
+  contents: write   # для веток apk-latest и ci-logs
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    env:
+      UNITY_VERSION: 6000.0.36f1
+      GAMECI_VERSION: v0.1.72
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          lfs: true
+
+      # MonoBehaviour вне одноимённого файла теряет связь со скриптом в сцене.
+      - name: Check MonoBehaviour file names
+        run: |
+          python3 - <<'PY'
+          import re, glob, os, sys
+          bad = []
+          for f in glob.glob('Assets/**/*.cs', recursive=True):
+              s = open(f, encoding='utf-8', errors='ignore').read()
+              for m in re.finditer(r'class\s+(\w+)\s*:\s*(MonoBehaviour|ScriptableObject)\b', s):
+                  if m.group(1) != os.path.splitext(os.path.basename(f))[0]:
+                      bad.append(f + ' -> ' + m.group(1))
+          if bad:
+              print('MonoBehaviour/ScriptableObject в файле с другим именем:'); print('\n'.join(bad)); sys.exit(1)
+          print('ok')
+          PY
+
+      - name: Environment info
+        run: |
+          { echo "== uname"; uname -a; echo "== df"; df -h /; } 2>&1 | tee "$RUNNER_TEMP/ci.log"
+
+      - name: Free disk space
+        run: |
+          sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /opt/hostedtoolcache/CodeQL /usr/local/share/boost
+          sudo docker image prune --all --force || true
+          df -h / | tee -a "$RUNNER_TEMP/ci.log"
+
+      - name: Cache Unity Library
+        uses: actions/cache@v4
+        with:
+          path: Library
+          key: Library-Android-${{ env.UNITY_VERSION }}-${{ github.sha }}
+          restore-keys: |
+            Library-Android-${{ env.UNITY_VERSION }}-
+
+      - name: Install GameCI CLI
+        run: |
+          set -o pipefail
+          export GAME_CI_INSTALL="$RUNNER_TEMP/game-ci/bin"
+          mkdir -p "$GAME_CI_INSTALL"
+          curl -fsSL "https://raw.githubusercontent.com/game-ci/cli/${GAMECI_VERSION}/scripts/install.sh" -o "$RUNNER_TEMP/gc-install.sh"
+          bash "$RUNNER_TEMP/gc-install.sh" "$GAMECI_VERSION" "$GAME_CI_INSTALL" 2>&1 | tee -a "$RUNNER_TEMP/ci.log"
+          echo "$GAME_CI_INSTALL" >> "$GITHUB_PATH"
+
+      - name: Build APK
+        env:
+          UNITY_EMAIL: ${{ secrets.UNITY_EMAIL }}
+          UNITY_PASSWORD: ${{ secrets.UNITY_PASSWORD }}
+        run: |
+          set -o pipefail
+          game-ci build . \
+            --engine unity \
+            --engine-version "$UNITY_VERSION" \
+            --target-platform Android \
+            --android-export-type androidPackage \
+            --build-name SkyTide \
+            --versioning-strategy None \
+            --build-method SkyTide.EditorTools.BuildScript.BuildAndroid 2>&1 | tee -a "$RUNNER_TEMP/ci.log"
+
+      - name: Upload APK
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: SkyTide-Android-APK
+          path: build/Android/*.apk
+          if-no-files-found: warn
+
+      # APK в ветку apk-latest (один коммит, перезаписывается) — чтобы его можно было забрать через git.
+      - name: Publish APK to apk-latest branch
+        if: success()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -e
+          D="$RUNNER_TEMP/apkdrop"; rm -rf "$D"; mkdir -p "$D"; cd "$D"
+          git init -q; git checkout -q -b apk-latest
+          sudo cp "$GITHUB_WORKSPACE"/build/Android/*.apk ./SkyTide.apk; sudo chown "$(id -u)" SkyTide.apk
+          echo "run ${GITHUB_RUN_NUMBER} sha ${GITHUB_SHA}" > info.txt
+          git -c user.name=ci -c user.email=ci@local add -A
+          git -c user.name=ci -c user.email=ci@local commit -qm "apk run ${GITHUB_RUN_NUMBER}"
+          git push -q -f "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" apk-latest
+
+      # Лог в ветку ci-logs (секреты Unity вырезаются) — чтобы разбирать ошибки без доступа к логам Actions.
+      - name: Publish scrubbed log to ci-logs branch
+        if: always()
+        env:
+          UNITY_EMAIL: ${{ secrets.UNITY_EMAIL }}
+          UNITY_PASSWORD: ${{ secrets.UNITY_PASSWORD }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          python3 - <<'PY'
+          import os
+          T = os.environ['RUNNER_TEMP']
+          src = os.path.join(T, 'ci.log')
+          s = open(src, errors='replace').read() if os.path.exists(src) else '(ci.log отсутствует)'
+          for k in ('UNITY_PASSWORD', 'UNITY_EMAIL'):
+              v = os.environ.get(k)
+              if v:
+                  s = s.replace(v, '***')
+          lines = s.splitlines()
+          if len(lines) > 3500:
+              s = '\n'.join(lines[:300] + ['', '... [обрезано] ...', ''] + lines[-3200:])
+          open(os.path.join(T, 'ci-scrubbed.log'), 'w').write(s)
+          PY
+          REPO="${GITHUB_REPOSITORY}"
+          gh api "repos/$REPO/git/refs" -f ref="refs/heads/ci-logs" -f sha="$GITHUB_SHA" >/dev/null 2>&1 || true
+          NAME="logs/run-${GITHUB_RUN_NUMBER}.log"
+          SHA=$(gh api "repos/$REPO/contents/$NAME?ref=ci-logs" --jq .sha 2>/dev/null || true)
+          export SHA
+          python3 - <<'PY'
+          import base64, json, os
+          T = os.environ['RUNNER_TEMP']
+          body = {
+              "message": "log run " + os.environ["GITHUB_RUN_NUMBER"],
+              "branch": "ci-logs",
+              "content": base64.b64encode(open(os.path.join(T, "ci-scrubbed.log"), "rb").read()).decode(),
+          }
+          if os.environ.get("SHA"):
+              body["sha"] = os.environ["SHA"]
+          json.dump(body, open(os.path.join(T, "put.json"), "w"))
+          PY
+          gh api -X PUT "repos/$REPO/contents/$NAME" --input "$RUNNER_TEMP/put.json" >/dev/null
