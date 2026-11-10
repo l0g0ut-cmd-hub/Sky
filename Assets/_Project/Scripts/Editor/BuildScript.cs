@@ -65,8 +65,31 @@ namespace SkyTide.EditorTools
             }
         }
 
+        /// <summary>Значок игры: Art/AppIcon.png — как значок по умолчанию и для Android (обычный и круглый).</summary>
+        static void SetAppIcon()
+        {
+            const string path = "Assets/_Project/Art/AppIcon.png";
+            TextureImporter ti = AssetImporter.GetAtPath(path) as TextureImporter;
+            if (ti == null) { Debug.LogWarning("SkyTide: значок не найден: " + path); return; }
+            ti.textureType = TextureImporterType.Default;
+            ti.mipmapEnabled = false;
+            ti.textureCompression = TextureImporterCompression.Uncompressed;
+            ti.maxTextureSize = 1024;
+            ti.SaveAndReimport();
+            Texture2D icon = AssetDatabase.LoadAssetAtPath<Texture2D>(path);
+            PlayerSettings.SetIcons(NamedBuildTarget.Unknown, new Texture2D[] { icon }, IconKind.Any);
+            foreach (PlatformIconKind kind in new PlatformIconKind[] { UnityEditor.Android.AndroidPlatformIconKind.Legacy, UnityEditor.Android.AndroidPlatformIconKind.Round })
+            {
+                PlatformIcon[] icons = PlayerSettings.GetPlatformIcons(NamedBuildTarget.Android, kind);
+                for (int i = 0; i < icons.Length; i++) icons[i].SetTexture(icon);
+                PlayerSettings.SetPlatformIcons(NamedBuildTarget.Android, kind, icons);
+            }
+            Debug.Log("SkyTide: значок установлен");
+        }
+
         static void ConfigurePlayer()
         {
+            SetAppIcon();
             PlayerSettings.companyName = "SkyTide";
             PlayerSettings.productName = "Небесный прилив";
             int buildNo = 1;
