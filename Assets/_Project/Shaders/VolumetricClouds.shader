@@ -283,7 +283,7 @@ Shader "Hidden/SkyTide/VolumetricClouds"
                 if (trans < 0.02) { trans = 0; break; }
             }
             // Пустота вдали от поверхности — шагаем шире (поле ≈ доля радиуса сферы до поверхности).
-            t += stepLen * (1.0 + 2.0 * saturate((-fld - 0.45) * 2.0));
+            t += stepLen * (bake ? 1.0 : 1.0 + 2.0 * saturate((-fld - 0.45) * 2.0));
             stepLen += stepBase * stepGrow;
             if (t > tB) break;
         }

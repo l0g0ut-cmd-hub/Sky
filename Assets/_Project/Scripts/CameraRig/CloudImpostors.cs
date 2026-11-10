@@ -113,6 +113,21 @@ namespace SkyTide
                     Graphics.Blit(Texture2D.blackTexture, tex, volMat, 4, v * Frames + k);
                 }
             }
+            // Снимки без размытия кадра дают зерно и полосы — сглаживаем каждый тентом 3×3 дважды.
+            volMat.SetVector("_LowRes", new Vector4(FrameSize, FrameSize, 1f / FrameSize, 1f / FrameSize));
+            RenderTexture tmpA = RenderTexture.GetTemporary(FrameSize, FrameSize, 0, RenderTextureFormat.ARGB32, RenderTextureReadWrite.Linear);
+            RenderTexture tmpB = RenderTexture.GetTemporary(FrameSize, FrameSize, 0, RenderTextureFormat.ARGB32, RenderTextureReadWrite.Linear);
+            tmpA.filterMode = FilterMode.Bilinear;
+            tmpB.filterMode = FilterMode.Bilinear;
+            for (int sl = 0; sl < Variants.Length * Frames; sl++)
+            {
+                Graphics.CopyTexture(tex, sl, 0, tmpA, 0, 0);
+                Graphics.Blit(tmpA, tmpB, volMat, 3);
+                Graphics.Blit(tmpB, tmpA, volMat, 3);
+                Graphics.CopyTexture(tmpA, 0, 0, tex, sl, 0);
+            }
+            RenderTexture.ReleaseTemporary(tmpA);
+            RenderTexture.ReleaseTemporary(tmpB);
             volMat.SetFloat("_Bake", 0f);
             tex.GenerateMips();
             ready = true;
