@@ -13,6 +13,7 @@ namespace SkyTide
     [RequireComponent(typeof(Camera))]
     public class VolumetricClouds : MonoBehaviour
     {
+        OrbitCamera orbit;
         const int MaxTowers = 8;
         const int Puffs = 28;
         const int Templates = 3;
@@ -26,7 +27,7 @@ namespace SkyTide
 
         [Header("Качество")]
         [Range(1, 8)] public int resolutionDivider = 4;
-        [Range(16, 128)] public int steps = 48;
+        [Range(16, 128)] public int steps = 40;
         public float marchDistance = 2600f;
 
         [Header("Башни")]
@@ -396,6 +397,10 @@ namespace SkyTide
             mat.SetVector("_Phase", new Vector4(forwardG, backG, phaseMix, rim));
             mat.SetVector("_Aerial", new Vector4(aerial, 0f, 0f, 0f));
             mat.SetFloat("_Debug", debugView);
+            // Чистая зона до корабля: облако не встаёт между камерой и кораблём.
+            if (orbit == null) orbit = GetComponent<OrbitCamera>();
+            float clear = orbit != null ? orbit.distance : 0f;
+            mat.SetVector("_NearClear", new Vector4(Mathf.Max(30f, clear * 0.9f), Mathf.Max(140f, clear + 70f), 0f, 0f));
 
             int w = Mathf.Max(16, src.width / resolutionDivider);
             int h = Mathf.Max(16, src.height / resolutionDivider);

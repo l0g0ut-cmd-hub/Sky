@@ -49,6 +49,7 @@ Shader "Hidden/SkyTide/VolumetricClouds"
     float4 _Phase;                // x g вперёд, y g назад, z смесь, w кайма
     float4 _Aerial;               // x доля воздушной перспективы
     float _Debug;
+    float4 _NearClear;            // x начало, y конец растворения у камеры (м)
 
     struct v2f
     {
@@ -104,9 +105,10 @@ Shader "Hidden/SkyTide/VolumetricClouds"
     }
 
     // Плотность (1/м); попутно — запечённая толщина к солнцу и видимость неба.
-    float Density(float3 p, bool detail, out float tau, out float sky)
+    float Density(float3 p, bool detail, out float tau, out float sky, out float fld)
     {
         float4 tf = TowerField(p);
+        fld = tf.x;
         tau = tf.y;
         sky = tf.z;
         float f = tf.x;
@@ -117,12 +119,12 @@ Shader "Hidden/SkyTide/VolumetricClouds"
         float m = saturate((f + (n - 0.5) * _Shape.z + (bump - 0.5) * 0.2) * 4.0);
         m *= saturate(tf.w / 0.06);                   // плоское основание
         if (m <= 0.0) return 0.0;
-        if (detail)
+        float edgeW = 1.0 - saturate((m - 0.4) / 0.45);
+        if (detail && edgeW > 0.0)
         {
             float dn = tex3Dlod(_Noise3D, float4(wp / _Shape.y, 0)).g * 0.7
                      + tex3Dlod(_Noise3D, float4(wp / (_Shape.y * 0.45), 0)).b * 0.3;
-            float edge = 1.0 - saturate((m - 0.4) / 0.45);
-            m = saturate(m - dn * _Shape.w * edge);
+            m = saturate(m - dn * _Shape.w * edgeW);
         }
         m = m * m * (3.0 - 2.0 * m);
         return m * _DensityParams.x;
@@ -237,8 +239,8 @@ Shader "Hidden/SkyTide/VolumetricClouds"
         for (int s = 0; s < steps; s++)
         {
             float3 p = ro + rd * t;
-            float tau, sky;
-            float d = Density(p, true, tau, sky) * smoothstep(30.0, 140.0, t);
+            float tau, sky, fld;
+            float d = Density(p, t < 1800.0, tau, sky, fld) * smoothstep(_NearClear.x, _NearClear.y, t);
             if (d > 1e-5)
             {
                 // Свет из запечённого поля: никаких шагов к солнцу.
@@ -248,7 +250,9 @@ Shader "Hidden/SkyTide/VolumetricClouds"
                 float edge = pow(1.0 - saturate(d / (_DensityParams.x * 0.7)), 1.6);
                 float3 sunCol = lerp(_SunEmber.rgb, _SunGold.rgb, pow(saturate(sunT), 0.6));
                 float hh = saturate((p.y - 0.0) / 450.0);
-                float3 amb = lerp(_AmbientBottom.rgb, _AmbientTop.rgb, hh) * lerp(0.15, 1.0, sky) * (0.35 + 0.65 * hh);
+                float3 amb = lerp(_AmbientBottom.rgb, _AmbientTop.rgb, hh) * (0.6 + 0.4 * hh);
+                // Тень — фиолетовая, как на рисованных облаках, а не серая: глушим яркость, но не насыщенность.
+                amb *= lerp(float3(0.55, 0.38, 0.8), float3(1.0, 1.0, 1.0), sky);
                 float3 src = sunCol * (sunT * phase * (1.0 + _Phase.w * edge * rimDir)) + _MultiScatter.rgb * ms * sky + amb;
                 float st = exp(-d * stepLen);
                 light += trans * src * 0.86 * (1.0 - st);
@@ -258,7 +262,9 @@ Shader "Hidden/SkyTide/VolumetricClouds"
                 trans *= st;
                 if (trans < 0.02) { trans = 0; break; }
             }
-            t += stepLen;
+            // Пустота вдали от поверхности — шагаем шире (поле ≈ доля радиуса сферы до поверхности).
+            t += stepLen * (1.0 + 2.0 * saturate((-fld - 0.45) * 2.0));
+            if (t > tB) break;
         }
 
         float meanDist = wAcc > 1e-4 ? distAcc / wAcc : tB;
