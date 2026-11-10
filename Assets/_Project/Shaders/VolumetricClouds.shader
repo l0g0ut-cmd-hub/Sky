@@ -63,19 +63,21 @@ Shader "Hidden/SkyTide/VolumetricClouds"
     float Density(float3 p, bool detail)
     {
         float h = saturate((p.y - _Layer.x) / (_Layer.y - _Layer.x));
-        // Профиль кучевых: плоское дно, пухлая середина, сходящийся верх.
-        float profile = saturate(h / 0.12) * saturate((1.0 - h) / 0.45);
         float3 wp = p + _Wind.xyz * _Wind.w;
-        // Погода: облака только в пятнах покрытия (два масштаба — без заметного повтора).
+        // Погода: где есть облака (два масштаба — без заметного повтора).
         float w = tex2Dlod(_SkyTideNoise, float4(wp.xz / _Shape.w, 0, 0)).r * 0.7
                 + tex2Dlod(_SkyTideNoise, float4(wp.xz / (_Shape.w * 0.365) + 0.37, 0, 0)).g * 0.3;
         float cover = smoothstep(0.62 - _Shape.z * 0.25, 0.92 - _Shape.z * 0.2, w);
         if (cover <= 0.0) return 0.0;
+        // Высота вершин: низкий облачный ковёр над морем, и лишь местами башни до высоты полёта и выше.
+        float tall = smoothstep(0.5, 0.8, tex2Dlod(_SkyTideNoise, float4(wp.xz / (_Shape.w * 0.6) + 0.71, 0, 0)).g);
+        float top = 0.24 + 0.76 * cover * tall;
+        float profile = saturate(h / 0.06) * saturate((top - h) / (0.5 * top));
         // Форма: 3D Perlin-Worley в двух масштабах (второй повёрнут) — против повтора тайла.
         float3 q2 = float3(wp.z * 0.8 + wp.x * 0.6, wp.y, wp.x * 0.8 - wp.z * 0.6);
         float base = tex3Dlod(_Noise3D, float4(wp / _Shape.x, 0)).r * 0.6
                    + tex3Dlod(_Noise3D, float4(q2 / (_Shape.x * 2.45) + 0.31, 0)).r * 0.4;
-        float d = saturate((base * profile - (1.0 - 0.62 * cover)) * 4.0);
+        float d = saturate((base * profile - (1.0 - 0.6 * cover)) * 5.0);
         if (detail && d > 0.0)
         {
             float3 dp = (wp + float3(0, _Wind.w * 1.5, 0)) / _Shape.y;   // детали медленно клубятся вверх

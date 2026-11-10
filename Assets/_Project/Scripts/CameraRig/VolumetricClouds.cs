@@ -18,16 +18,16 @@ namespace SkyTide
         [Header("Качество")]
         [Range(1, 8)] public int resolutionDivider = 4;
         [Range(16, 96)] public int steps = 40;
-        public float marchDistance = 3500f;
+        public float marchDistance = 2200f;
 
         [Header("Форма")]
-        public float layerBottom = 25f;
-        public float layerTop = 175f;
+        public float layerBottom = -10f;
+        public float layerTop = 220f;
         public float shapeScale = 1100f;
         public float detailScale = 170f;
         [Range(0f, 1f)] public float coverage = 0.45f;
         public float coverageScale = 5200f;
-        public float density = 0.022f;
+        public float density = 0.014f;
         public float erosion = 0.6f;
         public Vector3 wind = new Vector3(-6f, 0f, 2.6f);
 
