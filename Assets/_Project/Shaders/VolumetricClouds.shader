@@ -5,7 +5,9 @@
 // Свет: 6 шагов к солнцу; цвет солнца по глубине — от золота на открытых вершинах до красно-оранжевого в полутени;
 //   розовое многократное рассеяние; фиолетовое заполнение, гаснущее в глубине; кайма против солнца на тонких краях.
 // Марш идёт только по отрезку, где луч пересекает габариты башен; остановка по глубине сцены; растворение у камеры.
-// Проходы: 0 — марш (1/N разрешения), 1 — сведение с учётом глубины, 2 — глубина сцены в низком разрешении.
+// Форма башен запечена в 3D-текстуру (_TowerField) при старте — одна выборка вместо 28 сфер.
+// Дымка у моря облаков — отдельный дешёвый проход по 2D-погоде.
+// Проходы: 0 — марш (1/N разрешения), 1 — сведение с учётом глубины, 2 — глубина в низком разрешении, 3 — размытие.
 Shader "Hidden/SkyTide/VolumetricClouds"
 {
     Properties
@@ -32,7 +34,9 @@ Shader "Hidden/SkyTide/VolumetricClouds"
     float4 _LowRes;               // xy размер RT облаков
     float4 _Towers[MAX_TOWERS];   // x, y основания, z, R (м)
     float4 _TowerRot[MAX_TOWERS]; // cos, sin поворота, номер шаблона, высота шаблона (в R)
-    float4 _Puffs[PUFFS * 3];     // сферы шаблонов в единицах R: x, y, z, r
+    sampler3D _TowerField;        // запечённое поле пухлости 3 шаблонов (сложены по z): (f + 1) / 2
+    float4 _FieldBox;             // x полуширина (R), y низ (R), z высота (R), w — шаблонов
+    float4 _Haze;                 // x плотность (1/м), y верх слоя (м), z дальность (м), w шагов
     float _TowerCount;
     float4 _Shape;                // x масштаб лопастей (м), y масштаб детали (м), z «лепка» лопастей, w эрозия
     float4 _DensityParams;        // x плотность (1/м), y поглощение к солнцу, z шагов, w дальность (м)
@@ -85,16 +89,15 @@ Shader "Hidden/SkyTide/VolumetricClouds"
             float4 T = _Towers[i];
             float4 Rr = _TowerRot[i];
             float3 q = (p - T.xyz) / T.w;
-            if (abs(q.x) > 1.5 || abs(q.z) > 1.5 || q.y < -0.15 || q.y > Rr.w + 0.4) continue;
+            float ys = Rr.w / _FieldBox.z;               // растяжение башни по высоте
+            float qy = q.y / ys;
+            if (abs(q.x) > _FieldBox.x || abs(q.z) > _FieldBox.x || qy < _FieldBox.y || qy > _FieldBox.y + _FieldBox.z) continue;
             float2 xz = float2(q.x * Rr.x - q.z * Rr.y, q.x * Rr.y + q.z * Rr.x);
-            q = float3(xz.x, q.y, xz.y);
-            int b = (int)Rr.z * PUFFS;
-            float f = -1.0;
-            for (int s = 0; s < PUFFS; s++)
-            {
-                float4 S = _Puffs[b + s];
-                f = max(f, 1.0 - length(q - S.xyz) / S.w);
-            }
+            float3 uvw;
+            uvw.x = xz.x / (2.0 * _FieldBox.x) + 0.5;
+            uvw.y = (qy - _FieldBox.y) / _FieldBox.z;
+            uvw.z = (clamp(xz.y / (2.0 * _FieldBox.x) + 0.5, 0.02, 0.98) + Rr.z) / _FieldBox.w;
+            float f = tex3Dlod(_TowerField, float4(uvw, 0)).r * 2.0 - 1.0;
             if (f > best)
             {
                 best = f;
@@ -130,12 +133,12 @@ Shader "Hidden/SkyTide/VolumetricClouds"
     {
         float od = 0.0;
         float acc = 0.0;
-        float seg = 10.0;
-        for (int k = 0; k < 6; k++)
+        float seg = 14.0;
+        for (int k = 0; k < 4; k++)
         {
             od += Density(p + sunDir * (acc + seg * 0.5), false) * seg;
             acc += seg;
-            seg *= 1.9;
+            seg *= 2.2;
             if (od > 6.0) break;
         }
         return od;
@@ -168,6 +171,40 @@ Shader "Hidden/SkyTide/VolumetricClouds"
         return tB > tA;
     }
 
+    // Дымка: дешёвый слой у моря облаков по 2D-«погоде», без 3D-шума и без марша к солнцу.
+    float4 Haze(float3 ro, float3 rd, float tEnd, float jitter, float phase, float3 sunCol)
+    {
+        float top = _Haze.y;
+        float t0 = 0.0, t1 = min(tEnd, _Haze.z);
+        if (rd.y > 1e-4 && ro.y > top) return float4(0, 0, 0, 1);
+        if (abs(rd.y) > 1e-4)
+        {
+            float tTop = (top - ro.y) / rd.y;
+            if (ro.y > top) t0 = max(t0, tTop); else if (rd.y > 0) t1 = min(t1, tTop);
+        }
+        if (t1 <= t0) return float4(0, 0, 0, 1);
+        int n = (int)_Haze.w;
+        float dt = (t1 - t0) / n;
+        float t = t0 + dt * jitter;
+        float3 light = 0;
+        float trans = 1;
+        for (int k = 0; k < n; k++)
+        {
+            float3 p = ro + rd * t;
+            float2 wuv = (p.xz + _Wind.xz * _Wind.w) / 2600.0;
+            float w = tex2Dlod(_SkyTideNoise, float4(wuv, 0, 0)).r * 0.65 + tex2Dlod(_SkyTideNoise, float4(wuv * 3.1 + 0.4, 0, 0)).g * 0.35;
+            float hf = saturate(1.0 - max(p.y, 0.0) / top);
+            float d = _Haze.x * smoothstep(0.35, 0.75, w) * hf * hf * smoothstep(25.0, 120.0, t);
+            float3 amb = lerp(_AmbientBottom.rgb, _AmbientTop.rgb, 0.6);
+            float3 src = sunCol * phase * 0.35 + amb * 1.1;
+            float st = exp(-d * dt);
+            light += trans * src * (1.0 - st);
+            trans *= st;
+            t += dt;
+        }
+        return float4(light, trans);
+    }
+
     float4 fragMarch (v2f i) : SV_Target
     {
         float4 view = mul(_InvProj, float4(i.uv * 2.0 - 1.0, 1.0, 1.0));
@@ -182,21 +219,27 @@ Shader "Hidden/SkyTide/VolumetricClouds"
             return float4(saturate(f + 0.5), hN, Density(ro + rd * 400.0, true) / max(_DensityParams.x, 1e-6), 0);
         }
 
-        float tA, tB;
-        if (!TowerInterval(ro, rd, tA, tB)) return float4(0, 0, 0, 1);
-
+        float sceneDist = 1e7;
         float rawDepth = SAMPLE_DEPTH_TEXTURE(_CameraDepthTexture, i.uv);
         if (Linear01Depth(rawDepth) < 0.999)
         {
             float3 fwd = mul((float3x3)_CamToWorld, float3(0, 0, -1));
-            tB = min(tB, LinearEyeDepth(rawDepth) / max(dot(rd, fwd), 1e-3));
+            sceneDist = LinearEyeDepth(rawDepth) / max(dot(rd, fwd), 1e-3);
         }
-        tB = min(tB, _DensityParams.w);
-        if (tB <= tA) return float4(0, 0, 0, 1);
+        float jit = 0.5 + 0.25 * (Hash(floor(i.uv * _LowRes.xy)) - 0.5);
+        float3 sunDirH = normalize(_SkyTideSunDir.xyz);
+        float cosH = dot(rd, sunDirH);
+        float phaseH = min(lerp(HG(cosH, _Phase.y), HG(cosH, _Phase.x), _Phase.z) * 12.566, 2.6);
+        float4 haze = Haze(ro, rd, sceneDist, jit, phaseH, _SunGold.rgb);
+
+        float tA, tB;
+        if (!TowerInterval(ro, rd, tA, tB)) return haze;
+        tB = min(tB, min(sceneDist, _DensityParams.w));
+        if (tB <= tA) return haze;
 
         int steps = (int)_DensityParams.z;
         float stepLen = (tB - tA) / steps;
-        float t = tA + stepLen * (0.5 + 0.25 * (Hash(floor(i.uv * _LowRes.xy)) - 0.5));
+        float t = tA + stepLen * jit;
 
         float3 sunDir = normalize(_SkyTideSunDir.xyz);
         float cosT = dot(rd, sunDir);
@@ -211,7 +254,7 @@ Shader "Hidden/SkyTide/VolumetricClouds"
         for (int s = 0; s < steps; s++)
         {
             float3 p = ro + rd * t;
-            float d = Density(p, true) * smoothstep(20.0, 90.0, t);
+            float d = Density(p, true) * smoothstep(30.0, 140.0, t);
             if (d > 1e-5)
             {
                 float od = LightMarch(p, sunDir) * _DensityParams.y;
@@ -235,7 +278,20 @@ Shader "Hidden/SkyTide/VolumetricClouds"
 
         float meanDist = wAcc > 1e-4 ? distAcc / wAcc : tB;
         light = lerp(light, SkyTidePanorama(rd) * (1.0 - trans), _Aerial.x * saturate(SkyTideAerial(meanDist)));
-        return float4(light, trans);
+        // Дымка ближе башен (приближение): облака видны сквозь неё.
+        return float4(haze.rgb + light * haze.a, trans * haze.a);
+    }
+
+    // Мягкое размытие облаков в низком разрешении (тент 3×3): убирает зерно и «пиксельные» кромки.
+    float4 fragBlur (v2f i) : SV_Target
+    {
+        float2 d = _LowRes.zw;
+        float4 c = tex2D(_MainTex, i.uv) * 4.0;
+        c += (tex2D(_MainTex, i.uv + float2(d.x, 0)) + tex2D(_MainTex, i.uv - float2(d.x, 0))
+            + tex2D(_MainTex, i.uv + float2(0, d.y)) + tex2D(_MainTex, i.uv - float2(0, d.y))) * 2.0;
+        c += tex2D(_MainTex, i.uv + d) + tex2D(_MainTex, i.uv - d)
+           + tex2D(_MainTex, i.uv + float2(d.x, -d.y)) + tex2D(_MainTex, i.uv + float2(-d.x, d.y));
+        return c / 16.0;
     }
 
     float SceneDepthForClouds(float2 uv)
@@ -307,6 +363,10 @@ Shader "Hidden/SkyTide/VolumetricClouds"
             #pragma vertex vert
             #pragma fragment fragLowDepth
             #pragma target 3.5
+            ENDCG }
+        Pass { CGPROGRAM
+            #pragma vertex vert
+            #pragma fragment fragBlur
             ENDCG }
     }
     Fallback Off

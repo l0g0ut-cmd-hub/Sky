@@ -24,7 +24,7 @@ namespace SkyTide
 
         [Header("Качество")]
         [Range(1, 8)] public int resolutionDivider = 4;
-        [Range(16, 128)] public int steps = 64;
+        [Range(16, 128)] public int steps = 48;
         public float marchDistance = 2600f;
 
         [Header("Башни")]
@@ -42,6 +42,12 @@ namespace SkyTide
         public float lobeAmount = 0.55f;
         public float erosion = 0.5f;
         public float density = 0.035f;
+
+        [Header("Дымка у моря облаков")]
+        public float hazeDensity = 0.0022f;
+        public float hazeTop = 130f;
+        public float hazeDistance = 1600f;
+        [Range(4, 32)] public int hazeSteps = 14;
 
         [Header("Свет")]
         public float lightAbsorption = 1.5f;
@@ -65,7 +71,11 @@ namespace SkyTide
         Material mat;
         Camera cam;
         Texture3D noise;
+        Texture3D field;
         Vector4[] puffs;
+        const int FieldXZ = 40, FieldY = 72;
+        const float FieldHalf = 1.5f, FieldBottom = -0.15f;
+        const float FieldHeight = TemplateHeight + 0.55f;
         Vector4[] towers = new Vector4[MaxTowers];
         Vector4[] towerRot = new Vector4[MaxTowers];
         bool placed;
@@ -85,6 +95,7 @@ namespace SkyTide
         void OnDestroy()
         {
             if (noise != null) SkyTideBootstrap.SafeDestroy(noise);
+            if (field != null) SkyTideBootstrap.SafeDestroy(field);
         }
 
         public string Probe()
@@ -154,11 +165,57 @@ namespace SkyTide
 
         void EnsureTemplates()
         {
-            if (puffs != null) return;
+            if (puffs != null && field != null) return;
             puffs = new Vector4[Puffs * Templates];
             BuildTemplate(7, puffs, 0);
             BuildTemplate(19, puffs, Puffs);
             BuildTemplate(42, puffs, Puffs * 2);
+            field = BakeField(puffs);
+        }
+
+        /// <summary>
+        /// Запекает поле пухлости шаблонов в 3D-текстуру (шаблоны сложены по z): мягкое объединение сфер
+        /// (стыки сглажены — без видимых «шаров»), значение (f + 1) / 2. В шейдере — одна выборка вместо 28 сфер.
+        /// </summary>
+        static Texture3D BakeField(Vector4[] sph)
+        {
+            int nx = FieldXZ, ny = FieldY, nz = FieldXZ * Templates;
+            byte[] data = new byte[nx * ny * nz];
+            const float k = 0.22f;   // мягкость объединения
+            for (int tz = 0; tz < Templates; tz++)
+            {
+                int off = tz * Puffs;
+                for (int z = 0; z < FieldXZ; z++)
+                {
+                    float pz = ((z + 0.5f) / FieldXZ - 0.5f) * 2f * FieldHalf;
+                    for (int y = 0; y < ny; y++)
+                    {
+                        float py = FieldBottom + (y + 0.5f) / ny * FieldHeight;
+                        for (int x = 0; x < nx; x++)
+                        {
+                            float px = ((x + 0.5f) / FieldXZ - 0.5f) * 2f * FieldHalf;
+                            float f = -1f;
+                            for (int s = 0; s < Puffs; s++)
+                            {
+                                Vector4 S = sph[off + s];
+                                if (S.w < 0.01f) continue;
+                                float dx = px - S.x, dy = py - S.y, dz = pz - S.z;
+                                float v = 1f - Mathf.Sqrt(dx * dx + dy * dy + dz * dz) / S.w;
+                                float h = Mathf.Max(k - Mathf.Abs(f - v), 0f) / k;
+                                f = Mathf.Max(f, v) + h * h * k * 0.25f;   // гладкий максимум
+                            }
+                            data[x + y * nx + (z + tz * FieldXZ) * nx * ny] = (byte)Mathf.Clamp(Mathf.RoundToInt((f + 1f) * 0.5f * 255f), 0, 255);
+                        }
+                    }
+                }
+            }
+            Texture3D t = new Texture3D(nx, ny, nz, TextureFormat.R8, false);
+            t.name = "TowerField";
+            t.wrapMode = TextureWrapMode.Clamp;
+            t.filterMode = FilterMode.Bilinear;
+            t.SetPixelData(data, 0);
+            t.Apply(false, true);
+            return t;
         }
 
         // ---------- расстановка и дрейф ----------
@@ -248,7 +305,9 @@ namespace SkyTide
             mat.SetTexture("_Noise3D", n);
             mat.SetMatrix("_InvProj", cam.projectionMatrix.inverse);
             mat.SetMatrix("_CamToWorld", cam.cameraToWorldMatrix);
-            mat.SetVectorArray("_Puffs", puffs);
+            mat.SetTexture("_TowerField", field);
+            mat.SetVector("_FieldBox", new Vector4(FieldHalf, FieldBottom, FieldHeight, Templates));
+            mat.SetVector("_Haze", new Vector4(hazeDensity, hazeTop, hazeDistance, hazeSteps));
             mat.SetVectorArray("_Towers", towers);
             mat.SetVectorArray("_TowerRot", towerRot);
             mat.SetFloat("_TowerCount", towerCount);
@@ -274,11 +333,16 @@ namespace SkyTide
             RenderTexture lowDepth = RenderTexture.GetTemporary(w, h, 0, depthFmt);
             clouds.filterMode = FilterMode.Point;
             lowDepth.filterMode = FilterMode.Point;
-            Graphics.Blit(src, clouds, mat, 0);
-            Graphics.Blit(src, lowDepth, mat, 2);
-            mat.SetTexture("_CloudTex", clouds);
+            RenderTexture blurred = RenderTexture.GetTemporary(w, h, 0, RenderTextureFormat.ARGBHalf);
+            clouds.filterMode = FilterMode.Bilinear;
+            blurred.filterMode = FilterMode.Point;
+            Graphics.Blit(src, clouds, mat, 0);       // марш луча
+            Graphics.Blit(clouds, blurred, mat, 3);   // мягкое размытие в низком разрешении
+            Graphics.Blit(src, lowDepth, mat, 2);     // глубина сцены в низком разрешении
+            mat.SetTexture("_CloudTex", blurred);
             mat.SetTexture("_LowDepthTex", lowDepth);
-            Graphics.Blit(src, dst, mat, 1);
+            Graphics.Blit(src, dst, mat, 1);          // сведение с учётом глубины
+            RenderTexture.ReleaseTemporary(blurred);
             RenderTexture.ReleaseTemporary(lowDepth);
             RenderTexture.ReleaseTemporary(clouds);
         }

@@ -14,7 +14,7 @@ Shader "SkyTide/CloudSprite"
         _Erode ("Edge erosion", Float) = 0.3
         _FlowSpeed ("Billow speed", Float) = 0.01
         _NoiseScale ("Billow size", Float) = 2.4
-        _NearFade ("Near fade start/end (m)", Vector) = (20, 85, 0, 0)
+        _NearFade ("Near fade start/end (m)", Vector) = (70, 260, 0, 0)
     }
     SubShader
     {

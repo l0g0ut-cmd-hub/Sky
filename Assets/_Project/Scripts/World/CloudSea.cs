@@ -222,12 +222,25 @@ namespace SkyTide
         void LateUpdate()
         {
             Camera cam = Camera.main;
-            if (cam != null) Step(cam.transform.position, Time.deltaTime);
+            if (cam != null) Step(cam.transform.position, Time.deltaTime, cam.transform.forward);
         }
 
         /// <summary>Шаг анимации поля (ветер, перенос вокруг камеры, дыхание, поворот к камере). Публичный — для кадров в CI.</summary>
         public void Step(Vector3 cp, float dt)
         {
+            Camera cam = Camera.main;
+            Step(cp, dt, cam != null ? cam.transform.forward : Vector3.forward);
+        }
+
+        /// <summary>
+        /// Спрайты разворачиваются по направлению ВЗГЛЯДА камеры (все параллельно экрану), а не к её позиции:
+        /// при облёте корабля облака не крутятся каждое по-своему и не «дрожат».
+        /// </summary>
+        public void Step(Vector3 cp, float dt, Vector3 camForward)
+        {
+            Vector3 face = new Vector3(camForward.x, 0f, camForward.z);
+            if (face.sqrMagnitude < 1e-4f) face = Vector3.forward;
+            Quaternion faceRot = Quaternion.LookRotation(face.normalized, Vector3.up);
             // Море едет за камерой (UV мировые — рисунок стоит на месте).
             if (shaderSea)
             {
@@ -259,7 +272,7 @@ namespace SkyTide
 
                 float s = c.baseScale * (1f + c.breathe * Mathf.Sin(time * 0.13f + c.phase));
                 c.t.localScale = new Vector3(s, s * (1f + c.breathe * 0.6f * Mathf.Sin(time * 0.09f + c.phase * 1.7f)), s);
-                if (d.sqrMagnitude > 0.01f) c.t.rotation = Quaternion.LookRotation(d, Vector3.up);
+                c.t.rotation = faceRot;
             }
         }
 
