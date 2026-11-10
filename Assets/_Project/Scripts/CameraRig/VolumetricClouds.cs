@@ -31,7 +31,7 @@ namespace SkyTide
         public Texture3D bakedField;
 
         [Header("Качество")]
-        [Range(1, 8)] public int resolutionDivider = 3;   // 4 — быстрее, но море облаков на весь экран выглядит мыльным
+        [Range(1, 8)] public int resolutionDivider = 4;   // 4 — быстрее, но море облаков на весь экран выглядит мыльным
         [Range(16, 128)] public int steps = 40;
         public float marchDistance = 2600f;
 
@@ -524,6 +524,8 @@ namespace SkyTide
             blurred.filterMode = FilterMode.Point;
             Graphics.Blit(src, clouds, mat, 0);       // марш луча
             Graphics.Blit(clouds, blurred, mat, 3);   // мягкое размытие в низком разрешении
+            Graphics.Blit(blurred, clouds, mat, 3);   // второй проход: без полос узора Байера
+            Graphics.Blit(clouds, blurred, mat, 3);
             Graphics.Blit(src, lowDepth, mat, 2);     // глубина сцены в низком разрешении
             mat.SetTexture("_CloudTex", blurred);
             mat.SetTexture("_LowDepthTex", lowDepth);
