@@ -26,6 +26,11 @@ namespace SkyTide.EditorTools
             oc.Snap();
             oc.Apply(0f);
             boot.World.Step(cam.transform.position, 0f);
+            SaveFrame(cam, boot, rt, tex, dir, s.name);
+        }
+
+        static void SaveFrame(Camera cam, SkyTideBootstrap boot, RenderTexture rt, Texture2D tex, string dir, string name)
+        {
             cam.aspect = (float)rt.width / rt.height;
             if (boot.Fx != null) boot.Fx.PrepareForRender(cam);
             cam.targetTexture = rt;
@@ -35,7 +40,80 @@ namespace SkyTide.EditorTools
             tex.Apply();
             RenderTexture.active = null;
             cam.targetTexture = null;
-            File.WriteAllBytes(Path.Combine(dir, s.name + ".jpg"), tex.EncodeToJPG(88));
+            File.WriteAllBytes(Path.Combine(dir, name + ".jpg"), tex.EncodeToJPG(88));
+        }
+
+        static void StepSalvo(Broadside guns, FxSystem fx, ref float time, float until)
+        {
+            while (time < until - 1e-5f)
+            {
+                float dt = Mathf.Min(1f / 60f, until - time);
+                time += dt;
+                guns.Pump(time);
+                fx.Simulate(dt);
+            }
+        }
+
+        static void RenderSplash(OrbitCamera oc, Camera cam, SkyTideBootstrap boot, RenderTexture rt, Texture2D tex, string dir)
+        {
+            Vector3 oldPosition = cam.transform.position;
+            Quaternion oldRotation = cam.transform.rotation;
+            try
+            {
+                Vector3 focus = boot.Fx.LastCloudSplash + Vector3.up * 4f;
+                Quaternion rotation = Quaternion.Euler(25f, 45f, 0f);
+                cam.transform.SetPositionAndRotation(focus - rotation * Vector3.forward * 72f, rotation);
+                // OrbitCamera.target остаётся кораблём: чистый коридор не вырезает дыру вокруг всплеска.
+                SaveFrame(cam, boot, rt, tex, dir, "47_vol_cloud_splashes");
+            }
+            finally { cam.transform.SetPositionAndRotation(oldPosition, oldRotation); }
+        }
+
+        static void CaptureBroadside(OrbitCamera oc, Camera cam, SkyTideBootstrap boot, RenderTexture rt, Texture2D tex, string dir, Broadside guns)
+        {
+            Random.State random = Random.state;
+            Random.InitState(74131);
+            try
+            {
+                FxSystem fx = boot.Fx;
+                fx.Clear();
+                guns.Fire(-1);
+                guns.Fire(1);
+                float time = 0f;
+                StepSalvo(guns, fx, ref time, 0.06f);
+                Render(oc, cam, boot, rt, tex, dir, new Shot("45_vol_muzzle_flash", 90f, 6f, 58f));
+                StepSalvo(guns, fx, ref time, 0.26f);
+                Render(oc, cam, boot, rt, tex, dir, new Shot("46_vol_ripple_flashes", 90f, 8f, 70f));
+                StepSalvo(guns, fx, ref time, 0.75f);
+                Render(oc, cam, boot, rt, tex, dir, new Shot("40_vol_broadside_side", 90f, 8f, 70f));
+                Render(oc, cam, boot, rt, tex, dir, new Shot("41_vol_broadside_chase", 10f, 16f, 75f));
+                boot.SetVolumetric(false);
+                Render(oc, cam, boot, rt, tex, dir, new Shot("42_broadside_drawn", 90f, 8f, 70f));
+                boot.SetVolumetric(true);
+                StepSalvo(guns, fx, ref time, 3.8f);
+                Render(oc, cam, boot, rt, tex, dir, new Shot("43_vol_broadside_later", 60f, 16f, 140f));
+                StepSalvo(guns, fx, ref time, 4.15f);
+                Debug.Log("SkyTide: залп → всплесков в облаках: " + fx.CloudSplashCount);
+                if (fx.CloudSplashCount > 0) RenderSplash(oc, cam, boot, rt, tex, dir);
+                else Debug.LogWarning("SkyTide: залп не дал всплесков — проверить траектории и поверхность облаков");
+                if (boot.Target != null)
+                {
+                    fx.Clear();
+                    oc.yaw = 60f; oc.pitch = 10f; oc.distance = 90f; oc.Snap(); oc.Apply(0f);
+                    Vector3 look = boot.Ship.transform.position - cam.transform.position; look.y = 0f;
+                    boot.Target.transform.position = boot.Ship.transform.position + look.normalized * 120f;
+                    fx.Explosion(boot.Target.transform.position + Vector3.up * 8f, 1f);
+                    fx.Simulate(0.035f);
+                    Render(oc, cam, boot, rt, tex, dir, new Shot("44_vol_target_hit", 60f, 10f, 90f));
+                    for (int k = 0; k < 24; k++) fx.Simulate(1f / 60f);
+                    Render(oc, cam, boot, rt, tex, dir, new Shot("48_vol_hit_smoke_debris", 60f, 10f, 90f));
+                }
+            }
+            finally
+            {
+                boot.Fx.Clear();
+                Random.state = random;
+            }
         }
 
         public static void Capture(string scenePath)
@@ -119,31 +197,11 @@ namespace SkyTide.EditorTools
                 Render(oc, cam, boot, rt, tex, dir, new Shot("33_vol_low", -40f, -14f, 70f));
                 Render(oc, cam, boot, rt, tex, dir, new Shot("36_vol_away_from_sun", 215f, 12f, 70f));
                 Render(oc, cam, boot, rt, tex, dir, new Shot("37_vol_high", 140f, 50f, 115f));
-                // Бортовой залп (Корсар из Blender): оба борта, кадр через 0.45 с.
+                // Залп прокручивается по времени: факел → волна вспышек → дым → контакт с облаками.
                 Broadside guns = boot.Ship != null ? boot.Ship.GetComponent<Broadside>() : null;
                 if (guns != null && guns.HasCannons && boot.Fx != null)
                 {
-                    guns.Fire(-1);
-                    guns.Fire(1);
-                    guns.Pump(float.MaxValue);
-                    for (int k = 0; k < 9; k++) boot.Fx.Simulate(0.05f);
-                    Render(oc, cam, boot, rt, tex, dir, new Shot("40_vol_broadside_side", 90f, 8f, 70f));
-                    Render(oc, cam, boot, rt, tex, dir, new Shot("41_vol_broadside_chase", 10f, 16f, 75f));
-                    boot.SetVolumetric(false);
-                    Render(oc, cam, boot, rt, tex, dir, new Shot("42_broadside_drawn", 90f, 8f, 70f));
-                    boot.SetVolumetric(true);
-                    for (int k = 0; k < 30; k++) boot.Fx.Simulate(0.05f);
-                    Render(oc, cam, boot, rt, tex, dir, new Shot("43_vol_broadside_later", 60f, 10f, 90f));
-                    // Мишень и взрыв попадания — перед кораблём игрока по линии камеры.
-                    if (boot.Target != null)
-                    {
-                        oc.yaw = 60f; oc.pitch = 10f; oc.distance = 90f; oc.Snap(); oc.Apply(0f);
-                        Vector3 look = boot.Ship.transform.position - cam.transform.position; look.y = 0f;
-                        boot.Target.transform.position = boot.Ship.transform.position + look.normalized * 120f;
-                        boot.Fx.Explosion(boot.Target.transform.position + Vector3.up * 8f, 1f);
-                        for (int k = 0; k < 4; k++) boot.Fx.Simulate(0.05f);
-                        Render(oc, cam, boot, rt, tex, dir, new Shot("44_vol_target_hit", 60f, 10f, 90f));
-                    }
+                    CaptureBroadside(oc, cam, boot, rt, tex, dir, guns);
                 }
                 else Debug.LogWarning("SkyTide: пушек нет — залп не снят");
                 if (vol != null)

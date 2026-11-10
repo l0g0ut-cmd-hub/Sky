@@ -6,14 +6,25 @@ sampler2D _SkyTidePanorama;   // панорама неба 2:1, та же, чт�
 sampler2D _SkyTideNoise;      // бесшовный шум: R и G — два независимых поля
 float4 _SkyTideSunDir;        // xyz — направление НА солнце
 float4 _SkyTideAerial;
-float4 _SkyTideFlash;         // xyz — последняя вспышка (залп/взрыв), w — сила (гаснет за ~0.2 с; FxSystem)
+float4 _SkyTideFlashes[4];       // xyz позиция, w сила; до четырёх одновременных вспышек
+float4 _SkyTideFlashColors[4];   // rgb цвет, w радиус в метрах
+float _SkyTideFlashCount;
 
-// Подсветка облаков вспышкой: тёплый свет, спадает с расстоянием (радиус ~45 м). База — развивать дальше.
+// Локальная подсветка облаков и дыма. Вне залпа — ранний выход без четырёх расчётов на каждом шаге марша.
 inline float3 SkyTideFlashLight(float3 p)
 {
-    float3 d = p - _SkyTideFlash.xyz;
-    return float3(1.0, 0.55, 0.22) * (_SkyTideFlash.w / (1.0 + dot(d, d) / 2000.0));
-}        // x — начало растворения в небе (м), y — конец, z — максимальная доля
+    if (_SkyTideFlashCount < 0.5) return float3(0, 0, 0);
+    float3 light = 0;
+    [unroll] for (int k = 0; k < 4; k++)
+    {
+        float3 d = p - _SkyTideFlashes[k].xyz;
+        float r = max(_SkyTideFlashColors[k].w, 1.0);
+        float dist2 = dot(d, d);
+        float falloff = saturate(1.0 - dist2 / (r * r));
+        light += _SkyTideFlashColors[k].rgb * (_SkyTideFlashes[k].w * falloff * falloff / (1.0 + dist2 / 180.0));
+    }
+    return min(light, float3(6, 6, 6));
+}
 
 // Цвет панорамы в направлении dir (та же развёртка, что у Skybox/Panoramic: центр картинки = +X).
 inline float3 SkyTidePanorama(float3 dir)

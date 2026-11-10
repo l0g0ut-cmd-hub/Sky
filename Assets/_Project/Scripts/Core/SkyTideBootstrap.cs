@@ -91,6 +91,7 @@ namespace SkyTide
             fx.volumetric = vol;
             fx.deckTop = vol.deckTop;
             fx.wind = vol.wind;
+            fx.ConfigureSurface(keepNoise as Texture2D, vol.noiseBytes);
             Fx = fx;
             FxSystem.Instance = fx;
 

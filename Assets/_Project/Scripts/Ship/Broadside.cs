@@ -92,12 +92,12 @@ namespace SkyTide
             Pump(Application.isPlaying ? Time.time : float.MaxValue);
         }
 
-        /// <summary>Выпустить ядра, чьё время пришло (для кадров в CI — все сразу).</summary>
+        /// <summary>Выпустить ядра, чьё время пришло; CI тоже может прокручивать волну по времени.</summary>
         public void Pump(float now)
         {
-            for (int i = queue.Count - 1; i >= 0; i--)
+            for (int i = 0; i < queue.Count;)
             {
-                if (queue[i].Key > now) continue;
+                if (queue[i].Key > now) { i++; continue; }
                 Shoot(queue[i].Value);
                 queue.RemoveAt(i);
             }

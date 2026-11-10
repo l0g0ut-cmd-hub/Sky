@@ -212,6 +212,8 @@ namespace SkyTide.EditorTools
             ti.wrapModeV = wrapV;
             ti.maxTextureSize = maxSize;
             ti.mipmapEnabled = mips;
+            // Только погода нужна CPU для контакта ядер с настоящей поверхностью облаков.
+            if (path == Art + "Noise.png") ti.isReadable = true;
             // Анизотропия без мипов бессмысленна и на шве панорамы (скачок производных) рисует пунктир.
             ti.anisoLevel = mips ? 4 : 0;
             ti.SaveAndReimport();

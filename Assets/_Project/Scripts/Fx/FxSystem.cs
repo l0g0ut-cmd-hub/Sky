@@ -19,8 +19,11 @@ namespace SkyTide
         public float glowIntensity = 7f;
         public float smokeLight = 1.25f;
         const int MaxParticles = 3000;
+        const int MaxFlashes = 4;
+        const int MaxLights = 2;   // только vertex light, без теней и дополнительных forward-проходов
 
-        enum Kind { Glow = 0, Smoke = 1, Ball = 2 }
+        // Значения совпадают с Fx.shader.
+        enum Kind { Glow = 0, Smoke = 1, Ball = 2, Muzzle = 3, Spark = 4, Foam = 5, Wave = 6, Splinter = 7 }
 
         struct P
         {
@@ -29,7 +32,8 @@ namespace SkyTide
             public Color color;
             public Kind kind;
             public float trailAcc;
-            public bool debris;
+            public Vector3 axis;
+            public float aspect, surfaceY;
         }
 
         readonly List<P> ps = new List<P>(MaxParticles);
@@ -38,15 +42,27 @@ namespace SkyTide
         Vector3[] verts = new Vector3[0];
         Vector2[] uv0 = new Vector2[0];
         Vector4[] uv1 = new Vector4[0];
+        Vector4[] uv2 = new Vector4[0];
+        Vector4[] uv3 = new Vector4[0];
         Color[] cols = new Color[0];
         int[] tris = new int[0];
         float[] keys = new float[0];
         int[] order = new int[0];
         int drawn;
         public VolumetricClouds volumetric;
+        public int CloudSplashCount { get; private set; }
+        public Vector3 LastCloudSplash { get; private set; }
 
-        void OnEnable() { Instance = this; }
-        void OnDisable() { if (Instance == this) Instance = null; }
+        void OnEnable() { Instance = this; PublishFlashes(); }
+        void OnDisable() { if (Instance == this) { Clear(); Instance = null; } }
+
+        readonly CloudImpactSurface surface = new CloudImpactSurface();
+        public void ConfigureSurface(Texture2D weather, byte[] noise) { surface.Configure(weather, noise); }
+
+        public bool TryCloudEntry(Vector3 a, Vector3 b, out Vector3 point)
+        {
+            return surface.TryEnter(a, b, volumetric, Application.isPlaying ? Time.time : 0f, deckTop, out point);
+        }
 
         // ---------- выстрел ----------
 
@@ -59,23 +75,32 @@ namespace SkyTide
             Add(new P
             {
                 kind = Kind.Ball, pos = muzzle, vel = dir * muzzleSpeed + shipVel, life = 7f,
-                size0 = 0.9f, size1 = 0.7f, color = new Color(1f, 0.5f, 0.18f), alpha = 0.55f, seed = s
+                size0 = 0.85f, size1 = 0.7f, color = new Color(0.2f, 0.15f, 0.12f), alpha = 1f, seed = s
             });
-            Flash(muzzle, 2.5f);
-            // Вспышка у дула: ядро пламени и язык по стволу
-            Add(new P { kind = Kind.Glow, pos = muzzle + dir * 0.5f, vel = shipVel, life = 0.11f, size0 = 2.2f, size1 = 5.5f, color = new Color(1f, 0.62f, 0.26f), alpha = 1f });
-            Add(new P { kind = Kind.Glow, pos = muzzle + dir * 2.2f, vel = shipVel + dir * 25f, life = 0.09f, size0 = 2.8f, size1 = 4.2f, color = new Color(1f, 0.45f, 0.15f), alpha = 0.8f });
-            // Пороховой дым: облако у дула, вынос по стволу, медленно поднимается и расползается
+            Flash(muzzle, 2.5f, 32f);
+            // Короткий направленный факел с горячей сердцевиной, затем остаётся только дым.
+            Add(new P { kind = Kind.Glow, pos = muzzle + dir * 0.6f, vel = shipVel, life = 0.07f,
+                        size0 = 1.4f, size1 = 2.4f, color = new Color(1f, 0.72f, 0.35f), alpha = 0.65f });
+            Add(new P { kind = Kind.Muzzle, pos = muzzle + dir * 2f, vel = shipVel + dir * 10f, axis = dir, aspect = 0.34f,
+                        life = 0.12f, size0 = 4f, size1 = 6.5f, color = new Color(1f, 0.52f, 0.16f), alpha = 0.9f, seed = s });
+            for (int k = 0; k < 3; k++)
+            {
+                Vector3 velocity = dir * Random.Range(24f, 42f) + Random.insideUnitSphere * 9f + shipVel;
+                Add(new P { kind = Kind.Spark, pos = muzzle, vel = velocity, axis = velocity.normalized, aspect = 0.12f,
+                            life = Random.Range(0.15f, 0.35f), size0 = 0.9f, size1 = 0.15f,
+                            color = new Color(1f, 0.52f, 0.14f), alpha = 0.65f });
+            }
+            // Несколько неодинаковых клубов: раскрываются с небольшой задержкой и теряют строй на ветру.
             for (int k = 0; k < 8; k++)
             {
                 Vector3 jitter = Random.insideUnitSphere;
                 Add(new P
                 {
-                    kind = Kind.Smoke, pos = muzzle + dir * Random.Range(0.3f, 1.8f) + jitter * 0.4f,
-                    vel = dir * Random.Range(6f, 24f) + jitter * 2.5f + shipVel * 0.85f,
-                    life = Random.Range(2.6f, 4.2f), size0 = Random.Range(1.2f, 2.2f), size1 = Random.Range(7f, 11f),
-                    rot = Random.Range(0f, 6.28f), spin = Random.Range(-0.4f, 0.4f), drag = 2.2f, rise = 0.9f,
-                    color = new Color(0.68f, 0.62f, 0.6f), alpha = Random.Range(0.45f, 0.7f), seed = Random.value * 10f
+                    kind = Kind.Smoke, pos = muzzle + dir * Random.Range(0.4f, 2f) + jitter * 0.7f,
+                    vel = dir * Random.Range(7f, 20f) + jitter * 4f + shipVel * 0.85f,
+                    age = -k * 0.009f, life = Random.Range(2.5f, 4.1f), size0 = Random.Range(0.9f, 1.7f), size1 = Random.Range(4.5f, 7.5f),
+                    rot = Random.Range(0f, 6.28f), spin = Random.Range(-0.55f, 0.55f), drag = 1.7f, rise = 1.1f,
+                    color = new Color(0.48f, 0.44f, 0.42f), alpha = Random.Range(0.5f, 0.72f), seed = Random.value * 10f
                 });
             }
         }
@@ -83,27 +108,35 @@ namespace SkyTide
         /// <summary>Взрыв: вспышка, огненный шар, искры-обломки по баллистике, тёмный дым. scale 1 — попадание, 3 — гибель.</summary>
         public void Explosion(Vector3 at, float scale)
         {
-            Flash(at, 4f * scale);
-            Add(new P { kind = Kind.Glow, pos = at, life = 0.22f * Mathf.Sqrt(scale), size0 = 8f * scale, size1 = 18f * scale, color = new Color(1f, 0.7f, 0.35f), alpha = 1f });
+            Flash(at, 4f * scale, 45f * Mathf.Sqrt(scale));
+            Add(new P { kind = Kind.Glow, pos = at, life = 0.14f * Mathf.Sqrt(scale), size0 = 4f * scale, size1 = 9f * scale, color = new Color(1f, 0.76f, 0.4f), alpha = 1f });
             for (int k = 0; k < 6 * scale; k++)
             {
                 Vector3 r = Random.insideUnitSphere;
-                Add(new P { kind = Kind.Glow, pos = at + r * 2f * scale, vel = r * 9f * scale, life = Random.Range(0.35f, 0.7f) * Mathf.Sqrt(scale),
-                            size0 = 4f * scale, size1 = 9f * scale, color = new Color(1f, 0.42f, 0.12f), alpha = 0.85f });
+                Add(new P { kind = Kind.Glow, pos = at + r * 1.5f * scale, vel = r * 8f * scale, life = Random.Range(0.2f, 0.45f) * Mathf.Sqrt(scale),
+                            size0 = 2f * scale, size1 = 5f * scale, color = new Color(1f, 0.36f, 0.08f), alpha = 0.6f });
             }
             for (int k = 0; k < 14 * scale; k++)
             {
                 Vector3 r = Random.onUnitSphere;
                 r.y = Mathf.Abs(r.y) * 0.8f + 0.2f;
-                Add(new P { kind = Kind.Ball, pos = at, vel = r * Random.Range(18f, 45f) * Mathf.Sqrt(scale), life = Random.Range(0.8f, 1.8f),
-                            size0 = 0.5f, size1 = 0.5f, color = new Color(1f, 0.55f, 0.2f), alpha = 0.9f, trailAcc = -1e6f, debris = true });
+                Vector3 velocity = r * Random.Range(18f, 40f) * Mathf.Sqrt(scale);
+                Add(new P { kind = Kind.Spark, pos = at, vel = velocity, axis = r, aspect = 0.14f, life = Random.Range(0.6f, 1.4f),
+                            size0 = 1.1f, size1 = 0.25f, color = new Color(1f, 0.48f, 0.12f), alpha = 0.8f });
             }
-            for (int k = 0; k < 10 * scale; k++)
+            for (int k = 0; k < 9 * scale; k++)
+            {
+                Vector3 velocity = (Random.insideUnitSphere + Vector3.up * 0.45f) * Random.Range(9f, 24f) * Mathf.Sqrt(scale);
+                Add(new P { kind = Kind.Splinter, pos = at, vel = velocity, axis = Random.onUnitSphere, aspect = Random.Range(0.12f, 0.25f),
+                            life = Random.Range(3f, 4.5f), size0 = Random.Range(0.6f, 1.3f) * Mathf.Sqrt(scale),
+                            color = new Color(0.26f, 0.13f, 0.06f), alpha = 1f, spin = Random.Range(-8f, 8f), seed = Random.value * 10f });
+            }
+            for (int k = 0; k < 8 * scale; k++)
             {
                 Vector3 r = Random.insideUnitSphere;
                 Add(new P { kind = Kind.Smoke, pos = at + r * 2.5f * scale, vel = r * 6f * scale + Vector3.up * 2f, life = Random.Range(3.5f, 6f),
-                            size0 = 3f * scale, size1 = Random.Range(12f, 18f) * scale, rot = Random.Range(0f, 6.28f), spin = Random.Range(-0.3f, 0.3f),
-                            drag = 1.6f, rise = 1.6f, color = new Color(0.28f, 0.22f, 0.22f), alpha = 0.75f, seed = Random.value * 10f });
+                            size0 = 2f * scale, size1 = Random.Range(8f, 12f) * scale, rot = Random.Range(0f, 6.28f), spin = Random.Range(-0.3f, 0.3f),
+                            drag = 1.4f, rise = 1.6f, color = new Color(0.23f, 0.19f, 0.18f), alpha = 0.78f, seed = Random.value * 10f });
             }
         }
 
@@ -120,67 +153,167 @@ namespace SkyTide
             if (Application.isPlaying) Simulate(Time.deltaTime);
         }
 
-        readonly List<Vector3> splashes = new List<Vector3>();
-        Vector4 flash;   // xyz позиция, w сила — глобал _SkyTideFlash для облаков
+        struct Splash { public Vector3 pos; public float scale; }
+        readonly List<Splash> splashes = new List<Splash>(32);
+        readonly Vector4[] flashes = new Vector4[MaxFlashes];
+        readonly Vector4[] flashColors = new Vector4[MaxFlashes];  // rgb цвет, w радиус
+        readonly Light[] lights = new Light[MaxLights];
+        int flashCursor;
 
-        void Flash(Vector3 at, float power)
+        void Flash(Vector3 at, float power, float range)
         {
-            if (power >= flash.w) flash = new Vector4(at.x, at.y, at.z, power);
+            int slot = flashCursor;
+            for (int k = 0; k < MaxFlashes; k++)
+            {
+                int j = (flashCursor + k) % MaxFlashes;
+                if (flashes[j].w < flashes[slot].w) slot = j;
+            }
+            if (flashes[slot].w > power) return;   // выстрел не вытесняет более сильный взрыв
+            flashes[slot] = new Vector4(at.x, at.y, at.z, power);
+            flashColors[slot] = new Vector4(1f, 0.48f, 0.16f, range);
+            flashCursor = (slot + 1) % MaxFlashes;
+            PublishFlashes();
         }
 
-        /// <summary>Ядро вошло в море облаков: клуб облачной «пены» (база — развивать: волна, кольцо, подсветка снизу).</summary>
-        public void CloudSplash(Vector3 at)
+        void PublishFlashes()
         {
-            for (int k = 0; k < 7; k++)
+            int count = 0;
+            int first = -1, second = -1;
+            for (int i = 0; i < MaxFlashes; i++)
             {
-                Vector3 r = Random.insideUnitSphere;
-                r.y = Mathf.Abs(r.y);
-                Add(new P { kind = Kind.Smoke, pos = at + new Vector3(r.x * 3f, 6f, r.z * 3f), vel = new Vector3(r.x * 4f, 6f + r.y * 6f, r.z * 4f),
-                            life = Random.Range(2.5f, 3.8f), size0 = 4f, size1 = Random.Range(12f, 17f), rot = Random.Range(0f, 6.28f),
-                            spin = Random.Range(-0.3f, 0.3f), drag = 1.4f, rise = 0.6f, color = new Color(0.95f, 0.8f, 0.84f), alpha = 0.5f,
-                            seed = Random.value * 10f });
+                if (flashes[i].w < 0.02f) { flashes[i].w = 0f; continue; }
+                count++;
+                if (first < 0 || flashes[i].w > flashes[first].w) { second = first; first = i; }
+                else if (second < 0 || flashes[i].w > flashes[second].w) second = i;
+            }
+            Shader.SetGlobalFloat("_SkyTideFlashCount", count);
+            Shader.SetGlobalVectorArray("_SkyTideFlashes", flashes);
+            Shader.SetGlobalVectorArray("_SkyTideFlashColors", flashColors);
+            for (int i = 0; i < MaxLights; i++)
+            {
+                int slot = i == 0 ? first : second;
+                if (slot < 0) { if (lights[i] != null) lights[i].enabled = false; continue; }
+                if (lights[i] == null)
+                {
+                    GameObject go = new GameObject("Broadside flash " + i);
+                    go.hideFlags = HideFlags.HideAndDontSave;
+                    go.transform.SetParent(transform, false);
+                    lights[i] = go.AddComponent<Light>();
+                    lights[i].type = LightType.Point;
+                    lights[i].shadows = LightShadows.None;
+                    lights[i].renderMode = LightRenderMode.ForceVertex;
+                }
+                Vector4 f = flashes[slot], c = flashColors[slot];
+                lights[i].transform.position = new Vector3(f.x, f.y, f.z);
+                lights[i].color = new Color(c.x, c.y, c.z);
+                lights[i].range = c.w;
+                lights[i].intensity = Mathf.Min(10f, f.w * 1.6f);
+                lights[i].enabled = true;
+            }
+        }
+
+        /// <summary>Сброс эффектов для изолированных кадров CI; убирает и оставшийся свет.</summary>
+        public void Clear()
+        {
+            ps.Clear();
+            splashes.Clear();
+            drawn = 0;
+            CloudSplashCount = 0;
+            for (int i = 0; i < MaxFlashes; i++) flashes[i] = Vector4.zero;
+            PublishFlashes();
+        }
+
+        /// <summary>Неогненный всплеск: рваная волна, выброс пены вверх и оседание. Обломок даёт маленький клуб.</summary>
+        public void CloudSplash(Vector3 at, float scale = 1f)
+        {
+            if (scale >= 0.7f) { CloudSplashCount++; LastCloudSplash = at; }
+            Color tint = volumetric != null ? Color.Lerp(volumetric.ambientTop, volumetric.sunGold, 0.35f) : new Color(0.62f, 0.5f, 0.55f);
+            tint = Color.Lerp(tint, new Color(0.7f, 0.65f, 0.68f), 0.4f);
+            if (scale >= 0.7f)
+                Add(new P { kind = Kind.Wave, pos = at + Vector3.up * 1.3f, surfaceY = at.y, life = 1.35f,
+                            size0 = 3f, size1 = 48f * scale, color = tint, alpha = 0.38f, seed = Random.value * 10f });
+            int count = scale < 0.7f ? 3 : 10;
+            for (int k = 0; k < count; k++)
+            {
+                float a = k * 2.39996f + Random.Range(-0.3f, 0.3f);
+                Vector3 side = new Vector3(Mathf.Cos(a), 0f, Mathf.Sin(a));
+                bool column = k < 3;
+                Add(new P { kind = Kind.Foam, pos = at + side * Random.Range(0.2f, 2f) * scale + Vector3.up * (1f + k * 0.15f), surfaceY = at.y,
+                            vel = side * (column ? 2f : 7f) * scale + Vector3.up * (column ? 23f : 9f) * scale,
+                            life = Random.Range(1.8f, 2.6f), size0 = Random.Range(2f, 3.5f) * scale, size1 = Random.Range(8f, 12f) * scale,
+                            rot = Random.Range(0f, 6.28f), spin = Random.Range(-0.5f, 0.5f), drag = 0.9f,
+                            color = tint, alpha = column ? 0.62f : 0.45f, seed = Random.value * 10f });
             }
         }
 
         public void Simulate(float dt)
         {
             if (dt <= 0f) return;
-            flash.w *= Mathf.Exp(-dt * 14f);
+            for (int i = 0; i < MaxFlashes; i++) flashes[i].w *= Mathf.Exp(-dt * 18f);
             int n = ps.Count;
             for (int i = 0; i < n; i++)
             {
                 P p = ps[i];
                 p.age += dt;
-                if (p.kind == Kind.Ball)
+                if (p.age < 0f || p.age >= p.life) { ps[i] = p; continue; }
+                if (p.kind == Kind.Ball || p.kind == Kind.Spark || p.kind == Kind.Splinter)
                 {
                     Vector3 prev = p.pos;
                     p.vel.y -= gravity * dt;
                     p.pos += p.vel * dt;
+                    if (p.kind == Kind.Spark) p.axis = p.vel.normalized;
+                    if (p.kind == Kind.Splinter) p.rot += p.spin * dt;
+                    Vector3 cloudPoint;
+                    bool entered = TryCloudEntry(prev, p.pos, out cloudPoint);
+                    Vector3 end = entered ? cloudPoint : p.pos;
+                    // Попадание до входа в облака: шлейф обрывается именно на корпусе/поверхности.
+                    bool hit = false;
+                    if (p.kind == Kind.Ball)
+                    {
+                        TargetShip target = null;
+                        Vector3 hitPoint = end;
+                        float nearest = float.MaxValue;
+                        for (int j = 0; j < TargetShip.All.Count; j++)
+                        {
+                            Vector3 hp;
+                            if (TargetShip.All[j].TryHit(prev, end, out hp) && (hp - prev).sqrMagnitude < nearest)
+                            {
+                                nearest = (hp - prev).sqrMagnitude;
+                                hitPoint = hp;
+                                target = TargetShip.All[j];
+                            }
+                        }
+                        if (target != null) { end = hitPoint; hit = true; target.OnHit(hitPoint); }
+                    }
+                    p.pos = end;
                     // Шлейф: клочки дыма вдоль пути через равные промежутки.
-                    p.trailAcc += Vector3.Distance(prev, p.pos);
-                    float spacing = 1.1f;
-                    while (p.trailAcc > spacing && p.age < 4.5f)
+                    if (p.kind == Kind.Ball) p.trailAcc += Vector3.Distance(prev, p.pos);
+                    float spacing = 1.5f;
+                    while (p.kind == Kind.Ball && p.trailAcc > spacing && p.age < 4.5f)
                     {
                         p.trailAcc -= spacing;
                         Vector3 at = Vector3.Lerp(p.pos, prev, p.trailAcc / Mathf.Max(Vector3.Distance(prev, p.pos), 1e-3f));
                         float fade = 1f - p.age / 4.5f;
                         Add(new P
                         {
-                            kind = Kind.Smoke, pos = at, vel = Random.insideUnitSphere * 0.6f, life = Random.Range(1.4f, 2.2f),
-                            size0 = 1.5f, size1 = Random.Range(3.5f, 5f), rot = Random.Range(0f, 6.28f), spin = Random.Range(-0.6f, 0.6f),
-                            drag = 1f, rise = 0.4f, color = new Color(0.62f, 0.57f, 0.56f), alpha = 0.22f * fade, seed = Random.value * 10f
+                            kind = Kind.Smoke, pos = at, vel = Random.insideUnitSphere * 0.8f, life = Random.Range(0.9f, 1.5f),
+                            size0 = 0.65f, size1 = Random.Range(2f, 3.2f), rot = Random.Range(0f, 6.28f), spin = Random.Range(-0.6f, 0.6f),
+                            drag = 1f, rise = 0.5f, color = new Color(0.44f, 0.4f, 0.39f), alpha = 0.16f * fade, seed = Random.value * 10f
                         });
                     }
-                    if (p.pos.y < deckTop - 15f && p.life > 0f)   // ушло в море облаков — «всплеск» облака
+                    if (entered || hit)
                     {
                         p.life = 0f;
-                        if (!p.debris) splashes.Add(p.pos);
+                        if (!hit && p.kind != Kind.Spark) splashes.Add(new Splash { pos = p.pos, scale = p.kind == Kind.Ball ? 1f : 0.32f });
                     }
-                    for (int t = 0; t < TargetShip.All.Count && p.life > 0f && !p.debris; t++)
-                    {
-                        Vector3 hp;
-                        if (TargetShip.All[t].TryHit(prev, p.pos, out hp)) { p.life = 0f; ps[i] = p; TargetShip.All[t].OnHit(hp); }
-                    }
+                    if (volumetric != null && p.pos.y < volumetric.deckBase) p.life = 0f;
+                }
+                else if (p.kind == Kind.Foam)
+                {
+                    p.vel *= Mathf.Exp(-p.drag * dt);
+                    p.vel.y -= gravity * 0.65f * dt;
+                    p.pos += (p.vel + wind * 0.35f) * dt;
+                    p.rot += p.spin * dt;
                 }
                 else if (p.kind == Kind.Smoke)
                 {
@@ -197,9 +330,9 @@ namespace SkyTide
             }
             for (int i = ps.Count - 1; i >= 0; i--)
                 if (ps[i].age >= ps[i].life) ps.RemoveAt(i);
-            for (int i = 0; i < splashes.Count; i++) CloudSplash(splashes[i]);
+            for (int i = 0; i < splashes.Count; i++) CloudSplash(splashes[i].pos, splashes[i].scale);
             splashes.Clear();
-            Shader.SetGlobalVector("_SkyTideFlash", flash);
+            PublishFlashes();
         }
 
         // ---------- отрисовка ----------
@@ -274,6 +407,8 @@ namespace SkyTide
                 verts = new Vector3[cap * 4];
                 uv0 = new Vector2[cap * 4];
                 uv1 = new Vector4[cap * 4];
+                uv2 = new Vector4[cap * 4];
+                uv3 = new Vector4[cap * 4];
                 cols = new Color[cap * 4];
                 tris = new int[cap * 6];
                 keys = new float[cap];
@@ -291,33 +426,39 @@ namespace SkyTide
                 P p = ps[order[j]];
                 float t = Mathf.Clamp01(p.age / Mathf.Max(p.life, 1e-3f));
                 float size, a;
-                float kind;
-                if (p.kind == Kind.Smoke)
+                if (p.kind == Kind.Smoke || p.kind == Kind.Foam)
                 {
                     size = Mathf.Lerp(p.size0, p.size1, 1f - (1f - t) * (1f - t));
                     a = p.alpha * Mathf.Clamp01(p.age / 0.08f) * (1f - t) * (1f - t);
-                    kind = 1f;
                 }
-                else if (p.kind == Kind.Glow)
+                else if (p.kind == Kind.Glow || p.kind == Kind.Muzzle || p.kind == Kind.Spark)
                 {
                     size = Mathf.Lerp(p.size0, p.size1, t);
                     a = p.alpha * (1f - t);
-                    kind = 0f;
+                }
+                else if (p.kind == Kind.Wave)
+                {
+                    size = Mathf.Lerp(p.size0, p.size1, 1f - (1f - t) * (1f - t));
+                    a = p.alpha * Mathf.Clamp01(p.age / 0.06f) * (1f - t) * (1f - t);
                 }
                 else
                 {
                     size = p.size0;
-                    a = p.alpha * Mathf.Clamp01(1f - (p.age - 5f) / 2f);
-                    kind = 0f;
+                    a = p.alpha * Mathf.Clamp01((1f - t) / 0.15f);
                 }
+                if (p.age < 0f) a = 0f;
                 Color c = p.color;
                 c.a = a;
-                Vector4 d = new Vector4(size, p.rot, kind, p.seed);
+                Vector4 d = new Vector4(size, p.rot, (float)p.kind, p.seed);
+                Vector4 axis = new Vector4(p.axis.x, p.axis.y, p.axis.z, p.aspect);
+                Vector4 anim = new Vector4(Mathf.Max(p.age, 0f), t, p.kind == Kind.Foam || p.kind == Kind.Wave ? p.surfaceY : deckTop, 0f);
                 int v = j * 4;
                 for (int q = 0; q < 4; q++)
                 {
                     verts[v + q] = p.pos;
                     uv1[v + q] = d;
+                    uv2[v + q] = axis;
+                    uv3[v + q] = anim;
                     cols[v + q] = c;
                 }
                 uv0[v] = new Vector2(-0.5f, -0.5f);
@@ -334,6 +475,8 @@ namespace SkyTide
             mesh.vertices = verts;
             mesh.uv = uv0;
             mesh.SetUVs(1, uv1);
+            mesh.SetUVs(2, uv2);
+            mesh.SetUVs(3, uv3);
             mesh.colors = cols;
             mesh.triangles = tris;
             mesh.bounds = new Bounds(Vector3.zero, Vector3.one * 1e6f);
@@ -341,6 +484,8 @@ namespace SkyTide
 
         void OnDestroy()
         {
+            if (Instance == this) { Clear(); Instance = null; }
+            for (int i = 0; i < MaxLights; i++) if (lights[i] != null) SkyTideBootstrap.SafeDestroy(lights[i].gameObject);
             if (mat != null) SkyTideBootstrap.SafeDestroy(mat);
             if (mesh != null) SkyTideBootstrap.SafeDestroy(mesh);
         }
