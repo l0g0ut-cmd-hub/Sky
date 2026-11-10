@@ -179,6 +179,15 @@ namespace SkyTide.EditorTools
                     Render(oc, cam, boot, rt, tex, dir, new Shot("53_vol_no_planes_wide", 60f, 22f, 140f));
                     boot.World.SetSeaPlanesVisible(true);
                 }
+                // Контроль aliasing: направленный свет на башни и низкий угол над морем.
+                if (vol != null)
+                {
+                    bool oldBlur = vol.blurEnabled;
+                    vol.blurEnabled = false;
+                    Render(oc, cam, boot, rt, tex, dir, new Shot("55_vol_raw_backlit", 35f, 8f, 75f));
+                    vol.blurEnabled = oldBlur;
+                }
+                Render(oc, cam, boot, rt, tex, dir, new Shot("56_vol_grazing_sea", -25f, -5f, 95f));
                 boot.SetVolumetric(false);
 
                 int shipCount = boot.ships != null ? boot.ships.Length : 0;

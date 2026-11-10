@@ -95,12 +95,11 @@ Shader "Hidden/SkyTide/VolumetricClouds"
         return (1.0 - g2) / (12.566 * pow(max(1.0 + g2 - 2.0 * g * c, 1e-3), 1.5));
     }
 
-    // Упорядоченный сдвиг 4×4 (Байер): после размытия усредняется почти без остатка — нет «грязного стекла».
-    static const float kBayer[16] = { 0, 8, 2, 10, 12, 4, 14, 6, 3, 11, 1, 9, 15, 7, 13, 5 };
-    float Bayer4(float2 px)
+    // Нерегулярная стратификация вместо периодической 4x4 матрицы Bayer.
+    // Не привязана к кадру: нет временного мерцания при неподвижной камере.
+    float CloudJitter(float2 px)
     {
-        int2 q = int2(fmod(px, 4.0));
-        return (kBayer[q.y * 4 + q.x] + 0.5) / 16.0;
+        return frac(52.9829189 * frac(dot(px, float2(0.06711056, 0.00583715))));
     }
 
     float Hash(float2 px)
@@ -225,22 +224,27 @@ Shader "Hidden/SkyTide/VolumetricClouds"
 
     // ---------- объёмное море облаков ----------
     // Слой между _Deck.x и _Deck.y (м): покрытие — 2D-«погода», верх слоя бугрится 3D-шумом (клубы),
-    // края разъедает детализация. Свет: два шага к солнцу (бока клубов к солнцу светятся, задние — в тени),
+    // края разъедает детализация. Свет: одна проба к солнцу вместо двух (бока освещены, ядра в тени),
     // верх ярче низа, фиолетовое заполнение в глубине — та же палитра, что у башен.
-    float DeckDensity(float3 p, bool detail)
+    float DeckDensity(float3 p, bool detail, float mip)
     {
-        float h = saturate((p.y - _Deck.x) / (_Deck.y - _Deck.x));
+        // Световые пробы вне слоя не должны возвращать фиктивную плотность.
+        if (p.y < _Deck.x || p.y > _Deck.y) return 0.0;
+        float h = saturate((p.y - _Deck.x) / max(_Deck.y - _Deck.x, 1.0));
         float2 drift = _Wind.xz * _Wind.w;
         float2 wuv = (p.xz + drift) / _Deck2.x;
         float w = tex2Dlod(_SkyTideNoise, float4(wuv, 0, 0)).r * 0.6 + tex2Dlod(_SkyTideNoise, float4(wuv * 2.7 + 0.37, 0, 0)).g * 0.4;
         float cov = saturate((w - _Deck2.y) / 0.35);
         float3 wp = p + float3(drift.x, _Wind.w * 0.4, drift.y);
-        float n = tex3Dlod(_Noise3D, float4(wp / _Deck2.z, 0)).r;
+        // Немного mip-фильтрации на дальних шагах исключает пространственный aliasing.
+        float n = tex3Dlod(_Noise3D, float4(wp / _Deck2.z, mip)).r;
         float topH = cov * (0.45 + 0.55 * n) + 0.12;
-        float m = saturate((topH - h) * 6.0) * saturate(h * 5.0 + 0.2);
+        float m = saturate((topH - h) * 6.0);
+        // Плавный верх и низ: нет искусственной горизонтальной полки на y=deckTop.
+        m *= smoothstep(0.0, 0.08, h) * (1.0 - smoothstep(0.88, 1.0, h));
         if (detail && m > 0.0 && m < 0.9)
         {
-            float dn = tex3Dlod(_Noise3D, float4(wp / _Deck2.w, 0)).g;
+            float dn = tex3Dlod(_Noise3D, float4(wp / _Deck2.w, min(mip, 1.0))).g;
             m = saturate(m - dn * 0.45 * (1.0 - m));
         }
         return m * _Deck.z;
@@ -275,13 +279,17 @@ Shader "Hidden/SkyTide/VolumetricClouds"
         {
             if (t > t1) break;
             float3 p = ro + rd * t;
+            float segment = min(stepLen, t1 - t);
+            if (segment <= 0.0) break;
             float farFade = 1.0 - smoothstep(_Deck3.y * 0.80, _Deck3.y, t - t0);
-            float d = DeckDensity(p, t < 1500.0) * ClearFactor(p, ro) * farFade;
+            // Шаг >60 м не может разрешить мелкую эрозию: срезаем этот диапазон по LOD.
+            float mip = clamp(log2(max(stepLen / 42.0, 1.0)), 0.0, 1.5);
+            float d = DeckDensity(p, t < 520.0 && stepLen < 58.0, mip) * ClearFactor(p, ro) * farFade;
             if (d > 1e-5)
             {
-                float d1 = DeckDensity(p + L * 18.0, false);
-                float d2 = DeckDensity(p + L * 55.0, false);
-                float tau = (d1 * 18.0 + d2 * 37.0) * _Deck3.z;
+                // Один световой образец на середине пути: дешевле, чем 2× DeckDensity.
+                float dSun = DeckDensity(p + L * 35.0, false, mip);
+                float tau = dSun * 55.0 * _Deck3.z;
                 float sunT = exp(-tau);
                 float ms = exp(-tau * 0.25) * _MultiScatter.a;
                 float h = saturate((p.y - base) / (top - base));
@@ -290,7 +298,7 @@ Shader "Hidden/SkyTide/VolumetricClouds"
                 amb *= lerp(float3(0.6, 0.42, 0.85), float3(1, 1, 1), h);
                 amb *= lerp(0.70, 1.0, sunT);
                 float3 src = (sunCol * sunT * min(phase, 1.6) + _MultiScatter.rgb * ms * h) * _Deck3.w + amb + SkyTideFlashLight(p);
-                float st = exp(-d * stepLen);
+                float st = exp(-d * segment);
                 float wgt = trans * (1.0 - st);
                 light += src * 0.86 * wgt;
                 distAcc += t * wgt;
@@ -333,7 +341,7 @@ Shader "Hidden/SkyTide/VolumetricClouds"
             sceneDist = LinearEyeDepth(rawDepth) / max(dot(rd, fwd), 1e-3);
         }
         float2 jpx = floor(i.uv * _LowRes.xy);
-        float jit = bake ? Hash(jpx) : Bayer4(jpx);  // в кадре — Байер (размытие его съедает), в снимках — хэш
+        float jit = bake ? Hash(jpx) : lerp(0.5, CloudJitter(jpx), 0.72);  // стабильная непериодическая стратификация
         float3 sunDirH = normalize(_SkyTideSunDir.xyz);
         float cosH = dot(rd, sunDirH);
         float phaseH = min(lerp(HG(cosH, _Phase.y), HG(cosH, _Phase.x), _Phase.z) * 12.566, 2.6);
@@ -415,14 +423,16 @@ Shader "Hidden/SkyTide/VolumetricClouds"
         return float4(sqrt(saturate(c.rgb / 6.0)), 1.0 - c.a);
     }
 
-    // Bilateral 3x3: сохраняет контуры transmittance и границы scene depth.
+    // Границу облака бережём, а внутри плотной массы мягче подавляем aliasing.
+    // Depth-aware коэффициент по-прежнему запрещает перенос облаков через корпус.
     float4 fragBlur (v2f i) : SV_Target
     {
         float2 d = _LowRes.zw;
         float4 center = tex2D(_MainTex, i.uv);
         float centerDepth = tex2D(_LowDepthTex, i.uv).r;
-        float4 accum = center * 4.0;
-        float weights = 4.0;
+        float4 accum = center * 3.0;
+        float weights = 3.0;
+        float centerInterior = smoothstep(0.12, 0.48, 1.0 - center.a);
         [unroll] for (int y = -1; y <= 1; y++)
         {
             [unroll] for (int x = -1; x <= 1; x++)
@@ -432,7 +442,10 @@ Shader "Hidden/SkyTide/VolumetricClouds"
                 float4 neighbor = tex2D(_MainTex, uv);
                 float neighborDepth = tex2D(_LowDepthTex, uv).r;
                 float spatial = (x == 0 || y == 0) ? 2.0 : 1.0;
-                float alphaWeight = rcp(1.0 + 12.0 * abs(neighbor.a - center.a));
+                float neighborInterior = smoothstep(0.12, 0.48, 1.0 - neighbor.a);
+                float interior = min(centerInterior, neighborInterior);
+                float alphaSharpness = lerp(14.0, 2.2, interior);
+                float alphaWeight = rcp(1.0 + alphaSharpness * abs(neighbor.a - center.a));
                 float depthWeight = rcp(1.0 + abs(neighborDepth - centerDepth) / max(3.0, centerDepth * 0.02));
                 float weight = spatial * alphaWeight * depthWeight;
                 accum += neighbor * weight;

@@ -55,7 +55,7 @@ namespace SkyTide
         public float deckBase = -60f;
         public float deckTop = 20f;
         public float deckDensity = 0.03f;
-        [Range(6, 32)] public int deckSteps = 18;
+        [Range(6, 32)] public int deckSteps = 24;
         public float deckWeatherScale = 1400f;
         [Range(0f, 0.8f)] public float deckCoverage = 0.2f;   // порог: меньше — сплошнее
         public float deckLobeScale = 160f;
