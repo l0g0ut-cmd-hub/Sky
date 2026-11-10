@@ -25,6 +25,7 @@ namespace SkyTide
         [Tooltip("Шейдер объёмных облаков (Hidden/SkyTide/VolumetricClouds).")]
         public Shader volumetricShader;
         public Shader impostorShader;
+        public Shader fxShader;
         [Tooltip("3D-шум облаков (Art/CloudNoise3D.bytes, tools/gen_cloud_noise3d.py).")]
         public TextAsset cloudNoise3D;
         [Tooltip("Запечённые шаблоны объёмных башен: форма + свет солнца + видимость неба (SceneBuilder).")]
@@ -83,6 +84,15 @@ namespace SkyTide
             post.shader = postShader;
             post.sun = sun;
 
+            FxSystem fx = GetComponent<FxSystem>();
+            if (fx == null) fx = gameObject.AddComponent<FxSystem>();
+            fx.shader = fxShader;
+            fx.volumetric = vol;
+            fx.deckTop = vol.deckTop;
+            fx.wind = vol.wind;
+            Fx = fx;
+            FxSystem.Instance = fx;
+
             World = gameObject.AddComponent<CloudSea>();
             World.Build(materials);
             SetVolumetric(volumetricClouds);
@@ -99,6 +109,7 @@ namespace SkyTide
         }
 
         public VolumetricClouds Volumetric { get; private set; }
+        public FxSystem Fx { get; private set; }
 
         /// <summary>Объёмные облака вкл/выкл: спрайты на высоте полёта показываются, только когда объёма нет.</summary>
         public void SetVolumetric(bool on)

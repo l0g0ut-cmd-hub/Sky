@@ -533,6 +533,7 @@ namespace SkyTide
                 imp.Draw(cam, dst, impostorShader, blurred, towers, towerRot, towerCount, TemplateHeight, aerial,
                          new Vector2(Mathf.Max(30f, clear * 0.9f), Mathf.Max(140f, clear + 70f)));
             }
+            if (debugView == 0 && FxSystem.Instance != null) FxSystem.Instance.DrawExternal(cam, dst);
             RenderTexture.ReleaseTemporary(blurred);
             RenderTexture.ReleaseTemporary(lowDepth);
             RenderTexture.ReleaseTemporary(clouds);

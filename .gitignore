@@ -20,3 +20,4 @@ ci.log
 ci-scrubbed.log
 put.json
 Assets/_Project/Resources/BuildNumber.txt*
+__pycache__/

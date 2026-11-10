@@ -34,6 +34,13 @@ namespace SkyTide
         float pitch;
         float roll;
         float prevSpeed;
+        float kick, kickVel;
+
+        /// <summary>Отдача залпа: крен от стреляющего борта (пружина, гаснет за пару секунд).</summary>
+        public void Recoil(float side)
+        {
+            kickVel += side * 3.2f;
+        }
 
         void Start()
         {
@@ -76,7 +83,10 @@ namespace SkyTide
                 pitch = Mathf.Lerp(pitch, targetPitch, k);
                 float swayRoll = Mathf.Sin(bobPhase * 0.6f) * 1.2f;
                 float swayPitch = Mathf.Sin(bobPhase * 0.45f + 1.3f) * 0.8f;
-                visual.localRotation = Quaternion.Euler(pitch + swayPitch, 0f, roll + swayRoll);
+                // Пружина отдачи: ω² = 6, затухание 2.
+                kickVel += (-6f * kick - 2f * kickVel) * dt;
+                kick += kickVel * dt;
+                visual.localRotation = Quaternion.Euler(pitch + swayPitch, 0f, roll + swayRoll + kick);
                 visual.localPosition = Vector3.up * Mathf.Sin(bobPhase * 0.8f) * 0.5f;
             }
             prevSpeed = Speed;

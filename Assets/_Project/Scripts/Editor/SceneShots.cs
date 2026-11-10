@@ -27,6 +27,7 @@ namespace SkyTide.EditorTools
             oc.Apply(0f);
             boot.World.Step(cam.transform.position, 0f);
             cam.aspect = (float)rt.width / rt.height;
+            if (boot.Fx != null) boot.Fx.PrepareForRender(cam);
             cam.targetTexture = rt;
             cam.Render();
             RenderTexture.active = rt;
@@ -118,6 +119,23 @@ namespace SkyTide.EditorTools
                 Render(oc, cam, boot, rt, tex, dir, new Shot("33_vol_low", -40f, -14f, 70f));
                 Render(oc, cam, boot, rt, tex, dir, new Shot("36_vol_away_from_sun", 215f, 12f, 70f));
                 Render(oc, cam, boot, rt, tex, dir, new Shot("37_vol_high", 140f, 50f, 115f));
+                // Бортовой залп (Корсар из Blender): оба борта, кадр через 0.45 с.
+                Broadside guns = boot.Ship != null ? boot.Ship.GetComponent<Broadside>() : null;
+                if (guns != null && guns.HasCannons && boot.Fx != null)
+                {
+                    guns.Fire(-1);
+                    guns.Fire(1);
+                    guns.Pump(float.MaxValue);
+                    for (int k = 0; k < 9; k++) boot.Fx.Simulate(0.05f);
+                    Render(oc, cam, boot, rt, tex, dir, new Shot("40_vol_broadside_side", 90f, 8f, 70f));
+                    Render(oc, cam, boot, rt, tex, dir, new Shot("41_vol_broadside_chase", 10f, 16f, 75f));
+                    boot.SetVolumetric(false);
+                    Render(oc, cam, boot, rt, tex, dir, new Shot("42_broadside_drawn", 90f, 8f, 70f));
+                    boot.SetVolumetric(true);
+                    for (int k = 0; k < 30; k++) boot.Fx.Simulate(0.05f);
+                    Render(oc, cam, boot, rt, tex, dir, new Shot("43_vol_broadside_later", 60f, 10f, 90f));
+                }
+                else Debug.LogWarning("SkyTide: пушек нет — залп не снят");
                 if (vol != null)
                 {
                     Texture2D sheet = vol.ImpostorSheet();

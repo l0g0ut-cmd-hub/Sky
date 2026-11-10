@@ -71,6 +71,7 @@ namespace SkyTide.EditorTools
             b.postShader = AssetDatabase.LoadAssetAtPath<Shader>("Assets/_Project/Shaders/PostFX.shader");
             b.volumetricShader = AssetDatabase.LoadAssetAtPath<Shader>("Assets/_Project/Shaders/VolumetricClouds.shader");
             b.impostorShader = AssetDatabase.LoadAssetAtPath<Shader>("Assets/_Project/Shaders/CloudImpostor.shader");
+            b.fxShader = AssetDatabase.LoadAssetAtPath<Shader>("Assets/_Project/Shaders/Fx.shader");
             b.cloudNoise3D = AssetDatabase.LoadAssetAtPath<TextAsset>(Art + "CloudNoise3D.bytes");
             // Шаблоны объёмных башен со светом под неподвижное солнце — запекаем здесь, телефон при старте не считает.
             Texture3D towerField = VolumetricClouds.BakeField(VolumetricClouds.SunTowardDefault());
@@ -144,7 +145,11 @@ namespace SkyTide.EditorTools
         {
             var list = new System.Collections.Generic.List<ShipVariant>();
             ShipVariant repaired = SceneVariant("CorsairRepaired", "Корсар (Blender)");
-            if (repaired != null) list.Add(repaired);
+            if (repaired != null)
+            {
+                repaired.cannons = AssetDatabase.LoadAssetAtPath<TextAsset>(Models + "CorsairRepaired_cannons.json");
+                list.Add(repaired);
+            }
             TextAsset meshy = AssetDatabase.LoadAssetAtPath<TextAsset>(Models + "Corsair.bytes");
             if (meshy != null && mats.shipBody != null)
                 list.Add(new ShipVariant { name = "Корсар (Meshy)", mesh = meshy, materials = new[] { mats.shipBody } });

@@ -10,6 +10,7 @@ namespace SkyTide
         public string name;
         public TextAsset mesh;
         public Material[] materials;
+        public TextAsset cannons;   // <модель>_cannons.json — дула и оси стволов (tools/extract_cannons.py)
 
         [NonSerialized] Mesh cached;
 

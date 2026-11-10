@@ -32,11 +32,15 @@ namespace SkyTide
             Transform visual = ctrl.visual;
             for (int i = visual.childCount - 1; i >= 0; i--) SkyTideBootstrap.SafeDestroy(visual.GetChild(i).gameObject);
             Mesh mesh = variant != null && variant.IsValid ? variant.Mesh : null;
-            if (mesh != null) BuildFromMesh(visual, mesh, variant.materials);
+            Transform model = null;
+            if (mesh != null) model = BuildFromMesh(visual, mesh, variant.materials);
             else BuildPrimitive(visual, m);
+            Broadside b = ctrl.GetComponent<Broadside>();
+            if (b == null) b = ctrl.gameObject.AddComponent<Broadside>();
+            b.SetModel(ctrl, model, model != null && variant != null ? Broadside.Parse(variant.cannons) : null);
         }
 
-        static void BuildFromMesh(Transform visual, Mesh mesh, Material[] mats)
+        static Transform BuildFromMesh(Transform visual, Mesh mesh, Material[] mats)
         {
             GameObject go = new GameObject("Model");
             go.transform.SetParent(visual, false);
@@ -56,6 +60,7 @@ namespace SkyTide
             lamp.range = 16f;
             lamp.intensity = 1.4f;
             lamp.shadows = LightShadows.None;
+            return go.transform;
         }
 
         static void BuildPrimitive(Transform v, GameMaterials m)

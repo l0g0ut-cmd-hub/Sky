@@ -114,6 +114,9 @@ namespace SkyTide
                     game.SetVolumetric(!game.volumetricClouds);
                     return;
                 }
+                Broadside bs = Guns();
+                if (bs != null && VolleyRect(-1).Contains(p)) { owners[id] = Owner.Button; lastPos[id] = p; bs.Fire(-1); return; }
+                if (bs != null && VolleyRect(1).Contains(p)) { owners[id] = Owner.Button; lastPos[id] = p; bs.Fire(1); return; }
                 if (p.x < Screen.width * 0.5f && stickId == int.MinValue)
                 {
                     owners[id] = Owner.Stick;
@@ -198,6 +201,9 @@ namespace SkyTide
             if (Input.GetKey(KeyCode.W) || Input.GetKey(KeyCode.UpArrow)) ky += 1f;
             if (Input.GetKey(KeyCode.S) || Input.GetKey(KeyCode.DownArrow)) ky -= 1f;
             if (Input.GetKeyDown(KeyCode.Tab) && game != null) game.NextShip();
+            Broadside guns = Guns();
+            if (guns != null && Input.GetKeyDown(KeyCode.Q)) guns.Fire(-1);
+            if (guns != null && Input.GetKeyDown(KeyCode.E)) guns.Fire(1);
 
             if (ship != null)
             {
@@ -211,6 +217,23 @@ namespace SkyTide
             float u = Mathf.Min(Screen.width, Screen.height);
             float w = u * 0.42f, h = u * 0.1f;
             return new Rect(Screen.width - w - u * 0.03f, u * 0.03f, w, h);
+        }
+
+        Broadside Guns()
+        {
+            if (ship == null) return null;
+            Broadside b = ship.GetComponent<Broadside>();
+            return b != null && b.HasCannons ? b : null;
+        }
+
+        /// <summary>Кнопки залпа: справа внизу, над номером сборки; side = -1 левый борт, +1 правый.</summary>
+        Rect VolleyRect(int side)
+        {
+            float u = Mathf.Min(Screen.width, Screen.height);
+            float w = u * 0.27f, h = u * 0.14f, gap = u * 0.03f;
+            float y = Screen.height - h - u * 0.16f;
+            float xr = Screen.width - w - u * 0.03f;
+            return side > 0 ? new Rect(xr, y, w, h) : new Rect(xr - w - gap, y, w, h);
         }
 
         Rect CloudButtonRect()
@@ -308,6 +331,30 @@ namespace SkyTide
                 GUI.DrawTexture(vr, Texture2D.whiteTexture);
                 GUI.color = new Color(1f, 0.92f, 0.8f, 1f);
                 GUI.Label(vr, buildText, buildStyle);
+            }
+
+            Broadside gb = Guns();
+            if (gb != null)
+            {
+                if (buttonStyle == null)
+                {
+                    buttonStyle = new GUIStyle(GUI.skin.label);
+                    buttonStyle.alignment = TextAnchor.MiddleCenter;
+                }
+                buttonStyle.fontSize = Mathf.RoundToInt(u * 0.04f);
+                for (int s = -1; s <= 1; s += 2)
+                {
+                    Rect vr = VolleyRect(s);
+                    float rd = gb.Readiness(s);
+                    GUI.color = new Color(0.08f, 0.05f, 0.05f, 0.6f);
+                    GUI.DrawTexture(vr, Texture2D.whiteTexture);
+                    // Полоска перезарядки снизу
+                    GUI.color = rd >= 1f ? new Color(1f, 0.62f, 0.25f, 0.95f) : new Color(1f, 0.8f, 0.5f, 0.5f);
+                    GUI.DrawTexture(new Rect(vr.x, vr.yMax - 4f, vr.width * rd, 4f), Texture2D.whiteTexture);
+                    GUI.color = new Color(1f, 0.92f, 0.8f, rd >= 1f ? 1f : 0.55f);
+                    GUI.Label(vr, s < 0 ? "← Залп" : "Залп →", buttonStyle);
+                }
+                buttonStyle.fontSize = Mathf.RoundToInt(u * 0.034f);
             }
 
             if (hintAlpha > 0.01f)
