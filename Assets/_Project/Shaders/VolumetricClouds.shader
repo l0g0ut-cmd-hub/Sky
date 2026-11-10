@@ -196,7 +196,7 @@ Shader "Hidden/SkyTide/VolumetricClouds"
             float hf = saturate(1.0 - max(p.y, 0.0) / top);
             float d = _Haze.x * smoothstep(0.35, 0.75, w) * hf * hf * smoothstep(25.0, 120.0, t);
             float3 amb = lerp(_AmbientBottom.rgb, _AmbientTop.rgb, 0.6);
-            float3 src = sunCol * phase * 0.35 + amb * 1.1;
+            float3 src = sunCol * phase * 0.1 + amb * 0.9;
             float st = exp(-d * dt);
             light += trans * src * (1.0 - st);
             trans *= st;

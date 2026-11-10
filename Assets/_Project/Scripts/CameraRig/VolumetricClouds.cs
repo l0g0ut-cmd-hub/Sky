@@ -44,7 +44,7 @@ namespace SkyTide
         public float density = 0.035f;
 
         [Header("Дымка у моря облаков")]
-        public float hazeDensity = 0.0022f;
+        public float hazeDensity = 0.00045f;
         public float hazeTop = 130f;
         public float hazeDistance = 1600f;
         [Range(4, 32)] public int hazeSteps = 14;
