@@ -72,6 +72,7 @@ Shader "Hidden/SkyTide/VolumetricClouds"
     float4 _Deck;                 // x низ слоя, y верх (м), z плотность (1/м), w шагов
     float4 _Deck2;                // x масштаб «погоды», y порог покрытия, z масштаб клубов, w масштаб детали (м)
     float4 _Deck3;                // x дальность (м), y макс. длина пути в слое (м), z поглощение к солнцу
+    float _DeckSurfaceMode;       // 1 — непрерывная поверхность облачного моря; 0 — старый slab для A/B
     float _Bake;                  // 1 — запекание снимков-импосторов (ортографический луч, без сцены и дымки)
     float4 _BakeOrigin, _BakeRight, _BakeUp, _BakeFwd;            // x начало, y конец растворения у камеры (м)
 
@@ -255,7 +256,7 @@ Shader "Hidden/SkyTide/VolumetricClouds"
         return m * _Deck.z;
     }
 
-    float4 Deck(float3 ro, float3 rd, float tEnd, float jitter, float phase)
+    float4 DeckLegacy(float3 ro, float3 rd, float tEnd, float jitter, float phase)
     {
         float base = _Deck.x, top = _Deck.y;
         float t0 = 0.0, t1 = min(tEnd, _Deck3.x);
@@ -322,6 +323,141 @@ Shader "Hidden/SkyTide/VolumetricClouds"
         float meanDist = wAcc > 1e-4 ? distAcc / wAcc : t1;
         light = lerp(light, SkyTidePanorama(rd) * (1.0 - trans), _Aerial.x * saturate(SkyTideAerial(meanDist)));
         return float4(light, trans);
+    }
+
+
+    // --------------------------------------------------------------------------
+    // SEA OF CLOUDS V2: cloud-top heightfield, NOT a periodically sampled slab.
+    // A 24-step optical raymarch across a shallow layer generated visible wave
+    // contours when the ray was grazing the deck. The continuous world-space
+    // height surface below is solved by bracketing + 5 binary refinements.
+    // It has no integration slices, no periodic jitter and no specular response.
+    // Real 3D raymarched hero cumulonimbus towers are left unchanged.
+    // --------------------------------------------------------------------------
+    float DeckSurfaceLOD(float dist)
+    {
+        float voxelMeters = max(_Deck2.z / 64.0, 1.0);
+        return clamp(log2(max(dist * 0.003 / voxelMeters, 1.0)), 0.0, 3.0);
+    }
+
+    // x=height (metres), y=weather coverage, z=rounded cloud-top bump.
+    // Important: XZ-anchored at a FIXED 3D noise slice. Sampling 3D noise at
+    // the marching ray's changing Y caused vertical sampling bands.
+    float3 DeckSurfaceData(float2 xz, float mip)
+    {
+        float2 drift = _Wind.xz * _Wind.w;
+        float2 uv = (xz + drift) / max(_Deck2.x, 1.0);
+        float weatherMip = clamp(mip * 0.75, 0.0, 3.0);
+        float a = tex2Dlod(_SkyTideNoise, float4(uv, 0, weatherMip)).r;
+        float b = tex2Dlod(_SkyTideNoise, float4(uv * 2.7 + 0.37, 0, weatherMip + 0.5)).g;
+        float cover = saturate((a * 0.65 + b * 0.35 - _Deck2.y + 0.04) / 0.42);
+
+        // Rounded lobes; no wave-like surface normals from high frequencies.
+        float3 noisePos = float3((xz.x + drift.x) / max(_Deck2.z, 1.0),
+                                 0.371,
+                                 (xz.y + drift.y) / max(_Deck2.z, 1.0));
+        float4 cloudNoise = tex3Dlod(_Noise3D, float4(noisePos, mip));
+        float billow = smoothstep(0.28, 0.74, cloudNoise.r * 0.78 + cloudNoise.g * 0.22);
+        float h = 0.07 + 0.89 * cover * (0.31 + 0.69 * billow);
+        float height = lerp(_Deck.x, _Deck.y, h);
+        return float3(height, cover, billow);
+    }
+
+    float4 DeckSurface(float3 ro, float3 rd, float sceneEnd, float phase)
+    {
+        float t0 = 0.0;
+        float t1 = min(sceneEnd, _Deck3.x);
+        float base = _Deck.x, top = _Deck.y;
+
+        // Restrict work to an actual ray/slab intersection.
+        if (abs(rd.y) > 1e-4)
+        {
+            float ta = (base - ro.y) / rd.y;
+            float tb = (top - ro.y) / rd.y;
+            t0 = max(t0, min(ta, tb));
+            t1 = min(t1, max(ta, tb));
+        }
+        else if (ro.y < base || ro.y > top) return float4(0, 0, 0, 1);
+        t1 = min(t1, t0 + _Deck3.y);
+        if (t1 <= t0) return float4(0, 0, 0, 1);
+
+        const int SEARCH_STEPS = 18;
+        float lastT = t0;
+        float firstMip = DeckSurfaceLOD(lastT);
+        float3 start = ro + rd * lastT;
+        float lastF = start.y - DeckSurfaceData(start.xz, firstMip).x;
+        float nearT = t0;
+        float farT = t0;
+        bool hit = lastF <= 0.0;
+
+        // When the camera starts above the deck, find the FIRST cloud-top
+        // crossing, then refine a continuous intersection. No marching stripes.
+        [loop] for (int k = 1; k <= SEARCH_STEPS; k++)
+        {
+            if (hit) break;
+            float nextT = lerp(t0, t1, (float)k / SEARCH_STEPS);
+            float3 pos = ro + rd * nextT;
+            float f = pos.y - DeckSurfaceData(pos.xz, DeckSurfaceLOD(nextT)).x;
+            if (lastF > 0.0 && f <= 0.0)
+            {
+                nearT = lastT;
+                farT = nextT;
+                hit = true;
+                break;
+            }
+            lastF = f;
+            lastT = nextT;
+        }
+        if (!hit) return float4(0, 0, 0, 1);
+
+        [unroll] for (int j = 0; j < 5; j++)
+        {
+            float midT = (nearT + farT) * 0.5;
+            float3 pMid = ro + rd * midT;
+            float signedHeight = pMid.y - DeckSurfaceData(pMid.xz, DeckSurfaceLOD(midT)).x;
+            if (signedHeight > 0.0) nearT = midT;
+            else farT = midT;
+        }
+
+        float surfaceT = (nearT + farT) * 0.5;
+        float3 p = ro + rd * surfaceT;
+        float mip = DeckSurfaceLOD(surfaceT);
+        float3 surface = DeckSurfaceData(p.xz, mip);
+
+        // Two finite differences supply a stable broad-lobe normal, rather
+        // than micro-normal ripples (which previously read as water).
+        float e = max(9.0, surfaceT * 0.008);
+        float hx = DeckSurfaceData(p.xz + float2(e, 0), mip).x;
+        float hz = DeckSurfaceData(p.xz + float2(0, e), mip).x;
+        float3 normal = normalize(float3(surface.x - hx, e, surface.x - hz));
+        float3 L = normalize(_SkyTideSunDir.xyz);
+        float litSide = saturate(0.12 + 2.5 * dot(normal, L));
+
+        // Low sunset occlusion: a taller neighbouring puff blocks grazing
+        // light. One world-space query, no costly full lightmarch.
+        float2 sunXZ = normalize(L.xz + float2(1e-5, 0));
+        float blockerHeight = DeckSurfaceData(p.xz + sunXZ * 90.0, mip + 0.3).x;
+        float sunVisible = smoothstep(-8.0, 22.0, surface.x + max(L.y, 0.06) * 90.0 - blockerHeight);
+        float sunAmount = litSide * sunVisible;
+        float aboveBase = saturate((surface.x - base) / max(top - base, 1.0));
+
+        float3 amb = lerp(_AmbientBottom.rgb, _AmbientTop.rgb, aboveBase) * (0.78 + 0.32 * surface.z);
+        amb *= lerp(float3(0.65, 0.44, 0.88), float3(1, 1, 1), sunAmount);
+        float3 sunlight = lerp(_SunEmber.rgb, _SunGold.rgb, sunAmount)
+                        * (_Deck3.w * 0.75) * sunAmount * (0.82 + 0.10 * min(phase, 1.6));
+        float3 cloudColor = amb + sunlight
+                          + _MultiScatter.rgb * (0.018 + 0.022 * surface.z)
+                          + SkyTideFlashLight(p);
+
+        // Soft gaps through the cloud carpet and smooth fade into the painted
+        // horizon. Neither specular BRDF nor repeated optical integration.
+        float alpha = saturate(0.42 + 0.70 * surface.y)
+                    * (1.0 - smoothstep(_Deck3.y * 0.65, _Deck3.y, surfaceT))
+                    * ClearFactor(p, ro);
+        float3 panorama = SkyTidePanorama(rd);
+        float haze = _Aerial.x * smoothstep(650.0, 1650.0, surfaceT);
+        cloudColor = lerp(cloudColor, panorama, haze);
+        return float4(cloudColor * alpha, 1.0 - alpha);
     }
 
     float4 fragMarch (v2f i) : SV_Target
@@ -422,7 +558,9 @@ Shader "Hidden/SkyTide/VolumetricClouds"
 
         // 2) Объёмное море облаков — до башни (за плотной башней его не видно) или до сцены.
         float deckEnd = min(sceneDist, trans < 0.9 ? firstHit : 1e7);
-        float4 deck = Deck(ro, rd, deckEnd, jit, phaseH);
+        float4 deck;
+        [branch] if (_DeckSurfaceMode > 0.5) deck = DeckSurface(ro, rd, deckEnd, phaseH);
+        else deck = DeckLegacy(ro, rd, deckEnd, jit, phaseH);
         return float4(deck.rgb + light * deck.a, trans * deck.a);
     }
 

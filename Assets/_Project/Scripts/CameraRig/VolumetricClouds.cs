@@ -55,6 +55,8 @@ namespace SkyTide
         public float deckBase = -60f;
         public float deckTop = 20f;
         public float deckDensity = 0.03f;
+        [Tooltip("Непрерывная облачная поверхность без полос от raymarch. false — старый deck для диагностики.")]
+        public bool cloudSeaSurface = true;
         [Range(6, 32)] public int deckSteps = 24;
         public float deckWeatherScale = 1400f;
         [Range(0f, 0.8f)] public float deckCoverage = 0.2f;   // порог: меньше — сплошнее
@@ -453,6 +455,7 @@ namespace SkyTide
             mat.SetVector("_FieldBox", new Vector4(FieldHalf, FieldBottom, FieldHeight, Templates));
             mat.SetVector("_Haze", new Vector4(hazeDensity, hazeTop, hazeDistance, hazeSteps));
             mat.SetVector("_Deck", new Vector4(deckBase, deckTop, deckDensity, deckSteps));
+            mat.SetFloat("_DeckSurfaceMode", cloudSeaSurface ? 1f : 0f);
             mat.SetVector("_Deck2", new Vector4(deckWeatherScale, deckCoverage, deckLobeScale, deckDetailScale));
             mat.SetVector("_Deck3", new Vector4(deckDistance, 1600f, deckAbsorption, deckSunScale));
             mat.SetVectorArray("_Towers", towers);

@@ -92,6 +92,14 @@ namespace SkyTide.EditorTools
                     if (boot.World != null) boot.World.SetSpriteCloudsVisible(false);
                     Render(oc, cam, boot, rt, tex, dir, new Shot("30_vol_toward_sun", 35f, 8f, 75f));
                     Render(oc, cam, boot, rt, tex, dir, new Shot("37_vol_high", 140f, 50f, 115f));
+                    // Прямое сравнение того же ракурса со старым raymarch deck.
+                    if (vol != null)
+                    {
+                        bool oldSeaMode = vol.cloudSeaSurface;
+                        vol.cloudSeaSurface = false;
+                        Render(oc, cam, boot, rt, tex, dir, new Shot("38_vol_legacy_sea_high", 140f, 50f, 115f));
+                        vol.cloudSeaSurface = oldSeaMode;
+                    }
                     Debug.Log("SkyTide: FAST CI — " + Directory.GetFiles(dir, "*.jpg").Length
                             + " кадра(ов) 960x456, без Impostors.Bake; расширенный тест отключён");
                     return; // finally восстановит сцену с диска
