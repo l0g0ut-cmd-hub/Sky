@@ -109,8 +109,9 @@ namespace SkyTide.EditorTools
                     File.WriteAllBytes(Path.Combine(dir, s.name + ".jpg"), tex.EncodeToJPG(88));
                 }
                 if (vol != null) vol.debugView = 0;
-                // Объёмные облака (тестовый режим) — два кадра для настройки.
+                // Объёмные облака (тестовый режим) — кадры для настройки.
                 boot.SetVolumetric(true);
+                if (vol != null) vol.ResetTowers(boot.Ship.transform.position);
                 Render(oc, cam, boot, rt, tex, dir, new Shot("30_vol_toward_sun", 35f, 8f, 75f));
                 Render(oc, cam, boot, rt, tex, dir, new Shot("31_vol_wide", 60f, 22f, 140f));
                 Render(oc, cam, boot, rt, tex, dir, new Shot("32_vol_side", 90f, 10f, 60f));

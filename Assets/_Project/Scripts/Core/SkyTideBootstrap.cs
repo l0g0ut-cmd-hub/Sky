@@ -100,7 +100,7 @@ namespace SkyTide
         {
             volumetricClouds = on;
             if (Volumetric != null) Volumetric.enabled = on;
-            if (World != null) World.SetMidLayerVisible(!on);
+            // Объёмные башни дополняют рисованные облака, а не заменяют их — средний ярус спрайтов остаётся.
         }
 
         public ShipVariant CurrentShip
