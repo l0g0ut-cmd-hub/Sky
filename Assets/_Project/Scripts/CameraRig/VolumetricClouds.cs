@@ -14,6 +14,13 @@ namespace SkyTide
     public class VolumetricClouds : MonoBehaviour
     {
         OrbitCamera orbit;
+        [Header("Временное накопление (чёткость вместо размытия)")]
+        public bool temporal = true;
+        [Range(0f, 0.97f)] public float temporalBlend = 0.88f;
+        RenderTexture history;
+        bool historyValid;
+        int frameIdx;
+        Matrix4x4 prevVP = Matrix4x4.identity;
         const int MaxTowers = 8;
         const int Puffs = 28;
         const int Templates = 3;
@@ -117,6 +124,7 @@ namespace SkyTide
         void OnDestroy()
         {
             imp.Release();
+            if (history != null) { history.Release(); history = null; }
             if (noise != null) SkyTideBootstrap.SafeDestroy(noise);
             if (field != null && field != bakedField) SkyTideBootstrap.SafeDestroy(field);
         }
@@ -523,9 +531,28 @@ namespace SkyTide
             clouds.filterMode = FilterMode.Bilinear;
             blurred.filterMode = FilterMode.Point;
             Graphics.Blit(src, clouds, mat, 0);       // марш луча
-            Graphics.Blit(clouds, blurred, mat, 3);   // мягкое размытие в низком разрешении
-            Graphics.Blit(blurred, clouds, mat, 3);   // второй проход: без полос узора Байера
-            Graphics.Blit(clouds, blurred, mat, 3);
+            // Временное накопление: история — свой буфер, перепроецирование по прошлой матрице камеры.
+            if (history == null || history.width != w || history.height != h)
+            {
+                if (history != null) history.Release();
+                history = new RenderTexture(w, h, 0, RenderTextureFormat.ARGBHalf);
+                history.filterMode = FilterMode.Bilinear;
+                history.Create();
+                historyValid = false;
+            }
+            bool useHistory = temporal && historyValid && Application.isPlaying;
+            mat.SetVector("_Temporal", new Vector4(frameIdx++ % 64, useHistory ? temporalBlend : 0f, deckTop, 0f));
+            mat.SetMatrix("_PrevVP", prevVP);
+            mat.SetTexture("_History", history);
+            RenderTexture acc = RenderTexture.GetTemporary(w, h, 0, RenderTextureFormat.ARGBHalf);
+            acc.filterMode = FilterMode.Bilinear;
+            Graphics.Blit(clouds, acc, mat, 5);
+            Graphics.Blit(acc, history);
+            historyValid = true;
+            prevVP = cam.projectionMatrix * cam.worldToCameraMatrix;
+            Graphics.Blit(acc, blurred, mat, 3);      // одно мягкое размытие (шум гасит накопление)
+            if (!useHistory) { Graphics.Blit(blurred, clouds, mat, 3); Graphics.Blit(clouds, blurred, mat, 3); }
+            RenderTexture.ReleaseTemporary(acc);
             Graphics.Blit(src, lowDepth, mat, 2);     // глубина сцены в низком разрешении
             mat.SetTexture("_CloudTex", blurred);
             mat.SetTexture("_LowDepthTex", lowDepth);

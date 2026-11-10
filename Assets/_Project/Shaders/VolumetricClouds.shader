@@ -72,7 +72,10 @@ Shader "Hidden/SkyTide/VolumetricClouds"
     float4 _Deck;                 // x низ слоя, y верх (м), z плотность (1/м), w шагов
     float4 _Deck2;                // x масштаб «погоды», y порог покрытия, z масштаб клубов, w масштаб детали (м)
     float4 _Deck3;                // x дальность (м), y макс. длина пути в слое (м), z поглощение к солнцу
-    float _Bake;                  // 1 — запекание снимков-импосторов (ортографический луч, без сцены и дымки)
+    float _Bake;
+    float4 _Temporal;             // x номер кадра, y вес истории (0 — нет истории), z верх моря облаков
+    float4x4 _PrevVP;             // прошлый кадр: projection * view (OpenGL)
+    sampler2D _History;                  // 1 — запекание снимков-импосторов (ортографический луч, без сцены и дымки)
     float4 _BakeOrigin, _BakeRight, _BakeUp, _BakeFwd;            // x начало, y конец растворения у камеры (м)
 
     struct v2f
@@ -331,7 +334,8 @@ Shader "Hidden/SkyTide/VolumetricClouds"
             sceneDist = LinearEyeDepth(rawDepth) / max(dot(rd, fwd), 1e-3);
         }
         float2 jpx = floor(i.uv * _LowRes.xy);
-        float jit = bake ? Hash(jpx) : Bayer4(jpx);  // в кадре — Байер (размытие его съедает), в снимках — хэш
+        // Сдвиг шагов меняется от кадра к кадру — временное накопление (проход 5) усредняет узор вместо размытия.
+        float jit = bake ? Hash(jpx) : frac(Bayer4(jpx) + _Temporal.x * 0.618034);  // в кадре — Байер (размытие его съедает), в снимках — хэш
         float3 sunDirH = normalize(_SkyTideSunDir.xyz);
         float cosH = dot(rd, sunDirH);
         float phaseH = min(lerp(HG(cosH, _Phase.y), HG(cosH, _Phase.x), _Phase.z) * 12.566, 2.6);
@@ -403,6 +407,32 @@ Shader "Hidden/SkyTide/VolumetricClouds"
         float deckEnd = min(sceneDist, trans < 0.9 ? firstHit : 1e7);
         float4 deck = Deck(ro, rd, deckEnd, jit, phaseH);
         return float4(deck.rgb + light * deck.a, trans * deck.a);
+    }
+
+    // Временное накопление облаков (как TAA): точка облака перепроецируется в прошлый кадр — по плоскости верха
+    // моря облаков для лучей вниз, по дальней точке для лучей вверх; история зажимается в мин/макс соседей.
+    float4 fragTemporal (v2f i) : SV_Target
+    {
+        float4 cur = tex2D(_MainTex, i.uv);
+        if (_Temporal.y <= 0.0) return cur;
+        float4 view = mul(_InvProj, float4(i.uv * 2.0 - 1.0, 1.0, 1.0));
+        view.xyz /= view.w;
+        float3 rd = normalize(mul((float3x3)_CamToWorld, view.xyz));
+        float3 ro = _WorldSpaceCameraPos;
+        float dist = rd.y < -0.02 ? clamp((_Temporal.z - ro.y) / rd.y, 40.0, 6000.0) : 1500.0;
+        float4 pc = mul(_PrevVP, float4(ro + rd * dist, 1.0));
+        float2 puv = pc.xy / pc.w * 0.5 + 0.5;
+        if (pc.w <= 0.0 || any(puv < 0.0) || any(puv > 1.0)) return cur;
+        float4 mn = cur, mx = cur;
+        float2 px = _LowRes.zw;
+        [unroll] for (int y = -1; y <= 1; y++)
+        [unroll] for (int x = -1; x <= 1; x++)
+        {
+            float4 c = tex2D(_MainTex, i.uv + float2(x, y) * px);
+            mn = min(mn, c); mx = max(mx, c);
+        }
+        float4 h = clamp(tex2D(_History, puv), mn, mx);
+        return lerp(cur, h, _Temporal.y);
     }
 
     // Снимок для импостора: свет (уже умножен на покрытие) в кодировке sqrt(свет/6), альфа — покрытие.
@@ -506,6 +536,11 @@ Shader "Hidden/SkyTide/VolumetricClouds"
             #pragma vertex vert
             #pragma fragment fragBake
             #pragma target 3.5
+            ENDCG }
+        Pass { CGPROGRAM
+            #pragma vertex vert
+            #pragma fragment fragTemporal
+            #pragma target 3.0
             ENDCG }
     }
     Fallback Off
