@@ -32,7 +32,7 @@ namespace SkyTide
         public Texture3D towerField;
 
         [Tooltip("Объёмные облака на высоте полёта (иначе — спрайты). Переключается кнопкой на экране.")]
-        public bool volumetricClouds;
+        public bool volumetricClouds = true;   // объёмный режим — по умолчанию (красивее и уже достаточно быстрый)
 
         [Header("Старт")]
         public Vector3 spawnPosition = new Vector3(0f, 60f, 0f);
