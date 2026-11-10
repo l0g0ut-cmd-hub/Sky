@@ -165,26 +165,26 @@ Shader "Hidden/SkyTide/VolumetricClouds"
     // Отрезок луча, пересекающий габариты башен (сферы вокруг каждой).
     bool TowerInterval(float3 ro, float3 rd, out float tA, out float tB)
     {
+        // Габарит башни — коробка её поля (а не шар): шар срезал низ и бока облака,
+        // и срез был виден как полупрозрачная сфера.
         tA = 1e7;
         tB = -1.0;
+        float3 inv = 1.0 / (rd + 1e-6 * (step(0.0, rd) * 2.0 - 1.0));
         for (int i = 0; i < MAX_TOWERS; i++)
         {
             if (i >= (int)_TowerCount) break;
             float4 T = _Towers[i];
-            float hh = _TowerRot[i].w;
-            float3 c = T.xyz + float3(0, T.w * hh * 0.5, 0);
-            float r = T.w * max(1.5, hh * 0.62);
-            float3 oc = ro - c;
-            float b = dot(oc, rd);
-            float cc = dot(oc, oc) - r * r;
-            float disc = b * b - cc;
-            if (disc <= 0.0) continue;
-            float sq = sqrt(disc);
-            float t0 = -b - sq;
-            float t1 = -b + sq;
-            if (t1 <= 0.0) continue;
-            tA = min(tA, max(t0, 0.0));
-            tB = max(tB, t1);
+            float ys = _TowerRot[i].w / _FieldBox.z;
+            float3 lo = T.xyz + float3(-_FieldBox.x, _FieldBox.y * ys, -_FieldBox.x) * T.w;
+            float3 hi = T.xyz + float3(_FieldBox.x, (_FieldBox.y + _FieldBox.z) * ys, _FieldBox.x) * T.w;
+            float3 t0 = (lo - ro) * inv;
+            float3 t1 = (hi - ro) * inv;
+            float3 tmin = min(t0, t1), tmax = max(t0, t1);
+            float n = max(max(tmin.x, tmin.y), tmin.z);
+            float f = min(min(tmax.x, tmax.y), tmax.z);
+            if (f <= max(n, 0.0)) continue;
+            tA = min(tA, max(n, 0.0));
+            tB = max(tB, f);
         }
         return tB > tA;
     }
