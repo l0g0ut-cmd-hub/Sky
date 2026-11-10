@@ -136,6 +136,9 @@ namespace SkyTide
             mr.sharedMaterial = mat;
             mr.shadowCastingMode = ShadowCastingMode.Off;
             mr.receiveShadows = false;
+            MaterialPropertyBlock mpb = new MaterialPropertyBlock();
+            mpb.SetFloat("_CloudPhase", (float)rnd.NextDouble());
+            mr.SetPropertyBlock(mpb);
 
             Cloud c = new Cloud();
             c.t = go.transform;

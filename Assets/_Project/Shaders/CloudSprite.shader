@@ -15,6 +15,7 @@ Shader "SkyTide/CloudSprite"
         _FlowSpeed ("Billow speed", Float) = 0.01
         _NoiseScale ("Billow size", Float) = 2.4
         _NearFade ("Near fade start/end (m)", Vector) = (70, 260, 0, 0)
+        [HideInInspector] _CloudPhase ("Per-cloud phase", Float) = 0
     }
     SubShader
     {
@@ -40,6 +41,7 @@ Shader "SkyTide/CloudSprite"
             float _FlowSpeed;
             float _NoiseScale;
             float4 _NearFade;
+            float _CloudPhase;
 
             struct appdata
             {
@@ -81,7 +83,9 @@ Shader "SkyTide/CloudSprite"
                 o.worldPos = wpos;
 
                 float3 origin = center;
-                float phase = frac(sin(dot(origin.xz, float2(12.9898, 78.233))) * 43758.5453);
+                // Постоянная фаза облака (задаётся один раз при создании). Хэш от мировой позиции здесь нельзя:
+                // облако плывёт по ветру, хэш скачет каждый кадр — узор клубления дрожал.
+                float phase = _CloudPhase;
                 // Шум в локальных координатах квада: узор живёт вместе с облаком и не «едет» при повороте к камере.
                 o.noiseUV = v.vertex.xy * _NoiseScale + phase * 7.31;
 
