@@ -38,6 +38,32 @@ namespace SkyTide.EditorTools
             File.WriteAllBytes(Path.Combine(dir, s.name + ".jpg"), tex.EncodeToJPG(88));
         }
 
+
+        // Быстрые контрольные кадры версии 39; настройки и код самой игры не меняются.
+        static void CaptureQuick(OrbitCamera oc, Camera cam, SkyTideBootstrap boot, string dir)
+        {
+            float start = Time.realtimeSinceStartup;
+            RenderTexture rt = new RenderTexture(800, 380, 24, RenderTextureFormat.ARGB32);
+            Texture2D tex = new Texture2D(rt.width, rt.height, TextureFormat.RGB24, false);
+            try
+            {
+                boot.SetVolumetric(true);
+                if (boot.Volumetric != null) boot.Volumetric.ResetTowers(boot.Ship.transform.position);
+                Render(oc, cam, boot, rt, tex, dir, new Shot("30_vol_toward_sun", 35f, 8f, 75f));
+                Render(oc, cam, boot, rt, tex, dir, new Shot("31_vol_wide", 60f, 22f, 140f));
+                Render(oc, cam, boot, rt, tex, dir, new Shot("37_vol_high", 140f, 50f, 115f));
+                Debug.Log("SkyTide: быстрая проверка версии 39, 3 кадра 800x380, секунд=" + (Time.realtimeSinceStartup - start).ToString("F1"));
+            }
+            finally
+            {
+                cam.targetTexture = null;
+                RenderTexture.active = null;
+                rt.Release();
+                Object.DestroyImmediate(rt);
+                Object.DestroyImmediate(tex);
+            }
+        }
+
         public static void Capture(string scenePath)
         {
             Debug.Log("SkyTide: кадры — графика " + SystemInfo.graphicsDeviceType + " / " + SystemInfo.graphicsDeviceName);
@@ -54,6 +80,12 @@ namespace SkyTide.EditorTools
                 OrbitCamera oc = boot.Cam;
                 Camera cam = oc.GetComponent<Camera>();
                 QualitySettings.shadowDistance = 160f;
+                if (System.Environment.GetEnvironmentVariable("SKYTIDE_FULL_SHOTS") != "1")
+                {
+                    CaptureQuick(oc, cam, boot, dir);
+                    return;
+                }
+
 
                 // Курс корабля на старте 55°, солнце — курс 90°. yaw камеры считается от курса корабля.
                 Shot[] shots =

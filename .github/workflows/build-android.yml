@@ -10,7 +10,8 @@ on:
 # Одна сборка за раз: лицензия Personal — одно место.
 concurrency:
   group: build-android
-  cancel-in-progress: false
+  # Только этот явно запрошенный перезапуск заменяет долгую 39 и ожидающую 40.
+  cancel-in-progress: true
 
 permissions:
   contents: write   # для веток apk-latest и ci-logs
