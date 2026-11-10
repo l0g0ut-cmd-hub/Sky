@@ -11,14 +11,15 @@ namespace SkyTide.EditorTools
     /// Собирает сцену прототипа из кода: объект SkyTide с SkyTideBootstrap, солнце, камеру,
     /// материалы-ассеты (чтобы шейдеры попали в сборку) и настройки неба/тумана.
     /// Меню: Sky Tide → Собрать сцену прототипа. При первом открытии проекта сцена собирается сама.
-    /// Модель корабля подхватывается из Assets/_Project/Models/Ship.fbx, если файл есть.
+    /// Подхватывает ассеты, если они есть: модель корабля (Models/Corsair.*), небо и облака (Art/*).
     /// </summary>
     [InitializeOnLoad]
     public static class SceneBuilder
     {
         public const string ScenePath = "Assets/_Project/Scenes/SkyTide_Prototype.unity";
         const string MaterialFolder = "Assets/_Project/Materials";
-        const string ModelPath = "Assets/_Project/Models/Ship.fbx";
+        const string Art = "Assets/_Project/Art/";
+        const string Models = "Assets/_Project/Models/";
 
         static SceneBuilder()
         {
@@ -50,6 +51,7 @@ namespace SkyTide.EditorTools
             Scene scene = EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);
 
             GameMaterials mats = new GameMaterials();
+            ApplyArt(mats);
             mats.EnsureAll();
             foreach (FieldInfo f in typeof(GameMaterials).GetFields(BindingFlags.Public | BindingFlags.Instance))
             {
@@ -63,12 +65,8 @@ namespace SkyTide.EditorTools
             GameObject boot = new GameObject("SkyTide");
             SkyTideBootstrap b = boot.AddComponent<SkyTideBootstrap>();
             b.materials = mats;
-            GameObject model = AssetDatabase.LoadAssetAtPath<GameObject>(ModelPath);
-            if (model != null)
-            {
-                b.shipModel = model;
-                Debug.Log("SkyTide: модель корабля подключена: " + ModelPath);
-            }
+            b.shipMesh = AssetDatabase.LoadAssetAtPath<TextAsset>(Models + "Corsair.bytes");
+            Debug.Log("SkyTide: модель корабля " + (b.shipMesh != null && mats.shipBody != null ? "подключена" : "не найдена — будет заглушка"));
 
             Light sun = new GameObject("Sun").AddComponent<Light>();
             SkyTideBootstrap.ConfigureSun(sun);
@@ -87,6 +85,50 @@ namespace SkyTide.EditorTools
             EditorBuildSettings.scenes = new EditorBuildSettingsScene[] { new EditorBuildSettingsScene(ScenePath, true) };
             AssetDatabase.SaveAssets();
             Debug.Log("SkyTide: сцена собрана → " + ScenePath);
+        }
+
+        /// <summary>Настраивает импорт текстур и делает из них материалы. Чего нет — остаётся пустым (запасные варианты).</summary>
+        static void ApplyArt(GameMaterials mats)
+        {
+            Texture2D sky = Tex(Art + "SkyPanorama.png", false, false, TextureWrapMode.Repeat, TextureWrapMode.Clamp, 2048, false);
+            if (sky != null) mats.skybox = MaterialFactory.PanoramicSkybox(sky);
+
+            Texture2D sea = Tex(Art + "CloudSea.jpg", false, false, TextureWrapMode.Repeat, TextureWrapMode.Repeat, 1024, true);
+            if (sea != null)
+            {
+                mats.cloudSea = MaterialFactory.Opaque("CloudSea", new Color(0.9f, 0.8f, 0.8f), 0f);
+                mats.cloudSea.mainTexture = sea;
+            }
+            Texture2D layer = Tex(Art + "CloudLayer.png", false, true, TextureWrapMode.Repeat, TextureWrapMode.Repeat, 1024, true);
+            if (layer != null)
+            {
+                mats.cloudLayer = MaterialFactory.Fade("CloudLayer", Color.white, 0f);
+                mats.cloudLayer.mainTexture = layer;
+            }
+            Texture2D sprites = Tex(Art + "CloudSprites.png", false, true, TextureWrapMode.Clamp, TextureWrapMode.Clamp, 2048, true);
+            if (sprites != null) mats.cloudSprite = MaterialFactory.CloudSprites(sprites);
+
+            Texture2D albedo = Tex(Models + "Corsair_Albedo.jpg", false, false, TextureWrapMode.Clamp, TextureWrapMode.Clamp, 4096, true);
+            Texture2D normal = Tex(Models + "Corsair_Normal.png", true, false, TextureWrapMode.Clamp, TextureWrapMode.Clamp, 2048, true);
+            Texture2D emission = Tex(Models + "Corsair_Emission.png", false, false, TextureWrapMode.Clamp, TextureWrapMode.Clamp, 2048, true);
+            if (albedo != null) mats.shipBody = MaterialFactory.ShipBody(albedo, normal, emission);
+        }
+
+        static Texture2D Tex(string path, bool normalMap, bool alpha, TextureWrapMode wrapU, TextureWrapMode wrapV, int maxSize, bool mips)
+        {
+            TextureImporter ti = AssetImporter.GetAtPath(path) as TextureImporter;
+            if (ti == null) return null;
+            ti.textureType = normalMap ? TextureImporterType.NormalMap : TextureImporterType.Default;
+            ti.sRGBTexture = !normalMap;
+            ti.alphaSource = alpha ? TextureImporterAlphaSource.FromInput : TextureImporterAlphaSource.None;
+            ti.alphaIsTransparency = alpha;
+            ti.wrapModeU = wrapU;
+            ti.wrapModeV = wrapV;
+            ti.maxTextureSize = maxSize;
+            ti.mipmapEnabled = mips;
+            ti.anisoLevel = 4;
+            ti.SaveAndReimport();
+            return AssetDatabase.LoadAssetAtPath<Texture2D>(path);
         }
 
         static void EnsureFolder(string path)

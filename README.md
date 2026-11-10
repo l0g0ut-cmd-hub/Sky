@@ -22,10 +22,20 @@ Unity **6000.0.36f1**, встроенный рендер (шейдер Standard)
 Сцена и материалы в репозитории не хранятся — их создаёт `Editor/SceneBuilder.cs`. Всё остальное (свет, камера, облака, корабль, управление) собирается при запуске в `Core/SkyTideBootstrap.cs`.
 
 ## Модель корабля
-Пока корабль — заглушка из примитивов по концепту (`Ship/ShipFactory.cs`).
-Чтобы подключить FBX: положить файл как `Assets/_Project/Models/Ship.fbx` и пересобрать сцену (меню Sky Tide).
-Модель масштабируется под длину `shipModelLength` (38 м); если нос смотрит не туда — поправить `shipModelEuler` на объекте SkyTide.
-Тяжёлый FBX (больше 100 МБ) в обычный git не влезет — нужен Git LFS.
+Корабль — модель Meshy «Skyward Corsair», упрощённая с 3,4 млн до ~170 тыс. треугольников для телефона.
+Конвертация GLB → проект одной командой (нужны numpy, Pillow, opencv):
+```
+python3 tools/convert_glb.py model.glb --name Corsair --length 38
+```
+Пишет `Assets/_Project/Models/Corsair.bytes` (меш уже в координатах Unity, нос в +Z) и текстуры Albedo / Normal / Emission
+(эмиссия — маска горящих окон и фонарей). Импортёр GLB в Unity не нужен. Параметр `--cell` — степень упрощения
+(больше → меньше треугольников), `--nose` — куда смотрит нос в исходнике (у Meshy `-x`).
+Если файлов модели нет, корабль собирается из примитивов (`Ship/ShipFactory.cs`).
+
+## Небо и облака
+`Assets/_Project/Art/`: `SkyPanorama.png` (панорама 2:1, солнце в центре = направление +X, по нему выставлен свет),
+`CloudSea.jpg` (бесшовный тайл моря облаков), `CloudLayer.png` (тот же тайл с прозрачностью — верхний слой),
+`CloudSprites.png` (атлас из 6 облаков; прямоугольники в `World/CloudSea.cs`). Цвета тумана и фонового света сняты с панорамы.
 
 ## Сборка APK (GitHub Actions + GameCI)
 Workflow `.github/workflows/build-android.yml`. Нужны секреты `UNITY_EMAIL` и `UNITY_PASSWORD`.
@@ -37,9 +47,10 @@ Workflow `.github/workflows/build-android.yml`. Нужны секреты `UNITY
 ```
 Assets/_Project/Scripts/
   Core/       SkyTideBootstrap (точка входа), GameMaterials, MaterialFactory
-  Ship/       ShipController (ход, поворот, крен, покачивание), ShipFactory (сборка корабля)
+  Ship/       ShipController (ход, поворот, крен, покачивание), ShipFactory (сборка корабля), ShipMeshLoader
   CameraRig/  OrbitCamera
   Input/      TouchControls (джойстик + вращение камеры)
-  World/      CloudSea (море облаков, облачные гряды, скалы с замками)
+  World/      CloudSea (море облаков, облака-спрайты, скалы с замками)
+tools/        convert_glb.py (GLB → меш и текстуры для проекта)
   Editor/     SceneBuilder, BuildScript
 ```

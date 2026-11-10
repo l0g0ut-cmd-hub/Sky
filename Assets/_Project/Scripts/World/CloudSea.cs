@@ -5,8 +5,8 @@ namespace SkyTide
 {
     /// <summary>
     /// Мир прототипа: море облаков (плотный нижний слой + полупрозрачный верхний, оба медленно плывут),
-    /// облачные гряды из сплюснутых сфер и скалы с замками на горизонте. Текстуры облаков — процедурный шум
-    /// (временная замена, пока нет нарисованных).
+    /// облака-спрайты, которые всегда повёрнуты к камере, и скалы с замками на горизонте.
+    /// Без нарисованных текстур — процедурный шум и облака из сфер.
     /// </summary>
     public class CloudSea : MonoBehaviour
     {
@@ -14,21 +14,97 @@ namespace SkyTide
         Material layerMat;
         float time;
 
+        /// <summary>Прямоугольники облаков в атласе CloudSprites.png (UV, начало снизу слева).</summary>
+        static readonly Rect[] SpriteRects =
+        {
+            new Rect(0.0028f, 0.6032f, 0.4025f, 0.2368f),
+            new Rect(0.3833f, 0.5062f, 0.3732f, 0.4622f),
+            new Rect(0.7655f, 0.6065f, 0.2215f, 0.2356f),
+            new Rect(0.0045f, 0.0552f, 0.3168f, 0.4363f),
+            new Rect(0.3269f, 0.1037f, 0.4442f, 0.2864f),
+            new Rect(0.7841f, 0.1319f, 0.2086f, 0.2604f),
+        };
+        const float AtlasAspect = 2f;   // атлас 2048×1024
+
+        readonly System.Collections.Generic.List<Transform> billboards = new System.Collections.Generic.List<Transform>();
+
         public void Build(GameMaterials m)
         {
             Transform root = new GameObject("World").transform;
 
             seaMat = new Material(m.cloudSea);
-            seaMat.mainTexture = MakeNoise(256, 4, 11, false);
-            seaMat.mainTextureScale = new Vector2(30f, 30f);
+            if (seaMat.mainTexture == null) seaMat.mainTexture = MakeNoise(256, 4, 11, false);
+            seaMat.mainTextureScale = new Vector2(16f, 16f);
             Plane(root, "Cloud Sea", new Vector3(0f, -14f, 0f), 600f, seaMat);
 
             layerMat = new Material(m.cloudLayer);
-            layerMat.mainTexture = MakeNoise(256, 3, 23, true);
-            layerMat.mainTextureScale = new Vector2(20f, 20f);
+            if (layerMat.mainTexture == null) layerMat.mainTexture = MakeNoise(256, 3, 23, true);
+            layerMat.mainTextureScale = new Vector2(11f, 11f);
             Plane(root, "Cloud Layer", Vector3.zero, 600f, layerMat);
 
             System.Random rnd = new System.Random(77);
+            if (m.cloudSprite != null && m.cloudSprite.mainTexture != null) BuildSpriteClouds(root, m.cloudSprite, rnd);
+            else BuildSphereClouds(root, m, rnd);
+
+            for (int i = 0; i < 6; i++)
+            {
+                float ang = (i / 6f) * Mathf.PI * 2f + 0.4f;
+                float r = 1350f + Range(rnd, 0f, 350f);
+                BuildIsland(root, m, new Vector3(Mathf.Cos(ang) * r, 0f, Mathf.Sin(ang) * r), rnd, i % 2 == 0);
+            }
+        }
+
+        void BuildSpriteClouds(Transform root, Material mat, System.Random rnd)
+        {
+            Mesh[] meshes = new Mesh[SpriteRects.Length];
+            for (int i = 0; i < meshes.Length; i++) meshes[i] = SpriteQuad(SpriteRects[i]);
+
+            for (int i = 0; i < 56; i++)
+            {
+                float ang = (float)(rnd.NextDouble() * Mathf.PI * 2.0);
+                float r = 220f + (float)rnd.NextDouble() * 1500f;
+                bool high = i % 4 == 0;
+                int k = rnd.Next(meshes.Length);
+                float width = high ? Range(rnd, 120f, 260f) : Range(rnd, 220f, 520f);
+                float y = high ? Range(rnd, 90f, 170f) : Range(rnd, -25f, 5f);
+
+                GameObject go = new GameObject("Cloud");
+                go.transform.SetParent(root, false);
+                go.transform.position = new Vector3(Mathf.Cos(ang) * r, y, Mathf.Sin(ang) * r);
+                go.transform.localScale = Vector3.one * width;
+                go.AddComponent<MeshFilter>().sharedMesh = meshes[k];
+                MeshRenderer mr = go.AddComponent<MeshRenderer>();
+                mr.sharedMaterial = mat;
+                mr.shadowCastingMode = ShadowCastingMode.Off;
+                mr.receiveShadows = false;
+                billboards.Add(go.transform);
+            }
+        }
+
+        /// <summary>Квад шириной 1 с опорой снизу по центру, UV — прямоугольник облака в атласе. Лицо смотрит в −Z.</summary>
+        static Mesh SpriteQuad(Rect uv)
+        {
+            float h = uv.height / (uv.width * AtlasAspect);
+            Mesh mesh = new Mesh();
+            mesh.name = "CloudQuad";
+            mesh.vertices = new Vector3[]
+            {
+                new Vector3(-0.5f, 0f, 0f), new Vector3(-0.5f, h, 0f), new Vector3(0.5f, h, 0f), new Vector3(0.5f, 0f, 0f)
+            };
+            mesh.uv = new Vector2[]
+            {
+                new Vector2(uv.xMin, uv.yMin), new Vector2(uv.xMin, uv.yMax), new Vector2(uv.xMax, uv.yMax), new Vector2(uv.xMax, uv.yMin)
+            };
+            Color c = new Color(1f, 0.82f, 0.72f, 1f);   // подтягиваем светлые облака к тону заката
+            mesh.colors = new Color[] { c, c, c, c };
+            mesh.triangles = new int[] { 0, 1, 2, 0, 2, 3 };
+            mesh.normals = new Vector3[] { Vector3.back, Vector3.back, Vector3.back, Vector3.back };
+            mesh.RecalculateBounds();
+            return mesh;
+        }
+
+        void BuildSphereClouds(Transform root, GameMaterials m, System.Random rnd)
+        {
             for (int i = 0; i < 36; i++)
             {
                 float ang = (float)(rnd.NextDouble() * Mathf.PI * 2.0);
@@ -48,12 +124,19 @@ namespace SkyTide
                     mr.receiveShadows = false;
                 }
             }
+        }
 
-            for (int i = 0; i < 6; i++)
+        void LateUpdate()
+        {
+            Camera cam = Camera.main;
+            if (cam == null) return;
+            Vector3 cp = cam.transform.position;
+            for (int i = 0; i < billboards.Count; i++)
             {
-                float ang = (i / 6f) * Mathf.PI * 2f + 0.4f;
-                float r = 1350f + Range(rnd, 0f, 350f);
-                BuildIsland(root, m, new Vector3(Mathf.Cos(ang) * r, 0f, Mathf.Sin(ang) * r), rnd, i % 2 == 0);
+                Transform t = billboards[i];
+                Vector3 d = t.position - cp;
+                d.y = 0f;
+                if (d.sqrMagnitude > 0.01f) t.rotation = Quaternion.LookRotation(d, Vector3.up);
             }
         }
 

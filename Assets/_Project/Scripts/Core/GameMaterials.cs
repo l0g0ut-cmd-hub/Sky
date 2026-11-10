@@ -24,6 +24,10 @@ namespace SkyTide
         public Material rock;
         public Material castle;
         public Material skybox;
+        [Tooltip("Материал модели корабля (текстуры из Meshy). Пусто — корабль из примитивов.")]
+        public Material shipBody;
+        [Tooltip("Атлас облаков-спрайтов. Пусто — облака из сфер.")]
+        public Material cloudSprite;
 
         public void EnsureAll()
         {

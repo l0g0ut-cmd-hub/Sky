@@ -5,23 +5,21 @@ namespace SkyTide
 {
     /// <summary>
     /// Собирает корабль: корень с ShipController и дочерний Visual.
-    /// Если задана модель (FBX), она ставится в Visual и подгоняется по длине; иначе — заглушка из примитивов
-    /// по концепту: деревянный корпус, кормовая надстройка с горящими окнами, мачты-стойки,
-    /// три воздушных мешка, паруса, бушприт, руль, пушки по бортам, красные вымпелы. Нос смотрит в +Z.
+    /// Если есть меш модели (сконвертированный из GLB), ставится он; иначе — заглушка из примитивов
+    /// по концепту: корпус, кормовая надстройка с горящими окнами, мачты-стойки, три воздушных мешка,
+    /// паруса, бушприт, руль, пушки по бортам, красные вымпелы. Нос смотрит в +Z.
     /// </summary>
     public static class ShipFactory
     {
         public const int GunsPerSide = 8;
 
-        public static ShipController Build(string name, Vector3 position, float yaw, GameMaterials m,
-            GameObject model, Vector3 modelEuler, float modelLength)
+        public static ShipController Build(string name, Vector3 position, float yaw, GameMaterials m, Mesh shipMesh)
         {
-            // Строим в начале координат без поворота (так проще считать габариты модели), потом переносим.
             GameObject root = new GameObject(name);
             Transform visual = new GameObject("Visual").transform;
             visual.SetParent(root.transform, false);
 
-            if (model != null) BuildFromModel(visual, model, modelEuler, modelLength);
+            if (shipMesh != null && m.shipBody != null) BuildFromMesh(visual, shipMesh, m.shipBody);
             else BuildPrimitive(visual, m);
 
             ShipController ctrl = root.AddComponent<ShipController>();
@@ -30,28 +28,24 @@ namespace SkyTide
             return ctrl;
         }
 
-        static void BuildFromModel(Transform visual, GameObject model, Vector3 euler, float length)
+        static void BuildFromMesh(Transform visual, Mesh mesh, Material mat)
         {
-            GameObject inst = Object.Instantiate(model);
-            inst.name = "Model";
-            inst.transform.SetParent(visual, false);
-            inst.transform.localPosition = Vector3.zero;
-            inst.transform.localRotation = Quaternion.Euler(euler);
-            inst.transform.localScale = Vector3.one;
+            GameObject go = new GameObject("Corsair");
+            go.transform.SetParent(visual, false);
+            go.AddComponent<MeshFilter>().sharedMesh = mesh;
+            MeshRenderer r = go.AddComponent<MeshRenderer>();
+            r.sharedMaterial = mat;
+            r.shadowCastingMode = ShadowCastingMode.On;
 
-            foreach (Collider c in inst.GetComponentsInChildren<Collider>()) Object.Destroy(c);
-
-            Renderer[] rs = inst.GetComponentsInChildren<Renderer>();
-            if (rs.Length == 0) return;
-            Bounds b = rs[0].bounds;
-            for (int i = 1; i < rs.Length; i++) b.Encapsulate(rs[i].bounds);
-            float len = Mathf.Max(b.size.x, b.size.z);
-            if (len < 0.0001f) return;
-
-            float k = length / len;
-            inst.transform.localScale = Vector3.one * k;
-            Vector3 c0 = b.center * k;
-            inst.transform.localPosition = new Vector3(-c0.x, 10f - c0.y, -c0.z);
+            // Тёплый свет из кормовых окон и фонарей, как на концепте
+            Light lamp = new GameObject("Stern Glow").AddComponent<Light>();
+            lamp.transform.SetParent(visual, false);
+            lamp.transform.localPosition = new Vector3(0f, 8f, -17f);
+            lamp.type = LightType.Point;
+            lamp.color = new Color(1f, 0.68f, 0.32f);
+            lamp.range = 16f;
+            lamp.intensity = 1.4f;
+            lamp.shadows = LightShadows.None;
         }
 
         static void BuildPrimitive(Transform v, GameMaterials m)

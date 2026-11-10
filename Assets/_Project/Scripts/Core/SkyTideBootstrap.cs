@@ -11,16 +11,14 @@ namespace SkyTide
     {
         public GameMaterials materials = new GameMaterials();
 
-        [Header("Модель корабля (необязательно)")]
-        [Tooltip("FBX/префаб корабля. Пусто — заглушка из примитивов.")]
-        public GameObject shipModel;
-        [Tooltip("Поворот модели, чтобы нос смотрел вперёд (+Z) и палуба была сверху.")]
-        public Vector3 shipModelEuler;
-        [Tooltip("Длина корабля в метрах, под неё масштабируется модель.")]
-        public float shipModelLength = 38f;
+        [Header("Модель корабля")]
+        [Tooltip("Меш из tools/convert_glb.py (Corsair.bytes). Пусто — заглушка из примитивов.")]
+        public TextAsset shipMesh;
 
         [Header("Старт")]
         public Vector3 spawnPosition = new Vector3(0f, 60f, 0f);
+        [Tooltip("Курс на старте. Солнце на панораме — в направлении +X (курс 90°).")]
+        public float spawnHeading = 55f;
 
         public static SkyTideBootstrap Instance { get; private set; }
 
@@ -42,7 +40,7 @@ namespace SkyTide
 
             gameObject.AddComponent<CloudSea>().Build(materials);
 
-            Ship = ShipFactory.Build("Player Ship", spawnPosition, 0f, materials, shipModel, shipModelEuler, shipModelLength);
+            Ship = ShipFactory.Build("Player Ship", spawnPosition, spawnHeading, materials, ShipMeshLoader.Load(shipMesh));
 
             cam.target = Ship.transform;
             cam.Snap();
@@ -59,23 +57,24 @@ namespace SkyTide
             if (m.skybox != null) RenderSettings.skybox = m.skybox;
             RenderSettings.fog = true;
             RenderSettings.fogMode = FogMode.Linear;
-            RenderSettings.fogColor = new Color(0.86f, 0.6f, 0.5f);
-            RenderSettings.fogStartDistance = 350f;
-            RenderSettings.fogEndDistance = 2400f;
+            // Цвета сняты с панорамы неба: туман — горизонт, фон — верх неба / горизонт / море облаков.
+            RenderSettings.fogColor = new Color(0.69f, 0.29f, 0.25f);
+            RenderSettings.fogStartDistance = 300f;
+            RenderSettings.fogEndDistance = 2300f;
             RenderSettings.ambientMode = AmbientMode.Trilight;
-            RenderSettings.ambientSkyColor = new Color(0.6f, 0.5f, 0.58f);
-            RenderSettings.ambientEquatorColor = new Color(0.72f, 0.5f, 0.4f);
-            RenderSettings.ambientGroundColor = new Color(0.22f, 0.17f, 0.2f);
+            RenderSettings.ambientSkyColor = new Color(0.46f, 0.3f, 0.38f);
+            RenderSettings.ambientEquatorColor = new Color(0.8f, 0.42f, 0.3f);
+            RenderSettings.ambientGroundColor = new Color(0.36f, 0.2f, 0.2f);
         }
 
         public static void ConfigureSun(Light l)
         {
             l.type = LightType.Directional;
-            l.color = new Color(1f, 0.66f, 0.4f);
-            l.intensity = 1.35f;
+            l.color = new Color(1f, 0.6f, 0.34f);
+            l.intensity = 1.45f;
             l.shadows = LightShadows.Soft;
             l.shadowStrength = 0.75f;
-            l.transform.rotation = Quaternion.Euler(9f, 150f, 0f);   // солнце низко впереди от стартового курса, как на концепте
+            l.transform.rotation = Quaternion.Euler(7f, -90f, 0f);   // свет идёт из +X — туда, где солнце на панораме
         }
 
         static Light SetupSun()
