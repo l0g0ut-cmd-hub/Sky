@@ -20,6 +20,8 @@ Shader "Hidden/SkyTide/VolumetricClouds"
     sampler2D _MainTex;
     float4 _MainTex_TexelSize;
     sampler2D _CloudTex;
+    sampler2D _LowDepthTex;
+    float4 _LowRes;         // xy размер RT облаков, zw 1/размер
     sampler3D _Noise3D;
     UNITY_DECLARE_DEPTH_TEXTURE(_CameraDepthTexture);
 
@@ -60,47 +62,58 @@ Shader "Hidden/SkyTide/VolumetricClouds"
         return (1.0 - g2) / (12.566 * pow(max(1.0 + g2 - 2.0 * g * c, 1e-3), 1.5));
     }
 
+    // Плотность (по рекомендациям GPT): погода → отдельные массы; высота вершин — своя для каждой массы;
+    // форма — порог по 3D-шуму; эрозия работает в переходной зоне, а не гаснет в плотных местах.
     float Density(float3 p, bool detail)
     {
-        float h = saturate((p.y - _Layer.x) / (_Layer.y - _Layer.x));
         float3 wp = p + _Wind.xyz * _Wind.w;
-        // Погода: где есть облака (два масштаба — без заметного повтора).
-        float w = tex2Dlod(_SkyTideNoise, float4(wp.xz / _Shape.w, 0, 0)).r * 0.7
-                + tex2Dlod(_SkyTideNoise, float4(wp.xz / (_Shape.w * 0.365) + 0.37, 0, 0)).g * 0.3;
-        float cover = smoothstep(0.62 - _Shape.z * 0.25, 0.92 - _Shape.z * 0.2, w);
-        if (cover <= 0.0) return 0.0;
-        // Высота вершин: низкий облачный ковёр над морем, и лишь местами башни до высоты полёта и выше.
-        float tall = smoothstep(0.5, 0.8, tex2Dlod(_SkyTideNoise, float4(wp.xz / (_Shape.w * 0.6) + 0.71, 0, 0)).g);
-        float top = 0.24 + 0.76 * cover * tall;
-        float profile = saturate(h / 0.06) * saturate((top - h) / (0.5 * top));
-        // Форма: 3D Perlin-Worley в двух масштабах (второй повёрнут) — против повтора тайла.
-        float3 q2 = float3(wp.z * 0.8 + wp.x * 0.6, wp.y, wp.x * 0.8 - wp.z * 0.6);
-        float base = tex3Dlod(_Noise3D, float4(wp / _Shape.x, 0)).r * 0.6
-                   + tex3Dlod(_Noise3D, float4(q2 / (_Shape.x * 2.45) + 0.31, 0)).r * 0.4;
-        float d = saturate((base * profile - (1.0 - 0.6 * cover)) * 5.0);
-        if (detail && d > 0.0)
+        float2 weatherUV = wp.xz / _Shape.w;
+        float weather = tex2Dlod(_SkyTideNoise, float4(weatherUV, 0, 0)).r * 0.7
+                      + tex2Dlod(_SkyTideNoise, float4(weatherUV / 0.365 + 0.37, 0, 0)).g * 0.3;
+        float cover = smoothstep(0.54 - _Shape.z * 0.20, 0.72 - _Shape.z * 0.08, weather);
+        if (cover < 0.03) return 0.0;
+
+        float heightNoise = tex2Dlod(_SkyTideNoise, float4(weatherUV / 0.6 + 0.71, 0, 0)).g;
+        float tower = smoothstep(0.48, 0.73, heightNoise) * smoothstep(0.28, 0.85, cover);
+        float cloudTop = lerp(38.0, 190.0, tower);   // низкий ковёр и редкие высокие башни
+        if (p.y < _Layer.x || p.y > cloudTop) return 0.0;
+
+        float h = saturate((p.y - _Layer.x) / max(cloudTop - _Layer.x, 1.0));
+        float profile = smoothstep(0.0, 0.14, h) * (1.0 - smoothstep(0.68, 1.0, h));
+
+        float3 qRot = float3(wp.z * 0.8 + wp.x * 0.6, wp.y, wp.x * 0.8 - wp.z * 0.6);
+        float base = tex3Dlod(_Noise3D, float4(wp / _Shape.x, 0)).r * 0.8
+                   + tex3Dlod(_Noise3D, float4(qRot / (_Shape.x * 2.0) + 0.31, 0)).r * 0.2;
+        float mass = saturate((base - lerp(0.58, 0.36, cover)) / 0.25) * profile;
+        if (mass <= 0.001) return 0.0;
+
+        if (detail)
         {
-            float3 dp = (wp + float3(0, _Wind.w * 1.5, 0)) / _Shape.y;   // детали медленно клубятся вверх
-            float4 n = tex3Dlod(_Noise3D, float4(dp, 0));
-            float det = n.g * 0.65 + n.b * 0.35;
-            float edge = lerp(det, 1.0 - det, saturate(h * 6.0));        // у дна — пушистые клочья, выше — завитки
-            d = saturate(d - edge * _DensityParams.y * (1.0 - d));
+            float3 dq = (wp + float3(0, _Wind.w * 1.5, 0)) / _Shape.y;   // детали медленно клубятся вверх
+            float4 n = tex3Dlod(_Noise3D, float4(dq, 0));
+            float erosionNoise = n.g * 0.7 + n.b * 0.3;
+            float edgeFactor = 1.0 - smoothstep(0.45, 0.85, mass);
+            mass -= erosionNoise * _DensityParams.y * 0.75 * edgeFactor;
         }
-        return d * _DensityParams.x;
+        mass = smoothstep(0.08, 0.55, mass);
+        return mass * _DensityParams.x * saturate(cover * 1.15);
     }
 
+    // Оптическая толщина по пути к солнцу (5 проб, отрезки растут ×1.85).
     float LightMarch(float3 p, float3 sunDir)
     {
-        float sum = 0;
-        float stepLen = 18.0;
-        [unroll]
+        float opticalDepth = 0.0;
+        float distanceToSample = 0.0;
+        float segment = 12.0;
         for (int k = 0; k < 5; k++)
         {
-            p += sunDir * stepLen;
-            sum += Density(p, false) * stepLen;
-            stepLen *= 1.8;
+            float3 samplePos = p + sunDir * (distanceToSample + segment * 0.5);
+            opticalDepth += Density(samplePos, false) * segment;
+            distanceToSample += segment;
+            segment *= 1.85;
+            if (opticalDepth > 5.0) break;
         }
-        return sum;
+        return opticalDepth;
     }
 
     // Белый шум для смещения начала шагов (убирает ступени; зерно размывается апскейлом).
@@ -154,59 +167,100 @@ Shader "Hidden/SkyTide/VolumetricClouds"
 
         int steps = (int)_Layer.w;
         float stepLen = (tB - tA) / steps;
-        float t = tA + stepLen * Hash(floor(i.uv * _ScreenParams.xy));
+        float jitter = Hash(floor(i.uv * _LowRes.xy));
+        float t = tA + stepLen * (0.5 + 0.2 * (jitter - 0.5));
 
         float3 sunDir = normalize(_SkyTideSunDir.xyz);
         float cosT = dot(rd, sunDir);
-        float phase = lerp(HG(cosT, _Phase.y), HG(cosT, _Phase.x), _Phase.z) * 12.566;
-        phase += pow(saturate(cosT), 12.0) * _Phase.w;   // яркий серебряный край против солнца
+        float phase = min(lerp(HG(cosT, _Phase.y), HG(cosT, _Phase.x), saturate(_Phase.z)) * 12.566371, 2.3);
 
         float3 light = 0;
         float trans = 1;
         float distAcc = 0;
-        float wAcc = 0;
+        float weightAcc = 0;
         [loop]
         for (int s = 0; s < steps; s++)
         {
             float3 p = ro + rd * t;
-            float d = Density(p, true);
-            if (d > 0.002)
+            float d = Density(p, t < 700.0);
+            // Растворение у камеры и перед концом дальности марша.
+            d *= smoothstep(25.0, 105.0, t) * (1.0 - smoothstep(_Layer.z * 0.75, _Layer.z, t));
+            if (d > 0.0003)
             {
-                float od = LightMarch(p, sunDir) * _DensityParams.z;
-                float beer = exp(-od);
-                float powder = 1.0 - exp(-d * 2.0 * _DensityParams.w);
-                float sunL = beer * lerp(1.0, powder, 0.55) * phase;
-                float h = saturate((p.y - _Layer.x) / (_Layer.y - _Layer.x));
-                float3 amb = lerp(_AmbientBottom.rgb, _AmbientTop.rgb, h);
-                float3 lum = _SunColor.rgb * sunL + amb;
-
+                float sunT = exp(-LightMarch(p, sunDir) * _DensityParams.z);
+                // Кайма против солнца — только на тонких краях.
+                float edge = pow(1.0 - saturate(d / max(_DensityParams.x * 0.7, 1e-5)), 1.6);
+                float rim = edge * pow(saturate(cosT), 4.0);
+                float sunLight = sunT * phase * (1.0 + _Phase.w * rim);
+                // Дешёвое затенение фонового света в плотной середине.
+                float ambientFactor = lerp(0.12, 0.8, exp(-d * 90.0));
+                float hh = saturate((p.y - _Layer.x) / max(_Layer.y - _Layer.x, 1.0));
+                float3 ambient = lerp(_AmbientBottom.rgb, _AmbientTop.rgb, hh) * ambientFactor;
+                const float albedo = 0.86;
+                float3 source = _SunColor.rgb * sunLight + ambient;
                 float stepTrans = exp(-d * stepLen);
-                // Энергосберегающее интегрирование (Hillaire): свет внутри шага.
-                float3 integ = lum * (1.0 - stepTrans);
-                light += trans * integ;
-                distAcc += t * trans * (1.0 - stepTrans);
-                wAcc += trans * (1.0 - stepTrans);
+                float stepOpacity = 1.0 - stepTrans;
+                light += trans * source * albedo * stepOpacity;
+                float wgt = trans * stepOpacity;
+                distAcc += t * wgt;
+                weightAcc += wgt;
                 trans *= stepTrans;
-                if (trans < 0.02) { trans = 0; break; }
+                if (trans < 0.04) { trans = 0; break; }
             }
             t += stepLen;
         }
 
-        // Воздушная перспектива: дальние облака растворяются в небе за ними.
-        float meanDist = wAcc > 1e-4 ? distAcc / wAcc : tB;
-        float fade = SkyTideAerial(meanDist);
-        light = lerp(light, SkyTidePanorama(rd) * (1.0 - trans), fade);
+        // Мягкая воздушная перспектива: не заменять форму облаков цветом неба.
+        float meanDist = weightAcc > 1e-4 ? distAcc / weightAcc : tB;
+        light = lerp(light, SkyTidePanorama(rd) * (1.0 - trans), 0.2 * saturate(SkyTideAerial(meanDist)));
         return float4(light, trans);
     }
 
+    float SceneDepthForClouds(float2 uv)
+    {
+        float raw = SAMPLE_DEPTH_TEXTURE(_CameraDepthTexture, uv);
+        if (Linear01Depth(raw) >= 0.999) return 4096.0;
+        return min(LinearEyeDepth(raw), 4096.0);
+    }
+
+    float4 fragLowDepth (v2f i) : SV_Target
+    {
+        return float4(SceneDepthForClouds(i.uv), 0, 0, 1);
+    }
+
+    // Сведение с учётом глубины: облака не «перетекают» через силуэт корабля.
     half4 fragComposite (v2f i) : SV_Target
     {
         half4 scene = tex2D(_MainTex, i.uv);
-        float2 cuv = i.uv;
+        float2 uv = i.uv;
         #if UNITY_UV_STARTS_AT_TOP
-        if (_MainTex_TexelSize.y < 0) cuv.y = 1 - cuv.y;
+        if (_MainTex_TexelSize.y < 0) uv.y = 1 - uv.y;
         #endif
-        half4 c = tex2D(_CloudTex, cuv);
+        float2 lowSize = _LowRes.xy;
+        float2 pixelPos = uv * lowSize - 0.5;
+        float2 basePixel = floor(pixelPos);
+        float2 f = frac(pixelPos);
+        float referenceDepth = SceneDepthForClouds(uv);
+        float4 result = 0;
+        float totalWeight = 0;
+        float nearestDifference = 1e20;
+        float4 nearestCloud = float4(0, 0, 0, 1);
+        for (int y = 0; y < 2; y++)
+        {
+            for (int x = 0; x < 2; x++)
+            {
+                float2 pixel = clamp(basePixel + float2(x, y), float2(0, 0), lowSize - 1.0);
+                float2 sampleUV = (pixel + 0.5) / lowSize;
+                float4 cloud = tex2D(_CloudTex, sampleUV);
+                float diff = abs(tex2D(_LowDepthTex, sampleUV).r - referenceDepth);
+                float spatial = (x == 0 ? 1.0 - f.x : f.x) * (y == 0 ? 1.0 - f.y : f.y);
+                float w = spatial * exp(-diff / max(3.0, referenceDepth * 0.02));
+                result += cloud * w;
+                totalWeight += w;
+                if (diff < nearestDifference) { nearestDifference = diff; nearestCloud = cloud; }
+            }
+        }
+        float4 c = totalWeight > 1e-5 ? result / totalWeight : nearestCloud;
         if (_Debug > 0.5 && _Debug < 2.5) return half4(c.rgb, 1);
         if (_Debug > 2.5) return half4(c.aaa, 1);
         return half4(scene.rgb * c.a + c.rgb, scene.a);
@@ -225,6 +279,12 @@ Shader "Hidden/SkyTide/VolumetricClouds"
         Pass { CGPROGRAM
             #pragma vertex vert
             #pragma fragment fragComposite
+            #pragma target 3.5
+            ENDCG }
+        Pass { CGPROGRAM
+            #pragma vertex vert
+            #pragma fragment fragLowDepth
+            #pragma target 3.5
             ENDCG }
     }
     Fallback Off

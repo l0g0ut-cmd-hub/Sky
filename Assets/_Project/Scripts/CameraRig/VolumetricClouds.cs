@@ -17,32 +17,32 @@ namespace SkyTide
 
         [Header("Качество")]
         [Range(1, 8)] public int resolutionDivider = 4;
-        [Range(16, 96)] public int steps = 40;
-        public float marchDistance = 2200f;
+        [Range(16, 96)] public int steps = 48;
+        public float marchDistance = 1400f;
 
         [Header("Форма")]
         public float layerBottom = -10f;
         public float layerTop = 220f;
-        public float shapeScale = 1100f;
-        public float detailScale = 170f;
-        [Range(0f, 1f)] public float coverage = 0.45f;
-        public float coverageScale = 5200f;
-        public float density = 0.014f;
-        public float erosion = 0.6f;
+        public float shapeScale = 480f;
+        public float detailScale = 105f;
+        [Range(0f, 1f)] public float coverage = 0.42f;
+        public float coverageScale = 3600f;
+        public float density = 0.0065f;
+        public float erosion = 0.35f;
         public Vector3 wind = new Vector3(-6f, 0f, 2.6f);
 
         [Header("Свет")]
-        public float lightAbsorption = 1.1f;
-        public float powder = 1.0f;
-        public Color sunColor = new Color(1f, 0.62f, 0.34f);
-        public float sunIntensity = 1.7f;
-        public Color ambientTop = new Color(0.78f, 0.46f, 0.42f);
-        public Color ambientBottom = new Color(0.36f, 0.24f, 0.36f);
-        public float ambientIntensity = 0.42f;
-        public float forwardG = 0.62f;
+        public float lightAbsorption = 1.35f;
+        public float powder = 0f;   // пока не используется
+        public Color sunColor = new Color(1f, 0.48f, 0.2f);
+        public float sunIntensity = 1.1f;
+        public Color ambientTop = new Color(0.4f, 0.26f, 0.43f);
+        public Color ambientBottom = new Color(0.18f, 0.12f, 0.28f);
+        public float ambientIntensity = 0.24f;
+        public float forwardG = 0.45f;
         public float backG = -0.25f;
-        [Range(0f, 1f)] public float phaseMix = 0.75f;
-        public float silverLining = 2.2f;
+        [Range(0f, 1f)] public float phaseMix = 0.55f;
+        public float silverLining = 0.45f;
 
         [Header("Отладка")]
         [Range(0, 3)] public int debugView;   // 1 — поля шума, 2 — только облака, 3 — пропускание
@@ -123,11 +123,18 @@ namespace SkyTide
 
             int w = Mathf.Max(16, src.width / resolutionDivider);
             int h = Mathf.Max(16, src.height / resolutionDivider);
+            mat.SetVector("_LowRes", new Vector4(w, h, 1f / w, 1f / h));
             RenderTexture clouds = RenderTexture.GetTemporary(w, h, 0, RenderTextureFormat.ARGBHalf);
-            clouds.filterMode = FilterMode.Bilinear;
-            Graphics.Blit(src, clouds, mat, 0);
+            RenderTextureFormat depthFmt = SystemInfo.SupportsRenderTextureFormat(RenderTextureFormat.RHalf) ? RenderTextureFormat.RHalf : RenderTextureFormat.ARGBHalf;
+            RenderTexture lowDepth = RenderTexture.GetTemporary(w, h, 0, depthFmt);
+            clouds.filterMode = FilterMode.Point;
+            lowDepth.filterMode = FilterMode.Point;
+            Graphics.Blit(src, clouds, mat, 0);     // марш луча
+            Graphics.Blit(src, lowDepth, mat, 2);   // глубина сцены в низком разрешении
             mat.SetTexture("_CloudTex", clouds);
-            Graphics.Blit(src, dst, mat, 1);
+            mat.SetTexture("_LowDepthTex", lowDepth);
+            Graphics.Blit(src, dst, mat, 1);        // сведение с учётом глубины
+            RenderTexture.ReleaseTemporary(lowDepth);
             RenderTexture.ReleaseTemporary(clouds);
         }
     }

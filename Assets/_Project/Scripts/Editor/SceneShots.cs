@@ -113,6 +113,14 @@ namespace SkyTide.EditorTools
                 boot.SetVolumetric(true);
                 Render(oc, cam, boot, rt, tex, dir, new Shot("30_vol_toward_sun", 35f, 8f, 75f));
                 Render(oc, cam, boot, rt, tex, dir, new Shot("31_vol_wide", 60f, 22f, 140f));
+                Render(oc, cam, boot, rt, tex, dir, new Shot("32_vol_side", 90f, 10f, 60f));
+                Render(oc, cam, boot, rt, tex, dir, new Shot("33_vol_low", -40f, -14f, 70f));
+                // Те же облака без постобработки (настройка формы и света до ACES/блума).
+                SkyTidePost post = cam.GetComponent<SkyTidePost>();
+                if (post != null) post.enabled = false;
+                Render(oc, cam, boot, rt, tex, dir, new Shot("34_vol_nopost_toward_sun", 35f, 8f, 75f));
+                Render(oc, cam, boot, rt, tex, dir, new Shot("35_vol_nopost_wide", 60f, 22f, 140f));
+                if (post != null) post.enabled = true;
                 boot.SetVolumetric(false);
 
                 int shipCount = boot.ships != null ? boot.ships.Length : 0;
