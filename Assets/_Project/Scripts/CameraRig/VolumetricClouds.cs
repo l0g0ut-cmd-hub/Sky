@@ -32,7 +32,7 @@ namespace SkyTide
         public float minRadius = 150f;
         public float maxRadius = 250f;
         public float fieldRadius = 1700f;
-        public float minDistance = 320f;
+        public float minDistance = 480f;
         public float baseHeight = -30f;
         public Vector3 wind = new Vector3(-4f, 0f, 1.8f);
 
@@ -47,17 +47,17 @@ namespace SkyTide
         public float lightAbsorption = 1.5f;
         public Color sunGold = new Color(1f, 0.62f, 0.22f);
         public Color sunEmber = new Color(1f, 0.24f, 0.06f);
-        public float sunIntensity = 9f;
+        public float sunIntensity = 5.2f;
         public Color multiScatter = new Color(0.95f, 0.38f, 0.42f);
         public float multiScatterAmount = 0.2f;
         public Color ambientTop = new Color(0.36f, 0.22f, 0.55f);
         public Color ambientBottom = new Color(0.16f, 0.1f, 0.34f);
-        public float ambientIntensity = 0.8f;
+        public float ambientIntensity = 0.65f;
         public float forwardG = 0.6f;
         public float backG = -0.2f;
         [Range(0f, 1f)] public float phaseMix = 0.65f;
         public float rim = 1.5f;
-        [Range(0f, 1f)] public float aerial = 0.35f;
+        [Range(0f, 1f)] public float aerial = 0.45f;
 
         [Header("Отладка")]
         [Range(0, 3)] public int debugView;   // 1 — поле башен, 2 — только облака, 3 — пропускание
@@ -173,8 +173,8 @@ namespace SkyTide
                 SetTower(i, center + new Vector3(Mathf.Cos(a) * d, 0f, Mathf.Sin(a) * d), r);
             }
             // Две «витринные» башни на старте: впереди между курсом и солнцем и справа по борту.
-            SetTower(0, center + Dir(70f) * 650f, r);
-            SetTower(1, center + Dir(150f) * 560f, r);
+            SetTower(0, center + Dir(70f) * 950f, r);
+            SetTower(1, center + Dir(150f) * 820f, r);
             placed = true;
         }
 
