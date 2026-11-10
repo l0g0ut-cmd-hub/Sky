@@ -19,6 +19,13 @@
 
 3. СБОРКА (CI) — ВАЖНО ПРО ЛИМИТ
 --------------------------------
+!!! ЛОКАЛЬНЫЙ UNITY НЕ НУЖЕН И ЕГО НЕТ. Unity Editor запускается ТОЛЬКО в GitHub Actions (контейнер GameCI).
+    Работа так: правишь код/шейдеры в репозитории → коммит в main → по команде владельца пуш в apk-build →
+    CI сам собирает сцену (SceneBuilder), снимает кадры (SceneShots) и собирает APK. Ошибки компиляции C#
+    и шейдеров — в logs/run-N.log ветки ci-logs (искать "error CS", "Shader error", "Exception").
+    Результат смотреть по кадрам shots/*.jpg в ветке apk-latest, на телефоне — APK оттуда же.
+    Python-инструменты (tools/) работают без Unity: numpy, Pillow, opencv.
+
 - Workflow: .github/workflows/build-android.yml (GameCI CLI v0.1.72, Unity 6000.0.36f1, Android IL2CPP ARM64).
 - Сборка запускается ТОЛЬКО пушем в ветку apk-build (или вручную workflow_dispatch). Пуш в main сборку НЕ запускает.
     git push -f origin main:apk-build
