@@ -285,9 +285,9 @@ Shader "Hidden/SkyTide/VolumetricClouds"
                 float ms = exp(-tau * 0.25) * _MultiScatter.a;
                 float h = saturate((p.y - base) / (top - base));
                 float3 sunCol = lerp(_SunEmber.rgb, _SunGold.rgb, pow(sunT, 0.6));
-                float3 amb = lerp(_AmbientBottom.rgb, _AmbientTop.rgb, h) * lerp(0.45, 1.0, h);
+                float3 amb = lerp(_AmbientBottom.rgb, _AmbientTop.rgb, h) * lerp(0.3, 0.85, h);
                 amb *= lerp(float3(0.6, 0.42, 0.85), float3(1, 1, 1), h);
-                float3 src = sunCol * sunT * phase + _MultiScatter.rgb * ms * h + amb;
+                float3 src = (sunCol * sunT * min(phase, 1.6) + _MultiScatter.rgb * ms * h) * _Deck3.w + amb;
                 float st = exp(-d * stepLen);
                 float wgt = trans * (1.0 - st);
                 light += src * 0.86 * wgt;

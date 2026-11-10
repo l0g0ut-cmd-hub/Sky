@@ -52,8 +52,8 @@ namespace SkyTide
         public float density = 0.035f;
 
         [Header("Объёмное море облаков")]
-        public float deckBase = -50f;
-        public float deckTop = 35f;
+        public float deckBase = -60f;
+        public float deckTop = 20f;
         public float deckDensity = 0.03f;
         [Range(6, 32)] public int deckSteps = 18;
         public float deckWeatherScale = 1400f;
@@ -61,7 +61,9 @@ namespace SkyTide
         public float deckLobeScale = 160f;
         public float deckDetailScale = 55f;
         public float deckDistance = 5000f;
-        public float deckAbsorption = 1.0f;
+        public float deckAbsorption = 1.7f;
+        [Tooltip("Яркость солнца на море облаков: тонкий слой освещён почти целиком — без этого пересвет")]
+        public float deckSunScale = 0.4f;
 
         [Header("Дымка у моря облаков (не используется — заменена объёмным морем)")]
         public float hazeDensity = 0.00045f;
@@ -451,7 +453,7 @@ namespace SkyTide
             mat.SetVector("_Haze", new Vector4(hazeDensity, hazeTop, hazeDistance, hazeSteps));
             mat.SetVector("_Deck", new Vector4(deckBase, deckTop, deckDensity, deckSteps));
             mat.SetVector("_Deck2", new Vector4(deckWeatherScale, deckCoverage, deckLobeScale, deckDetailScale));
-            mat.SetVector("_Deck3", new Vector4(deckDistance, 1600f, deckAbsorption, 0f));
+            mat.SetVector("_Deck3", new Vector4(deckDistance, 1600f, deckAbsorption, deckSunScale));
             mat.SetVectorArray("_Towers", towers);
             mat.SetVectorArray("_TowerRot", towerRot);
             mat.SetFloat("_TowerCount", towerCount);
