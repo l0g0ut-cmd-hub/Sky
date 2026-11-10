@@ -66,6 +66,7 @@ namespace SkyTide.EditorTools
             SkyTideBootstrap b = boot.AddComponent<SkyTideBootstrap>();
             b.materials = mats;
             b.shipMesh = AssetDatabase.LoadAssetAtPath<TextAsset>(Models + "Corsair.bytes");
+            b.noiseTexture = Tex(Art + "Noise.png", false, false, TextureWrapMode.Repeat, TextureWrapMode.Repeat, 256, true, true, true);
             Debug.Log("SkyTide: модель корабля " + (b.shipMesh != null && mats.shipBody != null ? "подключена" : "не найдена — будет заглушка"));
 
             Light sun = new GameObject("Sun").AddComponent<Light>();
@@ -93,11 +94,11 @@ namespace SkyTide.EditorTools
             Texture2D sky = Tex(Art + "SkyPanorama.png", false, false, TextureWrapMode.Repeat, TextureWrapMode.Clamp, 2048, false);
             if (sky != null) mats.skybox = MaterialFactory.PanoramicSkybox(sky);
 
-            Texture2D sea = Tex(Art + "CloudSea.jpg", false, false, TextureWrapMode.Repeat, TextureWrapMode.Repeat, 1024, true);
+            Texture2D sea = Tex(Art + "CloudSea.jpg", false, false, TextureWrapMode.Repeat, TextureWrapMode.Repeat, 1024, true, true);
             if (sea != null) mats.cloudSea = MaterialFactory.CloudSea("CloudSea", sea, false);
-            Texture2D layer = Tex(Art + "CloudLayer.png", false, true, TextureWrapMode.Repeat, TextureWrapMode.Repeat, 1024, true);
+            Texture2D layer = Tex(Art + "CloudLayer.png", false, true, TextureWrapMode.Repeat, TextureWrapMode.Repeat, 1024, true, true);
             if (layer != null) mats.cloudLayer = MaterialFactory.CloudSea("CloudLayer", layer, true);
-            Texture2D sprites = Tex(Art + "CloudSprites.png", false, true, TextureWrapMode.Clamp, TextureWrapMode.Clamp, 2048, true);
+            Texture2D sprites = Tex(Art + "CloudAtlas.png", false, true, TextureWrapMode.Clamp, TextureWrapMode.Clamp, 4096, true);
             if (sprites != null) mats.cloudSprite = MaterialFactory.CloudSprites(sprites);
 
             Texture2D albedo = Tex(Models + "Corsair_Albedo.jpg", false, false, TextureWrapMode.Clamp, TextureWrapMode.Clamp, 4096, true);
@@ -106,12 +107,13 @@ namespace SkyTide.EditorTools
             if (albedo != null) mats.shipBody = MaterialFactory.ShipBody(albedo, normal, emission);
         }
 
-        static Texture2D Tex(string path, bool normalMap, bool alpha, TextureWrapMode wrapU, TextureWrapMode wrapV, int maxSize, bool mips)
+        static Texture2D Tex(string path, bool normalMap, bool alpha, TextureWrapMode wrapU, TextureWrapMode wrapV, int maxSize, bool mips, bool uncompressed = false, bool linear = false)
         {
             TextureImporter ti = AssetImporter.GetAtPath(path) as TextureImporter;
             if (ti == null) return null;
             ti.textureType = normalMap ? TextureImporterType.NormalMap : TextureImporterType.Default;
-            ti.sRGBTexture = !normalMap;
+            ti.sRGBTexture = !normalMap && !linear;
+            ti.textureCompression = uncompressed ? TextureImporterCompression.Uncompressed : TextureImporterCompression.Compressed;
             ti.alphaSource = alpha ? TextureImporterAlphaSource.FromInput : TextureImporterAlphaSource.None;
             ti.alphaIsTransparency = alpha;
             ti.wrapModeU = wrapU;

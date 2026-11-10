@@ -93,6 +93,14 @@ jobs:
           path: build/Android/*.apk
           if-no-files-found: warn
 
+      - name: Upload shots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: SkyTide-Shots
+          path: build/shots/*.jpg
+          if-no-files-found: ignore
+
       # APK в ветку apk-latest (один коммит, перезаписывается) — чтобы его можно было забрать через git.
       - name: Publish APK to apk-latest branch
         if: success()
@@ -103,6 +111,7 @@ jobs:
           D="$RUNNER_TEMP/apkdrop"; rm -rf "$D"; mkdir -p "$D"; cd "$D"
           git init -q; git checkout -q -b apk-latest
           sudo cp "$GITHUB_WORKSPACE"/build/Android/*.apk ./SkyTide.apk; sudo chown "$(id -u)" SkyTide.apk
+          if ls "$GITHUB_WORKSPACE"/build/shots/*.jpg >/dev/null 2>&1; then mkdir -p shots; sudo cp "$GITHUB_WORKSPACE"/build/shots/*.jpg shots/; sudo chown -R "$(id -u)" shots; fi
           echo "run ${GITHUB_RUN_NUMBER} sha ${GITHUB_SHA}" > info.txt
           git -c user.name=ci -c user.email=ci@local add -A
           git -c user.name=ci -c user.email=ci@local commit -qm "apk run ${GITHUB_RUN_NUMBER}"

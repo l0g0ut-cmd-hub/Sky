@@ -31,6 +31,7 @@ namespace SkyTide.EditorTools
                 Debug.Log("SkyTide: сборка APK → " + path);
 
                 SceneBuilder.Build();
+                SceneShots.Capture(SceneBuilder.ScenePath);   // кадры для оценки картинки (build/shots)
                 ConfigurePlayer();
 
                 BuildPlayerOptions opts = new BuildPlayerOptions();

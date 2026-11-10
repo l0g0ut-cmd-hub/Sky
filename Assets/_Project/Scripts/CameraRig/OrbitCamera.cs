@@ -30,12 +30,18 @@ namespace SkyTide
 
         void LateUpdate()
         {
+            Apply(Time.deltaTime);
+        }
+
+        /// <summary>Ставит камеру на орбиту. Публичный — для кадров в CI.</summary>
+        public void Apply(float dt)
+        {
             if (target == null) return;
             pitch = Mathf.Clamp(pitch, minPitch, maxPitch);
             distance = Mathf.Clamp(distance, minDistance, maxDistance);
 
             float heading = target.eulerAngles.y;
-            float k = 1f - Mathf.Exp(-followSharpness * Time.deltaTime);
+            float k = 1f - Mathf.Exp(-followSharpness * dt);
             if (!snapped)
             {
                 smoothHeading = heading;

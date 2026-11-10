@@ -21,8 +21,6 @@ namespace SkyTide
         public Material cloudSea;
         public Material cloudLayer;
         public Material cloudPuff;
-        public Material rock;
-        public Material castle;
         public Material skybox;
         [Tooltip("Материал модели корабля (текстуры из Meshy). Пусто — корабль из примитивов.")]
         public Material shipBody;
@@ -43,8 +41,6 @@ namespace SkyTide
             if (cloudSea == null) cloudSea = MaterialFactory.Opaque("CloudSea", Color.white, 0f);
             if (cloudLayer == null) cloudLayer = MaterialFactory.Fade("CloudLayer", Color.white, 0f);
             if (cloudPuff == null) cloudPuff = MaterialFactory.Fade("CloudPuff", new Color(1f, 0.88f, 0.8f, 0.82f), 0f);
-            if (rock == null) rock = MaterialFactory.Opaque("Rock", new Color(0.22f, 0.18f, 0.19f), 0.1f);
-            if (castle == null) castle = MaterialFactory.Opaque("Castle", new Color(0.13f, 0.11f, 0.12f), 0.1f);
             if (skybox == null) skybox = MaterialFactory.Skybox();
         }
     }

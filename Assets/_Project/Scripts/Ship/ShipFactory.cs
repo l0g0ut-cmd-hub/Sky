@@ -142,7 +142,7 @@ namespace SkyTide
         {
             GameObject go = GameObject.CreatePrimitive(type);
             Collider col = go.GetComponent<Collider>();
-            if (col != null) Object.Destroy(col);
+            if (col != null) SkyTideBootstrap.SafeDestroy(col);
             go.transform.SetParent(parent, false);
             go.transform.localPosition = localPos;
             go.transform.localRotation = Quaternion.Euler(localEuler);

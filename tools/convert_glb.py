@@ -1,12 +1,13 @@
 """
 Конвертер модели корабля из GLB (Meshy и т.п.) в формат прототипа.
 
-    python3 tools/convert_glb.py model.glb --name Corsair --length 38 --cell 0.011 --uvcell 0.03
+    python3 tools/convert_glb.py model.glb --name Corsair --length 38 --cell 0.009
 
 Что делает:
   1. Читает GLB (один меш, один материал PBR) без сторонних библиотек (нужны numpy, Pillow, opencv).
-  2. Упрощает меш кластеризацией вершин (сетка по позиции + по UV, чтобы не рвать швы текстуры).
-     --cell — размер ячейки в единицах модели (больше → меньше треугольников).
+  2. Упрощает меш кластеризацией вершин: позиция общая на ячейку (без трещин на швах),
+     UV — внутри своего острова развёртки. --cell — размер ячейки (больше → меньше треугольников).
+     Пустоты атласа заливаются цветом соседних островов (без светлых швов на мипмапах).
   3. Переводит в координаты Unity: левая СК, нос в +Z, длина --length метров, центр габаритов на высоте 10 м.
      Нос исходной модели — по --nose (-x по умолчанию, как у Meshy). Порядок вершин треугольников
      выравнивается по нормалям (у Meshy материал двусторонний, а Standard рисует одну сторону).
@@ -56,23 +57,41 @@ def read_glb(path):
     return mesh, albedo, normal
 
 
-def decimate(m, cell, uvcell):
+def decimate(m, cell):
+    """Кластеризация вершин без трещин.
+    Позиция — общая для всей ячейки сетки (вершины по обе стороны шва UV получают одну точку, геометрия не рвётся).
+    UV и нормаль — средние внутри (ячейка, остров развёртки): острова не смешиваются, текстура не съезжает."""
+    from scipy.sparse import coo_matrix
+    from scipy.sparse.csgraph import connected_components
     pos, nrm, uv, idx = m['pos'], m['nrm'], m['uv'], m['idx']
+    nv = len(pos)
+    e = np.concatenate([idx[:, [0, 1]], idx[:, [1, 2]], idx[:, [2, 0]]])
+    g = coo_matrix((np.ones(len(e), np.int8), (e[:, 0], e[:, 1])), shape=(nv, nv))
+    nchart, chart = connected_components(g, directed=False)
+    print('островов развёртки:', nchart)
+
     q = np.floor(pos / cell).astype(np.int64)
-    qu = np.floor(uv / uvcell).astype(np.int64)
-    key = np.stack([q[:, 0], q[:, 1], q[:, 2], qu[:, 0], qu[:, 1]], 1)
-    _, cl = np.unique(key, axis=0, return_inverse=True)
+    _, pcell = np.unique(q, axis=0, return_inverse=True)
+    pcell = pcell.ravel()
+    _, cl = np.unique(np.stack([pcell, chart], 1), axis=0, return_inverse=True)
     cl = cl.ravel()
     k = cl.max() + 1
-    cnt = np.bincount(cl, minlength=k)[:, None]
 
-    def avg(a):
-        return np.stack([np.bincount(cl, a[:, i], k) for i in range(a.shape[1])], 1) / cnt
+    def avg(a, lab, n):
+        c = np.bincount(lab, minlength=n)[:, None]
+        return np.stack([np.bincount(lab, a[:, i], n) for i in range(a.shape[1])], 1) / np.maximum(c, 1)
 
-    P, U, N = avg(pos), avg(uv), avg(nrm)
+    cellpos = avg(pos, pcell, pcell.max() + 1)
+    first = np.zeros(k, np.int64)
+    first[cl] = np.arange(nv)
+    P = cellpos[pcell[first]]
+    U = avg(uv, cl, k)
+    N = avg(nrm, cl, k)
     N /= np.maximum(np.linalg.norm(N, axis=1, keepdims=True), 1e-9)
+
     t = cl[idx]
-    ok = (t[:, 0] != t[:, 1]) & (t[:, 1] != t[:, 2]) & (t[:, 0] != t[:, 2])
+    pt = pcell[idx]
+    ok = (pt[:, 0] != pt[:, 1]) & (pt[:, 1] != pt[:, 2]) & (pt[:, 0] != pt[:, 2])
     t = t[ok]
     _, ui = np.unique(np.sort(t, 1), axis=0, return_index=True)
     t = t[np.sort(ui)]
@@ -80,6 +99,23 @@ def decimate(m, cell, uvcell):
     remap = -np.ones(k, np.int64)
     remap[used] = np.arange(len(used))
     return dict(pos=P[used], nrm=N[used], uv=U[used], idx=remap[t])
+
+
+def dilate(img, uv, tris, pad_iters=None):
+    """Заливает пустоты атласа цветом ближайшего острова: мипмапы и сжатие не тянут фон на швы."""
+    a = np.asarray(img)
+    h, w = a.shape[:2]
+    pts = np.stack([uv[:, 0] * w, uv[:, 1] * h], 1)          # uv здесь в системе glTF: v вниз = строки картинки
+    polys = np.round(pts[tris] * 8).astype(np.int32)
+    mask = np.zeros((h, w), np.uint8)
+    cv2.fillPoly(mask, list(polys), 1, lineType=cv2.LINE_8, shift=3)
+    mask = cv2.dilate(mask, np.ones((3, 3), np.uint8))
+    lab = cv2.distanceTransformWithLabels(1 - mask, cv2.DIST_L2, 5, labelType=cv2.DIST_LABEL_PIXEL)[1]
+    ys, xs = np.nonzero(mask)
+    lut = np.zeros((lab.max() + 1,) + a.shape[2:], a.dtype)
+    lut[lab[ys, xs]] = a[ys, xs]
+    out = np.where(mask[..., None].astype(bool), a, lut[lab])
+    return Image.fromarray(out)
 
 
 def to_unity(m, nose, length):
@@ -129,20 +165,21 @@ def main():
     ap.add_argument('--name', default='Corsair')
     ap.add_argument('--length', type=float, default=38.0)
     ap.add_argument('--cell', type=float, default=0.011)
-    ap.add_argument('--uvcell', type=float, default=0.03)
     ap.add_argument('--nose', default='-x', choices=['-x', '+x', '-z', '+z'])
     ap.add_argument('--out', default=os.path.join(os.path.dirname(__file__), '..', 'Assets', '_Project', 'Models'))
     a = ap.parse_args()
 
     mesh, albedo, normal = read_glb(a.glb)
     print('исходник: треугольников', len(mesh['idx']), ' альбедо', albedo.size)
-    P, N, U, T = to_unity(decimate(mesh, a.cell, a.uvcell), a.nose, a.length)
+    dec = decimate(mesh, a.cell)
+    P, N, U, T = to_unity(dec, a.nose, a.length)
     os.makedirs(a.out, exist_ok=True)
     write_bytes(os.path.join(a.out, a.name + '.bytes'), P, N, U, T)
-    albedo.resize((4096, 4096), Image.LANCZOS).save(os.path.join(a.out, a.name + '_Albedo.jpg'), quality=92)
+    alb4 = dilate(albedo.resize((4096, 4096), Image.LANCZOS), dec['uv'], dec['idx'])
+    alb4.save(os.path.join(a.out, a.name + '_Albedo.jpg'), quality=92)
     if normal is not None:
-        normal.resize((2048, 2048), Image.LANCZOS).save(os.path.join(a.out, a.name + '_Normal.png'))
-    emission_from_albedo(albedo.resize((2048, 2048), Image.LANCZOS)).save(os.path.join(a.out, a.name + '_Emission.png'))
+        dilate(normal.resize((2048, 2048), Image.LANCZOS), dec['uv'], dec['idx']).save(os.path.join(a.out, a.name + '_Normal.png'))
+    emission_from_albedo(alb4.resize((2048, 2048), Image.LANCZOS)).save(os.path.join(a.out, a.name + '_Emission.png'))
     print('готово →', os.path.abspath(a.out))
 
 

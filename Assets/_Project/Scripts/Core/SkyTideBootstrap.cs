@@ -15,6 +15,9 @@ namespace SkyTide
         [Tooltip("Меш из tools/convert_glb.py (Corsair.bytes). Пусто — заглушка из примитивов.")]
         public TextAsset shipMesh;
 
+        [Tooltip("Бесшовный шум RG для анимации облаков (Art/Noise.png). Пусто — генерируется.")]
+        public Texture2D noiseTexture;
+
         [Header("Старт")]
         public Vector3 spawnPosition = new Vector3(0f, 60f, 0f);
         [Tooltip("Курс на старте. Солнце на панораме — в направлении +X (курс 90°).")]
@@ -23,9 +26,21 @@ namespace SkyTide
         public static SkyTideBootstrap Instance { get; private set; }
 
         public ShipController Ship { get; private set; }
+        public OrbitCamera Cam { get; private set; }
+        public CloudSea World { get; private set; }
+
+        bool initialized;
 
         void Awake()
         {
+            Init();
+        }
+
+        /// <summary>Собирает всё. Вызывается из Awake, а в редакторе — для кадров в CI (там Awake не срабатывает).</summary>
+        public void Init()
+        {
+            if (initialized) return;
+            initialized = true;
             Instance = this;
             materials.EnsureAll();
 
@@ -36,10 +51,12 @@ namespace SkyTide
             ApplyEnvironment(materials);
             Light sun = SetupSun();
             RenderSettings.sun = sun;
-            SetShaderGlobals(materials, sun);
+            SetShaderGlobals(materials, sun, noiseTexture);
             OrbitCamera cam = SetupCamera();
+            Cam = cam;
 
-            gameObject.AddComponent<CloudSea>().Build(materials);
+            World = gameObject.AddComponent<CloudSea>();
+            World.Build(materials);
 
             Ship = ShipFactory.Build("Player Ship", spawnPosition, spawnHeading, materials, ShipMeshLoader.Load(shipMesh));
 
@@ -69,9 +86,12 @@ namespace SkyTide
         }
 
         /// <summary>Общие параметры для шейдеров облаков (SkyTide.cginc).</summary>
-        static void SetShaderGlobals(GameMaterials m, Light sun)
+        static Texture keepNoise;   // держим ссылку, чтобы созданная на лету текстура не выгрузилась
+
+        static void SetShaderGlobals(GameMaterials m, Light sun, Texture2D noise)
         {
-            Shader.SetGlobalTexture("_SkyTideNoise", SkyNoise.Flow(128));
+            keepNoise = noise != null ? (Texture)noise : SkyNoise.Flow(128);
+            Shader.SetGlobalTexture("_SkyTideNoise", keepNoise);
             Shader.SetGlobalVector("_SkyTideSunDir", -sun.transform.forward);
             Texture pano = null;
             if (m.skybox != null && m.skybox.HasProperty("_MainTex")) pano = m.skybox.GetTexture("_MainTex");
@@ -85,6 +105,14 @@ namespace SkyTide
             Shader.SetGlobalTexture("_SkyTidePanorama", pano);
             // Воздушная перспектива: с 450 м облака начинают растворяться в небе, к 2200 м — почти полностью.
             Shader.SetGlobalVector("_SkyTideAerial", new Vector4(450f, 2200f, 0.96f, 0f));
+        }
+
+        /// <summary>Destroy в игре, DestroyImmediate в редакторе (кадры для CI собираются вне Play Mode).</summary>
+        public static void SafeDestroy(Object o)
+        {
+            if (o == null) return;
+            if (Application.isPlaying) Destroy(o);
+            else DestroyImmediate(o);
         }
 
         public static void ConfigureSun(Light l)
