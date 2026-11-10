@@ -228,6 +228,9 @@ namespace SkyTide
             return Mathf.Sign(x) * (a - dz) / (1f - dz);
         }
 
+        string buildText;
+        GUIStyle buildStyle;
+
         void OnGUI()
         {
             if (Event.current.type != EventType.Repaint) return;
@@ -283,6 +286,22 @@ namespace SkyTide
                 GUI.color = new Color(1f, 0.92f, 0.8f, 1f);
                 GUI.Label(cr, "Облака: " + (game.volumetricClouds ? "объёмные (тест)" : "рисованные"), buttonStyle);
                 GUI.Label(new Rect(cr.x, cr.yMax + 2f, cr.width, cr.height * 0.6f), Mathf.RoundToInt(fps) + " FPS", buttonStyle);
+            }
+
+            {
+                if (buildText == null)
+                {
+                    TextAsset bn = Resources.Load<TextAsset>("BuildNumber");
+                    buildText = bn != null ? "Сборка " + bn.text.Trim() : "Сборка (редактор)";
+                    buildStyle = new GUIStyle(GUI.skin.label);
+                    buildStyle.alignment = TextAnchor.LowerRight;
+                }
+                buildStyle.fontSize = Mathf.RoundToInt(u * 0.03f);
+                Rect vr = new Rect(Screen.width - u * 0.6f - u * 0.03f, Screen.height - u * 0.08f - u * 0.02f, u * 0.6f, u * 0.08f);
+                GUI.color = new Color(0f, 0f, 0f, 0.55f);
+                GUI.Label(new Rect(vr.x + 2f, vr.y + 2f, vr.width, vr.height), buildText, buildStyle);
+                GUI.color = new Color(1f, 0.92f, 0.8f, 0.85f);
+                GUI.Label(vr, buildText, buildStyle);
             }
 
             if (hintAlpha > 0.01f)

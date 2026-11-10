@@ -19,3 +19,4 @@ build.log
 ci.log
 ci-scrubbed.log
 put.json
+Assets/_Project/Resources/BuildNumber.txt*

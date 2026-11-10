@@ -178,7 +178,7 @@ Shader "Hidden/SkyTide/VolumetricClouds"
             float2 wuv = (p.xz + _Wind.xz * _Wind.w) / 2600.0;
             float w = tex2Dlod(_SkyTideNoise, float4(wuv, 0, 0)).r * 0.65 + tex2Dlod(_SkyTideNoise, float4(wuv * 3.1 + 0.4, 0, 0)).g * 0.35;
             float hf = saturate(1.0 - max(p.y, 0.0) / top);
-            float d = _Haze.x * smoothstep(0.35, 0.75, w) * hf * hf * smoothstep(25.0, 120.0, t);
+            float d = _Haze.x * lerp(0.25, 1.0, smoothstep(0.2, 0.85, w)) * hf * hf * smoothstep(25.0, 120.0, t) * (1.0 - smoothstep(_Haze.z * 0.6, _Haze.z, t));
             float3 amb = lerp(_AmbientBottom.rgb, _AmbientTop.rgb, 0.6);
             float3 src = sunCol * phase * 0.1 + amb * 0.9;
             float st = exp(-d * dt);
@@ -209,7 +209,7 @@ Shader "Hidden/SkyTide/VolumetricClouds"
             float3 fwd = mul((float3x3)_CamToWorld, float3(0, 0, -1));
             sceneDist = LinearEyeDepth(rawDepth) / max(dot(rd, fwd), 1e-3);
         }
-        float jit = 0.5 + 0.25 * (Hash(floor(i.uv * _LowRes.xy)) - 0.5);
+        float jit = Hash(floor(i.uv * _LowRes.xy));  // полный диапазон: без полос-«ступенек», зерно уберёт размытие
         float3 sunDirH = normalize(_SkyTideSunDir.xyz);
         float cosH = dot(rd, sunDirH);
         float phaseH = min(lerp(HG(cosH, _Phase.y), HG(cosH, _Phase.x), _Phase.z) * 12.566, 2.6);

@@ -70,6 +70,11 @@ jobs:
           bash "$RUNNER_TEMP/gc-install.sh" "$GAMECI_VERSION" "$GAME_CI_INSTALL" 2>&1 | tee -a "$RUNNER_TEMP/ci.log"
           echo "$GAME_CI_INSTALL" >> "$GITHUB_PATH"
 
+      - name: Stamp build number
+        run: |
+          mkdir -p Assets/_Project/Resources
+          echo -n "${GITHUB_RUN_NUMBER}" > Assets/_Project/Resources/BuildNumber.txt
+
       - name: Build APK
         env:
           UNITY_EMAIL: ${{ secrets.UNITY_EMAIL }}

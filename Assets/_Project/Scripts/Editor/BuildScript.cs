@@ -69,8 +69,11 @@ namespace SkyTide.EditorTools
         {
             PlayerSettings.companyName = "SkyTide";
             PlayerSettings.productName = "Небесный прилив";
-            PlayerSettings.bundleVersion = "0.1.0";
-            PlayerSettings.Android.bundleVersionCode = 1;
+            int buildNo = 1;
+            string bnPath = "Assets/_Project/Resources/BuildNumber.txt";
+            if (System.IO.File.Exists(bnPath)) int.TryParse(System.IO.File.ReadAllText(bnPath).Trim(), out buildNo);
+            PlayerSettings.bundleVersion = "0.1." + buildNo;
+            PlayerSettings.Android.bundleVersionCode = Mathf.Max(1, buildNo);
 
             PlayerSettings.SetApplicationIdentifier(NamedBuildTarget.Android, "com.skytide.prototype");
             PlayerSettings.SetScriptingBackend(NamedBuildTarget.Android, ScriptingImplementation.IL2CPP);
