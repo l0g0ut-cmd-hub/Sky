@@ -73,6 +73,14 @@ Shader "Hidden/SkyTide/VolumetricClouds"
         return (1.0 - g2) / (12.566 * pow(max(1.0 + g2 - 2.0 * g * c, 1e-3), 1.5));
     }
 
+    // Упорядоченный сдвиг 4×4 (Байер): после размытия усредняется почти без остатка — нет «грязного стекла».
+    static const float kBayer[16] = { 0, 8, 2, 10, 12, 4, 14, 6, 3, 11, 1, 9, 15, 7, 13, 5 };
+    float Bayer4(float2 px)
+    {
+        int2 q = int2(fmod(px, 4.0));
+        return (kBayer[q.y * 4 + q.x] + 0.5) / 16.0;
+    }
+
     float Hash(float2 px)
     {
         float3 p3 = frac(float3(px.xyx) * 0.1031);
@@ -219,7 +227,8 @@ Shader "Hidden/SkyTide/VolumetricClouds"
             float3 fwd = mul((float3x3)_CamToWorld, float3(0, 0, -1));
             sceneDist = LinearEyeDepth(rawDepth) / max(dot(rd, fwd), 1e-3);
         }
-        float jit = Hash(floor(i.uv * _LowRes.xy));  // полный диапазон: без полос-«ступенек», зерно уберёт размытие
+        float2 jpx = floor(i.uv * _LowRes.xy);
+        float jit = bake ? Hash(jpx) : Bayer4(jpx);  // в кадре — Байер (размытие его съедает), в снимках — хэш
         float3 sunDirH = normalize(_SkyTideSunDir.xyz);
         float cosH = dot(rd, sunDirH);
         float phaseH = min(lerp(HG(cosH, _Phase.y), HG(cosH, _Phase.x), _Phase.z) * 12.566, 2.6);

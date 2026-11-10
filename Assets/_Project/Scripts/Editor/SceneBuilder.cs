@@ -206,7 +206,8 @@ namespace SkyTide.EditorTools
             ti.wrapModeV = wrapV;
             ti.maxTextureSize = maxSize;
             ti.mipmapEnabled = mips;
-            ti.anisoLevel = 4;
+            // Анизотропия без мипов бессмысленна и на шве панорамы (скачок производных) рисует пунктир.
+            ti.anisoLevel = mips ? 4 : 0;
             ti.SaveAndReimport();
             return AssetDatabase.LoadAssetAtPath<Texture2D>(path);
         }
