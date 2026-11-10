@@ -68,6 +68,8 @@ namespace SkyTide.EditorTools
             SkyTideBootstrap b = boot.AddComponent<SkyTideBootstrap>();
             b.materials = mats;
             b.ships = BuildShipVariants(mats);
+            TextAsset meshyT = AssetDatabase.LoadAssetAtPath<TextAsset>(Models + "Corsair.bytes");
+            b.targetShip = meshyT != null && mats.shipBody != null ? new ShipVariant { name = "Мишень", mesh = meshyT, materials = new[] { mats.shipBody } } : null;
             b.postShader = AssetDatabase.LoadAssetAtPath<Shader>("Assets/_Project/Shaders/PostFX.shader");
             b.volumetricShader = AssetDatabase.LoadAssetAtPath<Shader>("Assets/_Project/Shaders/VolumetricClouds.shader");
             b.impostorShader = AssetDatabase.LoadAssetAtPath<Shader>("Assets/_Project/Shaders/CloudImpostor.shader");
@@ -151,8 +153,7 @@ namespace SkyTide.EditorTools
                 list.Add(repaired);
             }
             TextAsset meshy = AssetDatabase.LoadAssetAtPath<TextAsset>(Models + "Corsair.bytes");
-            if (meshy != null && mats.shipBody != null)
-                list.Add(new ShipVariant { name = "Корсар (Meshy)", mesh = meshy, materials = new[] { mats.shipBody } });
+            // Модель Meshy — больше не в выборе: это корабль-мишень (SkyTideBootstrap.targetShip).
             return list.ToArray();
         }
 

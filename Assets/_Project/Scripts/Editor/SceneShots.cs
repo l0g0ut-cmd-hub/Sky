@@ -134,6 +134,16 @@ namespace SkyTide.EditorTools
                     boot.SetVolumetric(true);
                     for (int k = 0; k < 30; k++) boot.Fx.Simulate(0.05f);
                     Render(oc, cam, boot, rt, tex, dir, new Shot("43_vol_broadside_later", 60f, 10f, 90f));
+                    // Мишень и взрыв попадания — перед кораблём игрока по линии камеры.
+                    if (boot.Target != null)
+                    {
+                        oc.yaw = 60f; oc.pitch = 10f; oc.distance = 90f; oc.Snap(); oc.Apply(0f);
+                        Vector3 look = boot.Ship.transform.position - cam.transform.position; look.y = 0f;
+                        boot.Target.transform.position = boot.Ship.transform.position + look.normalized * 120f;
+                        boot.Fx.Explosion(boot.Target.transform.position + Vector3.up * 8f, 1f);
+                        for (int k = 0; k < 4; k++) boot.Fx.Simulate(0.05f);
+                        Render(oc, cam, boot, rt, tex, dir, new Shot("44_vol_target_hit", 60f, 10f, 90f));
+                    }
                 }
                 else Debug.LogWarning("SkyTide: пушек нет — залп не снят");
                 if (vol != null)

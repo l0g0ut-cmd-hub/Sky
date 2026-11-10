@@ -287,7 +287,7 @@ Shader "Hidden/SkyTide/VolumetricClouds"
                 float3 sunCol = lerp(_SunEmber.rgb, _SunGold.rgb, pow(sunT, 0.6));
                 float3 amb = lerp(_AmbientBottom.rgb, _AmbientTop.rgb, h) * lerp(0.3, 0.85, h);
                 amb *= lerp(float3(0.6, 0.42, 0.85), float3(1, 1, 1), h);
-                float3 src = (sunCol * sunT * min(phase, 1.6) + _MultiScatter.rgb * ms * h) * _Deck3.w + amb;
+                float3 src = (sunCol * sunT * min(phase, 1.6) + _MultiScatter.rgb * ms * h) * _Deck3.w + amb + SkyTideFlashLight(p);
                 float st = exp(-d * stepLen);
                 float wgt = trans * (1.0 - st);
                 light += src * 0.86 * wgt;
@@ -377,7 +377,8 @@ Shader "Hidden/SkyTide/VolumetricClouds"
                         float3 amb = lerp(_AmbientBottom.rgb, _AmbientTop.rgb, hh) * (0.6 + 0.4 * hh);
                         // Тень — фиолетовая, как на рисованных облаках, а не серая: глушим яркость, но не насыщенность.
                         amb *= lerp(float3(0.55, 0.38, 0.8), float3(1.0, 1.0, 1.0), sky);
-                        float3 src = sunCol * (sunT * phase * (1.0 + _Phase.w * edge * rimDir)) + _MultiScatter.rgb * ms * sky + amb;
+                        float3 src = sunCol * (sunT * phase * (1.0 + _Phase.w * edge * rimDir)) + _MultiScatter.rgb * ms * sky + amb
+                                   + (bake ? float3(0, 0, 0) : SkyTideFlashLight(p));
                         float st = exp(-d * stepLen);
                         light += trans * src * 0.86 * (1.0 - st);
                         float w = trans * (1.0 - st);

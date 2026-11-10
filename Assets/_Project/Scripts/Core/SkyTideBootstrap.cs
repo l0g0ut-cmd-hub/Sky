@@ -14,6 +14,7 @@ namespace SkyTide
         [Header("Модели корабля (переключатель)")]
         [Tooltip("Варианты модели: меш из tools/convert_glb*.py и материалы. Пусто — заглушка из примитивов.")]
         public ShipVariant[] ships;
+        public ShipVariant targetShip;   // корабль-мишень (модель Meshy)
         public int shipIndex;
 
         [Tooltip("Бесшовный шум RG для анимации облаков (Art/Noise.png). Пусто — генерируется.")]
@@ -99,6 +100,13 @@ namespace SkyTide
 
             Ship = ShipFactory.Build("Player Ship", spawnPosition, spawnHeading, materials, CurrentShip);
 
+            if (targetShip != null && targetShip.IsValid)
+            {
+                ShipController t = ShipFactory.Build("Target Ship", spawnPosition + new Vector3(260f, 0f, 220f), spawnHeading + 140f, materials, targetShip);
+                Target = t.gameObject.AddComponent<TargetShip>();
+                Target.Setup(t, Ship.transform);
+            }
+
             cam.target = Ship.transform;
             cam.Snap();
 
@@ -110,6 +118,7 @@ namespace SkyTide
 
         public VolumetricClouds Volumetric { get; private set; }
         public FxSystem Fx { get; private set; }
+        public TargetShip Target { get; private set; }
 
         /// <summary>Объёмные облака вкл/выкл: спрайты на высоте полёта показываются, только когда объёма нет.</summary>
         public void SetVolumetric(bool on)

@@ -5,7 +5,15 @@
 sampler2D _SkyTidePanorama;   // панорама неба 2:1, та же, что в скайбоксе
 sampler2D _SkyTideNoise;      // бесшовный шум: R и G — два независимых поля
 float4 _SkyTideSunDir;        // xyz — направление НА солнце
-float4 _SkyTideAerial;        // x — начало растворения в небе (м), y — конец, z — максимальная доля
+float4 _SkyTideAerial;
+float4 _SkyTideFlash;         // xyz — последняя вспышка (залп/взрыв), w — сила (гаснет за ~0.2 с; FxSystem)
+
+// Подсветка облаков вспышкой: тёплый свет, спадает с расстоянием (радиус ~45 м). База — развивать дальше.
+inline float3 SkyTideFlashLight(float3 p)
+{
+    float3 d = p - _SkyTideFlash.xyz;
+    return float3(1.0, 0.55, 0.22) * (_SkyTideFlash.w / (1.0 + dot(d, d) / 2000.0));
+}        // x — начало растворения в небе (м), y — конец, z — максимальная доля
 
 // Цвет панорамы в направлении dir (та же развёртка, что у Skybox/Panoramic: центр картинки = +X).
 inline float3 SkyTidePanorama(float3 dir)
