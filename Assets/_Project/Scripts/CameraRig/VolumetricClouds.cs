@@ -35,10 +35,10 @@ namespace SkyTide
         public float lightAbsorption = 1.1f;
         public float powder = 1.0f;
         public Color sunColor = new Color(1f, 0.62f, 0.34f);
-        public float sunIntensity = 3.2f;
+        public float sunIntensity = 1.7f;
         public Color ambientTop = new Color(0.78f, 0.46f, 0.42f);
         public Color ambientBottom = new Color(0.36f, 0.24f, 0.36f);
-        public float ambientIntensity = 0.75f;
+        public float ambientIntensity = 0.42f;
         public float forwardG = 0.62f;
         public float backG = -0.25f;
         [Range(0f, 1f)] public float phaseMix = 0.75f;

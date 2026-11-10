@@ -13,28 +13,38 @@ namespace SkyTide
     {
         public const int GunsPerSide = 8;
 
-        public static ShipController Build(string name, Vector3 position, float yaw, GameMaterials m, Mesh shipMesh)
+        public static ShipController Build(string name, Vector3 position, float yaw, GameMaterials m, ShipVariant variant)
         {
             GameObject root = new GameObject(name);
             Transform visual = new GameObject("Visual").transform;
             visual.SetParent(root.transform, false);
 
-            if (shipMesh != null && m.shipBody != null) BuildFromMesh(visual, shipMesh, m.shipBody);
-            else BuildPrimitive(visual, m);
-
             ShipController ctrl = root.AddComponent<ShipController>();
             ctrl.visual = visual;
+            SetModel(ctrl, m, variant);
             root.transform.SetPositionAndRotation(position, Quaternion.Euler(0f, yaw, 0f));
             return ctrl;
         }
 
-        static void BuildFromMesh(Transform visual, Mesh mesh, Material mat)
+        /// <summary>Меняет модель корабля на лету (переключатель): всё внутри Visual пересобирается.</summary>
+        public static void SetModel(ShipController ctrl, GameMaterials m, ShipVariant variant)
         {
-            GameObject go = new GameObject("Corsair");
+            Transform visual = ctrl.visual;
+            for (int i = visual.childCount - 1; i >= 0; i--) SkyTideBootstrap.SafeDestroy(visual.GetChild(i).gameObject);
+            Mesh mesh = variant != null && variant.IsValid ? variant.Mesh : null;
+            if (mesh != null) BuildFromMesh(visual, mesh, variant.materials);
+            else BuildPrimitive(visual, m);
+        }
+
+        static void BuildFromMesh(Transform visual, Mesh mesh, Material[] mats)
+        {
+            GameObject go = new GameObject("Model");
             go.transform.SetParent(visual, false);
             go.AddComponent<MeshFilter>().sharedMesh = mesh;
             MeshRenderer r = go.AddComponent<MeshRenderer>();
-            r.sharedMaterial = mat;
+            Material[] slots = new Material[mesh.subMeshCount];
+            for (int i = 0; i < slots.Length; i++) slots[i] = mats[Mathf.Min(i, mats.Length - 1)];
+            r.sharedMaterials = slots;
             r.shadowCastingMode = ShadowCastingMode.On;
 
             // Тёплый свет из кормовых окон и фонарей, как на концепте

@@ -6,8 +6,9 @@ using UnityEngine.Rendering;
 namespace SkyTide
 {
     /// <summary>
-    /// Читает меш корабля из бинарного файла (.bytes → TextAsset), который делает tools/convert_glb.py:
-    /// "STM1", int vertexCount, int triangleCount, float3 pos[], float3 normal[], float2 uv[], int3 tri[].
+    /// Читает меш корабля из бинарного файла (.bytes → TextAsset):
+    /// STM1 (tools/convert_glb.py): "STM1", int vc, int tc, float3 pos[], float3 normal[], float2 uv[], int3 tri[].
+    /// STM2 (tools/convert_glb_scene.py): "STM2", int vc, int submeshes, pos/normal/uv, затем на подмеш: int slot, int count, int idx[].
     /// Координаты уже в Unity (левая СК, нос в +Z, метры), так что импортёр GLB не нужен.
     /// </summary>
     public static class ShipMeshLoader
@@ -16,23 +17,42 @@ namespace SkyTide
         {
             if (asset == null) return null;
             byte[] b = asset.bytes;
-            if (b.Length < 12 || Encoding.ASCII.GetString(b, 0, 4) != "STM1")
+            string magic = b.Length >= 12 ? Encoding.ASCII.GetString(b, 0, 4) : "";
+            if (magic != "STM1" && magic != "STM2")
             {
                 Debug.LogError("SkyTide: неверный формат меша корабля: " + asset.name);
                 return null;
             }
             int vc = BitConverter.ToInt32(b, 4);
-            int tc = BitConverter.ToInt32(b, 8);
+            int second = BitConverter.ToInt32(b, 8);
             int off = 12;
 
             float[] pos = new float[vc * 3];
             float[] nrm = new float[vc * 3];
             float[] uv = new float[vc * 2];
-            int[] idx = new int[tc * 3];
             Buffer.BlockCopy(b, off, pos, 0, pos.Length * 4); off += pos.Length * 4;
             Buffer.BlockCopy(b, off, nrm, 0, nrm.Length * 4); off += nrm.Length * 4;
             Buffer.BlockCopy(b, off, uv, 0, uv.Length * 4); off += uv.Length * 4;
-            Buffer.BlockCopy(b, off, idx, 0, idx.Length * 4);
+
+            int[][] subs;
+            if (magic == "STM1")
+            {
+                subs = new int[1][];
+                subs[0] = new int[second * 3];
+                Buffer.BlockCopy(b, off, subs[0], 0, subs[0].Length * 4);
+            }
+            else
+            {
+                subs = new int[second][];
+                for (int s = 0; s < second; s++)
+                {
+                    int count = BitConverter.ToInt32(b, off + 4);
+                    off += 8;
+                    subs[s] = new int[count];
+                    Buffer.BlockCopy(b, off, subs[s], 0, count * 4);
+                    off += count * 4;
+                }
+            }
 
             Vector3[] v = new Vector3[vc];
             Vector3[] n = new Vector3[vc];
@@ -50,7 +70,8 @@ namespace SkyTide
             mesh.vertices = v;
             mesh.normals = n;
             mesh.uv = t;
-            mesh.triangles = idx;
+            mesh.subMeshCount = subs.Length;
+            for (int s = 0; s < subs.Length; s++) mesh.SetTriangles(subs[s], s, false);
             mesh.RecalculateBounds();
             mesh.RecalculateTangents();
             mesh.UploadMeshData(true);

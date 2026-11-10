@@ -1,0 +1,154 @@
+{
+ "materials": [
+  {
+   "name": "Material.001",
+   "color": [
+    1,
+    1,
+    1,
+    1
+   ],
+   "metallic": 1.0,
+   "smoothness": 0.0,
+   "albedo": "CorsairRepaired_m0_Albedo.jpg",
+   "normal": "CorsairRepaired_m0_Normal.png",
+   "normalScale": 1.0,
+   "metalSmooth": "CorsairRepaired_m0_MetalSmooth.png",
+   "emission": "CorsairRepaired_m0_Emission.png"
+  },
+  {
+   "name": "Black forged iron",
+   "color": [
+    0.02500000037252903,
+    0.028999999165534973,
+    0.03200000151991844,
+    1
+   ],
+   "metallic": 0.6499999761581421,
+   "smoothness": 0.5800000131130219,
+   "albedo": null,
+   "normal": null,
+   "normalScale": 1.0,
+   "metalSmooth": null,
+   "emission": null
+  },
+  {
+   "name": "Tarred hemp ropes",
+   "color": [
+    0.1599999964237213,
+    0.08500000089406967,
+    0.03400000184774399,
+    1
+   ],
+   "metallic": 0,
+   "smoothness": 0.07999998331069946,
+   "albedo": null,
+   "normal": null,
+   "normalScale": 1.0,
+   "metalSmooth": null,
+   "emission": null
+  },
+  {
+   "name": "Weathered sewn linen",
+   "color": [
+    1,
+    1,
+    1,
+    1
+   ],
+   "metallic": 0,
+   "smoothness": 0.10000002384185791,
+   "albedo": "CorsairRepaired_m3_Albedo.jpg",
+   "normal": "CorsairRepaired_m3_Normal.png",
+   "normalScale": 0.25,
+   "metalSmooth": null,
+   "emission": null
+  },
+  {
+   "name": "Old linen repair patches",
+   "color": [
+    0.25,
+    0.1599999964237213,
+    0.08500000089406967,
+    1
+   ],
+   "metallic": 0,
+   "smoothness": 0.050000011920928955,
+   "albedo": null,
+   "normal": null,
+   "normalScale": 1.0,
+   "metalSmooth": null,
+   "emission": null
+  },
+  {
+   "name": "Aged oak structural timber",
+   "color": [
+    1,
+    1,
+    1,
+    1
+   ],
+   "metallic": 0,
+   "smoothness": 0.19999998807907104,
+   "albedo": "CorsairRepaired_m5_Albedo.jpg",
+   "normal": null,
+   "normalScale": 1.0,
+   "metalSmooth": null,
+   "emission": null
+  },
+  {
+   "name": "Worn bronze fittings",
+   "color": [
+    0.2199999988079071,
+    0.11500000208616257,
+    0.03500000014901161,
+    1
+   ],
+   "metallic": 0.6499999761581421,
+   "smoothness": 0.5699999928474426,
+   "albedo": null,
+   "normal": null,
+   "normalScale": 1.0,
+   "metalSmooth": null,
+   "emission": null
+  },
+  {
+   "name": "Oxblood pennant",
+   "color": [
+    0.18000000715255737,
+    0.012000000104308128,
+    0.00800000037997961,
+    1
+   ],
+   "metallic": 0,
+   "smoothness": 0.1499999761581421,
+   "albedo": null,
+   "normal": null,
+   "normalScale": 1.0,
+   "metalSmooth": null,
+   "emission": null
+  },
+  {
+   "name": "Amber stained glass",
+   "color": [
+    0.30000001192092896,
+    0.11500000208616257,
+    0.012000000104308128,
+    1
+   ],
+   "metallic": 0,
+   "smoothness": 0.6500000059604645,
+   "albedo": null,
+   "normal": null,
+   "normalScale": 1.0,
+   "metalSmooth": null,
+   "emission": null,
+   "emissionColor": [
+    0.30000001192092896,
+    0.11500000208616257,
+    0.012000000104308128
+   ],
+   "emissionIntensity": 2.4
+  }
+ ]
+}

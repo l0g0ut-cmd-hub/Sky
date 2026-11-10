@@ -20,6 +20,23 @@ namespace SkyTide.EditorTools
             public Shot(string n, float y, float p, float d) { name = n; yaw = y; pitch = p; dist = d; }
         }
 
+        static void Render(OrbitCamera oc, Camera cam, SkyTideBootstrap boot, RenderTexture rt, Texture2D tex, string dir, Shot s)
+        {
+            oc.yaw = s.yaw; oc.pitch = s.pitch; oc.distance = s.dist;
+            oc.Snap();
+            oc.Apply(0f);
+            boot.World.Step(cam.transform.position, 0f);
+            cam.aspect = (float)rt.width / rt.height;
+            cam.targetTexture = rt;
+            cam.Render();
+            RenderTexture.active = rt;
+            tex.ReadPixels(new Rect(0, 0, rt.width, rt.height), 0, 0);
+            tex.Apply();
+            RenderTexture.active = null;
+            cam.targetTexture = null;
+            File.WriteAllBytes(Path.Combine(dir, s.name + ".jpg"), tex.EncodeToJPG(88));
+        }
+
         public static void Capture(string scenePath)
         {
             Debug.Log("SkyTide: кадры — графика " + SystemInfo.graphicsDeviceType + " / " + SystemInfo.graphicsDeviceName);
@@ -62,6 +79,12 @@ namespace SkyTide.EditorTools
                     new Shot("91_dbg_clouds", 35f, 8f, 75f),
                     new Shot("92_dbg_trans", 35f, 8f, 75f),
                 };
+                Shot[] shipShots =
+                {
+                    new Shot("20_ship2_chase", 20f, 12f, 62f),
+                    new Shot("21_ship2_side", 90f, 8f, 58f),
+                    new Shot("22_ship2_stern_close", 165f, 6f, 40f),
+                };
                 int idx = 0;
                 Shot[] all = new Shot[shots.Length + debugShots.Length];
                 shots.CopyTo(all, 0);
@@ -69,6 +92,7 @@ namespace SkyTide.EditorTools
                 foreach (Shot s in all)
                 {
                     if (vol != null) vol.debugView = idx >= shots.Length ? idx - shots.Length + 1 : 0;
+                    boot.SetVolumetric(idx >= shots.Length);   // обычные кадры — как в игре по умолчанию, отладка — с объёмом
                     idx++;
                     oc.yaw = s.yaw; oc.pitch = s.pitch; oc.distance = s.dist;
                     oc.Snap();
@@ -85,7 +109,19 @@ namespace SkyTide.EditorTools
                     File.WriteAllBytes(Path.Combine(dir, s.name + ".jpg"), tex.EncodeToJPG(88));
                 }
                 if (vol != null) vol.debugView = 0;
-                Debug.Log("SkyTide: кадров снято: " + all.Length + " → " + dir);
+                // Объёмные облака (тестовый режим) — два кадра для настройки.
+                boot.SetVolumetric(true);
+                Render(oc, cam, boot, rt, tex, dir, new Shot("30_vol_toward_sun", 35f, 8f, 75f));
+                Render(oc, cam, boot, rt, tex, dir, new Shot("31_vol_wide", 60f, 22f, 140f));
+                boot.SetVolumetric(false);
+
+                int shipCount = boot.ships != null ? boot.ships.Length : 0;
+                if (shipCount > 1)
+                {
+                    boot.NextShip();
+                    foreach (Shot s in shipShots) Render(oc, cam, boot, rt, tex, dir, s);
+                }
+                Debug.Log("SkyTide: кадров снято: " + (all.Length + (shipCount > 1 ? shipShots.Length : 0)) + " → " + dir + ", моделей: " + shipCount);
             }
             catch (System.Exception e)
             {

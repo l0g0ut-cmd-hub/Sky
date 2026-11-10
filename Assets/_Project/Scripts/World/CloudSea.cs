@@ -32,6 +32,7 @@ namespace SkyTide
 
         readonly List<Cloud> clouds = new List<Cloud>();
         readonly List<Transform> seaPlanes = new List<Transform>();
+        readonly List<GameObject> midLayer = new List<GameObject>();
         Material seaMat;
         Material layerMat;
         bool shaderSea;
@@ -70,21 +71,24 @@ namespace SkyTide
             Mesh[] towers = new Mesh[CloudAtlas.Towers.Length];
             for (int i = 0; i < towers.Length; i++) towers[i] = SpriteQuad(CloudAtlas.Towers[i], CloudAtlas.Towers[i], CloudAtlas.Towers[i]);
 
-            // Кучевые-спрайты: низкие гряды растут из моря и высокие — над слоем объёмных облаков
-            // (высота полёта занята объёмными облаками). Каждая куча — 2–3 облака со сдвигом по глубине.
+            // Кучевые-спрайты: низкие гряды растут из моря, средние — на высоте полёта (их заменяют объёмные облака,
+            // когда те включены), высокие — над кораблём. Каждая куча — 2–3 облака со сдвигом по глубине.
             for (int i = 0; i < clusterCount; i++)
             {
                 float roll = (float)rnd.NextDouble();
                 float width, y;
-                if (roll < 0.65f) { width = Range(rnd, 260f, 560f); y = Range(rnd, -34f, -6f); }
-                else { width = Range(rnd, 220f, 400f); y = Range(rnd, 230f, 310f); }
+                bool mid = false;
+                if (roll < 0.5f) { width = Range(rnd, 260f, 560f); y = Range(rnd, -34f, -6f); }
+                else if (roll < 0.78f) { width = Range(rnd, 110f, 240f); y = Range(rnd, 35f, 85f); mid = true; }
+                else { width = Range(rnd, 220f, 400f); y = Range(rnd, 160f, 260f); }
                 Vector3 center = RandomPoint(rnd, 160f, y);
                 int layers = 2 + rnd.Next(2);
                 for (int l = 0; l < layers; l++)
                 {
                     float w = l == 0 ? width : width * Range(rnd, 0.45f, 0.8f);
                     Vector3 off = l == 0 ? Vector3.zero : new Vector3(Range(rnd, -0.4f, 0.4f) * width, Range(rnd, -0.06f, 0.12f) * width, Range(rnd, -0.4f, 0.4f) * width);
-                    AddCloud(root, mat, puffs[rnd.Next(puffs.Length)], center + off, w, rnd, y > 120f ? 1.6f : 1f);
+                    Transform t = AddCloud(root, mat, puffs[rnd.Next(puffs.Length)], center + off, w, rnd, y > 120f ? 1.6f : 1f);
+                    if (mid) midLayer.Add(t.gameObject);
                 }
             }
 
@@ -115,7 +119,13 @@ namespace SkyTide
             return new Vector3(Mathf.Cos(ang) * r, y, Mathf.Sin(ang) * r);
         }
 
-        void AddCloud(Transform root, Material mat, Mesh mesh, Vector3 pos, float width, System.Random rnd, float windMul)
+        /// <summary>Спрайты на высоте полёта: прячутся, когда включены объёмные облака.</summary>
+        public void SetMidLayerVisible(bool visible)
+        {
+            for (int i = 0; i < midLayer.Count; i++) midLayer[i].SetActive(visible);
+        }
+
+        Transform AddCloud(Transform root, Material mat, Mesh mesh, Vector3 pos, float width, System.Random rnd, float windMul)
         {
             GameObject go = new GameObject("Cloud");
             go.transform.SetParent(root, false);
@@ -134,6 +144,7 @@ namespace SkyTide
             c.breathe = Range(rnd, 0.015f, 0.035f);
             c.driftMul = Range(rnd, 0.8f, 1.2f) * windMul;
             clouds.Add(c);
+            return go.transform;
         }
 
         /// <summary>

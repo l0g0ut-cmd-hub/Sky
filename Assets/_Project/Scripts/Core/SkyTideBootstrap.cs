@@ -11,9 +11,10 @@ namespace SkyTide
     {
         public GameMaterials materials = new GameMaterials();
 
-        [Header("Модель корабля")]
-        [Tooltip("Меш из tools/convert_glb.py (Corsair.bytes). Пусто — заглушка из примитивов.")]
-        public TextAsset shipMesh;
+        [Header("Модели корабля (переключатель)")]
+        [Tooltip("Варианты модели: меш из tools/convert_glb*.py и материалы. Пусто — заглушка из примитивов.")]
+        public ShipVariant[] ships;
+        public int shipIndex;
 
         [Tooltip("Бесшовный шум RG для анимации облаков (Art/Noise.png). Пусто — генерируется.")]
         public Texture2D noiseTexture;
@@ -25,6 +26,9 @@ namespace SkyTide
         public Shader volumetricShader;
         [Tooltip("3D-шум облаков (Art/CloudNoise3D.bytes, tools/gen_cloud_noise3d.py).")]
         public TextAsset cloudNoise3D;
+
+        [Tooltip("Объёмные облака на высоте полёта (иначе — спрайты). Переключается кнопкой на экране.")]
+        public bool volumetricClouds;
 
         [Header("Старт")]
         public Vector3 spawnPosition = new Vector3(0f, 60f, 0f);
@@ -68,6 +72,7 @@ namespace SkyTide
             vol.shader = volumetricShader;
             vol.sun = sun;
             vol.noiseBytes = cloudNoise3D != null ? cloudNoise3D.bytes : null;
+            Volumetric = vol;
             SkyTidePost post = cam.GetComponent<SkyTidePost>();
             if (post == null) post = cam.gameObject.AddComponent<SkyTidePost>();
             post.shader = postShader;
@@ -75,8 +80,9 @@ namespace SkyTide
 
             World = gameObject.AddComponent<CloudSea>();
             World.Build(materials);
+            SetVolumetric(volumetricClouds);
 
-            Ship = ShipFactory.Build("Player Ship", spawnPosition, spawnHeading, materials, ShipMeshLoader.Load(shipMesh));
+            Ship = ShipFactory.Build("Player Ship", spawnPosition, spawnHeading, materials, CurrentShip);
 
             cam.target = Ship.transform;
             cam.Snap();
@@ -84,6 +90,35 @@ namespace SkyTide
             TouchControls controls = gameObject.AddComponent<TouchControls>();
             controls.ship = Ship;
             controls.cam = cam;
+            controls.game = this;
+        }
+
+        public VolumetricClouds Volumetric { get; private set; }
+
+        /// <summary>Объёмные облака вкл/выкл: спрайты на высоте полёта показываются, только когда объёма нет.</summary>
+        public void SetVolumetric(bool on)
+        {
+            volumetricClouds = on;
+            if (Volumetric != null) Volumetric.enabled = on;
+            if (World != null) World.SetMidLayerVisible(!on);
+        }
+
+        public ShipVariant CurrentShip
+        {
+            get { return ships != null && ships.Length > 0 ? ships[Mathf.Clamp(shipIndex, 0, ships.Length - 1)] : null; }
+        }
+
+        public string CurrentShipName
+        {
+            get { ShipVariant v = CurrentShip; return v != null && !string.IsNullOrEmpty(v.name) ? v.name : "Заглушка"; }
+        }
+
+        /// <summary>Следующая модель корабля (кнопка на экране).</summary>
+        public void NextShip()
+        {
+            if (ships == null || ships.Length < 2 || Ship == null) return;
+            shipIndex = (shipIndex + 1) % ships.Length;
+            ShipFactory.SetModel(Ship, materials, CurrentShip);
         }
 
         /// <summary>Небо, туман и фоновый свет заката. Вызывается и редактором, чтобы настройки сохранились в сцене

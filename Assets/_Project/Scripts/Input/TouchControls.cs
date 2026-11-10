@@ -14,13 +14,14 @@ namespace SkyTide
     {
         public ShipController ship;
         public OrbitCamera cam;
+        public SkyTideBootstrap game;
 
         [Tooltip("Радиус хода джойстика в долях от меньшей стороны экрана")]
         public float stickRadius = 0.12f;
         [Tooltip("Градусов поворота камеры на ширину экрана")]
         public float orbitDegreesPerScreen = 220f;
 
-        enum Owner { Stick, Camera }
+        enum Owner { Stick, Camera, Button }
 
         readonly Dictionary<int, Owner> owners = new Dictionary<int, Owner>();
         readonly Dictionary<int, Vector2> lastPos = new Dictionary<int, Vector2>();
@@ -32,10 +33,12 @@ namespace SkyTide
         float hintAlpha = 1f;
         bool touchedOnce;
         bool legacyInputOk = true;
+        float fps = 60f;
 
         Texture2D disc;
         Texture2D ring;
         GUIStyle hintStyle;
+        GUIStyle buttonStyle;
 
         void Awake()
         {
@@ -59,6 +62,7 @@ namespace SkyTide
                 Debug.LogError("SkyTide: старый Input Manager выключен. Project Settings → Player → Active Input Handling = Input Manager (Old) или Both. " + e.Message);
             }
 
+            fps = Mathf.Lerp(fps, 1f / Mathf.Max(Time.unscaledDeltaTime, 1e-4f), 0.05f);
             if (touchedOnce) hintAlpha = Mathf.MoveTowards(hintAlpha, 0f, Time.deltaTime * 0.5f);
         }
 
@@ -96,6 +100,20 @@ namespace SkyTide
             if (began)
             {
                 touchedOnce = true;
+                if (game != null && game.ships != null && game.ships.Length > 1 && ShipButtonRect().Contains(p))
+                {
+                    owners[id] = Owner.Button;
+                    lastPos[id] = p;
+                    game.NextShip();
+                    return;
+                }
+                if (game != null && CloudButtonRect().Contains(p))
+                {
+                    owners[id] = Owner.Button;
+                    lastPos[id] = p;
+                    game.SetVolumetric(!game.volumetricClouds);
+                    return;
+                }
                 if (p.x < Screen.width * 0.5f && stickId == int.MinValue)
                 {
                     owners[id] = Owner.Stick;
@@ -115,7 +133,7 @@ namespace SkyTide
             if (!owners.TryGetValue(id, out o)) return;
 
             if (o == Owner.Stick) stickPos = p;
-            else if (cam != null && CameraFingers() == 1)
+            else if (o == Owner.Camera && cam != null && CameraFingers() == 1)
             {
                 Vector2 d = p - lastPos[id];
                 float perPixel = orbitDegreesPerScreen / Mathf.Max(1f, Screen.width);
@@ -179,12 +197,27 @@ namespace SkyTide
             if (Input.GetKey(KeyCode.D) || Input.GetKey(KeyCode.RightArrow)) kx += 1f;
             if (Input.GetKey(KeyCode.W) || Input.GetKey(KeyCode.UpArrow)) ky += 1f;
             if (Input.GetKey(KeyCode.S) || Input.GetKey(KeyCode.DownArrow)) ky -= 1f;
+            if (Input.GetKeyDown(KeyCode.Tab) && game != null) game.NextShip();
 
             if (ship != null)
             {
                 ship.turn = Mathf.Clamp(stickValue.x + kx, -1f, 1f);
                 ship.throttle = Mathf.Clamp(stickValue.y + ky, -1f, 1f);
             }
+        }
+
+        Rect ShipButtonRect()
+        {
+            float u = Mathf.Min(Screen.width, Screen.height);
+            float w = u * 0.42f, h = u * 0.1f;
+            return new Rect(Screen.width - w - u * 0.03f, u * 0.03f, w, h);
+        }
+
+        Rect CloudButtonRect()
+        {
+            Rect r = ShipButtonRect();
+            float u = Mathf.Min(Screen.width, Screen.height);
+            return new Rect(r.x, r.yMax + u * 0.02f, r.width, r.height);
         }
 
         static float DeadZone(float x)
@@ -216,6 +249,40 @@ namespace SkyTide
                 Vector2 home = new Vector2(u * 0.2f, Screen.height - u * 0.22f);
                 DrawCircle(ring, home, r * 1.15f, new Color(1f, 0.85f, 0.55f, 0.25f));
                 DrawCircle(disc, home, r * 0.45f, new Color(0.95f, 0.75f, 0.4f, 0.3f));
+            }
+
+            if (game != null && game.ships != null && game.ships.Length > 1)
+            {
+                if (buttonStyle == null)
+                {
+                    buttonStyle = new GUIStyle(GUI.skin.label);
+                    buttonStyle.alignment = TextAnchor.MiddleCenter;
+                }
+                buttonStyle.fontSize = Mathf.RoundToInt(u * 0.034f);
+                Rect br = ShipButtonRect();
+                GUI.color = new Color(0.08f, 0.05f, 0.05f, 0.55f);
+                GUI.DrawTexture(br, Texture2D.whiteTexture);
+                GUI.color = new Color(1f, 0.8f, 0.5f, 0.9f);
+                GUI.DrawTexture(new Rect(br.x, br.yMax - 2f, br.width, 2f), Texture2D.whiteTexture);
+                GUI.color = new Color(1f, 0.92f, 0.8f, 1f);
+                GUI.Label(br, "Корабль: " + game.CurrentShipName + "  (сменить)", buttonStyle);
+            }
+            if (game != null)
+            {
+                if (buttonStyle == null)
+                {
+                    buttonStyle = new GUIStyle(GUI.skin.label);
+                    buttonStyle.alignment = TextAnchor.MiddleCenter;
+                }
+                buttonStyle.fontSize = Mathf.RoundToInt(u * 0.034f);
+                Rect cr = CloudButtonRect();
+                GUI.color = new Color(0.08f, 0.05f, 0.05f, 0.55f);
+                GUI.DrawTexture(cr, Texture2D.whiteTexture);
+                GUI.color = new Color(1f, 0.8f, 0.5f, 0.9f);
+                GUI.DrawTexture(new Rect(cr.x, cr.yMax - 2f, cr.width, 2f), Texture2D.whiteTexture);
+                GUI.color = new Color(1f, 0.92f, 0.8f, 1f);
+                GUI.Label(cr, "Облака: " + (game.volumetricClouds ? "объёмные (тест)" : "рисованные"), buttonStyle);
+                GUI.Label(new Rect(cr.x, cr.yMax + 2f, cr.width, cr.height * 0.6f), Mathf.RoundToInt(fps) + " FPS", buttonStyle);
             }
 
             if (hintAlpha > 0.01f)
