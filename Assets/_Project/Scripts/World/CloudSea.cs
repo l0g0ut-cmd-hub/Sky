@@ -147,7 +147,7 @@ namespace SkyTide
             MaterialPropertyBlock mpb = new MaterialPropertyBlock();
             mpb.SetFloat("_CloudPhase", (float)rnd.NextDouble());
             // Полосы низкие и широкие — ребром видны раньше, гасим их уже при пологом взгляде сверху.
-            mpb.SetVector("_EdgeOn", strip ? new Vector4(0.18f, 0.42f, 0f, 0f) : new Vector4(0.5f, 0.8f, 0f, 0f));
+            mpb.SetVector("_EdgeOn", strip ? new Vector4(0.08f, 0.24f, 0f, 0f) : new Vector4(0.5f, 0.8f, 0f, 0f));
             mr.SetPropertyBlock(mpb);
 
             Cloud c = new Cloud();

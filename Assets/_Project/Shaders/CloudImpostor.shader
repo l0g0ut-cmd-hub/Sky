@@ -60,8 +60,14 @@ Shader "Hidden/SkyTide/CloudImpostor"
                 float2 f = to.xz;
                 float lf = length(f);
                 f = lf > 1e-3 ? f / lf : float2(0, 1);
+                // Квад целиком к камере (наклоняется при взгляде сверху), опора — середина облака:
+                // вертикальная картинка сверху сплющивалась бы в полосу.
+                float3 cc = c + float3(0, 0.5 * H, 0);
+                float3 f3 = normalize(cc - _ImpCam.xyz);
                 float3 right = float3(f.y, 0, -f.x);
-                float3 wpos = c + right * ((v.uv.x - 0.5) * W) + float3(0, (v.uv.y * (1.0 + 2.0 * _ImpParams.w) - _ImpParams.w) * H, 0);
+                float3 upv = normalize(cross(f3, right));
+                float vy = v.uv.y * (1.0 + 2.0 * _ImpParams.w) - _ImpParams.w - 0.5;
+                float3 wpos = cc + right * ((v.uv.x - 0.5) * W) + upv * (vy * H);
                 o.pos = mul(_ImpVP, float4(wpos, 1.0));
                 o.uv = v.uv;
                 o.wpos = wpos;
@@ -79,7 +85,11 @@ Shader "Hidden/SkyTide/CloudImpostor"
                 float R = W / 2.7;
                 float inside = (_ImpCam.y > c.y - 0.1 * H && _ImpCam.y < c.y + 1.05 * H) ? 1.0 : 0.0;
                 float fadeIn = lerp(1.0, smoothstep(R * 0.9, R * 1.9, lf), inside);
-                o.slices.w = fadeIn;
+                // Снимки сделаны сбоку: круто сверху/снизу облако растворяется (там видно море облаков).
+                float steep = 1.0 - smoothstep(0.72, 0.93, abs(f3.y));
+                // Близко к камере облако гаснет целиком (по центру, а не по пикселям — иначе в нём «дыра»).
+                float near = smoothstep(_ImpParams.z + 0.4 * R, _ImpParams.z + 1.6 * R, length(cc - _ImpCam.xyz));
+                o.slices.w = fadeIn * steep * near;
                 return o;
             }
 
@@ -120,7 +130,7 @@ Shader "Hidden/SkyTide/CloudImpostor"
                 // Воздушная перспектива — как у объёмных башен.
                 light = lerp(light, SkyTidePanorama(rd) * a, _ImpParams.x * saturate(SkyTideAerial(dist)));
 
-                float m = i.slices.w * smoothstep(_ImpParams.y, _ImpParams.z, dist);
+                float m = i.slices.w;
 
                 // Экранные координаты (как у проходов объёмных облаков).
                 float4 cp = mul(_CamVP, float4(i.wpos, 1.0));
