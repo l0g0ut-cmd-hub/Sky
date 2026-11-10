@@ -471,6 +471,8 @@ namespace SkyTide
             // Чистая зона до корабля: облако не встаёт между камерой и кораблём.
             float clear = ClearDistance();
             mat.SetVector("_NearClear", new Vector4(Mathf.Max(30f, clear * 0.9f), Mathf.Max(140f, clear + 70f), 0f, 0f));
+            Transform shipT = orbit != null ? orbit.target : null;
+            mat.SetVector("_ShipClear", shipT != null ? new Vector4(shipT.position.x, shipT.position.y + 8f, shipT.position.z, 30f) : Vector4.zero);
 
             mat.SetFloat("_Bake", 0f);
         }

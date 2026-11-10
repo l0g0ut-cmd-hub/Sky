@@ -115,6 +115,7 @@ namespace SkyTide
                     return;
                 }
                 Broadside bs = Guns();
+                if (bs != null && VolleyModeRect().Contains(p)) { owners[id] = Owner.Button; lastPos[id] = p; bs.ripple = !bs.ripple; return; }
                 if (bs != null && VolleyRect(-1).Contains(p)) { owners[id] = Owner.Button; lastPos[id] = p; bs.Fire(-1); return; }
                 if (bs != null && VolleyRect(1).Contains(p)) { owners[id] = Owner.Button; lastPos[id] = p; bs.Fire(1); return; }
                 if (p.x < Screen.width * 0.5f && stickId == int.MinValue)
@@ -204,6 +205,7 @@ namespace SkyTide
             Broadside guns = Guns();
             if (guns != null && Input.GetKeyDown(KeyCode.Q)) guns.Fire(-1);
             if (guns != null && Input.GetKeyDown(KeyCode.E)) guns.Fire(1);
+            if (guns != null && Input.GetKeyDown(KeyCode.R)) guns.ripple = !guns.ripple;
 
             if (ship != null)
             {
@@ -234,6 +236,14 @@ namespace SkyTide
             float y = Screen.height - h - u * 0.16f;
             float xr = Screen.width - w - u * 0.03f;
             return side > 0 ? new Rect(xr, y, w, h) : new Rect(xr - w - gap, y, w, h);
+        }
+
+        Rect VolleyModeRect()
+        {
+            float u = Mathf.Min(Screen.width, Screen.height);
+            Rect l = VolleyRect(-1), r = VolleyRect(1);
+            float h = u * 0.09f;
+            return new Rect(l.x, l.y - h - u * 0.02f, r.xMax - l.x, h);
         }
 
         Rect CloudButtonRect()
@@ -355,6 +365,11 @@ namespace SkyTide
                     GUI.Label(vr, s < 0 ? "← Залп" : "Залп →", buttonStyle);
                 }
                 buttonStyle.fontSize = Mathf.RoundToInt(u * 0.034f);
+                Rect mr = VolleyModeRect();
+                GUI.color = new Color(0.08f, 0.05f, 0.05f, 0.55f);
+                GUI.DrawTexture(mr, Texture2D.whiteTexture);
+                GUI.color = new Color(1f, 0.92f, 0.8f, 1f);
+                GUI.Label(mr, gb.ripple ? "Залп: волной (сменить)" : "Залп: всем бортом (сменить)", buttonStyle);
             }
 
             if (hintAlpha > 0.01f)

@@ -49,7 +49,26 @@ Shader "Hidden/SkyTide/VolumetricClouds"
     float4 _Phase;                // x g вперёд, y g назад, z смесь, w кайма
     float4 _Aerial;               // x доля воздушной перспективы
     float _Debug;
-    float4 _NearClear;
+    float4 _NearClear;            // x — радиус чистого шара у камеры (м)
+    float4 _ShipClear;            // xyz — корабль, w — радиус «коридора» камера→корабль (м); w = 0 — нет корабля
+
+    // Облако расступается только в узком коридоре от камеры до корабля (и чуть дальше него), а не шаром
+    // вокруг камеры — шар был виден как круглая дыра в облаке.
+    float ClearFactor(float3 p, float3 ro)
+    {
+        float k = smoothstep(8.0, 22.0, length(p - ro));
+        if (_ShipClear.w > 0.0)
+        {
+            float3 ab = _ShipClear.xyz - ro;
+            float L = length(ab);
+            float3 dirS = ab / max(L, 1e-3);
+            float s = dot(p - ro, dirS);
+            float3 q = p - (ro + dirS * clamp(s, 0.0, L + 15.0));
+            float r = _ShipClear.w * (0.6 + 0.4 * saturate(s / max(L, 1e-3)));
+            k *= smoothstep(r * 0.55, r * 1.6, length(q));
+        }
+        return k;
+    }
     float4 _Deck;                 // x низ слоя, y верх (м), z плотность (1/м), w шагов
     float4 _Deck2;                // x масштаб «погоды», y порог покрытия, z масштаб клубов, w масштаб детали (м)
     float4 _Deck3;                // x дальность (м), y макс. длина пути в слое (м), z поглощение к солнцу
@@ -256,7 +275,7 @@ Shader "Hidden/SkyTide/VolumetricClouds"
         {
             if (t > t1) break;
             float3 p = ro + rd * t;
-            float d = DeckDensity(p, t < 1500.0) * smoothstep(_NearClear.x * 0.5, _NearClear.x * 1.5, t);
+            float d = DeckDensity(p, t < 1500.0) * ClearFactor(p, ro);
             if (d > 1e-5)
             {
                 float d1 = DeckDensity(p + L * 18.0, false);
@@ -345,7 +364,7 @@ Shader "Hidden/SkyTide/VolumetricClouds"
                 {
                     float3 p = ro + rd * t;
                     float tau, sky, fld;
-                    float d = Density(p, t < 1800.0, tau, sky, fld) * smoothstep(_NearClear.x, _NearClear.y, t);
+                    float d = Density(p, t < 1800.0, tau, sky, fld) * (bake ? 1.0 : ClearFactor(p, ro));
                     if (d > 1e-5)
                     {
                         // Свет из запечённого поля: никаких шагов к солнцу.

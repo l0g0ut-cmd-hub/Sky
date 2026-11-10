@@ -81,6 +81,7 @@ namespace SkyTide
             volMat.SetFloat("_Bake", 1f);
             volMat.SetFloat("_TowerCount", 1f);
             volMat.SetVector("_NearClear", new Vector4(-2f, -1f, 0f, 0f));
+            volMat.SetVector("_ShipClear", Vector4.zero);
             volMat.SetVector("_Aerial", Vector4.zero);
             volMat.SetVector("_DensityParams", new Vector4(volMat.GetVector("_DensityParams").x, volMat.GetVector("_DensityParams").y, steps, 1e6f));
             volMat.SetVector("_LowRes", new Vector4(FrameSize, FrameSize, 1f / FrameSize, 1f / FrameSize));
