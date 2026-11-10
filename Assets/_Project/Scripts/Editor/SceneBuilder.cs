@@ -115,7 +115,7 @@ namespace SkyTide.EditorTools
             ti.sRGBTexture = !normalMap && !linear;
             ti.textureCompression = uncompressed ? TextureImporterCompression.Uncompressed : TextureImporterCompression.Compressed;
             ti.alphaSource = alpha ? TextureImporterAlphaSource.FromInput : TextureImporterAlphaSource.None;
-            ti.alphaIsTransparency = alpha;
+            ti.alphaIsTransparency = false;   // цвет под прозрачностью уже залит в самих PNG (tools/*), заливка Unity даёт полосы
             ti.wrapModeU = wrapU;
             ti.wrapModeV = wrapV;
             ti.maxTextureSize = maxSize;

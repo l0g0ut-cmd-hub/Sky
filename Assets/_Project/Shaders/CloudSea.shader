@@ -69,8 +69,11 @@ Shader "SkyTide/CloudSea"
                 float2 d = (tex2D(_SkyTideNoise, uv * 0.35 + t * 0.0025).rg - 0.5) * _Distort;
                 float4 a = tex2D(_MainTex, uv + _Flow.xy * t + d);
                 float4 b = tex2D(_MainTex, uv * _Scale2 + _Flow.zw * t - d);
+                // Цвет смешиваем с весом прозрачности: под прозрачными местами текстуры цвет не определён.
+                float wa = a.a;
+                float wb = b.a * 0.8;
                 float4 c;
-                c.rgb = lerp(a.rgb, b.rgb, 0.45);
+                c.rgb = (a.rgb * wa + b.rgb * wb) / max(wa + wb, 1e-3);
                 c.a = saturate(max(a.a, b.a) * 0.75 + a.a * b.a * 0.5);
 
                 float3 view = i.worldPos - _WorldSpaceCameraPos;
