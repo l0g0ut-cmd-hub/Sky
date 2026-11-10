@@ -26,6 +26,8 @@ namespace SkyTide
         public Shader volumetricShader;
         [Tooltip("3D-шум облаков (Art/CloudNoise3D.bytes, tools/gen_cloud_noise3d.py).")]
         public TextAsset cloudNoise3D;
+        [Tooltip("Запечённые шаблоны объёмных башен: форма + свет солнца + видимость неба (SceneBuilder).")]
+        public Texture3D towerField;
 
         [Tooltip("Объёмные облака на высоте полёта (иначе — спрайты). Переключается кнопкой на экране.")]
         public bool volumetricClouds;
@@ -72,6 +74,7 @@ namespace SkyTide
             vol.shader = volumetricShader;
             vol.sun = sun;
             vol.noiseBytes = cloudNoise3D != null ? cloudNoise3D.bytes : null;
+            vol.bakedField = towerField;
             Volumetric = vol;
             SkyTidePost post = cam.GetComponent<SkyTidePost>();
             if (post == null) post = cam.gameObject.AddComponent<SkyTidePost>();

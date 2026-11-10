@@ -2,7 +2,7 @@
 // Форма: каждая башня собрана из 28 сфер шаблона (широкое плоское основание, средний ярус, 3–5 голов наверху);
 //   поле пухлости = max(1 - d/r) по сферам, поверхность лепит 3D-шум (крупные лопасти + клубы), края разъедает
 //   Worley-детализация. Шаблоны и параметры подобраны в офлайн-лаборатории (tools/cloudlab).
-// Свет: 6 шагов к солнцу; цвет солнца по глубине — от золота на открытых вершинах до красно-оранжевого в полутени;
+// Свет: толщина к солнцу и видимость неба запечены в поле (солнце неподвижно); цвет солнца по глубине — от золота на открытых вершинах до красно-оранжевого в полутени;
 //   розовое многократное рассеяние; фиолетовое заполнение, гаснущее в глубине; кайма против солнца на тонких краях.
 // Марш идёт только по отрезку, где луч пересекает габариты башен; остановка по глубине сцены; растворение у камеры.
 // Форма башен запечена в 3D-текстуру (_TowerField) при старте — одна выборка вместо 28 сфер.
@@ -78,70 +78,54 @@ Shader "Hidden/SkyTide/VolumetricClouds"
     }
 
     // Поле пухлости ближайшей башни: 1 в центре сферы, 0 на её поверхности, < 0 снаружи.
-    // hN — высота точки в долях высоты башни.
-    float TowerField(float3 p, out float hN)
+    // Ближайшая башня: x — поле пухлости (1 в центре сферы, < 0 снаружи), y — оптическая толщина к солнцу
+    // в метрах при плотности 1 (запечена), z — видимость неба, w — высота в долях башни.
+    float4 TowerField(float3 p)
     {
-        float best = -1.0;
-        hN = 0.0;
+        float4 best = float4(-1.0, 0.0, 1.0, 0.0);
         for (int i = 0; i < MAX_TOWERS; i++)
         {
             if (i >= (int)_TowerCount) break;
             float4 T = _Towers[i];
             float4 Rr = _TowerRot[i];
             float3 q = (p - T.xyz) / T.w;
-            float ys = Rr.w / _FieldBox.z;               // растяжение башни по высоте
+            float ys = Rr.w / _FieldBox.z;
             float qy = q.y / ys;
             if (abs(q.x) > _FieldBox.x || abs(q.z) > _FieldBox.x || qy < _FieldBox.y || qy > _FieldBox.y + _FieldBox.z) continue;
-            float2 xz = float2(q.x * Rr.x - q.z * Rr.y, q.x * Rr.y + q.z * Rr.x);
             float3 uvw;
-            uvw.x = xz.x / (2.0 * _FieldBox.x) + 0.5;
+            uvw.x = q.x / (2.0 * _FieldBox.x) + 0.5;
             uvw.y = (qy - _FieldBox.y) / _FieldBox.z;
-            uvw.z = (clamp(xz.y / (2.0 * _FieldBox.x) + 0.5, 0.02, 0.98) + Rr.z) / _FieldBox.w;
-            float f = tex3Dlod(_TowerField, float4(uvw, 0)).r * 2.0 - 1.0;
-            if (f > best)
-            {
-                best = f;
-                hN = q.y / Rr.w;
-            }
+            uvw.z = (clamp(q.z / (2.0 * _FieldBox.x) + 0.5, 0.02, 0.98) + Rr.z) / _FieldBox.w;
+            float4 b = tex3Dlod(_TowerField, float4(uvw, 0));
+            float f = b.r * 2.0 - 1.0;
+            if (f > best.x) best = float4(f, b.g * 5.0 * T.w, b.b, q.y / Rr.w);
         }
         return best;
     }
 
-    float Density(float3 p, bool detail)
+    // Плотность (1/м); попутно — запечённая толщина к солнцу и видимость неба.
+    float Density(float3 p, bool detail, out float tau, out float sky)
     {
-        float hN;
-        float f = TowerField(p, hN);
+        float4 tf = TowerField(p);
+        tau = tf.y;
+        sky = tf.z;
+        float f = tf.x;
         if (f < -0.35) return 0.0;
         float3 wp = p + float3(0, _Wind.w * 0.6, 0);   // поверхность медленно «кипит» вверх
         float n = tex3Dlod(_Noise3D, float4(wp / _Shape.x, 0)).r;
         float bump = tex3Dlod(_Noise3D, float4(wp / (_Shape.x * 0.32), 0)).r;
         float m = saturate((f + (n - 0.5) * _Shape.z + (bump - 0.5) * 0.2) * 4.0);
-        m *= saturate(hN / 0.06);                      // плоское основание
+        m *= saturate(tf.w / 0.06);                   // плоское основание
         if (m <= 0.0) return 0.0;
         if (detail)
         {
-            float4 dn4 = tex3Dlod(_Noise3D, float4(wp / _Shape.y, 0));
-            float dn = dn4.g * 0.7 + tex3Dlod(_Noise3D, float4(wp / (_Shape.y * 0.45), 0)).b * 0.3;
+            float dn = tex3Dlod(_Noise3D, float4(wp / _Shape.y, 0)).g * 0.7
+                     + tex3Dlod(_Noise3D, float4(wp / (_Shape.y * 0.45), 0)).b * 0.3;
             float edge = 1.0 - saturate((m - 0.4) / 0.45);
             m = saturate(m - dn * _Shape.w * edge);
         }
         m = m * m * (3.0 - 2.0 * m);
         return m * _DensityParams.x;
-    }
-
-    float LightMarch(float3 p, float3 sunDir)
-    {
-        float od = 0.0;
-        float acc = 0.0;
-        float seg = 14.0;
-        for (int k = 0; k < 4; k++)
-        {
-            od += Density(p + sunDir * (acc + seg * 0.5), false) * seg;
-            acc += seg;
-            seg *= 2.2;
-            if (od > 6.0) break;
-        }
-        return od;
     }
 
     // Отрезок луча, пересекающий габариты башен (сферы вокруг каждой).
@@ -214,9 +198,8 @@ Shader "Hidden/SkyTide/VolumetricClouds"
 
         if (_Debug > 0.5 && _Debug < 1.5)
         {
-            float hN;
-            float f = TowerField(ro + rd * 400.0, hN);
-            return float4(saturate(f + 0.5), hN, Density(ro + rd * 400.0, true) / max(_DensityParams.x, 1e-6), 0);
+            float4 tf = TowerField(ro + rd * 400.0);
+            return float4(saturate(tf.x + 0.5), saturate(tf.y / 400.0), tf.z, 0);
         }
 
         float sceneDist = 1e7;
@@ -254,17 +237,19 @@ Shader "Hidden/SkyTide/VolumetricClouds"
         for (int s = 0; s < steps; s++)
         {
             float3 p = ro + rd * t;
-            float d = Density(p, true) * smoothstep(30.0, 140.0, t);
+            float tau, sky;
+            float d = Density(p, true, tau, sky) * smoothstep(30.0, 140.0, t);
             if (d > 1e-5)
             {
-                float od = LightMarch(p, sunDir) * _DensityParams.y;
+                // Свет из запечённого поля: никаких шагов к солнцу.
+                float od = tau * _DensityParams.x * _DensityParams.y;
                 float sunT = exp(-od);
                 float ms = exp(-od * 0.22) * _MultiScatter.a;
                 float edge = pow(1.0 - saturate(d / (_DensityParams.x * 0.7)), 1.6);
                 float3 sunCol = lerp(_SunEmber.rgb, _SunGold.rgb, pow(saturate(sunT), 0.6));
                 float hh = saturate((p.y - 0.0) / 450.0);
-                float3 amb = lerp(_AmbientBottom.rgb, _AmbientTop.rgb, hh) * (0.15 + 0.85 * exp(-d * 35.0)) * (0.35 + 0.65 * hh);
-                float3 src = sunCol * (sunT * phase * (1.0 + _Phase.w * edge * rimDir)) + _MultiScatter.rgb * ms + amb;
+                float3 amb = lerp(_AmbientBottom.rgb, _AmbientTop.rgb, hh) * lerp(0.15, 1.0, sky) * (0.35 + 0.65 * hh);
+                float3 src = sunCol * (sunT * phase * (1.0 + _Phase.w * edge * rimDir)) + _MultiScatter.rgb * ms * sky + amb;
                 float st = exp(-d * stepLen);
                 light += trans * src * 0.86 * (1.0 - st);
                 float w = trans * (1.0 - st);

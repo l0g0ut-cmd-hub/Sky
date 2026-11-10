@@ -21,6 +21,8 @@ namespace SkyTide
         public Shader shader;
         public Light sun;
         public byte[] noiseBytes;   // CloudNoise3D.bytes (64³ RGBA8)
+        [Tooltip("Запечённые шаблоны башен (SceneBuilder → Art/TowerField.asset). Пусто — запекаются при старте.")]
+        public Texture3D bakedField;
 
         [Header("Качество")]
         [Range(1, 8)] public int resolutionDivider = 4;
@@ -50,7 +52,7 @@ namespace SkyTide
         [Range(4, 32)] public int hazeSteps = 14;
 
         [Header("Свет")]
-        public float lightAbsorption = 1.5f;
+        public float lightAbsorption = 1.4f;
         public Color sunGold = new Color(1f, 0.62f, 0.22f);
         public Color sunEmber = new Color(1f, 0.24f, 0.06f);
         public float sunIntensity = 5.2f;
@@ -95,7 +97,7 @@ namespace SkyTide
         void OnDestroy()
         {
             if (noise != null) SkyTideBootstrap.SafeDestroy(noise);
-            if (field != null) SkyTideBootstrap.SafeDestroy(field);
+            if (field != null && field != bakedField) SkyTideBootstrap.SafeDestroy(field);
         }
 
         public string Probe()
@@ -166,56 +168,125 @@ namespace SkyTide
         void EnsureTemplates()
         {
             if (puffs != null && field != null) return;
-            puffs = new Vector4[Puffs * Templates];
-            BuildTemplate(7, puffs, 0);
-            BuildTemplate(19, puffs, Puffs);
-            BuildTemplate(42, puffs, Puffs * 2);
-            field = BakeField(puffs);
+            puffs = Templates_();
+            field = bakedField != null ? bakedField : BakeField(SunTowardDefault());
+        }
+
+        static Vector4[] Templates_()
+        {
+            Vector4[] p = new Vector4[Puffs * Templates];
+            BuildTemplate(7, p, 0);
+            BuildTemplate(19, p, Puffs);
+            BuildTemplate(42, p, Puffs * 2);
+            return p;
+        }
+
+        /// <summary>Направление НА солнце при стандартной настройке света (SkyTideBootstrap.ConfigureSun).</summary>
+        public static Vector3 SunTowardDefault()
+        {
+            return -(Quaternion.Euler(7f, -90f, 0f) * Vector3.forward);
         }
 
         /// <summary>
-        /// Запекает поле пухлости шаблонов в 3D-текстуру (шаблоны сложены по z): мягкое объединение сфер
-        /// (стыки сглажены — без видимых «шаров»), значение (f + 1) / 2. В шейдере — одна выборка вместо 28 сфер.
+        /// Запекает шаблоны башен в 3D-текстуру RGBA (шаблоны сложены по z):
+        ///   R — поле пухлости (f + 1) / 2 с мягким объединением сфер;
+        ///   G — оптическая толщина к солнцу в радиусах башни / 5 (солнце неподвижно — свет считается один раз);
+        ///   B — видимость неба (заполняющий свет гаснет в глубине облака).
+        /// В шейдере одна выборка даёт и форму, и свет — без марша к солнцу на каждом шаге.
+        /// Башни не поворачиваются (иначе запечённый свет разошёлся бы с солнцем), разнообразие — шаблоны и масштаб.
         /// </summary>
-        static Texture3D BakeField(Vector4[] sph)
+        public static Texture3D BakeField(Vector3 sunToward)
         {
+            Vector4[] sph = Templates_();
             int nx = FieldXZ, ny = FieldY, nz = FieldXZ * Templates;
-            byte[] data = new byte[nx * ny * nz];
-            const float k = 0.22f;   // мягкость объединения
+            float[] f = new float[nx * ny * nz];
+            const float k = 0.22f;   // мягкость объединения сфер
+            float cx = 2f * FieldHalf / FieldXZ, cy = FieldHeight / ny;   // размер вокселя в радиусах
             for (int tz = 0; tz < Templates; tz++)
             {
                 int off = tz * Puffs;
                 for (int z = 0; z < FieldXZ; z++)
                 {
-                    float pz = ((z + 0.5f) / FieldXZ - 0.5f) * 2f * FieldHalf;
+                    float pz = -FieldHalf + (z + 0.5f) * cx;
                     for (int y = 0; y < ny; y++)
                     {
-                        float py = FieldBottom + (y + 0.5f) / ny * FieldHeight;
+                        float py = FieldBottom + (y + 0.5f) * cy;
                         for (int x = 0; x < nx; x++)
                         {
-                            float px = ((x + 0.5f) / FieldXZ - 0.5f) * 2f * FieldHalf;
-                            float f = -1f;
+                            float px = -FieldHalf + (x + 0.5f) * cx;
+                            float v0 = -1f;
                             for (int s = 0; s < Puffs; s++)
                             {
                                 Vector4 S = sph[off + s];
                                 if (S.w < 0.01f) continue;
                                 float dx = px - S.x, dy = py - S.y, dz = pz - S.z;
                                 float v = 1f - Mathf.Sqrt(dx * dx + dy * dy + dz * dz) / S.w;
-                                float h = Mathf.Max(k - Mathf.Abs(f - v), 0f) / k;
-                                f = Mathf.Max(f, v) + h * h * k * 0.25f;   // гладкий максимум
+                                float h = Mathf.Max(k - Mathf.Abs(v0 - v), 0f) / k;
+                                v0 = Mathf.Max(v0, v) + h * h * k * 0.25f;
                             }
-                            data[x + y * nx + (z + tz * FieldXZ) * nx * ny] = (byte)Mathf.Clamp(Mathf.RoundToInt((f + 1f) * 0.5f * 255f), 0, 255);
+                            f[x + y * nx + (z + tz * FieldXZ) * nx * ny] = v0;
                         }
                     }
                 }
             }
-            Texture3D t = new Texture3D(nx, ny, nz, TextureFormat.R8, false);
+
+            Vector3 L = sunToward.normalized;
+            Vector3[] skyDirs =
+            {
+                new Vector3(0f, 1f, 0f),
+                new Vector3(0.7f, 0.7f, 0f), new Vector3(-0.7f, 0.7f, 0f),
+                new Vector3(0f, 0.7f, 0.7f), new Vector3(0f, 0.7f, -0.7f),
+            };
+            byte[] data = new byte[nx * ny * nz * 4];
+            for (int tz = 0; tz < Templates; tz++)
+            {
+                for (int z = 0; z < FieldXZ; z++)
+                {
+                    for (int y = 0; y < ny; y++)
+                    {
+                        for (int x = 0; x < nx; x++)
+                        {
+                            int i = x + y * nx + (z + tz * FieldXZ) * nx * ny;
+                            Vector3 p = new Vector3(-FieldHalf + (x + 0.5f) * cx, FieldBottom + (y + 0.5f) * cy, -FieldHalf + (z + 0.5f) * cx);
+                            float tauSun = Optical(f, tz, p, L, 0.08f);
+                            float sky = 0f;
+                            for (int d = 0; d < skyDirs.Length; d++) sky += Mathf.Exp(-Optical(f, tz, p, skyDirs[d].normalized, 0.12f) * 6f);
+                            sky /= skyDirs.Length;
+                            data[i * 4 + 0] = (byte)Mathf.Clamp(Mathf.RoundToInt((f[i] + 1f) * 0.5f * 255f), 0, 255);
+                            data[i * 4 + 1] = (byte)Mathf.Clamp(Mathf.RoundToInt(tauSun / 5f * 255f), 0, 255);
+                            data[i * 4 + 2] = (byte)Mathf.Clamp(Mathf.RoundToInt(sky * 255f), 0, 255);
+                            data[i * 4 + 3] = 255;
+                        }
+                    }
+                }
+            }
+            Texture3D t = new Texture3D(nx, ny, nz, TextureFormat.RGBA32, false);
             t.name = "TowerField";
             t.wrapMode = TextureWrapMode.Clamp;
             t.filterMode = FilterMode.Bilinear;
             t.SetPixelData(data, 0);
-            t.Apply(false, true);
+            t.Apply(false, false);
             return t;
+        }
+
+        /// <summary>Оптическая толщина (в радиусах башни при плотности 1) от точки до выхода из коробки шаблона.</summary>
+        static float Optical(float[] f, int tz, Vector3 p, Vector3 dir, float ds)
+        {
+            int nx = FieldXZ, ny = FieldY;
+            float cx = 2f * FieldHalf / FieldXZ, cy = FieldHeight / ny;
+            float sum = 0f;
+            Vector3 q = p + dir * (ds * 0.5f);
+            for (int n = 0; n < 200; n++)
+            {
+                int ix = Mathf.FloorToInt((q.x + FieldHalf) / cx);
+                int iy = Mathf.FloorToInt((q.y - FieldBottom) / cy);
+                int iz = Mathf.FloorToInt((q.z + FieldHalf) / cx);
+                if (ix < 0 || iy < 0 || iz < 0 || ix >= nx || iy >= ny || iz >= FieldXZ) break;
+                float v = f[ix + iy * nx + (iz + tz * FieldXZ) * nx * ny];
+                sum += Mathf.Clamp01(v * 4f) * ds;
+                q += dir * ds;
+            }
+            return sum;
         }
 
         // ---------- расстановка и дрейф ----------
@@ -243,7 +314,8 @@ namespace SkyTide
         void SetTower(int i, Vector3 pos, System.Random r)
         {
             float rad = U(r, minRadius, maxRadius);
-            float rot = U(r, 0f, Mathf.PI * 2f);
+            U(r, 0f, 1f);   // поворот отключён: свет запечён под неподвижное солнце
+            float rot = 0f;
             float hScale = U(r, 0.85f, 1.15f);
             towers[i] = new Vector4(pos.x, baseHeight, pos.z, rad);
             towerRot[i] = new Vector4(Mathf.Cos(rot), Mathf.Sin(rot), r.Next(Templates), TemplateHeight * hScale);

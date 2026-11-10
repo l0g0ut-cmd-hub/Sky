@@ -71,6 +71,10 @@ namespace SkyTide.EditorTools
             b.postShader = AssetDatabase.LoadAssetAtPath<Shader>("Assets/_Project/Shaders/PostFX.shader");
             b.volumetricShader = AssetDatabase.LoadAssetAtPath<Shader>("Assets/_Project/Shaders/VolumetricClouds.shader");
             b.cloudNoise3D = AssetDatabase.LoadAssetAtPath<TextAsset>(Art + "CloudNoise3D.bytes");
+            // Шаблоны объёмных башен со светом под неподвижное солнце — запекаем здесь, телефон при старте не считает.
+            Texture3D towerField = VolumetricClouds.BakeField(VolumetricClouds.SunTowardDefault());
+            AssetDatabase.CreateAsset(towerField, MaterialFolder + "/TowerField.asset");
+            b.towerField = towerField;
             b.noiseTexture = Tex(Art + "Noise.png", false, false, TextureWrapMode.Repeat, TextureWrapMode.Repeat, 256, true, true, true);
             Debug.Log("SkyTide: моделей корабля: " + b.ships.Length);
 
