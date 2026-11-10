@@ -44,6 +44,9 @@ namespace SkyTide
         [Range(0f, 1f)] public float phaseMix = 0.75f;
         public float silverLining = 2.2f;
 
+        [Header("Отладка")]
+        [Range(0, 3)] public int debugView;   // 1 — поля шума, 2 — только облака, 3 — пропускание
+
         Material mat;
         Camera cam;
         Texture3D noise;
@@ -63,6 +66,17 @@ namespace SkyTide
         void OnDestroy()
         {
             if (noise != null) SkyTideBootstrap.SafeDestroy(noise);
+        }
+
+        public string Probe()
+        {
+            Texture3D n = Noise();
+            Texture g = Shader.GetGlobalTexture("_SkyTideNoise");
+            return "noiseBytes=" + (noiseBytes != null ? noiseBytes.Length.ToString() : "null")
+                + " tex3D=" + (n != null ? n.width + "x" + n.height + "x" + n.depth + " " + n.format : "null")
+                + " supports3D=" + SystemInfo.supports3DTextures
+                + " globalNoise=" + (g != null ? g.name + " " + g.width + "x" + g.height : "null")
+                + " shader=" + (shader != null ? shader.name + " supported=" + shader.isSupported : "null");
         }
 
         Texture3D Noise()
@@ -105,6 +119,7 @@ namespace SkyTide
             mat.SetColor("_AmbientTop", ambientTop * ambientIntensity);
             mat.SetColor("_AmbientBottom", ambientBottom * ambientIntensity);
             mat.SetVector("_Phase", new Vector4(forwardG, backG, phaseMix, silverLining));
+            mat.SetFloat("_Debug", debugView);
 
             int w = Mathf.Max(16, src.width / resolutionDivider);
             int h = Mathf.Max(16, src.height / resolutionDivider);

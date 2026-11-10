@@ -33,6 +33,7 @@ Shader "Hidden/SkyTide/VolumetricClouds"
     float4 _AmbientTop;
     float4 _AmbientBottom;
     float4 _Phase;          // x g вперёд, y g назад, z смесь, w сила серебряного края
+    float _Debug;           // 0 — норма; 1 — поля (R погода, G форма, B плотность) в точке 200 м по лучу; 2 — только облака; 3 — пропускание
 
     struct v2f
     {
@@ -114,6 +115,14 @@ Shader "Hidden/SkyTide/VolumetricClouds"
         view.xyz /= view.w;
         float3 rd = normalize(mul((float3x3)_CamToWorld, view.xyz));
         float3 ro = _WorldSpaceCameraPos;
+        if (_Debug > 0.5 && _Debug < 1.5)
+        {
+            float3 pp = ro + rd * 200.0;
+            float3 wpp = pp + _Wind.xyz * _Wind.w;
+            float wq = tex2Dlod(_SkyTideNoise, float4(wpp.xz / _Shape.w, 0, 0)).r;
+            float bq = tex3Dlod(_Noise3D, float4(wpp / _Shape.x, 0)).r;
+            return float4(wq, bq, Density(pp, true) / max(_DensityParams.x, 1e-5), 0);
+        }
 
         // Дистанция до непрозрачной сцены вдоль луча.
         float rawDepth = SAMPLE_DEPTH_TEXTURE(_CameraDepthTexture, i.uv);
@@ -196,6 +205,8 @@ Shader "Hidden/SkyTide/VolumetricClouds"
         if (_MainTex_TexelSize.y < 0) cuv.y = 1 - cuv.y;
         #endif
         half4 c = tex2D(_CloudTex, cuv);
+        if (_Debug > 0.5 && _Debug < 2.5) return half4(c.rgb, 1);
+        if (_Debug > 2.5) return half4(c.aaa, 1);
         return half4(scene.rgb * c.a + c.rgb, scene.a);
     }
     ENDCG

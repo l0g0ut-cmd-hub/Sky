@@ -50,11 +50,26 @@ namespace SkyTide.EditorTools
                     new Shot("08_wide", 60f, 22f, 140f),
                 };
 
+                VolumetricClouds vol = cam.GetComponent<VolumetricClouds>();
+                if (vol != null) Debug.Log("SkyTide: облака — " + vol.Probe());
+
                 RenderTexture rt = new RenderTexture(1600, 760, 24, RenderTextureFormat.ARGB32);
                 rt.antiAliasing = 4;
                 Texture2D tex = new Texture2D(rt.width, rt.height, TextureFormat.RGB24, false);
-                foreach (Shot s in shots)
+                Shot[] debugShots =
                 {
+                    new Shot("90_dbg_fields", 35f, 8f, 75f),
+                    new Shot("91_dbg_clouds", 35f, 8f, 75f),
+                    new Shot("92_dbg_trans", 35f, 8f, 75f),
+                };
+                int idx = 0;
+                Shot[] all = new Shot[shots.Length + debugShots.Length];
+                shots.CopyTo(all, 0);
+                debugShots.CopyTo(all, shots.Length);
+                foreach (Shot s in all)
+                {
+                    if (vol != null) vol.debugView = idx >= shots.Length ? idx - shots.Length + 1 : 0;
+                    idx++;
                     oc.yaw = s.yaw; oc.pitch = s.pitch; oc.distance = s.dist;
                     oc.Snap();
                     oc.Apply(0f);
@@ -69,7 +84,8 @@ namespace SkyTide.EditorTools
                     cam.targetTexture = null;
                     File.WriteAllBytes(Path.Combine(dir, s.name + ".jpg"), tex.EncodeToJPG(88));
                 }
-                Debug.Log("SkyTide: кадров снято: " + shots.Length + " → " + dir);
+                if (vol != null) vol.debugView = 0;
+                Debug.Log("SkyTide: кадров снято: " + all.Length + " → " + dir);
             }
             catch (System.Exception e)
             {
