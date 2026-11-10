@@ -31,6 +31,7 @@ namespace SkyTide.EditorTools
 
         static void SaveFrame(Camera cam, SkyTideBootstrap boot, RenderTexture rt, Texture2D tex, string dir, string name)
         {
+            float started = Time.realtimeSinceStartup;
             cam.aspect = (float)rt.width / rt.height;
             if (boot.Fx != null) boot.Fx.PrepareForRender(cam);
             cam.targetTexture = rt;
@@ -41,6 +42,7 @@ namespace SkyTide.EditorTools
             RenderTexture.active = null;
             cam.targetTexture = null;
             File.WriteAllBytes(Path.Combine(dir, name + ".jpg"), tex.EncodeToJPG(88));
+            Debug.Log("SkyTide: кадр " + name + ", секунд=" + (Time.realtimeSinceStartup - started).ToString("F1"));
         }
 
         static void StepSalvo(Broadside guns, FxSystem fx, ref float time, float until)
@@ -69,7 +71,7 @@ namespace SkyTide.EditorTools
             finally { cam.transform.SetPositionAndRotation(oldPosition, oldRotation); }
         }
 
-        static void CaptureBroadside(OrbitCamera oc, Camera cam, SkyTideBootstrap boot, RenderTexture rt, Texture2D tex, string dir, Broadside guns)
+        static void CaptureBroadside(OrbitCamera oc, Camera cam, SkyTideBootstrap boot, RenderTexture rt, Texture2D tex, string dir, Broadside guns, bool full = true)
         {
             Random.State random = Random.state;
             Random.InitState(74131);
@@ -82,16 +84,22 @@ namespace SkyTide.EditorTools
                 float time = 0f;
                 StepSalvo(guns, fx, ref time, 0.06f);
                 Render(oc, cam, boot, rt, tex, dir, new Shot("45_vol_muzzle_flash", 90f, 6f, 58f));
-                StepSalvo(guns, fx, ref time, 0.26f);
-                Render(oc, cam, boot, rt, tex, dir, new Shot("46_vol_ripple_flashes", 90f, 8f, 70f));
+                if (full)
+                {
+                    StepSalvo(guns, fx, ref time, 0.26f);
+                    Render(oc, cam, boot, rt, tex, dir, new Shot("46_vol_ripple_flashes", 90f, 8f, 70f));
+                }
                 StepSalvo(guns, fx, ref time, 0.75f);
                 Render(oc, cam, boot, rt, tex, dir, new Shot("40_vol_broadside_side", 90f, 8f, 70f));
-                Render(oc, cam, boot, rt, tex, dir, new Shot("41_vol_broadside_chase", 10f, 16f, 75f));
-                boot.SetVolumetric(false);
-                Render(oc, cam, boot, rt, tex, dir, new Shot("42_broadside_drawn", 90f, 8f, 70f));
-                boot.SetVolumetric(true);
-                StepSalvo(guns, fx, ref time, 3.8f);
-                Render(oc, cam, boot, rt, tex, dir, new Shot("43_vol_broadside_later", 60f, 16f, 140f));
+                if (full)
+                {
+                    Render(oc, cam, boot, rt, tex, dir, new Shot("41_vol_broadside_chase", 10f, 16f, 75f));
+                    boot.SetVolumetric(false);
+                    Render(oc, cam, boot, rt, tex, dir, new Shot("42_broadside_drawn", 90f, 8f, 70f));
+                    boot.SetVolumetric(true);
+                    StepSalvo(guns, fx, ref time, 3.8f);
+                    Render(oc, cam, boot, rt, tex, dir, new Shot("43_vol_broadside_later", 60f, 16f, 140f));
+                }
                 StepSalvo(guns, fx, ref time, 4.15f);
                 Debug.Log("SkyTide: залп → всплесков в облаках: " + fx.CloudSplashCount);
                 if (fx.CloudSplashCount > 0) RenderSplash(oc, cam, boot, rt, tex, dir);
@@ -116,6 +124,36 @@ namespace SkyTide.EditorTools
             }
         }
 
+        // Обычная сборка проверяет только текущую задачу. Полная галерея на llvmpipe занимала ~69 минут.
+        // Разрешение/число кадров меняются только у съёмки в редакторе, качество Android-игры прежнее.
+        static void CaptureQuick(OrbitCamera oc, Camera cam, SkyTideBootstrap boot, string dir)
+        {
+            float start = Time.realtimeSinceStartup;
+            RenderTexture rt = new RenderTexture(800, 380, 24, RenderTextureFormat.ARGB32);
+            Texture2D tex = new Texture2D(rt.width, rt.height, TextureFormat.RGB24, false);
+            try
+            {
+                boot.SetVolumetric(true);
+                if (boot.Volumetric != null) boot.Volumetric.ResetTowers(boot.Ship.transform.position);
+                // Контрольный кадр до выстрела + факел, дым, всплеск, попадание и щепки.
+                Render(oc, cam, boot, rt, tex, dir, new Shot("32_vol_side", 90f, 8f, 70f));
+                Broadside guns = boot.Ship != null ? boot.Ship.GetComponent<Broadside>() : null;
+                if (guns != null && guns.HasCannons && boot.Fx != null)
+                    CaptureBroadside(oc, cam, boot, rt, tex, dir, guns, false);
+                else Debug.LogWarning("SkyTide: пушек нет — залп не снят");
+                Debug.Log("SkyTide: быстрая проверка залпов, 800x380, кадров="
+                    + Directory.GetFiles(dir, "*.jpg").Length + ", секунд=" + (Time.realtimeSinceStartup - start).ToString("F1"));
+            }
+            finally
+            {
+                cam.targetTexture = null;
+                RenderTexture.active = null;
+                rt.Release();
+                Object.DestroyImmediate(rt);
+                Object.DestroyImmediate(tex);
+            }
+        }
+
         public static void Capture(string scenePath)
         {
             Debug.Log("SkyTide: кадры — графика " + SystemInfo.graphicsDeviceType + " / " + SystemInfo.graphicsDeviceName);
@@ -132,6 +170,13 @@ namespace SkyTide.EditorTools
                 OrbitCamera oc = boot.Cam;
                 Camera cam = oc.GetComponent<Camera>();
                 QualitySettings.shadowDistance = 160f;
+
+                // Полная галерея — только по явному запросу, не тормозит каждый выпуск APK.
+                if (System.Environment.GetEnvironmentVariable("SKYTIDE_FULL_SHOTS") != "1")
+                {
+                    CaptureQuick(oc, cam, boot, dir);
+                    return;
+                }
 
                 // Курс корабля на старте 55°, солнце — курс 90°. yaw камеры считается от курса корабля.
                 Shot[] shots =
@@ -224,7 +269,7 @@ namespace SkyTide.EditorTools
                     boot.NextShip();
                     foreach (Shot s in shipShots) Render(oc, cam, boot, rt, tex, dir, s);
                 }
-                Debug.Log("SkyTide: кадров снято: " + (all.Length + (shipCount > 1 ? shipShots.Length : 0)) + " → " + dir + ", моделей: " + shipCount);
+                Debug.Log("SkyTide: кадров снято: " + Directory.GetFiles(dir, "*.jpg").Length + " → " + dir + ", моделей: " + shipCount);
             }
             catch (System.Exception e)
             {
