@@ -15,9 +15,9 @@ namespace SkyTide
         public Light sun;
 
         [Header("Тон")]
-        public float exposure = 1.25f;
-        public float contrast = 1.08f;
-        public float saturation = 1.08f;
+        public float exposure = 1.08f;
+        public float contrast = 1.16f;
+        public float saturation = 1.05f;
         public Color shadowTone = new Color(0.44f, 0.46f, 0.6f);
         public Color highlightTone = new Color(0.6f, 0.5f, 0.42f);
         [Range(0f, 1f)] public float toneStrength = 0.35f;

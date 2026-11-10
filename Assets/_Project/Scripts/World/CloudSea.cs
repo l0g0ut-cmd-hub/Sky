@@ -70,15 +70,14 @@ namespace SkyTide
             Mesh[] towers = new Mesh[CloudAtlas.Towers.Length];
             for (int i = 0; i < towers.Length; i++) towers[i] = SpriteQuad(CloudAtlas.Towers[i], CloudAtlas.Towers[i], CloudAtlas.Towers[i]);
 
-            // Кучевые: низкие гряды растут из моря, средние — на высоте полёта (сквозь них можно пролететь),
-            // высокие — над кораблём. Каждая куча — 2–3 облака со сдвигом по глубине.
+            // Кучевые-спрайты: низкие гряды растут из моря и высокие — над слоем объёмных облаков
+            // (высота полёта занята объёмными облаками). Каждая куча — 2–3 облака со сдвигом по глубине.
             for (int i = 0; i < clusterCount; i++)
             {
                 float roll = (float)rnd.NextDouble();
                 float width, y;
-                if (roll < 0.5f) { width = Range(rnd, 260f, 560f); y = Range(rnd, -30f, -2f); }
-                else if (roll < 0.8f) { width = Range(rnd, 110f, 240f); y = Range(rnd, 35f, 85f); }
-                else { width = Range(rnd, 200f, 380f); y = Range(rnd, 140f, 220f); }
+                if (roll < 0.65f) { width = Range(rnd, 260f, 560f); y = Range(rnd, -34f, -6f); }
+                else { width = Range(rnd, 220f, 400f); y = Range(rnd, 230f, 310f); }
                 Vector3 center = RandomPoint(rnd, 160f, y);
                 int layers = 2 + rnd.Next(2);
                 for (int l = 0; l < layers; l++)
@@ -94,7 +93,7 @@ namespace SkyTide
             {
                 bool high = i % 5 < 2;
                 float w = high ? Range(rnd, 600f, 1000f) : Range(rnd, 450f, 1100f);
-                float y = high ? Range(rnd, 230f, 320f) : Range(rnd, -12f, 14f);
+                float y = high ? Range(rnd, 320f, 400f) : Range(rnd, -12f, 10f);
                 AddCloud(root, mat, strips[rnd.Next(strips.Length)], RandomPoint(rnd, 120f, y), w, rnd, high ? 2.2f : 0.7f);
             }
 

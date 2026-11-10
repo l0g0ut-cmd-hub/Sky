@@ -69,6 +69,8 @@ namespace SkyTide.EditorTools
             b.materials = mats;
             b.shipMesh = AssetDatabase.LoadAssetAtPath<TextAsset>(Models + "Corsair.bytes");
             b.postShader = AssetDatabase.LoadAssetAtPath<Shader>("Assets/_Project/Shaders/PostFX.shader");
+            b.volumetricShader = AssetDatabase.LoadAssetAtPath<Shader>("Assets/_Project/Shaders/VolumetricClouds.shader");
+            b.cloudNoise3D = AssetDatabase.LoadAssetAtPath<TextAsset>(Art + "CloudNoise3D.bytes");
             b.noiseTexture = Tex(Art + "Noise.png", false, false, TextureWrapMode.Repeat, TextureWrapMode.Repeat, 256, true, true, true);
             Debug.Log("SkyTide: модель корабля " + (b.shipMesh != null && mats.shipBody != null ? "подключена" : "не найдена — будет заглушка"));
 

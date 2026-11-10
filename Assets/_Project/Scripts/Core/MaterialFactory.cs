@@ -99,6 +99,7 @@ namespace SkyTide
             Material m = new Material(sh);
             m.name = name;
             m.mainTexture = tex;
+            m.color = transparent ? new Color(0.92f, 0.86f, 0.88f, 1f) : new Color(0.8f, 0.72f, 0.76f, 1f);
             if (transparent)
             {
                 m.SetFloat("_SrcBlend", (float)BlendMode.SrcAlpha);

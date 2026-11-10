@@ -21,6 +21,11 @@ namespace SkyTide
         [Tooltip("Шейдер постобработки (Hidden/SkyTide/Post) — ссылка нужна, чтобы он попал в сборку.")]
         public Shader postShader;
 
+        [Tooltip("Шейдер объёмных облаков (Hidden/SkyTide/VolumetricClouds).")]
+        public Shader volumetricShader;
+        [Tooltip("3D-шум облаков (Art/CloudNoise3D.bytes, tools/gen_cloud_noise3d.py).")]
+        public TextAsset cloudNoise3D;
+
         [Header("Старт")]
         public Vector3 spawnPosition = new Vector3(0f, 60f, 0f);
         [Tooltip("Курс на старте. Солнце на панораме — в направлении +X (курс 90°).")]
@@ -57,6 +62,12 @@ namespace SkyTide
             SetShaderGlobals(materials, sun, noiseTexture);
             OrbitCamera cam = SetupCamera();
             Cam = cam;
+            // Порядок важен: сначала объёмные облака, потом постобработка поверх них.
+            VolumetricClouds vol = cam.GetComponent<VolumetricClouds>();
+            if (vol == null) vol = cam.gameObject.AddComponent<VolumetricClouds>();
+            vol.shader = volumetricShader;
+            vol.sun = sun;
+            vol.noiseBytes = cloudNoise3D != null ? cloudNoise3D.bytes : null;
             SkyTidePost post = cam.GetComponent<SkyTidePost>();
             if (post == null) post = cam.gameObject.AddComponent<SkyTidePost>();
             post.shader = postShader;
