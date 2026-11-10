@@ -49,7 +49,9 @@ Shader "Hidden/SkyTide/VolumetricClouds"
     float4 _Phase;                // x g вперёд, y g назад, z смесь, w кайма
     float4 _Aerial;               // x доля воздушной перспективы
     float _Debug;
-    float4 _NearClear;            // x начало, y конец растворения у камеры (м)
+    float4 _NearClear;
+    float _Bake;                  // 1 — запекание снимков-импосторов (ортографический луч, без сцены и дымки)
+    float4 _BakeOrigin, _BakeRight, _BakeUp, _BakeFwd;            // x начало, y конец растворения у камеры (м)
 
     struct v2f
     {
@@ -197,6 +199,12 @@ Shader "Hidden/SkyTide/VolumetricClouds"
         view.xyz /= view.w;
         float3 rd = normalize(mul((float3x3)_CamToWorld, view.xyz));
         float3 ro = _WorldSpaceCameraPos;
+        bool bake = _Bake > 0.5;
+        if (bake)
+        {
+            ro = _BakeOrigin.xyz + _BakeRight.xyz * i.uv.x + _BakeUp.xyz * i.uv.y;
+            rd = _BakeFwd.xyz;
+        }
 
         if (_Debug > 0.5 && _Debug < 1.5)
         {
@@ -206,7 +214,7 @@ Shader "Hidden/SkyTide/VolumetricClouds"
 
         float sceneDist = 1e7;
         float rawDepth = SAMPLE_DEPTH_TEXTURE(_CameraDepthTexture, i.uv);
-        if (Linear01Depth(rawDepth) < 0.999)
+        if (!bake && Linear01Depth(rawDepth) < 0.999)
         {
             float3 fwd = mul((float3x3)_CamToWorld, float3(0, 0, -1));
             sceneDist = LinearEyeDepth(rawDepth) / max(dot(rd, fwd), 1e-3);
@@ -215,7 +223,7 @@ Shader "Hidden/SkyTide/VolumetricClouds"
         float3 sunDirH = normalize(_SkyTideSunDir.xyz);
         float cosH = dot(rd, sunDirH);
         float phaseH = min(lerp(HG(cosH, _Phase.y), HG(cosH, _Phase.x), _Phase.z) * 12.566, 2.6);
-        float4 haze = Haze(ro, rd, sceneDist, jit, phaseH, _SunGold.rgb);
+        float4 haze = bake ? float4(0, 0, 0, 1) : Haze(ro, rd, sceneDist, jit, phaseH, _SunGold.rgb);
 
         float tA, tB;
         if (!TowerInterval(ro, rd, tA, tB)) return haze;
@@ -271,6 +279,13 @@ Shader "Hidden/SkyTide/VolumetricClouds"
         light = lerp(light, SkyTidePanorama(rd) * (1.0 - trans), _Aerial.x * saturate(SkyTideAerial(meanDist)));
         // Дымка ближе башен (приближение): облака видны сквозь неё.
         return float4(haze.rgb + light * haze.a, trans * haze.a);
+    }
+
+    // Снимок для импостора: свет (уже умножен на покрытие) в кодировке sqrt(свет/6), альфа — покрытие.
+    float4 fragBake (v2f i) : SV_Target
+    {
+        float4 c = fragMarch(i);
+        return float4(sqrt(saturate(c.rgb / 6.0)), 1.0 - c.a);
     }
 
     // Мягкое размытие облаков в низком разрешении (тент 3×3): убирает зерно и «пиксельные» кромки.
@@ -358,6 +373,11 @@ Shader "Hidden/SkyTide/VolumetricClouds"
         Pass { CGPROGRAM
             #pragma vertex vert
             #pragma fragment fragBlur
+            ENDCG }
+        Pass { CGPROGRAM
+            #pragma vertex vert
+            #pragma fragment fragBake
+            #pragma target 3.5
             ENDCG }
     }
     Fallback Off

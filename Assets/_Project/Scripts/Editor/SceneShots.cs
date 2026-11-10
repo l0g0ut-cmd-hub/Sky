@@ -116,6 +116,14 @@ namespace SkyTide.EditorTools
                 Render(oc, cam, boot, rt, tex, dir, new Shot("31_vol_wide", 60f, 22f, 140f));
                 Render(oc, cam, boot, rt, tex, dir, new Shot("32_vol_side", 90f, 10f, 60f));
                 Render(oc, cam, boot, rt, tex, dir, new Shot("33_vol_low", -40f, -14f, 70f));
+                Render(oc, cam, boot, rt, tex, dir, new Shot("36_vol_away_from_sun", 215f, 12f, 70f));
+                Render(oc, cam, boot, rt, tex, dir, new Shot("37_vol_high", 140f, 50f, 115f));
+                if (vol != null)
+                {
+                    Texture2D sheet = vol.ImpostorSheet();
+                    if (sheet != null) File.WriteAllBytes(Path.Combine(dir, "93_dbg_impostors.jpg"), sheet.EncodeToJPG(90));
+                    else Debug.LogWarning("SkyTide: листа импосторов нет");
+                }
                 // Те же облака без постобработки (настройка формы и света до ACES/блума).
                 SkyTidePost post = cam.GetComponent<SkyTidePost>();
                 if (post != null) post.enabled = false;

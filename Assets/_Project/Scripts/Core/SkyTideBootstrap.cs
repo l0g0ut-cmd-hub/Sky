@@ -24,6 +24,7 @@ namespace SkyTide
 
         [Tooltip("Шейдер объёмных облаков (Hidden/SkyTide/VolumetricClouds).")]
         public Shader volumetricShader;
+        public Shader impostorShader;
         [Tooltip("3D-шум облаков (Art/CloudNoise3D.bytes, tools/gen_cloud_noise3d.py).")]
         public TextAsset cloudNoise3D;
         [Tooltip("Запечённые шаблоны объёмных башен: форма + свет солнца + видимость неба (SceneBuilder).")]
@@ -72,6 +73,7 @@ namespace SkyTide
             VolumetricClouds vol = cam.GetComponent<VolumetricClouds>();
             if (vol == null) vol = cam.gameObject.AddComponent<VolumetricClouds>();
             vol.shader = volumetricShader;
+            vol.impostorShader = impostorShader;
             vol.sun = sun;
             vol.noiseBytes = cloudNoise3D != null ? cloudNoise3D.bytes : null;
             vol.bakedField = towerField;
@@ -103,6 +105,8 @@ namespace SkyTide
         {
             volumetricClouds = on;
             if (Volumetric != null) Volumetric.enabled = on;
+            // В объёмном режиме кучевые спрайты заменяют импосторы — снимки настоящих объёмных облаков.
+            if (World != null) World.SetSpriteCloudsVisible(!on || Volumetric == null || !Volumetric.impostors);
             // Объёмные башни дополняют рисованные облака, а не заменяют их — средний ярус спрайтов остаётся.
         }
 

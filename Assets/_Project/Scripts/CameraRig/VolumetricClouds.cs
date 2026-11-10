@@ -20,6 +20,11 @@ namespace SkyTide
         const float TemplateHeight = 2.74f;   // высота шаблона в радиусах (520 / 190)
 
         public Shader shader;
+        public Shader impostorShader;
+        [Header("Импосторы (дальние облака — снимки объёмных)")]
+        public bool impostors = true;
+        [Range(32, 200)] public int impostorBakeSteps = 112;
+        readonly CloudImpostors imp = new CloudImpostors();
         public Light sun;
         public byte[] noiseBytes;   // CloudNoise3D.bytes (64³ RGBA8)
         [Tooltip("Запечённые шаблоны башен (SceneBuilder → Art/TowerField.asset). Пусто — запекаются при старте.")]
@@ -97,6 +102,7 @@ namespace SkyTide
 
         void OnDestroy()
         {
+            imp.Release();
             if (noise != null) SkyTideBootstrap.SafeDestroy(noise);
             if (field != null && field != bakedField) SkyTideBootstrap.SafeDestroy(field);
         }
@@ -349,30 +355,29 @@ namespace SkyTide
         public void ResetTowers(Vector3 center)
         {
             Place(center);
+            imp.Place(center, TemplateHeight);
         }
 
         void LateUpdate()
         {
-            if (Application.isPlaying && cam != null) Advance(cam.transform.position, Time.deltaTime);
+            if (Application.isPlaying && cam != null)
+            {
+                Advance(cam.transform.position, Time.deltaTime);
+                imp.Advance(cam.transform.position, wind, Time.deltaTime, TemplateHeight);
+            }
         }
 
-        void OnRenderImage(RenderTexture src, RenderTexture dst)
-        {
-            Texture3D n = Noise();
-            if (shader == null) shader = Shader.Find("Hidden/SkyTide/VolumetricClouds");
-            if (shader == null || !shader.isSupported || n == null || !SystemInfo.supports3DTextures)
-            {
-                Graphics.Blit(src, dst);
-                return;
-            }
-            if (mat == null)
-            {
-                mat = new Material(shader);
-                mat.hideFlags = HideFlags.HideAndDontSave;
-            }
-            EnsureTemplates();
-            if (!placed) Place(cam.transform.position);
+        /// <summary>Лист снимков импосторов для проверки в CI (через кадр по азимуту, все варианты).</summary>
+        public Texture2D ImpostorSheet() { return imp.Sheet(); }
 
+        float ClearDistance()
+        {
+            if (orbit == null) orbit = GetComponent<OrbitCamera>();
+            return orbit != null ? orbit.distance : 0f;
+        }
+
+        void SetupMaterial(Texture3D n)
+        {
             float t = Application.isPlaying ? Time.time : 0f;
             float sunScale = sun != null ? sun.intensity / 1.45f : 1f;
             mat.SetTexture("_Noise3D", n);
@@ -398,9 +403,43 @@ namespace SkyTide
             mat.SetVector("_Aerial", new Vector4(aerial, 0f, 0f, 0f));
             mat.SetFloat("_Debug", debugView);
             // Чистая зона до корабля: облако не встаёт между камерой и кораблём.
-            if (orbit == null) orbit = GetComponent<OrbitCamera>();
-            float clear = orbit != null ? orbit.distance : 0f;
+            float clear = ClearDistance();
             mat.SetVector("_NearClear", new Vector4(Mathf.Max(30f, clear * 0.9f), Mathf.Max(140f, clear + 70f), 0f, 0f));
+
+            mat.SetFloat("_Bake", 0f);
+        }
+
+        void OnRenderImage(RenderTexture src, RenderTexture dst)
+        {
+            Texture3D n = Noise();
+            if (shader == null) shader = Shader.Find("Hidden/SkyTide/VolumetricClouds");
+            if (shader == null || !shader.isSupported || n == null || !SystemInfo.supports3DTextures)
+            {
+                Graphics.Blit(src, dst);
+                return;
+            }
+            if (mat == null)
+            {
+                mat = new Material(shader);
+                mat.hideFlags = HideFlags.HideAndDontSave;
+            }
+            EnsureTemplates();
+            if (!placed) Place(cam.transform.position);
+
+            SetupMaterial(n);
+            if (impostors && debugView == 0 && imp.NeedsBake)
+            {
+                if (impostorShader == null) impostorShader = Shader.Find("Hidden/SkyTide/CloudImpostor");
+                if (impostorShader != null && impostorShader.isSupported)
+                {
+                    float bt = Time.realtimeSinceStartup;
+                    bool ok = imp.Bake(mat, field, TemplateHeight, new Vector4(FieldHalf, FieldBottom, FieldHeight, Templates), impostorBakeSteps);
+                    Debug.Log("SkyTide: импосторы облаков " + (ok ? "запечены" : "не поддерживаются") + " за " + Mathf.RoundToInt((Time.realtimeSinceStartup - bt) * 1000f) + " мс");
+                    if (!ok) impostors = false;
+                    SetupMaterial(n);
+                }
+                else impostors = false;
+            }
 
             int w = Mathf.Max(16, src.width / resolutionDivider);
             int h = Mathf.Max(16, src.height / resolutionDivider);
@@ -419,6 +458,12 @@ namespace SkyTide
             mat.SetTexture("_CloudTex", blurred);
             mat.SetTexture("_LowDepthTex", lowDepth);
             Graphics.Blit(src, dst, mat, 1);          // сведение с учётом глубины
+            if (impostors && debugView == 0)
+            {
+                float clear = ClearDistance();
+                imp.Draw(cam, dst, impostorShader, blurred, towers, towerRot, towerCount, TemplateHeight, aerial,
+                         new Vector2(Mathf.Max(30f, clear * 0.9f), Mathf.Max(140f, clear + 70f)));
+            }
             RenderTexture.ReleaseTemporary(blurred);
             RenderTexture.ReleaseTemporary(lowDepth);
             RenderTexture.ReleaseTemporary(clouds);

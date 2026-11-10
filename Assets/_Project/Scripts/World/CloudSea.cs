@@ -33,6 +33,7 @@ namespace SkyTide
         readonly List<Cloud> clouds = new List<Cloud>();
         readonly List<Transform> seaPlanes = new List<Transform>();
         readonly List<GameObject> midLayer = new List<GameObject>();
+        readonly List<GameObject> spriteClouds = new List<GameObject>();
         Material seaMat;
         Material layerMat;
         bool shaderSea;
@@ -89,6 +90,7 @@ namespace SkyTide
                     Vector3 off = l == 0 ? Vector3.zero : new Vector3(Range(rnd, -0.4f, 0.4f) * width, Range(rnd, -0.06f, 0.12f) * width, Range(rnd, -0.4f, 0.4f) * width);
                     Transform t = AddCloud(root, mat, puffs[rnd.Next(puffs.Length)], center + off, w, rnd, y > 120f ? 1.6f : 1f);
                     if (mid) midLayer.Add(t.gameObject);
+                    spriteClouds.Add(t.gameObject);
                 }
             }
 
@@ -98,7 +100,7 @@ namespace SkyTide
                 bool high = i % 5 < 2;
                 float w = high ? Range(rnd, 600f, 1000f) : Range(rnd, 450f, 1100f);
                 float y = high ? Range(rnd, 320f, 400f) : Range(rnd, -12f, 10f);
-                AddCloud(root, mat, strips[rnd.Next(strips.Length)], RandomPoint(rnd, 120f, y), w, rnd, high ? 2.2f : 0.7f);
+                AddCloud(root, mat, strips[rnd.Next(strips.Length)], RandomPoint(rnd, 120f, y), w, rnd, high ? 2.2f : 0.7f, true);
             }
 
             // Грозовые башни на дальнем плане.
@@ -107,7 +109,7 @@ namespace SkyTide
                 float ang = (i / 7f) * Mathf.PI * 2f + Range(rnd, -0.3f, 0.3f);
                 float r = Range(rnd, 1300f, 1900f);
                 Vector3 p = new Vector3(Mathf.Cos(ang) * r, Range(rnd, -110f, -60f), Mathf.Sin(ang) * r);
-                AddCloud(root, mat, towers[rnd.Next(towers.Length)], p, Range(rnd, 700f, 1150f), rnd, 0.4f);
+                spriteClouds.Add(AddCloud(root, mat, towers[rnd.Next(towers.Length)], p, Range(rnd, 700f, 1150f), rnd, 0.4f).gameObject);
             }
         }
 
@@ -119,13 +121,19 @@ namespace SkyTide
             return new Vector3(Mathf.Cos(ang) * r, y, Mathf.Sin(ang) * r);
         }
 
+        /// <summary>Кучевые облака-спрайты и дальние башни (полосы дымки остаются всегда).</summary>
+        public void SetSpriteCloudsVisible(bool visible)
+        {
+            for (int i = 0; i < spriteClouds.Count; i++) spriteClouds[i].SetActive(visible);
+        }
+
         /// <summary>Спрайты на высоте полёта: прячутся, когда включены объёмные облака.</summary>
         public void SetMidLayerVisible(bool visible)
         {
             for (int i = 0; i < midLayer.Count; i++) midLayer[i].SetActive(visible);
         }
 
-        Transform AddCloud(Transform root, Material mat, Mesh mesh, Vector3 pos, float width, System.Random rnd, float windMul)
+        Transform AddCloud(Transform root, Material mat, Mesh mesh, Vector3 pos, float width, System.Random rnd, float windMul, bool strip = false)
         {
             GameObject go = new GameObject("Cloud");
             go.transform.SetParent(root, false);
@@ -138,6 +146,8 @@ namespace SkyTide
             mr.receiveShadows = false;
             MaterialPropertyBlock mpb = new MaterialPropertyBlock();
             mpb.SetFloat("_CloudPhase", (float)rnd.NextDouble());
+            // Полосы низкие и широкие — ребром видны раньше, гасим их уже при пологом взгляде сверху.
+            mpb.SetVector("_EdgeOn", strip ? new Vector4(0.18f, 0.42f, 0f, 0f) : new Vector4(0.5f, 0.8f, 0f, 0f));
             mr.SetPropertyBlock(mpb);
 
             Cloud c = new Cloud();

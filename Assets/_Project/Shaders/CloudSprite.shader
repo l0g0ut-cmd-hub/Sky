@@ -16,6 +16,7 @@ Shader "SkyTide/CloudSprite"
         _NoiseScale ("Billow size", Float) = 2.4
         _NearFade ("Near fade start/end (m)", Vector) = (70, 260, 0, 0)
         [HideInInspector] _CloudPhase ("Per-cloud phase", Float) = 0
+        [HideInInspector] _EdgeOn ("Edge-on fade (cos start/end)", Vector) = (0.5, 0.8, 0, 0)
     }
     SubShader
     {
@@ -42,6 +43,7 @@ Shader "SkyTide/CloudSprite"
             float _NoiseScale;
             float4 _NearFade;
             float _CloudPhase;
+            float4 _EdgeOn;
 
             struct appdata
             {
@@ -124,6 +126,9 @@ Shader "SkyTide/CloudSprite"
                 col = lerp(col, SkyTidePanorama(vdir), SkyTideAerial(dist));
 
                 a *= saturate((dist - _NearFade.x) / max(_NearFade.y - _NearFade.x, 1.0));
+                // Картинка стоит вертикально: при взгляде сверху/снизу она видна ребром — растворяем.
+                float vy = abs(i.worldPos.y - _WorldSpaceCameraPos.y) / max(dist, 1e-3);
+                a *= 1.0 - smoothstep(_EdgeOn.x, _EdgeOn.y, vy);
                 return fixed4(col, a);
             }
             ENDCG
