@@ -63,7 +63,7 @@ namespace SkyTide
         public float deckDistance = 5000f;
         public float deckAbsorption = 1.7f;
         [Tooltip("Яркость солнца на море облаков: тонкий слой освещён почти целиком — без этого пересвет")]
-        public float deckSunScale = 0.26f;
+        public float deckSunScale = 0.22f;
 
         [Header("Дымка у моря облаков (не используется — заменена объёмным морем)")]
         public float hazeDensity = 0.00045f;
@@ -75,19 +75,20 @@ namespace SkyTide
         public float lightAbsorption = 1.4f;
         public Color sunGold = new Color(1f, 0.62f, 0.22f);
         public Color sunEmber = new Color(1f, 0.24f, 0.06f);
-        public float sunIntensity = 5.2f;
+        public float sunIntensity = 4.3f;
         public Color multiScatter = new Color(0.95f, 0.38f, 0.42f);
         public float multiScatterAmount = 0.2f;
         public Color ambientTop = new Color(0.36f, 0.22f, 0.55f);
         public Color ambientBottom = new Color(0.16f, 0.1f, 0.34f);
-        public float ambientIntensity = 0.65f;
+        public float ambientIntensity = 0.60f;
         public float forwardG = 0.6f;
         public float backG = -0.2f;
         [Range(0f, 1f)] public float phaseMix = 0.65f;
-        public float rim = 1.5f;
+        public float rim = 1.15f;
         [Range(0f, 1f)] public float aerial = 0.45f;
 
         [Header("Отладка")]
+        public bool blurEnabled = true; // CI: bypass фильтрации для сравнения
         [Range(0, 3)] public int debugView;   // 1 — поле башен, 2 — только облака, 3 — пропускание
 
         Material mat;
@@ -519,24 +520,30 @@ namespace SkyTide
             RenderTexture lowDepth = RenderTexture.GetTemporary(w, h, 0, depthFmt);
             clouds.filterMode = FilterMode.Point;
             lowDepth.filterMode = FilterMode.Point;
-            RenderTexture blurred = RenderTexture.GetTemporary(w, h, 0, RenderTextureFormat.ARGBHalf);
-            clouds.filterMode = FilterMode.Bilinear;
-            blurred.filterMode = FilterMode.Point;
-            Graphics.Blit(src, clouds, mat, 0);       // марш луча
-            Graphics.Blit(clouds, blurred, mat, 3);   // мягкое размытие в низком разрешении
-            Graphics.Blit(src, lowDepth, mat, 2);     // глубина сцены в низком разрешении
-            mat.SetTexture("_CloudTex", blurred);
+            // Нельзя размывать до получения глубины: важны границы облаков и корабля.
+            Graphics.Blit(src, clouds, mat, 0);
+            Graphics.Blit(src, lowDepth, mat, 2);
             mat.SetTexture("_LowDepthTex", lowDepth);
-            Graphics.Blit(src, dst, mat, 1);          // сведение с учётом глубины
+            RenderTexture blurred = null;
+            RenderTexture filtered = clouds;
+            if (blurEnabled && debugView == 0)
+            {
+                blurred = RenderTexture.GetTemporary(w, h, 0, RenderTextureFormat.ARGBHalf);
+                blurred.filterMode = FilterMode.Point;
+                Graphics.Blit(clouds, blurred, mat, 3);
+                filtered = blurred;
+            }
+            mat.SetTexture("_CloudTex", filtered);
+            Graphics.Blit(src, dst, mat, 1);
             if (impostors && debugView == 0)
             {
                 float clear = ClearDistance();
                 imp.deckTop = deckTop;
-                imp.Draw(cam, dst, impostorShader, blurred, towers, towerRot, towerCount, TemplateHeight, aerial,
+                imp.Draw(cam, dst, impostorShader, filtered, towers, towerRot, towerCount, TemplateHeight, aerial,
                          new Vector2(Mathf.Max(30f, clear * 0.9f), Mathf.Max(140f, clear + 70f)));
             }
             if (debugView == 0 && FxSystem.Instance != null) FxSystem.Instance.DrawExternal(cam, dst);
-            RenderTexture.ReleaseTemporary(blurred);
+            if (blurred != null) RenderTexture.ReleaseTemporary(blurred);
             RenderTexture.ReleaseTemporary(lowDepth);
             RenderTexture.ReleaseTemporary(clouds);
         }

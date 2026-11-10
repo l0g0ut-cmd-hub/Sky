@@ -158,6 +158,27 @@ namespace SkyTide.EditorTools
                 Render(oc, cam, boot, rt, tex, dir, new Shot("34_vol_nopost_toward_sun", 35f, 8f, 75f));
                 Render(oc, cam, boot, rt, tex, dir, new Shot("35_vol_nopost_wide", 60f, 22f, 140f));
                 if (post != null) post.enabled = true;
+                // Изолируем причины дефектов при следующей сборке (не меняет игровой режим).
+                boot.SetVolumetric(true);
+                if (vol != null)
+                {
+                    bool oldBlur = vol.blurEnabled;
+                    vol.blurEnabled = false;
+                    Render(oc, cam, boot, rt, tex, dir, new Shot("50_vol_raw_high", 140f, 50f, 115f));
+                    Render(oc, cam, boot, rt, tex, dir, new Shot("51_vol_raw_side", 90f, 10f, 60f));
+                    vol.blurEnabled = oldBlur;
+                    bool oldImpostors = vol.impostors;
+                    vol.impostors = false;
+                    Render(oc, cam, boot, rt, tex, dir, new Shot("54_vol_noimpostors_side", 90f, 10f, 60f));
+                    vol.impostors = oldImpostors;
+                }
+                if (boot.World != null)
+                {
+                    boot.World.SetSeaPlanesVisible(false);
+                    Render(oc, cam, boot, rt, tex, dir, new Shot("52_vol_no_planes_high", 140f, 50f, 115f));
+                    Render(oc, cam, boot, rt, tex, dir, new Shot("53_vol_no_planes_wide", 60f, 22f, 140f));
+                    boot.World.SetSeaPlanesVisible(true);
+                }
                 boot.SetVolumetric(false);
 
                 int shipCount = boot.ships != null ? boot.ships.Length : 0;
@@ -166,7 +187,7 @@ namespace SkyTide.EditorTools
                     boot.NextShip();
                     foreach (Shot s in shipShots) Render(oc, cam, boot, rt, tex, dir, s);
                 }
-                Debug.Log("SkyTide: кадров снято: " + (all.Length + (shipCount > 1 ? shipShots.Length : 0)) + " → " + dir + ", моделей: " + shipCount);
+                Debug.Log("SkyTide: кадров снято: " + Directory.GetFiles(dir, "*.jpg").Length + " → " + dir + ", моделей: " + shipCount);
             }
             catch (System.Exception e)
             {

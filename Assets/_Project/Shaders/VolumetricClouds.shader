@@ -275,7 +275,8 @@ Shader "Hidden/SkyTide/VolumetricClouds"
         {
             if (t > t1) break;
             float3 p = ro + rd * t;
-            float d = DeckDensity(p, t < 1500.0) * ClearFactor(p, ro);
+            float farFade = 1.0 - smoothstep(_Deck3.y * 0.80, _Deck3.y, t - t0);
+            float d = DeckDensity(p, t < 1500.0) * ClearFactor(p, ro) * farFade;
             if (d > 1e-5)
             {
                 float d1 = DeckDensity(p + L * 18.0, false);
@@ -287,6 +288,7 @@ Shader "Hidden/SkyTide/VolumetricClouds"
                 float3 sunCol = lerp(_SunEmber.rgb, _SunGold.rgb, pow(sunT, 0.6));
                 float3 amb = lerp(_AmbientBottom.rgb, _AmbientTop.rgb, h) * lerp(0.3, 0.85, h);
                 amb *= lerp(float3(0.6, 0.42, 0.85), float3(1, 1, 1), h);
+                amb *= lerp(0.70, 1.0, sunT);
                 float3 src = (sunCol * sunT * min(phase, 1.6) + _MultiScatter.rgb * ms * h) * _Deck3.w + amb + SkyTideFlashLight(p);
                 float st = exp(-d * stepLen);
                 float wgt = trans * (1.0 - st);
@@ -377,6 +379,7 @@ Shader "Hidden/SkyTide/VolumetricClouds"
                         float3 amb = lerp(_AmbientBottom.rgb, _AmbientTop.rgb, hh) * (0.6 + 0.4 * hh);
                         // Тень — фиолетовая, как на рисованных облаках, а не серая: глушим яркость, но не насыщенность.
                         amb *= lerp(float3(0.55, 0.38, 0.8), float3(1.0, 1.0, 1.0), sky);
+                        amb *= lerp(0.35, 1.0, smoothstep(0.08, 0.85, sky));
                         float3 src = sunCol * (sunT * phase * (1.0 + _Phase.w * edge * rimDir)) + _MultiScatter.rgb * ms * sky + amb
                                    + (bake ? float3(0, 0, 0) : SkyTideFlashLight(p));
                         float st = exp(-d * stepLen);
@@ -412,16 +415,31 @@ Shader "Hidden/SkyTide/VolumetricClouds"
         return float4(sqrt(saturate(c.rgb / 6.0)), 1.0 - c.a);
     }
 
-    // Мягкое размытие облаков в низком разрешении (тент 3×3): убирает зерно и «пиксельные» кромки.
+    // Bilateral 3x3: сохраняет контуры transmittance и границы scene depth.
     float4 fragBlur (v2f i) : SV_Target
     {
         float2 d = _LowRes.zw;
-        float4 c = tex2D(_MainTex, i.uv) * 4.0;
-        c += (tex2D(_MainTex, i.uv + float2(d.x, 0)) + tex2D(_MainTex, i.uv - float2(d.x, 0))
-            + tex2D(_MainTex, i.uv + float2(0, d.y)) + tex2D(_MainTex, i.uv - float2(0, d.y))) * 2.0;
-        c += tex2D(_MainTex, i.uv + d) + tex2D(_MainTex, i.uv - d)
-           + tex2D(_MainTex, i.uv + float2(d.x, -d.y)) + tex2D(_MainTex, i.uv + float2(-d.x, d.y));
-        return c / 16.0;
+        float4 center = tex2D(_MainTex, i.uv);
+        float centerDepth = tex2D(_LowDepthTex, i.uv).r;
+        float4 accum = center * 4.0;
+        float weights = 4.0;
+        [unroll] for (int y = -1; y <= 1; y++)
+        {
+            [unroll] for (int x = -1; x <= 1; x++)
+            {
+                if (x == 0 && y == 0) continue;
+                float2 uv = clamp(i.uv + float2(x, y) * d, d * 0.5, 1.0 - d * 0.5);
+                float4 neighbor = tex2D(_MainTex, uv);
+                float neighborDepth = tex2D(_LowDepthTex, uv).r;
+                float spatial = (x == 0 || y == 0) ? 2.0 : 1.0;
+                float alphaWeight = rcp(1.0 + 12.0 * abs(neighbor.a - center.a));
+                float depthWeight = rcp(1.0 + abs(neighborDepth - centerDepth) / max(3.0, centerDepth * 0.02));
+                float weight = spatial * alphaWeight * depthWeight;
+                accum += neighbor * weight;
+                weights += weight;
+            }
+        }
+        return accum / weights;
     }
 
     float SceneDepthForClouds(float2 uv)
@@ -501,6 +519,7 @@ Shader "Hidden/SkyTide/VolumetricClouds"
         Pass { CGPROGRAM
             #pragma vertex vert
             #pragma fragment fragBlur
+            #pragma target 3.5
             ENDCG }
         Pass { CGPROGRAM
             #pragma vertex vert
