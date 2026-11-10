@@ -15,7 +15,7 @@ namespace SkyTide
 
         public Transform player;
         public float minRange = 160f, maxRange = 420f;
-        public int hitsToSink = 10;
+        public int hitsToSink = 30;   // ~4 удачных бортовых залпа
         public float respawnDelay = 6f;
 
         ShipController ctrl;
