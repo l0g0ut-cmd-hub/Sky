@@ -78,16 +78,37 @@ namespace SkyTide
             return m;
         }
 
-        /// <summary>Облака-спрайты: частичный шейдер с альфой, цветом вершин и туманом, без освещения.</summary>
+        /// <summary>Облака-спрайты на своём шейдере (клубление краёв, свет от солнца, растворение вдали и вблизи).</summary>
         public static Material CloudSprites(Texture atlas)
         {
-            Shader sh = Shader.Find("Legacy Shaders/Particles/Alpha Blended");
-            if (sh == null) sh = Shader.Find("Unlit/Transparent");
+            Shader sh = Shader.Find("SkyTide/CloudSprite");
+            if (sh == null) sh = Shader.Find("Legacy Shaders/Particles/Alpha Blended");
             Material m = new Material(sh);
             m.name = "CloudSprites";
             m.mainTexture = atlas;
             if (m.HasProperty("_TintColor")) m.SetColor("_TintColor", new Color(0.5f, 0.5f, 0.5f, 0.5f));
             m.renderQueue = (int)RenderQueue.Transparent;
+            return m;
+        }
+
+        /// <summary>Море облаков на своём шейдере. transparent=true — верхний полупрозрачный слой.</summary>
+        public static Material CloudSea(string name, Texture tex, bool transparent)
+        {
+            Shader sh = Shader.Find("SkyTide/CloudSea");
+            if (sh == null) return null;
+            Material m = new Material(sh);
+            m.name = name;
+            m.mainTexture = tex;
+            if (transparent)
+            {
+                m.SetFloat("_SrcBlend", (float)BlendMode.SrcAlpha);
+                m.SetFloat("_DstBlend", (float)BlendMode.OneMinusSrcAlpha);
+                m.SetFloat("_ZWrite", 0f);
+                m.SetFloat("_TileSize", 560f);
+                m.SetFloat("_AlphaMul", 0.9f);
+                m.SetVector("_Flow", new Vector4(-0.005f, 0.0032f, 0.0038f, 0.0021f));
+                m.renderQueue = (int)RenderQueue.Transparent - 10;   // под облаками-спрайтами
+            }
             return m;
         }
 

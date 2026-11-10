@@ -94,17 +94,9 @@ namespace SkyTide.EditorTools
             if (sky != null) mats.skybox = MaterialFactory.PanoramicSkybox(sky);
 
             Texture2D sea = Tex(Art + "CloudSea.jpg", false, false, TextureWrapMode.Repeat, TextureWrapMode.Repeat, 1024, true);
-            if (sea != null)
-            {
-                mats.cloudSea = MaterialFactory.Opaque("CloudSea", new Color(0.9f, 0.8f, 0.8f), 0f);
-                mats.cloudSea.mainTexture = sea;
-            }
+            if (sea != null) mats.cloudSea = MaterialFactory.CloudSea("CloudSea", sea, false);
             Texture2D layer = Tex(Art + "CloudLayer.png", false, true, TextureWrapMode.Repeat, TextureWrapMode.Repeat, 1024, true);
-            if (layer != null)
-            {
-                mats.cloudLayer = MaterialFactory.Fade("CloudLayer", Color.white, 0f);
-                mats.cloudLayer.mainTexture = layer;
-            }
+            if (layer != null) mats.cloudLayer = MaterialFactory.CloudSea("CloudLayer", layer, true);
             Texture2D sprites = Tex(Art + "CloudSprites.png", false, true, TextureWrapMode.Clamp, TextureWrapMode.Clamp, 2048, true);
             if (sprites != null) mats.cloudSprite = MaterialFactory.CloudSprites(sprites);
 

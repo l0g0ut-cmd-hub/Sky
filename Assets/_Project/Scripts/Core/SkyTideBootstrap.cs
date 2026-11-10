@@ -36,6 +36,7 @@ namespace SkyTide
             ApplyEnvironment(materials);
             Light sun = SetupSun();
             RenderSettings.sun = sun;
+            SetShaderGlobals(materials, sun);
             OrbitCamera cam = SetupCamera();
 
             gameObject.AddComponent<CloudSea>().Build(materials);
@@ -65,6 +66,25 @@ namespace SkyTide
             RenderSettings.ambientSkyColor = new Color(0.46f, 0.3f, 0.38f);
             RenderSettings.ambientEquatorColor = new Color(0.8f, 0.42f, 0.3f);
             RenderSettings.ambientGroundColor = new Color(0.36f, 0.2f, 0.2f);
+        }
+
+        /// <summary>Общие параметры для шейдеров облаков (SkyTide.cginc).</summary>
+        static void SetShaderGlobals(GameMaterials m, Light sun)
+        {
+            Shader.SetGlobalTexture("_SkyTideNoise", SkyNoise.Flow(128));
+            Shader.SetGlobalVector("_SkyTideSunDir", -sun.transform.forward);
+            Texture pano = null;
+            if (m.skybox != null && m.skybox.HasProperty("_MainTex")) pano = m.skybox.GetTexture("_MainTex");
+            if (pano == null)
+            {
+                Texture2D t = new Texture2D(1, 1);
+                t.SetPixel(0, 0, RenderSettings.fogColor);
+                t.Apply();
+                pano = t;
+            }
+            Shader.SetGlobalTexture("_SkyTidePanorama", pano);
+            // Воздушная перспектива: с 450 м облака начинают растворяться в небе, к 2200 м — почти полностью.
+            Shader.SetGlobalVector("_SkyTideAerial", new Vector4(450f, 2200f, 0.96f, 0f));
         }
 
         public static void ConfigureSun(Light l)
