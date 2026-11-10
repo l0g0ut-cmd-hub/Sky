@@ -35,6 +35,7 @@ Shader "Hidden/SkyTide/CloudImpostor"
             float4 _Towers[MAX_TOWERS];
             float4 _TowerRot[MAX_TOWERS];
             float _TowerCount;
+            float _ImpDeckTop;
 
             struct appdata
             {
@@ -131,6 +132,8 @@ Shader "Hidden/SkyTide/CloudImpostor"
                 light = lerp(light, SkyTidePanorama(rd) * a, _ImpParams.x * saturate(SkyTideAerial(dist)));
 
                 float m = i.slices.w;
+                // Низ облака тонет в объёмном море облаков.
+                m *= smoothstep(_ImpDeckTop - 25.0, _ImpDeckTop + 15.0, i.wpos.y);
 
                 // Экранные координаты (как у проходов объёмных облаков).
                 float4 cp = mul(_CamVP, float4(i.wpos, 1.0));

@@ -51,7 +51,19 @@ namespace SkyTide
         public float erosion = 0.5f;
         public float density = 0.035f;
 
-        [Header("Дымка у моря облаков")]
+        [Header("Объёмное море облаков")]
+        public float deckBase = -50f;
+        public float deckTop = 35f;
+        public float deckDensity = 0.03f;
+        [Range(6, 32)] public int deckSteps = 18;
+        public float deckWeatherScale = 1400f;
+        [Range(0f, 0.8f)] public float deckCoverage = 0.2f;   // порог: меньше — сплошнее
+        public float deckLobeScale = 160f;
+        public float deckDetailScale = 55f;
+        public float deckDistance = 5000f;
+        public float deckAbsorption = 1.0f;
+
+        [Header("Дымка у моря облаков (не используется — заменена объёмным морем)")]
         public float hazeDensity = 0.00045f;
         public float hazeTop = 130f;
         public float hazeDistance = 1600f;
@@ -437,6 +449,9 @@ namespace SkyTide
             mat.SetTexture("_TowerField", field);
             mat.SetVector("_FieldBox", new Vector4(FieldHalf, FieldBottom, FieldHeight, Templates));
             mat.SetVector("_Haze", new Vector4(hazeDensity, hazeTop, hazeDistance, hazeSteps));
+            mat.SetVector("_Deck", new Vector4(deckBase, deckTop, deckDensity, deckSteps));
+            mat.SetVector("_Deck2", new Vector4(deckWeatherScale, deckCoverage, deckLobeScale, deckDetailScale));
+            mat.SetVector("_Deck3", new Vector4(deckDistance, 1600f, deckAbsorption, 0f));
             mat.SetVectorArray("_Towers", towers);
             mat.SetVectorArray("_TowerRot", towerRot);
             mat.SetFloat("_TowerCount", towerCount);
@@ -514,6 +529,7 @@ namespace SkyTide
             if (impostors && debugView == 0)
             {
                 float clear = ClearDistance();
+                imp.deckTop = deckTop;
                 imp.Draw(cam, dst, impostorShader, blurred, towers, towerRot, towerCount, TemplateHeight, aerial,
                          new Vector2(Mathf.Max(30f, clear * 0.9f), Mathf.Max(140f, clear + 70f)));
             }

@@ -23,8 +23,6 @@ namespace SkyTide
             new Variant { template = 0, squash = 1f },
             new Variant { template = 1, squash = 0.95f },
             new Variant { template = 2, squash = 1.05f },
-            new Variant { template = 0, squash = 0.42f },
-            new Variant { template = 2, squash = 0.5f },
         };
 
         class Cloud
@@ -49,7 +47,8 @@ namespace SkyTide
 
         public float fieldRadius = 3200f;
         public int tallCount = 12;
-        public int lowCount = 46;
+        public int lowCount = 26;
+        public float deckTop = 35f;
         public bool ready;
 
         public static float HeightPerR(int variant, float templateHeight)
@@ -188,10 +187,10 @@ namespace SkyTide
             for (int i = 0; i < lowCount; i++)
             {
                 Cloud c = new Cloud();
-                c.variant = 3 + r.Next(2);
-                c.r = U(r, 45f, 120f);
-                bool floating = r.NextDouble() < 0.35;
-                c.pos = RandomPoint(r, center, 200f, fieldRadius, floating ? U(r, 25f, 70f) : U(r, -30f, 0f));
+                // Небольшие кучевые, растущие из моря облаков (низ тонет в объёмном слое).
+                c.variant = r.Next(3);
+                c.r = U(r, 45f, 95f);
+                c.pos = RandomPoint(r, center, 350f, fieldRadius, deckTop - U(r, 30f, 55f));
                 c.drift = U(r, 0.9f, 1.3f);
                 clouds.Add(c);
             }
@@ -250,6 +249,7 @@ namespace SkyTide
             mat.SetMatrix("_CamV", view);
             mat.SetVector("_ImpCam", cp);
             mat.SetVector("_ImpParams", new Vector4(aerial, nearClear.x, nearClear.y, Pad));
+            mat.SetFloat("_ImpDeckTop", deckTop);
             mat.SetTexture("_ImpTex", tex);
             mat.SetTexture("_CloudTex", heroClouds);
             mat.SetVectorArray("_Towers", heroTowers);

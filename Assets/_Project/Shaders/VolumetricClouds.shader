@@ -50,6 +50,9 @@ Shader "Hidden/SkyTide/VolumetricClouds"
     float4 _Aerial;               // x доля воздушной перспективы
     float _Debug;
     float4 _NearClear;
+    float4 _Deck;                 // x низ слоя, y верх (м), z плотность (1/м), w шагов
+    float4 _Deck2;                // x масштаб «погоды», y порог покрытия, z масштаб клубов, w масштаб детали (м)
+    float4 _Deck3;                // x дальность (м), y макс. длина пути в слое (м), z поглощение к солнцу
     float _Bake;                  // 1 — запекание снимков-импосторов (ортографический луч, без сцены и дымки)
     float4 _BakeOrigin, _BakeRight, _BakeUp, _BakeFwd;            // x начало, y конец растворения у камеры (м)
 
@@ -201,6 +204,87 @@ Shader "Hidden/SkyTide/VolumetricClouds"
         return float4(light, trans);
     }
 
+    // ---------- объёмное море облаков ----------
+    // Слой между _Deck.x и _Deck.y (м): покрытие — 2D-«погода», верх слоя бугрится 3D-шумом (клубы),
+    // края разъедает детализация. Свет: два шага к солнцу (бока клубов к солнцу светятся, задние — в тени),
+    // верх ярче низа, фиолетовое заполнение в глубине — та же палитра, что у башен.
+    float DeckDensity(float3 p, bool detail)
+    {
+        float h = saturate((p.y - _Deck.x) / (_Deck.y - _Deck.x));
+        float2 drift = _Wind.xz * _Wind.w;
+        float2 wuv = (p.xz + drift) / _Deck2.x;
+        float w = tex2Dlod(_SkyTideNoise, float4(wuv, 0, 0)).r * 0.6 + tex2Dlod(_SkyTideNoise, float4(wuv * 2.7 + 0.37, 0, 0)).g * 0.4;
+        float cov = saturate((w - _Deck2.y) / 0.35);
+        float3 wp = p + float3(drift.x, _Wind.w * 0.4, drift.y);
+        float n = tex3Dlod(_Noise3D, float4(wp / _Deck2.z, 0)).r;
+        float topH = cov * (0.45 + 0.55 * n) + 0.12;
+        float m = saturate((topH - h) * 6.0) * saturate(h * 5.0 + 0.2);
+        if (detail && m > 0.0 && m < 0.9)
+        {
+            float dn = tex3Dlod(_Noise3D, float4(wp / _Deck2.w, 0)).g;
+            m = saturate(m - dn * 0.45 * (1.0 - m));
+        }
+        return m * _Deck.z;
+    }
+
+    float4 Deck(float3 ro, float3 rd, float tEnd, float jitter, float phase)
+    {
+        float base = _Deck.x, top = _Deck.y;
+        float t0 = 0.0, t1 = min(tEnd, _Deck3.x);
+        if (abs(rd.y) > 1e-4)
+        {
+            float ta = (base - ro.y) / rd.y, tb = (top - ro.y) / rd.y;
+            float tn = min(ta, tb), tf = max(ta, tb);
+            t0 = max(t0, tn);
+            t1 = min(t1, tf);
+        }
+        else if (ro.y < base || ro.y > top) return float4(0, 0, 0, 1);
+        t1 = min(t1, t0 + _Deck3.y);              // у горизонта слой не тянется бесконечно
+        if (t1 <= t0) return float4(0, 0, 0, 1);
+
+        int n = (int)_Deck.w;
+        float stepBase = (t1 - t0) / n;
+        float stepLen = stepBase * 0.4;
+        float grow = 1.2 / n;
+        float t = t0 + stepLen * jitter;
+        float3 L = normalize(_SkyTideSunDir.xyz);
+        float3 light = 0;
+        float trans = 1;
+        float distAcc = 0, wAcc = 0;
+        [loop]
+        for (int k = 0; k < n; k++)
+        {
+            if (t > t1) break;
+            float3 p = ro + rd * t;
+            float d = DeckDensity(p, t < 1500.0) * smoothstep(_NearClear.x * 0.5, _NearClear.x * 1.5, t);
+            if (d > 1e-5)
+            {
+                float d1 = DeckDensity(p + L * 18.0, false);
+                float d2 = DeckDensity(p + L * 55.0, false);
+                float tau = (d1 * 18.0 + d2 * 37.0) * _Deck3.z;
+                float sunT = exp(-tau);
+                float ms = exp(-tau * 0.25) * _MultiScatter.a;
+                float h = saturate((p.y - base) / (top - base));
+                float3 sunCol = lerp(_SunEmber.rgb, _SunGold.rgb, pow(sunT, 0.6));
+                float3 amb = lerp(_AmbientBottom.rgb, _AmbientTop.rgb, h) * lerp(0.45, 1.0, h);
+                amb *= lerp(float3(0.6, 0.42, 0.85), float3(1, 1, 1), h);
+                float3 src = sunCol * sunT * phase + _MultiScatter.rgb * ms * h + amb;
+                float st = exp(-d * stepLen);
+                float wgt = trans * (1.0 - st);
+                light += src * 0.86 * wgt;
+                distAcc += t * wgt;
+                wAcc += wgt;
+                trans *= st;
+                if (trans < 0.03) { trans = 0; break; }
+            }
+            t += stepLen;
+            stepLen += stepBase * grow;
+        }
+        float meanDist = wAcc > 1e-4 ? distAcc / wAcc : t1;
+        light = lerp(light, SkyTidePanorama(rd) * (1.0 - trans), _Aerial.x * saturate(SkyTideAerial(meanDist)));
+        return float4(light, trans);
+    }
+
     float4 fragMarch (v2f i) : SV_Target
     {
         float4 view = mul(_InvProj, float4(i.uv * 2.0 - 1.0, 1.0, 1.0));
@@ -232,66 +316,73 @@ Shader "Hidden/SkyTide/VolumetricClouds"
         float3 sunDirH = normalize(_SkyTideSunDir.xyz);
         float cosH = dot(rd, sunDirH);
         float phaseH = min(lerp(HG(cosH, _Phase.y), HG(cosH, _Phase.x), _Phase.z) * 12.566, 2.6);
-        float4 haze = bake ? float4(0, 0, 0, 1) : Haze(ro, rd, sceneDist, jit, phaseH, _SunGold.rgb);
-
-        float tA, tB;
-        if (!TowerInterval(ro, rd, tA, tB)) return haze;
-        tB = min(tB, min(sceneDist, _DensityParams.w));
-        if (tB <= tA) return haze;
-
-        int steps = (int)_DensityParams.z;
-        float stepBase = (tB - tA) / steps;
-        // Шаги растут с расстоянием: у камеры мелкие (без зерна внутри облака), вдали крупнее.
-        float stepGrow = 1.3 / steps;
-        float stepLen = stepBase * 0.35;
-        float t = tA + stepLen * jit;
-
-        float3 sunDir = normalize(_SkyTideSunDir.xyz);
-        float cosT = dot(rd, sunDir);
-        float phase = min(lerp(HG(cosT, _Phase.y), HG(cosT, _Phase.x), _Phase.z) * 12.566, 2.6);
-        float rimDir = pow(saturate(cosT), 4.0);
-
+        // 1) Героические башни: свет, пропускание и где луч впервые вошёл в облако.
         float3 light = 0;
         float trans = 1;
-        float distAcc = 0;
-        float wAcc = 0;
-        [loop]
-        for (int s = 0; s < steps; s++)
+        float firstHit = 1e7;
+        float tA, tB;
+        if (TowerInterval(ro, rd, tA, tB))
         {
-            float3 p = ro + rd * t;
-            float tau, sky, fld;
-            float d = Density(p, t < 1800.0, tau, sky, fld) * smoothstep(_NearClear.x, _NearClear.y, t);
-            if (d > 1e-5)
+            tB = min(tB, min(sceneDist, _DensityParams.w));
+            if (tB > tA)
             {
-                // Свет из запечённого поля: никаких шагов к солнцу.
-                float od = tau * _DensityParams.x * _DensityParams.y;
-                float sunT = exp(-od);
-                float ms = exp(-od * 0.22) * _MultiScatter.a;
-                float edge = pow(1.0 - saturate(d / (_DensityParams.x * 0.7)), 1.6);
-                float3 sunCol = lerp(_SunEmber.rgb, _SunGold.rgb, pow(saturate(sunT), 0.6));
-                float hh = saturate((p.y - 0.0) / 450.0);
-                float3 amb = lerp(_AmbientBottom.rgb, _AmbientTop.rgb, hh) * (0.6 + 0.4 * hh);
-                // Тень — фиолетовая, как на рисованных облаках, а не серая: глушим яркость, но не насыщенность.
-                amb *= lerp(float3(0.55, 0.38, 0.8), float3(1.0, 1.0, 1.0), sky);
-                float3 src = sunCol * (sunT * phase * (1.0 + _Phase.w * edge * rimDir)) + _MultiScatter.rgb * ms * sky + amb;
-                float st = exp(-d * stepLen);
-                light += trans * src * 0.86 * (1.0 - st);
-                float w = trans * (1.0 - st);
-                distAcc += t * w;
-                wAcc += w;
-                trans *= st;
-                if (trans < 0.02) { trans = 0; break; }
-            }
-            // Пустота вдали от поверхности — шагаем шире (поле ≈ доля радиуса сферы до поверхности).
-            t += stepLen * (bake ? 1.0 : 1.0 + 2.0 * saturate((-fld - 0.45) * 2.0));
-            stepLen += stepBase * stepGrow;
-            if (t > tB) break;
-        }
+                int steps = (int)_DensityParams.z;
+                float stepBase = (tB - tA) / steps;
+                // Шаги растут с расстоянием: у камеры мелкие (без зерна внутри облака), вдали крупнее.
+                float stepGrow = 1.3 / steps;
+                float stepLen = stepBase * 0.35;
+                float t = tA + stepLen * jit;
 
-        float meanDist = wAcc > 1e-4 ? distAcc / wAcc : tB;
-        light = lerp(light, SkyTidePanorama(rd) * (1.0 - trans), _Aerial.x * saturate(SkyTideAerial(meanDist)));
-        // Дымка ближе башен (приближение): облака видны сквозь неё.
-        return float4(haze.rgb + light * haze.a, trans * haze.a);
+                float3 sunDir = normalize(_SkyTideSunDir.xyz);
+                float cosT = dot(rd, sunDir);
+                float phase = min(lerp(HG(cosT, _Phase.y), HG(cosT, _Phase.x), _Phase.z) * 12.566, 2.6);
+                float rimDir = pow(saturate(cosT), 4.0);
+
+                float distAcc = 0;
+                float wAcc = 0;
+                [loop]
+                for (int s = 0; s < steps; s++)
+                {
+                    float3 p = ro + rd * t;
+                    float tau, sky, fld;
+                    float d = Density(p, t < 1800.0, tau, sky, fld) * smoothstep(_NearClear.x, _NearClear.y, t);
+                    if (d > 1e-5)
+                    {
+                        // Свет из запечённого поля: никаких шагов к солнцу.
+                        float od = tau * _DensityParams.x * _DensityParams.y;
+                        float sunT = exp(-od);
+                        float ms = exp(-od * 0.22) * _MultiScatter.a;
+                        float edge = pow(1.0 - saturate(d / (_DensityParams.x * 0.7)), 1.6);
+                        float3 sunCol = lerp(_SunEmber.rgb, _SunGold.rgb, pow(saturate(sunT), 0.6));
+                        float hh = saturate((p.y - 0.0) / 450.0);
+                        float3 amb = lerp(_AmbientBottom.rgb, _AmbientTop.rgb, hh) * (0.6 + 0.4 * hh);
+                        // Тень — фиолетовая, как на рисованных облаках, а не серая: глушим яркость, но не насыщенность.
+                        amb *= lerp(float3(0.55, 0.38, 0.8), float3(1.0, 1.0, 1.0), sky);
+                        float3 src = sunCol * (sunT * phase * (1.0 + _Phase.w * edge * rimDir)) + _MultiScatter.rgb * ms * sky + amb;
+                        float st = exp(-d * stepLen);
+                        light += trans * src * 0.86 * (1.0 - st);
+                        float w = trans * (1.0 - st);
+                        distAcc += t * w;
+                        wAcc += w;
+                        if (firstHit > 1e6 && w > 0.02) firstHit = t;
+                        trans *= st;
+                        if (trans < 0.02) { trans = 0; break; }
+                    }
+                    // Пустота вдали от поверхности — шагаем шире (поле ≈ доля радиуса сферы до поверхности).
+                    t += stepLen * (bake ? 1.0 : 1.0 + 2.0 * saturate((-fld - 0.45) * 2.0));
+                    stepLen += stepBase * stepGrow;
+                    if (t > tB) break;
+                }
+                float meanDist = wAcc > 1e-4 ? distAcc / wAcc : tB;
+                light = lerp(light, SkyTidePanorama(rd) * (1.0 - trans), _Aerial.x * saturate(SkyTideAerial(meanDist)));
+            }
+        }
+        if (bake) return float4(light, trans);
+
+        // 2) Объёмное море облаков — до башни (за плотной башней его не видно) или до сцены.
+        float deckEnd = min(sceneDist, trans < 0.9 ? firstHit : 1e7);
+        float4 deck = Deck(ro, rd, deckEnd, jit, phaseH);
+        return float4(deck.rgb + light * deck.a, trans * deck.a);
     }
 
     // Снимок для импостора: свет (уже умножен на покрытие) в кодировке sqrt(свет/6), альфа — покрытие.

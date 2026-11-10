@@ -34,6 +34,7 @@ namespace SkyTide
         readonly List<Transform> seaPlanes = new List<Transform>();
         readonly List<GameObject> midLayer = new List<GameObject>();
         readonly List<GameObject> spriteClouds = new List<GameObject>();
+        readonly List<GameObject> lowStrips = new List<GameObject>();
         Material seaMat;
         Material layerMat;
         bool shaderSea;
@@ -100,7 +101,8 @@ namespace SkyTide
                 bool high = i % 5 < 2;
                 float w = high ? Range(rnd, 600f, 1000f) : Range(rnd, 450f, 1100f);
                 float y = high ? Range(rnd, 320f, 400f) : Range(rnd, -12f, 10f);
-                AddCloud(root, mat, strips[rnd.Next(strips.Length)], RandomPoint(rnd, 120f, y), w, rnd, high ? 2.2f : 0.7f, true);
+                Transform st = AddCloud(root, mat, strips[rnd.Next(strips.Length)], RandomPoint(rnd, 120f, y), w, rnd, high ? 2.2f : 0.7f, true);
+                if (!high) lowStrips.Add(st.gameObject);
             }
 
             // Грозовые башни на дальнем плане.
@@ -125,6 +127,8 @@ namespace SkyTide
         public void SetSpriteCloudsVisible(bool visible)
         {
             for (int i = 0; i < spriteClouds.Count; i++) spriteClouds[i].SetActive(visible);
+            // Низкие полосы дымки заменяет объёмное море облаков.
+            for (int i = 0; i < lowStrips.Count; i++) lowStrips[i].SetActive(visible);
         }
 
         /// <summary>Спрайты на высоте полёта: прячутся, когда включены объёмные облака.</summary>
