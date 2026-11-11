@@ -120,7 +120,27 @@ namespace SkyTide
             controls.hudShader = hudShader;
             controls.hudFont = hudFont;
             post.controls = controls;
+            SetClothWind(Application.isPlaying ? Time.time : 0f, Application.isPlaying ? 1f : 0f);
         }
+
+        void Update()
+        {
+            if (Application.isPlaying) SetClothWind(Time.time, 1f);
+        }
+
+        void SetClothWind(float time, float amount)
+        {
+            Vector3 flow = Volumetric != null ? Volumetric.wind : new Vector3(-4f,0f,1.8f);
+            if (Ship != null) flow -= Ship.transform.forward * Ship.Speed;
+            Shader.SetGlobalVector("_ShipClothWind", new Vector4(flow.x,flow.y,flow.z,time));
+            Shader.SetGlobalFloat("_ShipClothAmount", Mathf.Clamp01(amount));
+        }
+
+        void OnDisable() { Shader.SetGlobalFloat("_ShipClothAmount", 0f); }
+
+#if UNITY_EDITOR
+        public void SetWindCapture(float time, float amount) { SetClothWind(time, amount); }
+#endif
 
         public VolumetricClouds Volumetric { get; private set; }
         public FxSystem Fx { get; private set; }

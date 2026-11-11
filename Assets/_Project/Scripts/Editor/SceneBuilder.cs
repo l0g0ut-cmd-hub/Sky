@@ -185,6 +185,8 @@ namespace SkyTide.EditorTools
             ShipVariant repaired = SceneVariant("CorsairRepaired", "Корсар (Blender)");
             if (repaired != null)
             {
+                repaired.wind = AssetDatabase.LoadAssetAtPath<TextAsset>(Models + "CorsairRepaired_wind.json");
+                if (repaired.wind == null) throw new System.InvalidOperationException("Corsair cloth wind map is missing");
                 repaired.cannons = AssetDatabase.LoadAssetAtPath<TextAsset>(Models + "CorsairRepaired_cannons.json");
                 list.Add(repaired);
             }

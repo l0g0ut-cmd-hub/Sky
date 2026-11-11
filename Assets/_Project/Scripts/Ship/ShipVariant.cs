@@ -11,6 +11,7 @@ namespace SkyTide
         public TextAsset mesh;
         public Material[] materials;
         public TextAsset cannons;   // <модель>_cannons.json — дула и оси стволов (tools/extract_cannons.py)
+        public TextAsset wind;      // sparse cloth weights; no changes to source positions/UV/triangles
 
         [NonSerialized] Mesh cached;
 
@@ -18,7 +19,7 @@ namespace SkyTide
         {
             get
             {
-                if (cached == null) cached = ShipMeshLoader.Load(mesh);
+                if (cached == null) cached = ShipMeshLoader.Load(mesh, wind);
                 return cached;
             }
         }

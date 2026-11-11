@@ -58,6 +58,10 @@ namespace SkyTide.EditorTools
                 case "80_hud_ready":
                 case "81_hud_reload":
                 case "82_hud_cutout": phase = 11; break;
+                case "83_cloth_rest":
+                case "84_wind_phase_a":
+                case "85_wind_phase_b":
+                case "86_wind_phase_c": phase = 12; break;
             }
             if (phase >= 0 && boot.Volumetric != null) boot.Volumetric.SetStaticCapturePhase(phase);
             if (boot.Fx != null) boot.Fx.PrepareForRender(cam);
@@ -162,6 +166,33 @@ namespace SkyTide.EditorTools
                 boot.Fx.Clear();
                 Random.state = random;
             }
+        }
+
+        static void CaptureWind(OrbitCamera oc,Camera cam,SkyTideBootstrap boot,string dir)
+        {
+            TextAsset mapAsset=boot.CurrentShip!=null?boot.CurrentShip.wind:null;
+            if(mapAsset==null)throw new System.InvalidOperationException("Wind map missing from active ship");
+            ShipWindWeights.Map map=JsonUtility.FromJson<ShipWindWeights.Map>(mapAsset.text);
+            if(map.sails!=3||map.flags!=1||map.indices.Length!=906||map.pinnedVertices!=350)
+                throw new System.InvalidOperationException("Wind mask counts changed: revalidate attachments");
+            RenderTexture rt=new RenderTexture(960,456,24,RenderTextureFormat.ARGB32);
+            Texture2D tex=new Texture2D(960,456,TextureFormat.RGB24,false);
+            try
+            {
+                boot.SetWindCapture(0f,0f);
+                Render(oc,cam,boot,rt,tex,dir,new Shot("83_cloth_rest",215f,12f,40f));
+                float[] times={0f,0.35f,0.70f};
+                string[] names={"84_wind_phase_a","85_wind_phase_b","86_wind_phase_c"};
+                for(int i=0;i<times.Length;i++)
+                {
+                    boot.SetWindCapture(times[i],1f);
+                    if(Shader.GetGlobalFloat("_ShipClothAmount")!=1f||Mathf.Abs(Shader.GetGlobalVector("_ShipClothWind").w-times[i])>0.0001f)
+                        throw new System.InvalidOperationException("Cloth capture uniforms failed");
+                    Render(oc,cam,boot,rt,tex,dir,new Shot(names[i],215f,12f,40f));
+                }
+                Debug.Log("SkyTide: cloth wind — 906 moving, 350 pinned, 3 sails/1 pennant; original mesh hash OK; rest + 3 GPU phases rendered");
+            }
+            finally {boot.SetWindCapture(0f,0f);cam.targetTexture=null;RenderTexture.active=null;rt.Release();Object.DestroyImmediate(rt);Object.DestroyImmediate(tex);}
         }
 
         static void CheckHudLayout(HudLayout l)
@@ -355,7 +386,7 @@ namespace SkyTide.EditorTools
                 boot.SetVolumetric(true);
                 if (boot.Volumetric != null) boot.Volumetric.ResetTowers(boot.Ship.transform.position);
                 // Каждый пакет снимает свои состояния. Предыдущие профили остаются доступны отдельно.
-                string profile = System.Environment.GetEnvironmentVariable("SKYTIDE_SHOT_PROFILE") ?? "hud";
+                string profile = System.Environment.GetEnvironmentVariable("SKYTIDE_SHOT_PROFILE") ?? "wind";
                 bool environment = profile != "fx";
                 bool appearance = profile == "appearance";
                 if (environment) Render(oc, cam, boot, rt, tex, dir, new Shot("30_vol_toward_sun", 35f, 8f, 75f));
@@ -380,8 +411,10 @@ namespace SkyTide.EditorTools
                 // Четыре маленьких кадра, по одному Render на состояние: без дорогого многокадрового прогрева.
                 if (appearance) CaptureTemporal(oc, cam, boot, dir);
                 else if (profile == "damage") CaptureDamage(oc, cam, boot, rt, tex, dir);
-                else if (environment) CaptureHud(oc, cam, boot, dir);
-                string sizes = profile == "hud" ? "7x800x380 + 2x960x432 + 1x1008x432"
+                else if (profile == "hud") CaptureHud(oc, cam, boot, dir);
+                else if (environment) CaptureWind(oc, cam, boot, dir);
+                string sizes = profile == "wind" ? "7x800x380 + 4x960x456"
+                    : profile == "hud" ? "7x800x380 + 2x960x432 + 1x1008x432"
                     : appearance ? "12x800x380 + 4x400x190" : "800x380";
                 Debug.Log("SkyTide: быстрая проверка " + profile + " (" + sizes + "), кадров="
                     + Directory.GetFiles(dir, "*.jpg").Length + ", секунд=" + (Time.realtimeSinceStartup - start).ToString("F1"));
