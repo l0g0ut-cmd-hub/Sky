@@ -30,7 +30,7 @@ Shader "Hidden/SkyTide/Fx"
             float4x4 _FxCamVP;    // проекция камеры (OpenGL) — координаты экрана
             float4x4 _FxCamV;
             float _FxExternal;
-            float4 _FxParams;     // x яркость свечения, y яркость дыма, z верх моря облаков
+            float4 _FxParams;     // x яркость свечения, y яркость дыма, z верх моря облаков, w объёмный вид эффектов
 
             struct appdata
             {
@@ -60,6 +60,7 @@ Shader "Hidden/SkyTide/Fx"
                 float2 q = float2(v.uv.x * c - v.uv.y * s, v.uv.x * s + v.uv.y * c);
                 float3 offset = _FxRight.xyz * q.x + _FxUp.xyz * q.y;
                 float kind = v.data.z;
+                float headOn = 0.0;
                 if ((kind > 2.5 && kind < 4.5) || kind > 6.5)
                 {
                     // Факел и искры вытянуты вдоль ствола/скорости в плоскости экрана.
@@ -68,7 +69,16 @@ Shader "Hidden/SkyTide/Fx"
                     along = len2 > 1e-4 ? along * rsqrt(max(len2, 1e-4)) : float2(1, 0);
                     if (kind > 6.5) along = float2(along.x * c - along.y * s, along.x * s + along.y * c);
                     float2 side = float2(-along.y, along.x);
-                    float2 quad = along * v.uv.x + side * v.uv.y * v.axis.w;
+                    float width = v.axis.w;
+                    float projectedLength = 1.0;
+                    if (kind < 3.5 && _FxParams.w > 0.5)
+                    {
+                        float projection = saturate(sqrt(len2));
+                        headOn = 1.0 - smoothstep(0.2, 0.75, projection);
+                        width = lerp(width, 0.65, headOn);
+                        projectedLength = max(width, projection);
+                    }
+                    float2 quad = along * v.uv.x * projectedLength + side * v.uv.y * width;
                     offset = _FxRight.xyz * quad.x + _FxUp.xyz * quad.y;
                 }
                 else if (kind > 5.5 && kind < 6.5)
@@ -80,6 +90,7 @@ Shader "Hidden/SkyTide/Fx"
                 o.color = v.color;
                 o.wpos = wpos;
                 o.anim = v.anim;
+                o.anim.w = headOn;
                 return o;
             }
 
@@ -114,7 +125,11 @@ Shader "Hidden/SkyTide/Fx"
                     float core = exp(-i.uv.y * i.uv.y * 95.0) * (1.0 - x);
                     float envelope = smoothstep(0.0, 0.12, x) * (1.0 - smoothstep(0.75, 1.0, x));
                     float3 col = lerp(i.color.rgb, float3(1, 0.88, 0.57), saturate(core * 1.8));
-                    return half4(col * (edge + core * 0.6) * envelope * i.color.a * m * _FxParams.x, 0);
+                    float headCore = exp(-r * r * 25.0);
+                    float headShape = exp(-r * r * 6.0) * lerp(0.65, 1.15, n) + 0.18 * headCore;
+                    float3 headColor = lerp(i.color.rgb, float3(1, 0.88, 0.57), saturate(headCore * 1.5));
+                    float3 flame = lerp(col * (edge + core * 0.6) * envelope, headColor * headShape, i.anim.w);
+                    return half4(flame * i.color.a * m * _FxParams.x, 0);
                 }
                 if (kind > 3.5 && kind < 4.5)
                 {
@@ -153,6 +168,18 @@ Shader "Hidden/SkyTide/Fx"
                 float sunSide = dot(normalize(_FxRight.xyz * i.uv.x + _FxUp.xyz * i.uv.y + 1e-4), normalize(_SkyTideSunDir.xyz));
                 float volume = lerp(0.68, 1.1, n) + 0.22 * saturate(sunSide) * r;
                 float3 col = i.color.rgb * _FxParams.y * volume + SkyTideFlashLight(i.wpos) * 0.32;
+                if (kind < 1.5 && _FxParams.w > 0.5)
+                {
+                    // Нормаль клубка вместо плоского диска: холоднее в тени, теплее к солнцу.
+                    float3 toCam = _WorldSpaceCameraPos - i.wpos;
+                    toCam *= rsqrt(max(dot(toCam, toCam), 1e-4));
+                    float3 normal = normalize(_FxRight.xyz * i.uv.x * 2.0 + _FxUp.xyz * i.uv.y * 2.0
+                        + toCam * sqrt(saturate(1.0 - r * r)) + 1e-5);
+                    float direct = saturate(dot(normal, normalize(_SkyTideSunDir.xyz)));
+                    float3 tint = lerp(float3(0.9, 0.94, 1.04), float3(1.08, 1.02, 0.92), direct);
+                    volume = lerp(0.75, 1.1, n) * (0.87 + 0.28 * direct);
+                    col = i.color.rgb * _FxParams.y * volume * tint + SkyTideFlashLight(i.wpos) * 0.32;
+                }
                 return half4(col * a, a);
             }
             ENDCG

@@ -22,6 +22,8 @@ namespace SkyTide
         public Material cloudLayer;
         public Material cloudPuff;
         public Material skybox;
+        [Tooltip("Запечённое отражение закатного неба для дерева, металла и стекла. Без обновления на телефоне.")]
+        public Cubemap skyReflection;
         [Tooltip("Материал модели корабля (текстуры из Meshy). Пусто — корабль из примитивов.")]
         public Material shipBody;
         [Tooltip("Атлас облаков-спрайтов. Пусто — облака из сфер.")]

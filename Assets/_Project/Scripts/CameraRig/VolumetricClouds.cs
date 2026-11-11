@@ -36,6 +36,10 @@ namespace SkyTide
             historyValid = false;
             frameIdx = 0;
         }
+        public void SetStaticCapturePhase(int phase)
+        {
+            if (!captureTemporal) frameIdx = phase & 63;
+        }
 #endif
         const int MaxTowers = 8;
         const int Puffs = 28;

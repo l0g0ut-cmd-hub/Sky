@@ -52,6 +52,10 @@ namespace SkyTide
         public VolumetricClouds volumetric;
         public int CloudSplashCount { get; private set; }
         public Vector3 LastCloudSplash { get; private set; }
+#if UNITY_EDITOR
+        bool legacyAppearanceCapture;
+        public void SetLegacyAppearanceCapture(bool enabled) { legacyAppearanceCapture = enabled; }
+#endif
 
         void OnEnable() { Instance = this; PublishFlashes(); }
         void OnDisable() { if (Instance == this) { Clear(); Instance = null; } }
@@ -394,7 +398,11 @@ namespace SkyTide
             mat.SetVector("_FxUp", cam.transform.up);
             mat.SetMatrix("_FxCamVP", cam.projectionMatrix * cam.worldToCameraMatrix);
             mat.SetMatrix("_FxCamV", cam.worldToCameraMatrix);
-            mat.SetVector("_FxParams", new Vector4(glowIntensity, smokeLight, deckTop, 0f));
+            float appearance = 1f;
+#if UNITY_EDITOR
+            if (legacyAppearanceCapture) appearance = 0f;
+#endif
+            mat.SetVector("_FxParams", new Vector4(glowIntensity, smokeLight, deckTop, appearance));
         }
 
         void BuildMesh(Camera cam)

@@ -4,6 +4,7 @@ using UnityEditor;
 using UnityEditor.SceneManagement;
 using UnityEngine;
 using UnityEngine.SceneManagement;
+using UnityEngine.Rendering;
 
 namespace SkyTide.EditorTools
 {
@@ -94,11 +95,40 @@ namespace SkyTide.EditorTools
 
             SkyTideBootstrap.ApplyEnvironment(mats);
             RenderSettings.sun = sun;
+            mats.skyReflection = BakeSkyReflection();
+            SkyTideBootstrap.ApplyEnvironment(mats);
 
             EditorSceneManager.SaveScene(scene, ScenePath);
             EditorBuildSettings.scenes = new EditorBuildSettingsScene[] { new EditorBuildSettingsScene(ScenePath, true) };
             AssetDatabase.SaveAssets();
             Debug.Log("SkyTide: сцена собрана → " + ScenePath);
+        }
+
+        static Cubemap BakeSkyReflection()
+        {
+            const string path = MaterialFolder + "/SunsetReflection.exr";
+            GameObject go = new GameObject("Sky reflection bake");
+            try
+            {
+                ReflectionProbe probe = go.AddComponent<ReflectionProbe>();
+                probe.mode = ReflectionProbeMode.Baked;
+                probe.resolution = Mathf.NextPowerOfTwo(Mathf.Max(256, RenderSettings.defaultReflectionResolution));
+                probe.hdr = true;
+                probe.cullingMask = 0; // только небо; без корабля, чтобы он не отражался сам в себе
+                probe.clearFlags = ReflectionProbeClearFlags.Skybox;
+                probe.size = Vector3.one;
+                float started = Time.realtimeSinceStartup;
+                if (!Lightmapping.BakeReflectionProbe(probe, path))
+                    throw new System.InvalidOperationException("Sunset reflection bake failed");
+                AssetDatabase.ImportAsset(path, ImportAssetOptions.ForceSynchronousImport);
+                Cubemap cube = AssetDatabase.LoadAssetAtPath<Cubemap>(path);
+                if (cube == null || cube.mipmapCount < 2)
+                    throw new System.InvalidOperationException("Sunset reflection is missing its roughness mips");
+                Debug.Log("SkyTide: отражение заката " + cube.width + "px, mips=" + cube.mipmapCount
+                    + ", секунд=" + (Time.realtimeSinceStartup - started).ToString("F1"));
+                return cube;
+            }
+            finally { Object.DestroyImmediate(go); }
         }
 
         /// <summary>Настраивает импорт текстур и делает из них материалы. Чего нет — остаётся пустым (запасные варианты).</summary>
@@ -168,7 +198,10 @@ namespace SkyTide.EditorTools
             {
                 MatJson j = ml.materials[i];
                 Color c = j.color != null && j.color.Length >= 3 ? new Color(j.color[0], j.color[1], j.color[2]).gamma : Color.white;
-                Material m = MaterialFactory.Opaque(file + "_" + i, c, Mathf.Clamp01(j.smoothness));
+                bool cloth = j.name == "Weathered sewn linen" || j.name == "Old linen repair patches" || j.name == "Oxblood pennant";
+                float transmission = j.name == "Old linen repair patches" ? 0.07f : (j.name == "Oxblood pennant" ? 0.12f : 0.2f);
+                Material m = cloth ? MaterialFactory.Cloth(file + "_" + i, c, Mathf.Clamp01(j.smoothness), transmission)
+                    : MaterialFactory.Opaque(file + "_" + i, c, Mathf.Clamp01(j.smoothness));
                 m.SetFloat("_Metallic", Mathf.Clamp01(j.metallic));
                 if (!string.IsNullOrEmpty(j.albedo)) m.mainTexture = Tex(Models + j.albedo, false, false, TextureWrapMode.Repeat, TextureWrapMode.Repeat, 4096, true);
                 if (!string.IsNullOrEmpty(j.normal))
@@ -196,6 +229,7 @@ namespace SkyTide.EditorTools
                 AssetDatabase.CreateAsset(m, MaterialFolder + "/" + file + "_" + i + ".mat");
                 result[i] = m;
             }
+            Debug.Log("SkyTide: материалы корабля — дерево/металл PBR, ткань двухсторонняя с просветом; слотов=" + result.Length);
             return new ShipVariant { name = title, mesh = mesh, materials = result };
         }
 
@@ -216,6 +250,13 @@ namespace SkyTide.EditorTools
             if (path == Art + "Noise.png") ti.isReadable = true;
             // Анизотропия без мипов бессмысленна и на шве панорамы (скачок производных) рисует пунктир.
             ti.anisoLevel = mips ? 4 : 0;
+            if (path.StartsWith(Models, System.StringComparison.Ordinal))
+            {
+                ti.filterMode = mips ? FilterMode.Trilinear : FilterMode.Bilinear;
+                ti.anisoLevel = mips ? Mathf.Max(8, ti.anisoLevel) : 0;
+                ti.textureCompression = uncompressed ? TextureImporterCompression.Uncompressed : TextureImporterCompression.CompressedHQ;
+                ti.compressionQuality = 100;
+            }
             ti.SaveAndReimport();
             return AssetDatabase.LoadAssetAtPath<Texture2D>(path);
         }

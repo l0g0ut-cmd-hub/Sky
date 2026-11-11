@@ -161,9 +161,16 @@ namespace SkyTide
             RenderSettings.fogStartDistance = 300f;
             RenderSettings.fogEndDistance = 2300f;
             RenderSettings.ambientMode = AmbientMode.Trilight;
-            RenderSettings.ambientSkyColor = new Color(0.39f, 0.45f, 0.57f);
+            RenderSettings.ambientSkyColor = new Color(0.43f, 0.49f, 0.62f);
             RenderSettings.ambientEquatorColor = new Color(0.68f, 0.46f, 0.35f);
-            RenderSettings.ambientGroundColor = new Color(0.3f, 0.24f, 0.27f);
+            RenderSettings.ambientGroundColor = new Color(0.34f, 0.29f, 0.32f);
+            if (m.skyReflection != null)
+            {
+                RenderSettings.defaultReflectionMode = DefaultReflectionMode.Custom;
+                RenderSettings.customReflectionTexture = m.skyReflection;
+                RenderSettings.reflectionIntensity = 1f;
+            }
+            QualitySettings.anisotropicFiltering = AnisotropicFiltering.ForceEnable;
         }
 
         /// <summary>Общие параметры для шейдеров облаков (SkyTide.cginc).</summary>
@@ -216,6 +223,12 @@ namespace SkyTide
             if (found == null) found = new GameObject("Sun").AddComponent<Light>();
             ConfigureSun(found);
             QualitySettings.shadowDistance = 160f;
+            QualitySettings.shadows = ShadowQuality.All;
+            if ((int)QualitySettings.shadowResolution < (int)ShadowResolution.High)
+                QualitySettings.shadowResolution = ShadowResolution.High;
+            if (QualitySettings.shadowCascades < 2) QualitySettings.shadowCascades = 2;
+            Debug.Log("SkyTide: тени корабля " + QualitySettings.shadows + ", " + QualitySettings.shadowResolution
+                + ", каскадов=" + QualitySettings.shadowCascades + "; анизотропия=" + QualitySettings.anisotropicFiltering);
             return found;
         }
 

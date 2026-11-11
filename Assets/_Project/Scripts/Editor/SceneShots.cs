@@ -33,6 +33,24 @@ namespace SkyTide.EditorTools
         {
             float started = Time.realtimeSinceStartup;
             cam.aspect = (float)rt.width / rt.height;
+            // Добавленные крупные планы не меняют сдвиг марша у контрольных ракурсов 45.
+            int phase = -1;
+            switch (name)
+            {
+                case "30_vol_toward_sun": phase = 0; break;
+                case "32_vol_side": phase = 1; break;
+                case "36_vol_away_from_sun": phase = 2; break;
+                case "37_vol_high": phase = 3; break;
+                case "45_vol_muzzle_flash": phase = 4; break;
+                case "47_vol_cloud_splashes": phase = 5; break;
+                case "40_vol_broadside_side":
+                case "62_smoke_legacy_reference": phase = 6; break;
+                case "60_ship_materials": phase = 7; break;
+                case "61_ship_backlight": phase = 8; break;
+                case "63_muzzle_headon":
+                case "64_muzzle_legacy_reference": phase = 9; break;
+            }
+            if (phase >= 0 && boot.Volumetric != null) boot.Volumetric.SetStaticCapturePhase(phase);
             if (boot.Fx != null) boot.Fx.PrepareForRender(cam);
             cam.targetTexture = rt;
             cam.Render();
@@ -84,13 +102,26 @@ namespace SkyTide.EditorTools
                 float time = 0f;
                 StepSalvo(guns, fx, ref time, 0.06f);
                 Render(oc, cam, boot, rt, tex, dir, new Shot("45_vol_muzzle_flash", 90f, 6f, 58f));
+                if (environment && !full)
+                {
+                    Render(oc, cam, boot, rt, tex, dir, new Shot("63_muzzle_headon", 145f, 6f, 52f));
+                    fx.SetLegacyAppearanceCapture(true);
+                    try { Render(oc, cam, boot, rt, tex, dir, new Shot("64_muzzle_legacy_reference", 145f, 6f, 52f)); }
+                    finally { fx.SetLegacyAppearanceCapture(false); }
+                }
                 if (full)
                 {
                     StepSalvo(guns, fx, ref time, 0.26f);
                     Render(oc, cam, boot, rt, tex, dir, new Shot("46_vol_ripple_flashes", 90f, 8f, 70f));
                 }
                 StepSalvo(guns, fx, ref time, 0.75f);
-                if (!environment) Render(oc, cam, boot, rt, tex, dir, new Shot("40_vol_broadside_side", 90f, 8f, 70f));
+                Render(oc, cam, boot, rt, tex, dir, new Shot("40_vol_broadside_side", 90f, 8f, 70f));
+                if (environment && !full)
+                {
+                    fx.SetLegacyAppearanceCapture(true);
+                    try { Render(oc, cam, boot, rt, tex, dir, new Shot("62_smoke_legacy_reference", 90f, 8f, 70f)); }
+                    finally { fx.SetLegacyAppearanceCapture(false); }
+                }
                 if (full)
                 {
                     Render(oc, cam, boot, rt, tex, dir, new Shot("41_vol_broadside_chase", 10f, 16f, 75f));
@@ -181,9 +212,14 @@ namespace SkyTide.EditorTools
                 if (guns != null && guns.HasCannons && boot.Fx != null)
                     CaptureBroadside(oc, cam, boot, rt, tex, dir, guns, false, environment);
                 else Debug.LogWarning("SkyTide: пушек нет — залп не снят");
+                if (environment)
+                {
+                    Render(oc, cam, boot, rt, tex, dir, new Shot("60_ship_materials", 215f, 12f, 40f));
+                    Render(oc, cam, boot, rt, tex, dir, new Shot("61_ship_backlight", 90f, 10f, 42f));
+                }
                 // Четыре маленьких кадра, по одному Render на состояние: без дорогого многокадрового прогрева.
                 if (environment) CaptureTemporal(oc, cam, boot, dir);
-                Debug.Log("SkyTide: быстрая проверка " + (environment ? "визуала (6 x 800x380 + 4 x 400x190)" : "залпов (6 x 800x380)") + ", кадров="
+                Debug.Log("SkyTide: быстрая проверка " + (environment ? "визуала (12 x 800x380 + 4 x 400x190)" : "залпов (6 x 800x380)") + ", кадров="
                     + Directory.GetFiles(dir, "*.jpg").Length + ", секунд=" + (Time.realtimeSinceStartup - start).ToString("F1"));
             }
             finally

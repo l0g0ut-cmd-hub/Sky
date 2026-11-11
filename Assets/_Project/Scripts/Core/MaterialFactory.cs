@@ -20,6 +20,19 @@ namespace SkyTide
             return m;
         }
 
+        public static Material Cloth(string name, Color color, float smoothness, float transmission)
+        {
+            Shader shader = Shader.Find("SkyTide/ShipCloth");
+            if (shader == null) throw new System.InvalidOperationException("ShipCloth shader is missing");
+            Material m = new Material(shader);
+            m.name = name;
+            m.color = color;
+            m.SetFloat("_Glossiness", smoothness);
+            m.SetFloat("_Metallic", 0f);
+            m.SetFloat("_Translucency", transmission);
+            return m;
+        }
+
         /// <summary>Прозрачный материал (режим Fade): облака, дым, вспышки.</summary>
         public static Material Fade(string name, Color color, float smoothness)
         {
