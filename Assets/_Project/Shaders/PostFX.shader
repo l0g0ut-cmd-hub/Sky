@@ -97,8 +97,11 @@ Shader "Hidden/SkyTide/Post"
         half3 c = tex2D(_MainTex, i.uv).rgb;
         float2 v = (i.uv - _SunScreen.xy) * float2(_SunScreen.w, 1);
         half fall = saturate(1 - length(v) * 1.1);
-        half lum = max(0, dot(c, half3(0.35, 0.45, 0.2)) - 0.25);
-        return half4(c * lum * sky * fall * fall, 1);
+        // Маска не должна повторно возводить HDR-яркость облака в квадрат:
+        // это давало белую завесу через корпус даже при умеренном блуме.
+        half lum = saturate((dot(c, half3(0.2126, 0.7152, 0.0722)) - 0.7) / 1.8);
+        half3 source = min(c, half3(2.0, 2.0, 2.0));
+        return half4(source * lum * sky * fall * fall, 1);
     }
 
     half4 fragShaftBlur (v2f i) : SV_Target

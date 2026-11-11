@@ -161,9 +161,9 @@ namespace SkyTide
             RenderSettings.fogStartDistance = 300f;
             RenderSettings.fogEndDistance = 2300f;
             RenderSettings.ambientMode = AmbientMode.Trilight;
-            RenderSettings.ambientSkyColor = new Color(0.46f, 0.3f, 0.38f);
-            RenderSettings.ambientEquatorColor = new Color(0.8f, 0.42f, 0.3f);
-            RenderSettings.ambientGroundColor = new Color(0.36f, 0.2f, 0.2f);
+            RenderSettings.ambientSkyColor = new Color(0.39f, 0.45f, 0.57f);
+            RenderSettings.ambientEquatorColor = new Color(0.68f, 0.46f, 0.35f);
+            RenderSettings.ambientGroundColor = new Color(0.3f, 0.24f, 0.27f);
         }
 
         /// <summary>Общие параметры для шейдеров облаков (SkyTide.cginc).</summary>

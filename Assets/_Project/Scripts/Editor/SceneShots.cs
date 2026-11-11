@@ -71,7 +71,7 @@ namespace SkyTide.EditorTools
             finally { cam.transform.SetPositionAndRotation(oldPosition, oldRotation); }
         }
 
-        static void CaptureBroadside(OrbitCamera oc, Camera cam, SkyTideBootstrap boot, RenderTexture rt, Texture2D tex, string dir, Broadside guns, bool full = true)
+        static void CaptureBroadside(OrbitCamera oc, Camera cam, SkyTideBootstrap boot, RenderTexture rt, Texture2D tex, string dir, Broadside guns, bool full = true, bool environment = false)
         {
             Random.State random = Random.state;
             Random.InitState(74131);
@@ -90,7 +90,7 @@ namespace SkyTide.EditorTools
                     Render(oc, cam, boot, rt, tex, dir, new Shot("46_vol_ripple_flashes", 90f, 8f, 70f));
                 }
                 StepSalvo(guns, fx, ref time, 0.75f);
-                Render(oc, cam, boot, rt, tex, dir, new Shot("40_vol_broadside_side", 90f, 8f, 70f));
+                if (!environment) Render(oc, cam, boot, rt, tex, dir, new Shot("40_vol_broadside_side", 90f, 8f, 70f));
                 if (full)
                 {
                     Render(oc, cam, boot, rt, tex, dir, new Shot("41_vol_broadside_chase", 10f, 16f, 75f));
@@ -104,7 +104,7 @@ namespace SkyTide.EditorTools
                 Debug.Log("SkyTide: залп → всплесков в облаках: " + fx.CloudSplashCount);
                 if (fx.CloudSplashCount > 0) RenderSplash(oc, cam, boot, rt, tex, dir);
                 else Debug.LogWarning("SkyTide: залп не дал всплесков — проверить траектории и поверхность облаков");
-                if (boot.Target != null)
+                if (boot.Target != null && !environment)
                 {
                     fx.Clear();
                     oc.yaw = 60f; oc.pitch = 10f; oc.distance = 90f; oc.Snap(); oc.Apply(0f);
@@ -135,13 +135,20 @@ namespace SkyTide.EditorTools
             {
                 boot.SetVolumetric(true);
                 if (boot.Volumetric != null) boot.Volumetric.ResetTowers(boot.Ship.transform.position);
-                // Контрольный кадр до выстрела + факел, дым, всплеск, попадание и щепки.
+                // По умолчанию — свет с разных сторон и два эффекта; профиль fx оставляет прежние 6 фаз залпа.
+                bool environment = System.Environment.GetEnvironmentVariable("SKYTIDE_SHOT_PROFILE") != "fx";
+                if (environment) Render(oc, cam, boot, rt, tex, dir, new Shot("30_vol_toward_sun", 35f, 8f, 75f));
                 Render(oc, cam, boot, rt, tex, dir, new Shot("32_vol_side", 90f, 8f, 70f));
+                if (environment)
+                {
+                    Render(oc, cam, boot, rt, tex, dir, new Shot("36_vol_away_from_sun", 215f, 12f, 70f));
+                    Render(oc, cam, boot, rt, tex, dir, new Shot("37_vol_high", 140f, 50f, 115f));
+                }
                 Broadside guns = boot.Ship != null ? boot.Ship.GetComponent<Broadside>() : null;
                 if (guns != null && guns.HasCannons && boot.Fx != null)
-                    CaptureBroadside(oc, cam, boot, rt, tex, dir, guns, false);
+                    CaptureBroadside(oc, cam, boot, rt, tex, dir, guns, false, environment);
                 else Debug.LogWarning("SkyTide: пушек нет — залп не снят");
-                Debug.Log("SkyTide: быстрая проверка залпов, 800x380, кадров="
+                Debug.Log("SkyTide: быстрая проверка " + (environment ? "визуала" : "залпов") + ", 800x380, кадров="
                     + Directory.GetFiles(dir, "*.jpg").Length + ", секунд=" + (Time.realtimeSinceStartup - start).ToString("F1"));
             }
             finally

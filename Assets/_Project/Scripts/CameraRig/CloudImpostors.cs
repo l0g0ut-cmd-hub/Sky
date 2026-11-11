@@ -12,10 +12,10 @@ namespace SkyTide
     public class CloudImpostors
     {
         public const int Frames = 16;
-        public const int FrameSize = 256;
+        public const int FrameSize = 288;
         public const float BakeRadius = 200f;
-        public const float WidthPerR = 2.7f;     // ширина кадра в радиусах башни
-        public const float Pad = 0.04f;          // запас кадра снизу и сверху (доля высоты)
+        public const float WidthPerR = 3f;       // весь габарит поля; край не обрезает боковые клубы
+        public const float Pad = 0.08f;          // запас под верхние клубы и эрозию
 
         struct Variant { public int template; public float squash; }
         static readonly Variant[] Variants =

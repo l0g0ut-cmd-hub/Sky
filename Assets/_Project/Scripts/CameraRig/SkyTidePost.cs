@@ -15,27 +15,27 @@ namespace SkyTide
         public Light sun;
 
         [Header("Тон")]
-        public float exposure = 1.08f;
-        public float contrast = 1.16f;
-        public float saturation = 1.05f;
+        public float exposure = 1.02f;
+        public float contrast = 1.08f;
+        public float saturation = 1f;
         public Color shadowTone = new Color(0.44f, 0.46f, 0.6f);
         public Color highlightTone = new Color(0.6f, 0.5f, 0.42f);
-        [Range(0f, 1f)] public float toneStrength = 0.35f;
-        [Range(0f, 1f)] public float vignette = 0.55f;
+        [Range(0f, 1f)] public float toneStrength = 0.22f;
+        [Range(0f, 1f)] public float vignette = 0.38f;
         public Color vignetteColor = new Color(0.35f, 0.18f, 0.22f);
 
         [Header("Блум")]
-        public float bloomThreshold = 1.0f;
-        public float bloomKnee = 0.5f;
-        public float bloomIntensity = 0.55f;
+        public float bloomThreshold = 1.2f;
+        public float bloomKnee = 0.45f;
+        public float bloomIntensity = 0.35f;
         public Color bloomTint = new Color(1f, 0.82f, 0.62f);
         [Range(2, 7)] public int bloomIterations = 6;
 
         [Header("Лучи солнца")]
         public float shaftLength = 0.85f;
         public float shaftDecay = 0.9f;
-        public float shaftWeight = 0.16f;
-        public float shaftIntensity = 1.1f;
+        public float shaftWeight = 0.12f;
+        public float shaftIntensity = 0.75f;
         public Color shaftColor = new Color(1f, 0.62f, 0.3f);
 
         Material mat;

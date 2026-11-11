@@ -289,7 +289,7 @@ Shader "Hidden/SkyTide/VolumetricClouds"
                 float h = saturate((p.y - base) / (top - base));
                 float3 sunCol = lerp(_SunEmber.rgb, _SunGold.rgb, pow(sunT, 0.6));
                 float3 amb = lerp(_AmbientBottom.rgb, _AmbientTop.rgb, h) * lerp(0.3, 0.85, h);
-                amb *= lerp(float3(0.6, 0.42, 0.85), float3(1, 1, 1), h);
+                amb *= lerp(float3(0.6, 0.68, 0.88), float3(1, 1, 1), h);
                 float3 src = (sunCol * sunT * min(phase, 1.6) + _MultiScatter.rgb * ms * h) * _Deck3.w + amb + SkyTideFlashLight(p);
                 float st = exp(-d * stepLen);
                 float wgt = trans * (1.0 - st);
@@ -380,7 +380,7 @@ Shader "Hidden/SkyTide/VolumetricClouds"
                         float hh = saturate((p.y - 0.0) / 450.0);
                         float3 amb = lerp(_AmbientBottom.rgb, _AmbientTop.rgb, hh) * (0.6 + 0.4 * hh);
                         // Тень — фиолетовая, как на рисованных облаках, а не серая: глушим яркость, но не насыщенность.
-                        amb *= lerp(float3(0.55, 0.38, 0.8), float3(1.0, 1.0, 1.0), sky);
+                        amb *= lerp(float3(0.55, 0.64, 0.86), float3(1.0, 1.0, 1.0), sky);
                         float3 src = sunCol * (sunT * phase * (1.0 + _Phase.w * edge * rimDir)) + _MultiScatter.rgb * ms * sky + amb
                                    + (bake ? float3(0, 0, 0) : SkyTideFlashLight(p));
                         float st = exp(-d * stepLen);
@@ -442,16 +442,28 @@ Shader "Hidden/SkyTide/VolumetricClouds"
         return float4(sqrt(saturate(c.rgb / 6.0)), 1.0 - c.a);
     }
 
-    // Мягкое размытие облаков в низком разрешении (тент 3×3): убирает зерно и «пиксельные» кромки.
+    // Тент 3×3 с глубиной: шум усредняется, но море за кораблём не затекает на его силуэт.
+    // При запекании импосторов сцены нет — остаётся прежний обычный тент.
     float4 fragBlur (v2f i) : SV_Target
     {
         float2 d = _LowRes.zw;
-        float4 c = tex2D(_MainTex, i.uv) * 4.0;
-        c += (tex2D(_MainTex, i.uv + float2(d.x, 0)) + tex2D(_MainTex, i.uv - float2(d.x, 0))
-            + tex2D(_MainTex, i.uv + float2(0, d.y)) + tex2D(_MainTex, i.uv - float2(0, d.y))) * 2.0;
-        c += tex2D(_MainTex, i.uv + d) + tex2D(_MainTex, i.uv - d)
-           + tex2D(_MainTex, i.uv + float2(d.x, -d.y)) + tex2D(_MainTex, i.uv + float2(-d.x, d.y));
-        return c / 16.0;
+        float centerDepth = _Bake > 0.5 ? 0.0 : tex2D(_LowDepthTex, i.uv).r;
+        float4 c = 0;
+        float total = 0;
+        [unroll] for (int y = -1; y <= 1; y++)
+        [unroll] for (int x = -1; x <= 1; x++)
+        {
+            float2 uv = i.uv + float2(x, y) * d;
+            float weight = (x == 0 ? 2.0 : 1.0) * (y == 0 ? 2.0 : 1.0);
+            if (_Bake < 0.5)
+            {
+                float diff = abs(tex2D(_LowDepthTex, uv).r - centerDepth);
+                weight *= exp(-diff / max(2.0, centerDepth * 0.015));
+            }
+            c += tex2D(_MainTex, uv) * weight;
+            total += weight;
+        }
+        return c / max(total, 1e-5);
     }
 
     float SceneDepthForClouds(float2 uv)

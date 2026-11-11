@@ -83,7 +83,7 @@ Shader "Hidden/SkyTide/CloudImpostor"
                 o.slices.z = k - k0;
 
                 // Камера внутри облака — квад растворяется (настоящего объёма вблизи у него нет).
-                float R = W / 2.7;
+                float R = W / 3.0;   // CloudImpostors.WidthPerR
                 float inside = (_ImpCam.y > c.y - 0.1 * H && _ImpCam.y < c.y + 1.05 * H) ? 1.0 : 0.0;
                 float fadeIn = lerp(1.0, smoothstep(R * 0.9, R * 1.9, lf), inside);
                 // Снимки сделаны сбоку: круто сверху/снизу облако растворяется (там видно море облаков).
@@ -94,8 +94,9 @@ Shader "Hidden/SkyTide/CloudImpostor"
                 return o;
             }
 
-            bool HeroInFront(float3 ro, float3 rd, float dist)
+            float HeroInFront(float3 ro, float3 rd, float dist)
             {
+                float cover = 0.0;
                 for (int i = 0; i < MAX_TOWERS; i++)
                 {
                     if (i >= (int)_TowerCount) break;
@@ -109,9 +110,16 @@ Shader "Hidden/SkyTide/CloudImpostor"
                     float disc = b * b - q;
                     if (disc <= 0.0) continue;
                     float t0 = -b - sqrt(disc);
-                    if (t0 < dist && -b + sqrt(disc) > 0.0) return true;
+                    if (t0 < dist && -b + sqrt(disc) > 0.0)
+                    {
+                        // Это лишь грубый габарит: бинарная граница шара резала дальний клуб.
+                        float edge = smoothstep(0.0, r * r * 0.3, disc);
+                        float behind = smoothstep(0.0, r * 0.2, dist - t0);
+                        cover = max(cover, edge * behind);
+                        if (cover > 0.999) return 1.0;
+                    }
                 }
-                return false;
+                return cover;
             }
 
             half4 frag (v2f i) : SV_Target
@@ -146,8 +154,8 @@ Shader "Hidden/SkyTide/CloudImpostor"
                     m *= saturate((LinearEyeDepth(raw) - eye) / 25.0 + 0.5);
 
                 // Героическая объёмная башня перед облаком — закрывает его по своему пропусканию.
-                if (HeroInFront(ro, rd, dist))
-                    m *= tex2D(_CloudTex, suv).a;
+                float heroCover = HeroInFront(ro, rd, dist);
+                m *= lerp(1.0, tex2D(_CloudTex, suv).a, heroCover);
 
                 return half4(light * m, a * m);
             }

@@ -70,7 +70,7 @@ namespace SkyTide
         public float deckDistance = 5000f;
         public float deckAbsorption = 1.7f;
         [Tooltip("Яркость солнца на море облаков: тонкий слой освещён почти целиком — без этого пересвет")]
-        public float deckSunScale = 0.26f;
+        public float deckSunScale = 0.2f;
 
         [Header("Дымка у моря облаков (не используется — заменена объёмным морем)")]
         public float hazeDensity = 0.00045f;
@@ -82,16 +82,16 @@ namespace SkyTide
         public float lightAbsorption = 1.4f;
         public Color sunGold = new Color(1f, 0.62f, 0.22f);
         public Color sunEmber = new Color(1f, 0.24f, 0.06f);
-        public float sunIntensity = 5.2f;
-        public Color multiScatter = new Color(0.95f, 0.38f, 0.42f);
+        public float sunIntensity = 3.4f;
+        public Color multiScatter = new Color(0.95f, 0.44f, 0.22f);
         public float multiScatterAmount = 0.2f;
-        public Color ambientTop = new Color(0.36f, 0.22f, 0.55f);
-        public Color ambientBottom = new Color(0.16f, 0.1f, 0.34f);
+        public Color ambientTop = new Color(0.3f, 0.32f, 0.46f);
+        public Color ambientBottom = new Color(0.13f, 0.15f, 0.24f);
         public float ambientIntensity = 0.65f;
         public float forwardG = 0.6f;
         public float backG = -0.2f;
         [Range(0f, 1f)] public float phaseMix = 0.65f;
-        public float rim = 1.5f;
+        public float rim = 0.85f;
         [Range(0f, 1f)] public float aerial = 0.45f;
 
         [Header("Отладка")]
@@ -113,6 +113,7 @@ namespace SkyTide
         {
             cam = GetComponent<Camera>();
             cam.depthTextureMode |= DepthTextureMode.Depth;
+            historyValid = false;
         }
 
         void OnDisable()
@@ -152,7 +153,7 @@ namespace SkyTide
             return noise;
         }
 
-        // ---------- шаблоны башен (тот же алгоритм, что tools/cloudlab/puffs.py) ----------
+        // ---------- асимметричные шаблоны башен ----------
 
         static float U(System.Random r, float a, float b) { return a + (float)r.NextDouble() * (b - a); }
 
@@ -161,35 +162,38 @@ namespace SkyTide
             System.Random r = new System.Random(seed);
             const float H = TemplateHeight;
             int k = offset;
+            float leanX = U(r, -0.18f, 0.18f), leanZ = U(r, -0.18f, 0.18f);
+            bool broad = seed == 19, split = seed == 42;
             for (int i = 0; i < 7; i++)   // широкое основание
             {
-                float a = i / 7f * Mathf.PI * 2f + U(r, -0.3f, 0.3f);
-                float d = U(r, 0.35f, 0.7f);
-                dst[k++] = new Vector4(Mathf.Cos(a) * d, H * 0.16f, Mathf.Sin(a) * d, U(r, 0.42f, 0.55f));
+                float a = i / 7f * Mathf.PI * 2f + U(r, -0.5f, 0.5f);
+                float d = U(r, 0.3f, 0.62f);
+                dst[k++] = new Vector4(Mathf.Cos(a) * d, H * U(r, 0.13f, 0.22f), Mathf.Sin(a) * d, U(r, 0.42f, 0.58f));
             }
             dst[k++] = new Vector4(0f, H * 0.2f, 0f, 0.6f);
-            for (int i = 0; i < 6; i++)   // средний ярус
-            {
-                float a = i / 6f * Mathf.PI * 2f + U(r, -0.4f, 0.4f);
-                float d = U(r, 0.2f, 0.45f);
-                dst[k++] = new Vector4(Mathf.Cos(a) * d, H * U(r, 0.38f, 0.52f), Mathf.Sin(a) * d, U(r, 0.36f, 0.46f));
-            }
-            dst[k++] = new Vector4(U(r, -0.1f, 0.1f), H * 0.5f, 0f, 0.48f);
-            int heads = 3 + r.Next(3);
-            for (int i = 0; i < 5; i++)   // головы (лишние — вырожденные, без вклада)
+            for (int i = 0; i < 6; i++)   // не кольцо на одной высоте, а связанные клубы разных размеров
             {
                 float a = U(r, 0f, Mathf.PI * 2f);
-                float d = U(r, 0.05f, 0.32f);
-                float y = H * U(r, 0.66f, 0.86f);
-                float rad = U(r, 0.26f, 0.36f);
-                dst[k++] = i < heads ? new Vector4(Mathf.Cos(a) * d, y, Mathf.Sin(a) * d, rad) : new Vector4(0f, -10f, 0f, 0.001f);
+                float d = U(r, 0.12f, broad ? 0.46f : 0.34f);
+                float y = H * U(r, 0.31f, 0.63f);
+                dst[k++] = new Vector4(leanX * 0.5f + Mathf.Cos(a) * d, y, leanZ * 0.5f + Mathf.Sin(a) * d, U(r, 0.4f, 0.57f));
             }
-            for (int i = 0; i < 7; i++)   // наплывы по бокам
+            dst[k++] = new Vector4(leanX * 0.5f, H * 0.5f, leanZ * 0.5f, 0.6f);
+            for (int i = 0; i < 5; i++)   // высокий клуб, широкая крона или две разные вершины
             {
                 float a = U(r, 0f, Mathf.PI * 2f);
-                float y = H * U(r, 0.25f, 0.7f);
-                float d = 0.75f - 0.5f * y / H;
-                dst[k++] = new Vector4(Mathf.Cos(a) * d, y, Mathf.Sin(a) * d, U(r, 0.16f, 0.24f));
+                float d = U(r, 0.08f, broad ? 0.4f : 0.24f);
+                float y = H * U(r, broad ? 0.59f : 0.66f, broad ? 0.77f : 0.83f);
+                float rad = U(r, broad ? 0.48f : 0.38f, broad ? 0.62f : 0.54f);
+                float branch = split ? (i % 2 == 0 ? 0.28f : -0.28f) : 0f;
+                dst[k++] = new Vector4(leanX + Mathf.Cos(a) * d + branch, y, leanZ + Mathf.Sin(a) * d, rad);
+            }
+            for (int i = 0; i < 8; i++)   // небольшие наплывы разбивают гладкий пирамидальный контур
+            {
+                float a = U(r, 0f, Mathf.PI * 2f);
+                float y = H * U(r, 0.25f, 0.77f);
+                float d = U(r, 0.4f, 0.65f);
+                dst[k++] = new Vector4(leanX * 0.5f + Mathf.Cos(a) * d, y, leanZ * 0.5f + Mathf.Sin(a) * d, U(r, 0.22f, 0.34f));
             }
             while (k < offset + Puffs) dst[k++] = new Vector4(0f, -10f, 0f, 0.001f);   // пустые слоты
         }
@@ -530,6 +534,11 @@ namespace SkyTide
             RenderTexture blurred = RenderTexture.GetTemporary(w, h, 0, RenderTextureFormat.ARGBHalf);
             clouds.filterMode = FilterMode.Bilinear;
             blurred.filterMode = FilterMode.Point;
+            // Глубина нужна уже фильтру, иначе размытие сначала заносит фон на корпус,
+            // и последующее сведение по глубине не может убрать этот ореол.
+            Graphics.Blit(src, lowDepth, mat, 2);
+            mat.SetTexture("_LowDepthTex", lowDepth);
+            mat.SetVector("_Temporal", new Vector4(frameIdx++ % 64, 0f, deckTop, 0f));
             Graphics.Blit(src, clouds, mat, 0);       // марш луча
             // Временное накопление: история — свой буфер, перепроецирование по прошлой матрице камеры.
             if (history == null || history.width != w || history.height != h)
@@ -541,7 +550,7 @@ namespace SkyTide
                 historyValid = false;
             }
             bool useHistory = temporal && historyValid && Application.isPlaying;
-            mat.SetVector("_Temporal", new Vector4(frameIdx++ % 64, useHistory ? temporalBlend : 0f, deckTop, 0f));
+            mat.SetVector("_Temporal", new Vector4((frameIdx - 1) % 64, useHistory ? temporalBlend : 0f, deckTop, 0f));
             mat.SetMatrix("_PrevVP", prevVP);
             mat.SetTexture("_History", history);
             RenderTexture acc = RenderTexture.GetTemporary(w, h, 0, RenderTextureFormat.ARGBHalf);
@@ -553,7 +562,6 @@ namespace SkyTide
             Graphics.Blit(acc, blurred, mat, 3);      // одно мягкое размытие (шум гасит накопление)
             if (!useHistory) { Graphics.Blit(blurred, clouds, mat, 3); Graphics.Blit(clouds, blurred, mat, 3); }
             RenderTexture.ReleaseTemporary(acc);
-            Graphics.Blit(src, lowDepth, mat, 2);     // глубина сцены в низком разрешении
             mat.SetTexture("_CloudTex", blurred);
             mat.SetTexture("_LowDepthTex", lowDepth);
             Graphics.Blit(src, dst, mat, 1);          // сведение с учётом глубины
