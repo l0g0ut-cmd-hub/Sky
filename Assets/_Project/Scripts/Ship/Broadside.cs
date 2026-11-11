@@ -62,8 +62,18 @@ namespace SkyTide
         public float Readiness(int side)
         {
             int k = side < 0 ? 0 : 1;
-            return Mathf.Clamp01(1f - (ready[k] - Time.time) / cooldown);
+            float now = Application.isPlaying ? Time.time : 0f;
+            return Mathf.Clamp01(1f - (ready[k] - now) / cooldown);
         }
+
+#if UNITY_EDITOR
+        public void SetReadinessCapture(float port, float starboard)
+        {
+            ready[0] = (1f - Mathf.Clamp01(port)) * cooldown;
+            ready[1] = (1f - Mathf.Clamp01(starboard)) * cooldown;
+            queue.Clear();
+        }
+#endif
 
         /// <summary>Залп бортом: side = -1 левый, +1 правый.</summary>
         public bool Fire(int side)

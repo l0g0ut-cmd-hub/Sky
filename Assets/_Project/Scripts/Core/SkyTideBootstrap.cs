@@ -27,6 +27,8 @@ namespace SkyTide
         public Shader volumetricShader;
         public Shader impostorShader;
         public Shader fxShader;
+        public Shader hudShader;
+        public Font hudFont;
         [Tooltip("3D-шум облаков (Art/CloudNoise3D.bytes, tools/gen_cloud_noise3d.py).")]
         public TextAsset cloudNoise3D;
         [Tooltip("Запечённые шаблоны объёмных башен: форма + свет солнца + видимость неба (SceneBuilder).")]
@@ -115,6 +117,9 @@ namespace SkyTide
             controls.ship = Ship;
             controls.cam = cam;
             controls.game = this;
+            controls.hudShader = hudShader;
+            controls.hudFont = hudFont;
+            post.controls = controls;
         }
 
         public VolumetricClouds Volumetric { get; private set; }

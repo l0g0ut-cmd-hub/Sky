@@ -13,6 +13,7 @@ namespace SkyTide
     {
         public Shader shader;
         public Light sun;
+        public TouchControls controls;
 
         [Header("Тон")]
         public float exposure = 1.02f;
@@ -64,6 +65,12 @@ namespace SkyTide
         }
 
         void OnRenderImage(RenderTexture src, RenderTexture dst)
+        {
+            RenderScene(src, dst);
+            if (controls != null) controls.DrawHud(dst, src.width, src.height);
+        }
+
+        void RenderScene(RenderTexture src, RenderTexture dst)
         {
             if (shader == null) shader = Shader.Find("Hidden/SkyTide/Post");
             if (shader == null || !shader.isSupported)

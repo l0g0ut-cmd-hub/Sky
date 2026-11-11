@@ -55,6 +55,9 @@ namespace SkyTide.EditorTools
                 case "73_target_foundering":
                 case "74_target_cloud_entry":
                 case "75_target_restored": phase = 10; break;
+                case "80_hud_ready":
+                case "81_hud_reload":
+                case "82_hud_cutout": phase = 11; break;
             }
             if (phase >= 0 && boot.Volumetric != null) boot.Volumetric.SetStaticCapturePhase(phase);
             if (boot.Fx != null) boot.Fx.PrepareForRender(cam);
@@ -159,6 +162,73 @@ namespace SkyTide.EditorTools
                 boot.Fx.Clear();
                 Random.state = random;
             }
+        }
+
+        static void CheckHudLayout(HudLayout l)
+        {
+            Rect[] buttons = { l.port, l.starboard, l.mode, l.clouds, l.ship };
+            for (int i=0;i<buttons.Length;i++)
+            {
+                Rect r=buttons[i];
+                if(r.xMin<l.safe.xMin||r.yMin<l.safe.yMin||r.xMax>l.safe.xMax||r.yMax>l.safe.yMax)
+                    throw new System.InvalidOperationException("HUD button outside safe area");
+                for(int j=i+1;j<buttons.Length;j++)if(r.Overlaps(buttons[j]))
+                    throw new System.InvalidOperationException("HUD buttons overlap");
+            }
+        }
+
+        static void HudFrame(OrbitCamera oc,Camera cam,SkyTideBootstrap boot,TouchControls controls,string dir,string name,int width,int height)
+        {
+            RenderTexture rt=new RenderTexture(width,height,24,RenderTextureFormat.ARGB32);
+            Texture2D tex=new Texture2D(width,height,TextureFormat.RGB24,false);
+            int before=controls.HudDrawCount;
+            try
+            {
+                Render(oc,cam,boot,rt,tex,dir,new Shot(name,215f,12f,55f));
+                if(controls.HudDrawCount!=before+1||controls.HudGlyphsDrawn<70||controls.HudMissingGlyphs!=0)
+                    throw new System.InvalidOperationException("HUD text/render failed: glyphs="+controls.HudGlyphsDrawn+", missing="+controls.HudMissingGlyphs+", character="+controls.HudMissingCharacter);
+            }
+            finally {cam.targetTexture=null;RenderTexture.active=null;rt.Release();Object.DestroyImmediate(rt);Object.DestroyImmediate(tex);}
+        }
+
+        static void CaptureHud(OrbitCamera oc,Camera cam,SkyTideBootstrap boot,string dir)
+        {
+            TouchControls controls=boot.GetComponent<TouchControls>();
+            Broadside guns=controls.Guns();
+            if(guns==null)throw new System.InvalidOperationException("HUD guns missing");
+            bool ripple=guns.ripple;
+            try
+            {
+                boot.Fx.Clear();guns.SetReadinessCapture(1f,1f);
+                controls.SetHudCapture(true,960,432);
+                HudLayout l=controls.Layout(960,432);CheckHudLayout(l);
+                HudFrame(oc,cam,boot,controls,dir,"80_hud_ready",960,432);
+                controls.PointerCapture(50,l.port.center,true,false);
+                if(guns.Readiness(-1)>0.001f||controls.CapturedAsCamera(50))throw new System.InvalidOperationException("Port button did not fire or captured camera");
+                controls.PointerCapture(60,l.mode.center,true,false);controls.PointerCapture(60,l.mode.center,false,true);
+                if(guns.ripple==ripple)throw new System.InvalidOperationException("Volley mode button failed");
+                controls.PointerCapture(51,l.wheel,true,false);
+                controls.PointerCapture(51,l.wheel+new Vector2(l.radius*0.7f,-l.radius*0.5f),false,false);
+                if(!controls.StickActive||controls.CapturedAsCamera(51))throw new System.InvalidOperationException("Joystick owner failed");
+                Vector2 a=new Vector2(960f*0.7f,432f*0.45f),b=new Vector2(960f*0.85f,432f*0.4f);
+                controls.PointerCapture(52,a,true,false);controls.PointerCapture(53,b,true,false);
+                if(!controls.CapturedAsCamera(52)||!controls.CapturedAsCamera(53))throw new System.InvalidOperationException("Camera pointers captured by HUD");
+                controls.PinchCapture();float distance=oc.distance;
+                controls.PointerCapture(53,b+Vector2.right*35f,false,false);controls.PinchCapture();
+                if(oc.distance>=distance)throw new System.InvalidOperationException("Pinch zoom failed");
+                guns.SetReadinessCapture(0.4f,1f);
+                HudFrame(oc,cam,boot,controls,dir,"81_hud_reload",960,432);
+                controls.ResetInteraction();
+                if(controls.ActivePointersCapture!=0||controls.StickActive||boot.Ship.throttle!=0f||boot.Ship.turn!=0f)
+                    throw new System.InvalidOperationException("Pointer state survived reset");
+                Rect cutout=new Rect(40f,8f,920f,410f);
+                controls.SetHudCapture(true,1008,432,cutout);guns.SetReadinessCapture(1f,1f);
+                CheckHudLayout(controls.Layout(1008,432));
+                HudFrame(oc,cam,boot,controls,dir,"82_hud_cutout",1008,432);
+                CheckHudLayout(HudLayout.Build(800,450,new Rect(0,0,800,450),controls.stickRadius));
+                Debug.Log("SkyTide: HUD — Cyrillic/glyphs OK, ready/reload, shared hitboxes, mode/stick/two-finger pinch/reset OK; 16:9 and 21:9 safe areas OK");
+            }
+            finally {controls.SetHudCapture(false);guns.SetReadinessCapture(1f,1f);guns.ripple=ripple;boot.Fx.Clear();}
         }
 
         static void StepDamage(ShipDamageVisual damage, FxSystem fx, float duration)
@@ -284,8 +354,8 @@ namespace SkyTide.EditorTools
             {
                 boot.SetVolumetric(true);
                 if (boot.Volumetric != null) boot.Volumetric.ResetTowers(boot.Ship.transform.position);
-                // Текущий пакет — повреждения; appearance оставляет галерею 46, fx — прежние фазы залпа.
-                string profile = System.Environment.GetEnvironmentVariable("SKYTIDE_SHOT_PROFILE") ?? "damage";
+                // Каждый пакет снимает свои состояния. Предыдущие профили остаются доступны отдельно.
+                string profile = System.Environment.GetEnvironmentVariable("SKYTIDE_SHOT_PROFILE") ?? "hud";
                 bool environment = profile != "fx";
                 bool appearance = profile == "appearance";
                 if (environment) Render(oc, cam, boot, rt, tex, dir, new Shot("30_vol_toward_sun", 35f, 8f, 75f));
@@ -309,8 +379,11 @@ namespace SkyTide.EditorTools
                 }
                 // Четыре маленьких кадра, по одному Render на состояние: без дорогого многокадрового прогрева.
                 if (appearance) CaptureTemporal(oc, cam, boot, dir);
-                else if (environment) CaptureDamage(oc, cam, boot, rt, tex, dir);
-                Debug.Log("SkyTide: быстрая проверка " + profile + " (800x380; temporal 400x190 только в appearance), кадров="
+                else if (profile == "damage") CaptureDamage(oc, cam, boot, rt, tex, dir);
+                else if (environment) CaptureHud(oc, cam, boot, dir);
+                string sizes = profile == "hud" ? "7x800x380 + 2x960x432 + 1x1008x432"
+                    : appearance ? "12x800x380 + 4x400x190" : "800x380";
+                Debug.Log("SkyTide: быстрая проверка " + profile + " (" + sizes + "), кадров="
                     + Directory.GetFiles(dir, "*.jpg").Length + ", секунд=" + (Time.realtimeSinceStartup - start).ToString("F1"));
             }
             finally

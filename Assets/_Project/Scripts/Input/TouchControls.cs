@@ -35,16 +35,13 @@ namespace SkyTide
         bool legacyInputOk = true;
         float fps = 60f;
 
-        Texture2D disc;
-        Texture2D ring;
-        GUIStyle hintStyle;
-        GUIStyle buttonStyle;
+        public Shader hudShader;
+        public Font hudFont;
+        readonly ShipHud hud = new ShipHud();
 
         void Awake()
         {
             Input.simulateMouseWithTouches = false;
-            disc = MakeDisc(128, false);
-            ring = MakeDisc(128, true);
         }
 
         void Update()
@@ -68,7 +65,7 @@ namespace SkyTide
 
         void ReadPointers()
         {
-            float h = Screen.height;
+            float h = ViewHeight;
             if (Input.touchCount > 0)
             {
                 for (int i = 0; i < Input.touchCount; i++)
@@ -118,7 +115,7 @@ namespace SkyTide
                 if (bs != null && VolleyModeRect().Contains(p)) { owners[id] = Owner.Button; lastPos[id] = p; bs.ripple = !bs.ripple; return; }
                 if (bs != null && VolleyRect(-1).Contains(p)) { owners[id] = Owner.Button; lastPos[id] = p; bs.Fire(-1); return; }
                 if (bs != null && VolleyRect(1).Contains(p)) { owners[id] = Owner.Button; lastPos[id] = p; bs.Fire(1); return; }
-                if (p.x < Screen.width * 0.5f && stickId == int.MinValue)
+                if (p.x < ViewWidth * 0.5f && stickId == int.MinValue)
                 {
                     owners[id] = Owner.Stick;
                     stickId = id;
@@ -140,7 +137,7 @@ namespace SkyTide
             else if (o == Owner.Camera && cam != null && CameraFingers() == 1)
             {
                 Vector2 d = p - lastPos[id];
-                float perPixel = orbitDegreesPerScreen / Mathf.Max(1f, Screen.width);
+                float perPixel = orbitDegreesPerScreen / Mathf.Max(1f, ViewWidth);
                 cam.yaw += d.x * perPixel;
                 cam.pitch += d.y * perPixel;
             }
@@ -183,7 +180,7 @@ namespace SkyTide
 
         void ApplyToShip()
         {
-            float r = Mathf.Max(1f, Mathf.Min(Screen.width, Screen.height) * stickRadius);
+            float r = Mathf.Max(1f, Layout(ViewWidth, ViewHeight).radius);
             if (stickId != int.MinValue)
             {
                 Vector2 v = (stickPos - stickOrigin) / r;
@@ -214,43 +211,16 @@ namespace SkyTide
             }
         }
 
-        Rect ShipButtonRect()
-        {
-            float u = Mathf.Min(Screen.width, Screen.height);
-            float w = u * 0.42f, h = u * 0.1f;
-            return new Rect(Screen.width - w - u * 0.03f, u * 0.03f, w, h);
-        }
+        Rect ShipButtonRect() { return Layout(ViewWidth,ViewHeight).ship; }
+        Rect CloudButtonRect() { return Layout(ViewWidth,ViewHeight).clouds; }
+        Rect VolleyModeRect() { return Layout(ViewWidth,ViewHeight).mode; }
+        Rect VolleyRect(int side) { HudLayout l=Layout(ViewWidth,ViewHeight); return side<0?l.port:l.starboard; }
 
-        Broadside Guns()
+        public Broadside Guns()
         {
-            if (ship == null) return null;
-            Broadside b = ship.GetComponent<Broadside>();
-            return b != null && b.HasCannons ? b : null;
-        }
-
-        /// <summary>Кнопки залпа: справа внизу, над номером сборки; side = -1 левый борт, +1 правый.</summary>
-        Rect VolleyRect(int side)
-        {
-            float u = Mathf.Min(Screen.width, Screen.height);
-            float w = u * 0.27f, h = u * 0.14f, gap = u * 0.03f;
-            float y = Screen.height - h - u * 0.16f;
-            float xr = Screen.width - w - u * 0.03f;
-            return side > 0 ? new Rect(xr, y, w, h) : new Rect(xr - w - gap, y, w, h);
-        }
-
-        Rect VolleyModeRect()
-        {
-            float u = Mathf.Min(Screen.width, Screen.height);
-            Rect l = VolleyRect(-1), r = VolleyRect(1);
-            float h = u * 0.09f;
-            return new Rect(l.x, l.y - h - u * 0.02f, r.xMax - l.x, h);
-        }
-
-        Rect CloudButtonRect()
-        {
-            Rect r = ShipButtonRect();
-            float u = Mathf.Min(Screen.width, Screen.height);
-            return new Rect(r.x, r.yMax + u * 0.02f, r.width, r.height);
+            if(ship==null)return null;
+            Broadside b=ship.GetComponent<Broadside>();
+            return b!=null&&b.HasCannons?b:null;
         }
 
         static float DeadZone(float x)
@@ -262,161 +232,94 @@ namespace SkyTide
         }
 
         string buildText;
-        GUIStyle buildStyle;
-
-        void OnGUI()
+        public string BuildText
         {
-            if (Event.current.type != EventType.Repaint) return;
-            float u = Mathf.Min(Screen.width, Screen.height);
-            float r = u * stickRadius;
-
-            Color prev = GUI.color;
-            if (stickId != int.MinValue)
+            get
             {
-                Vector2 v = stickPos - stickOrigin;
-                if (v.magnitude > r) v = v.normalized * r;
-                DrawCircle(ring, stickOrigin, r * 1.15f, new Color(1f, 0.85f, 0.55f, 0.55f));
-                DrawCircle(disc, stickOrigin, r * 1.1f, new Color(0.08f, 0.06f, 0.05f, 0.3f));
-                DrawCircle(disc, stickOrigin + v, r * 0.45f, new Color(0.95f, 0.75f, 0.4f, 0.85f));
-            }
-            else
-            {
-                // Подсказка, где джойстик
-                Vector2 home = new Vector2(u * 0.2f, Screen.height - u * 0.22f);
-                DrawCircle(ring, home, r * 1.15f, new Color(1f, 0.85f, 0.55f, 0.25f));
-                DrawCircle(disc, home, r * 0.45f, new Color(0.95f, 0.75f, 0.4f, 0.3f));
-            }
-
-            if (game != null && game.ships != null && game.ships.Length > 1)
-            {
-                if (buttonStyle == null)
+                if(buildText==null)
                 {
-                    buttonStyle = new GUIStyle(GUI.skin.label);
-                    buttonStyle.alignment = TextAnchor.MiddleCenter;
+                    TextAsset bn=Resources.Load<TextAsset>("BuildNumber");
+                    buildText=bn!=null?"СБОРКА "+bn.text.Trim():"РЕДАКТОР";
                 }
-                buttonStyle.fontSize = Mathf.RoundToInt(u * 0.034f);
-                Rect br = ShipButtonRect();
-                GUI.color = new Color(0.08f, 0.05f, 0.05f, 0.55f);
-                GUI.DrawTexture(br, Texture2D.whiteTexture);
-                GUI.color = new Color(1f, 0.8f, 0.5f, 0.9f);
-                GUI.DrawTexture(new Rect(br.x, br.yMax - 2f, br.width, 2f), Texture2D.whiteTexture);
-                GUI.color = new Color(1f, 0.92f, 0.8f, 1f);
-                GUI.Label(br, "Корабль: " + game.CurrentShipName + "  (сменить)", buttonStyle);
+                return buildText;
             }
-            if (game != null)
-            {
-                if (buttonStyle == null)
-                {
-                    buttonStyle = new GUIStyle(GUI.skin.label);
-                    buttonStyle.alignment = TextAnchor.MiddleCenter;
-                }
-                buttonStyle.fontSize = Mathf.RoundToInt(u * 0.034f);
-                Rect cr = CloudButtonRect();
-                GUI.color = new Color(0.08f, 0.05f, 0.05f, 0.55f);
-                GUI.DrawTexture(cr, Texture2D.whiteTexture);
-                GUI.color = new Color(1f, 0.8f, 0.5f, 0.9f);
-                GUI.DrawTexture(new Rect(cr.x, cr.yMax - 2f, cr.width, 2f), Texture2D.whiteTexture);
-                GUI.color = new Color(1f, 0.92f, 0.8f, 1f);
-                GUI.Label(cr, "Облака: " + (game.volumetricClouds ? "объёмные (тест)" : "рисованные"), buttonStyle);
-                Rect fr = new Rect(cr.x + cr.width * 0.25f, cr.yMax + 6f, cr.width * 0.5f, cr.height * 0.6f);
-                GUI.color = new Color(0.08f, 0.05f, 0.05f, 0.55f);
-                GUI.DrawTexture(fr, Texture2D.whiteTexture);
-                GUI.color = new Color(1f, 0.92f, 0.8f, 1f);
-                GUI.Label(fr, Mathf.RoundToInt(fps) + " FPS", buttonStyle);
-            }
-
-            {
-                if (buildText == null)
-                {
-                    TextAsset bn = Resources.Load<TextAsset>("BuildNumber");
-                    buildText = bn != null ? "Сборка " + bn.text.Trim() : "Сборка (редактор)";
-                    buildStyle = new GUIStyle(GUI.skin.label);
-                    buildStyle.alignment = TextAnchor.LowerRight;
-                }
-                buildStyle.fontSize = Mathf.RoundToInt(u * 0.03f);
-                buildStyle.alignment = TextAnchor.MiddleCenter;
-                Vector2 sz = buildStyle.CalcSize(new GUIContent(buildText));
-                Rect vr = new Rect(Screen.width - sz.x - u * 0.06f - u * 0.03f, Screen.height - sz.y - u * 0.02f - u * 0.03f, sz.x + u * 0.06f, sz.y + u * 0.02f);
-                GUI.color = new Color(0.08f, 0.05f, 0.05f, 0.55f);
-                GUI.DrawTexture(vr, Texture2D.whiteTexture);
-                GUI.color = new Color(1f, 0.92f, 0.8f, 1f);
-                GUI.Label(vr, buildText, buildStyle);
-            }
-
-            Broadside gb = Guns();
-            if (gb != null)
-            {
-                if (buttonStyle == null)
-                {
-                    buttonStyle = new GUIStyle(GUI.skin.label);
-                    buttonStyle.alignment = TextAnchor.MiddleCenter;
-                }
-                buttonStyle.fontSize = Mathf.RoundToInt(u * 0.04f);
-                for (int s = -1; s <= 1; s += 2)
-                {
-                    Rect vr = VolleyRect(s);
-                    float rd = gb.Readiness(s);
-                    GUI.color = new Color(0.08f, 0.05f, 0.05f, 0.6f);
-                    GUI.DrawTexture(vr, Texture2D.whiteTexture);
-                    // Полоска перезарядки снизу
-                    GUI.color = rd >= 1f ? new Color(1f, 0.62f, 0.25f, 0.95f) : new Color(1f, 0.8f, 0.5f, 0.5f);
-                    GUI.DrawTexture(new Rect(vr.x, vr.yMax - 4f, vr.width * rd, 4f), Texture2D.whiteTexture);
-                    GUI.color = new Color(1f, 0.92f, 0.8f, rd >= 1f ? 1f : 0.55f);
-                    GUI.Label(vr, s < 0 ? "← Залп" : "Залп →", buttonStyle);
-                }
-                buttonStyle.fontSize = Mathf.RoundToInt(u * 0.034f);
-                Rect mr = VolleyModeRect();
-                GUI.color = new Color(0.08f, 0.05f, 0.05f, 0.55f);
-                GUI.DrawTexture(mr, Texture2D.whiteTexture);
-                GUI.color = new Color(1f, 0.92f, 0.8f, 1f);
-                GUI.Label(mr, gb.ripple ? "Залп: волной (сменить)" : "Залп: всем бортом (сменить)", buttonStyle);
-            }
-
-            if (hintAlpha > 0.01f)
-            {
-                if (hintStyle == null)
-                {
-                    hintStyle = new GUIStyle(GUI.skin.label);
-                    hintStyle.alignment = TextAnchor.MiddleCenter;
-                    hintStyle.wordWrap = true;
-                }
-                hintStyle.fontSize = Mathf.RoundToInt(u * 0.035f);
-                Rect rr = new Rect(Screen.width * 0.1f, u * 0.04f, Screen.width * 0.8f, u * 0.1f);
-                string text = "Левая половина экрана — штурвал   •   Правая — вращать камеру, двумя пальцами — приблизить";
-                GUI.color = new Color(0f, 0f, 0f, 0.6f * hintAlpha);
-                GUI.Label(new Rect(rr.x + 2f, rr.y + 2f, rr.width, rr.height), text, hintStyle);
-                GUI.color = new Color(1f, 0.92f, 0.8f, hintAlpha);
-                GUI.Label(rr, text, hintStyle);
-            }
-            GUI.color = prev;
         }
-
-        static void DrawCircle(Texture2D tex, Vector2 center, float radius, Color c)
+        public float Fps { get {return fps;} }
+        public float HintAlpha {get {return hintAlpha;} }
+        public bool StickActive {get {return stickId!=int.MinValue;} }
+        public Vector2 StickOrigin {get {return stickOrigin;} }
+        public int HudDrawCount {get {return hud.DrawCount;} }
+        public int HudMissingGlyphs {get {return hud.MissingGlyphs;} }
+        public int HudGlyphsDrawn {get {return hud.GlyphsDrawn;} }
+        public int HudMissingCharacter {get {return hud.MissingCharacter;} }
+        public Vector2 StickOffset(float radius)
         {
-            GUI.color = c;
-            GUI.DrawTexture(new Rect(center.x - radius, center.y - radius, radius * 2f, radius * 2f), tex);
+            return StickActive?Vector2.ClampMagnitude(stickPos-stickOrigin,radius):Vector2.zero;
         }
-
-        static Texture2D MakeDisc(int size, bool ringOnly)
+        public bool Pressed(Rect rect)
         {
-            Texture2D t = new Texture2D(size, size, TextureFormat.RGBA32, false);
-            t.wrapMode = TextureWrapMode.Clamp;
-            Color32[] px = new Color32[size * size];
-            float c = (size - 1) * 0.5f;
-            for (int y = 0; y < size; y++)
-            {
-                for (int x = 0; x < size; x++)
-                {
-                    float d = Mathf.Sqrt((x - c) * (x - c) + (y - c) * (y - c)) / c;
-                    float a;
-                    if (ringOnly) a = Mathf.Clamp01(1f - Mathf.Abs(d - 0.93f) / 0.05f);
-                    else a = Mathf.Clamp01((1f - d) / 0.04f);
-                    px[y * size + x] = new Color32(255, 255, 255, (byte)(a * 255f));
-                }
-            }
-            t.SetPixels32(px);
-            t.Apply();
-            return t;
+            foreach(KeyValuePair<int,Owner> kv in owners)
+                if(kv.Value==Owner.Button&&rect.Contains(lastPos[kv.Key]))return true;
+            return false;
         }
+        int ViewWidth
+        {
+            get {
+#if UNITY_EDITOR
+                if(captureVisible)return captureWidth;
+#endif
+                return Screen.width;
+            }
+        }
+        int ViewHeight
+        {
+            get {
+#if UNITY_EDITOR
+                if(captureVisible)return captureHeight;
+#endif
+                return Screen.height;
+            }
+        }
+        public HudLayout Layout(int width,int height)
+        {
+#if UNITY_EDITOR
+            if(captureVisible)return HudLayout.Build(width,height,captureSafe,stickRadius);
+#endif
+            Rect s=Screen.safeArea;
+            float sw=Mathf.Max(1,Screen.width),sh=Mathf.Max(1,Screen.height);
+            Rect safe=new Rect(s.x/sw*width,(sh-s.yMax)/sh*height,s.width/sw*width,s.height/sh*height);
+            return HudLayout.Build(width,height,safe,stickRadius);
+        }
+        public void DrawHud(RenderTexture destination,int width,int height)
+        {
+            if(!isActiveAndEnabled||game==null||ship==null)return;
+#if UNITY_EDITOR
+            if(!Application.isPlaying&&!captureVisible)return;
+#endif
+            hud.Draw(this,destination,width,height,hudShader,hudFont);
+        }
+        public void ResetInteraction()
+        {
+            owners.Clear();lastPos.Clear();stickId=int.MinValue;stickValue=Vector2.zero;lastPinch=-1f;
+            if(ship!=null){ship.turn=0f;ship.throttle=0f;}
+        }
+        void OnApplicationFocus(bool focused) {if(!focused)ResetInteraction();}
+        void OnApplicationPause(bool paused) {if(paused)ResetInteraction();}
+        void OnDisable() {ResetInteraction();}
+        void OnDestroy() {hud.Dispose();}
+#if UNITY_EDITOR
+        bool captureVisible;
+        int captureWidth,captureHeight;
+        Rect captureSafe;
+        public void SetHudCapture(bool visible,int width=800,int height=380,Rect? safe=null)
+        {
+            captureVisible=visible;captureWidth=width;captureHeight=height;captureSafe=safe??new Rect(0,0,width,height);
+            ResetInteraction();
+        }
+        public void PointerCapture(int id,Vector2 p,bool began,bool ended) {Pointer(id,p,began,ended);}
+        public bool CapturedAsCamera(int id) {Owner o;return owners.TryGetValue(id,out o)&&o==Owner.Camera;}
+        public int ActivePointersCapture {get {return owners.Count;} }
+        public void PinchCapture() {Pinch();}
+#endif
     }
 }

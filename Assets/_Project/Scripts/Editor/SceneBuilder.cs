@@ -43,8 +43,11 @@ namespace SkyTide.EditorTools
             EditorSceneManager.OpenScene(ScenePath);
         }
 
+        static int textureReimports, textureReuses;
+
         public static void Build()
         {
+            textureReimports = textureReuses = 0;
             // Линейное пространство цвета — основа для HDR, блума и тонмаппинга.
             if (PlayerSettings.colorSpace != ColorSpace.Linear) PlayerSettings.colorSpace = ColorSpace.Linear;
             EnsureFolder("Assets/_Project/Scenes");
@@ -75,6 +78,8 @@ namespace SkyTide.EditorTools
             b.volumetricShader = AssetDatabase.LoadAssetAtPath<Shader>("Assets/_Project/Shaders/VolumetricClouds.shader");
             b.impostorShader = AssetDatabase.LoadAssetAtPath<Shader>("Assets/_Project/Shaders/CloudImpostor.shader");
             b.fxShader = AssetDatabase.LoadAssetAtPath<Shader>("Assets/_Project/Shaders/Fx.shader");
+            b.hudShader = AssetDatabase.LoadAssetAtPath<Shader>("Assets/_Project/Shaders/Hud.shader");
+            b.hudFont = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
             b.cloudNoise3D = AssetDatabase.LoadAssetAtPath<TextAsset>(Art + "CloudNoise3D.bytes");
             // Шаблоны объёмных башен со светом под неподвижное солнце — запекаем здесь, телефон при старте не считает.
             Texture3D towerField = VolumetricClouds.BakeField(VolumetricClouds.SunTowardDefault());
@@ -101,6 +106,7 @@ namespace SkyTide.EditorTools
             EditorSceneManager.SaveScene(scene, ScenePath);
             EditorBuildSettings.scenes = new EditorBuildSettingsScene[] { new EditorBuildSettingsScene(ScenePath, true) };
             AssetDatabase.SaveAssets();
+            Debug.Log("SkyTide: импорт текстур — сохранён без повторного импорта=" + textureReuses + ", изменено=" + textureReimports);
             Debug.Log("SkyTide: сцена собрана → " + ScenePath);
         }
 
@@ -237,27 +243,30 @@ namespace SkyTide.EditorTools
         {
             TextureImporter ti = AssetImporter.GetAtPath(path) as TextureImporter;
             if (ti == null) return null;
-            ti.textureType = normalMap ? TextureImporterType.NormalMap : TextureImporterType.Default;
-            ti.sRGBTexture = !normalMap && !linear;
-            ti.textureCompression = uncompressed ? TextureImporterCompression.Uncompressed : TextureImporterCompression.Compressed;
-            ti.alphaSource = alpha ? TextureImporterAlphaSource.FromInput : TextureImporterAlphaSource.None;
-            ti.alphaIsTransparency = false;   // цвет под прозрачностью уже залит в самих PNG (tools/*), заливка Unity даёт полосы
-            ti.wrapModeU = wrapU;
-            ti.wrapModeV = wrapV;
-            ti.maxTextureSize = maxSize;
-            ti.mipmapEnabled = mips;
-            // Только погода нужна CPU для контакта ядер с настоящей поверхностью облаков.
-            if (path == Art + "Noise.png") ti.isReadable = true;
-            // Анизотропия без мипов бессмысленна и на шве панорамы (скачок производных) рисует пунктир.
-            ti.anisoLevel = mips ? 4 : 0;
-            if (path.StartsWith(Models, System.StringComparison.Ordinal))
+            bool model = path.StartsWith(Models, System.StringComparison.Ordinal);
+            TextureImporterType type = normalMap ? TextureImporterType.NormalMap : TextureImporterType.Default;
+            TextureImporterCompression compression = uncompressed ? TextureImporterCompression.Uncompressed
+                : model ? TextureImporterCompression.CompressedHQ : TextureImporterCompression.Compressed;
+            TextureImporterAlphaSource source = alpha ? TextureImporterAlphaSource.FromInput : TextureImporterAlphaSource.None;
+            int aniso = mips ? (model ? 8 : 4) : 0;
+            FilterMode filter = model ? (mips ? FilterMode.Trilinear : FilterMode.Bilinear) : ti.filterMode;
+            bool readable = path == Art + "Noise.png" || ti.isReadable;
+            bool changed = ti.textureType != type || ti.sRGBTexture != (!normalMap && !linear)
+                || ti.textureCompression != compression || ti.alphaSource != source || ti.alphaIsTransparency
+                || ti.wrapModeU != wrapU || ti.wrapModeV != wrapV || ti.maxTextureSize != maxSize
+                || ti.mipmapEnabled != mips || ti.anisoLevel != aniso || ti.filterMode != filter || ti.isReadable != readable
+                || (model && ti.compressionQuality != 100);
+            if (changed)
             {
-                ti.filterMode = mips ? FilterMode.Trilinear : FilterMode.Bilinear;
-                ti.anisoLevel = mips ? Mathf.Max(8, ti.anisoLevel) : 0;
-                ti.textureCompression = uncompressed ? TextureImporterCompression.Uncompressed : TextureImporterCompression.CompressedHQ;
-                ti.compressionQuality = 100;
+                ti.textureType = type; ti.sRGBTexture = !normalMap && !linear;
+                ti.textureCompression = compression; ti.alphaSource = source; ti.alphaIsTransparency = false;
+                ti.wrapModeU = wrapU; ti.wrapModeV = wrapV; ti.maxTextureSize = maxSize; ti.mipmapEnabled = mips;
+                ti.isReadable = readable; ti.anisoLevel = aniso; ti.filterMode = filter;
+                if (model) ti.compressionQuality = 100;
+                ti.SaveAndReimport();
+                textureReimports++;
             }
-            ti.SaveAndReimport();
+            else textureReuses++;
             return AssetDatabase.LoadAssetAtPath<Texture2D>(path);
         }
 
