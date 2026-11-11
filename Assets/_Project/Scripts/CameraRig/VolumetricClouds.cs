@@ -57,6 +57,7 @@ namespace SkyTide
         [Range(1, 8)] public int resolutionDivider = 4;   // 4 — быстрее, но море облаков на весь экран выглядит мыльным
         [Range(16, 128)] public int steps = 40;
         public float marchDistance = 2600f;
+        [Range(0f, 0.65f)] public float contourDetail = 0.4f;
 
         [Header("Башни")]
         [Range(1, MaxTowers)] public int towerCount = 7;
@@ -513,6 +514,7 @@ namespace SkyTide
             mat.SetVector("_ShipClear", shipT != null ? new Vector4(shipT.position.x, shipT.position.y + 8f, shipT.position.z, 30f) : Vector4.zero);
 
             mat.SetFloat("_Bake", 0f);
+            mat.SetFloat("_FilterDetail", 0f);
         }
 
         bool CameraCut()
@@ -581,7 +583,12 @@ namespace SkyTide
             int w = Mathf.Max(16, src.width / resolutionDivider);
             int h = Mathf.Max(16, src.height / resolutionDivider);
             mat.SetVector("_LowRes", new Vector4(w, h, 1f / w, 1f / h));
-            bool withDistance = SystemInfo.supportedRenderTargetCount >= 2;
+            bool allowTemporal = temporal && Application.isPlaying;
+#if UNITY_EDITOR
+            allowTemporal = temporal && (Application.isPlaying || captureTemporal);
+#endif
+            // Статическому кадру глубина накопления не нужна. Цвет в обоих проходах считает один March.
+            bool withDistance = allowTemporal && SystemInfo.supportedRenderTargetCount >= 2;
             RenderTexture clouds = RenderTexture.GetTemporary(w, h, 0, RenderTextureFormat.ARGBHalf);
             RenderTextureFormat depthFmt = SystemInfo.SupportsRenderTextureFormat(RenderTextureFormat.RHalf) ? RenderTextureFormat.RHalf : RenderTextureFormat.ARGBHalf;
             RenderTexture lowDepth = RenderTexture.GetTemporary(w, h, 0, depthFmt);
@@ -600,40 +607,44 @@ namespace SkyTide
             mat.SetVector("_Temporal", new Vector4(frameIdx++ % 64, 0f, deckTop, 0f));
             if (withDistance) MarchWithDistance(clouds, cloudDistance);
             else Graphics.Blit(src, clouds, mat, 0);
+            bool useHistory = false;
+            RenderTexture acc = clouds;
             // Временное накопление: история — свой буфер, перепроецирование по прошлой матрице камеры.
-            if (history == null || history.width != w || history.height != h || historyHasDistance != withDistance)
+            if (allowTemporal)
             {
-                ReleaseHistory();
-                history = new RenderTexture(w, h, 0, RenderTextureFormat.ARGBHalf);
-                history.filterMode = FilterMode.Bilinear;
-                history.Create();
+                if (history == null || history.width != w || history.height != h || historyHasDistance != withDistance)
+                {
+                    ReleaseHistory();
+                    history = new RenderTexture(w, h, 0, RenderTextureFormat.ARGBHalf);
+                    history.filterMode = FilterMode.Bilinear;
+                    history.wrapMode = TextureWrapMode.Clamp;
+                    history.Create();
+                    if (withDistance)
+                    {
+                        historyDistance = new RenderTexture(w, h, 0, depthFmt);
+                        historyDistance.filterMode = FilterMode.Point;
+                        historyDistance.wrapMode = TextureWrapMode.Clamp;
+                        historyDistance.Create();
+                    }
+                    historyHasDistance = withDistance;
+                }
+                useHistory = historyValid && !cameraCut;
+                mat.SetVector("_Temporal", new Vector4((frameIdx - 1) % 64, useHistory ? temporalBlend : 0f, deckTop, withDistance ? 1f : 0f));
+                mat.SetMatrix("_PrevVP", prevVP);
+                mat.SetVector("_PrevCameraPos", prevCameraPos);
+                mat.SetTexture("_History", history);
                 if (withDistance)
                 {
-                    historyDistance = new RenderTexture(w, h, 0, depthFmt);
-                    historyDistance.filterMode = FilterMode.Point;
-                    historyDistance.Create();
+                    mat.SetTexture("_CloudDistanceTex", cloudDistance);
+                    mat.SetTexture("_HistoryDistanceTex", historyDistance);
                 }
-                historyHasDistance = withDistance;
+                acc = RenderTexture.GetTemporary(w, h, 0, RenderTextureFormat.ARGBHalf);
+                acc.filterMode = FilterMode.Bilinear;
+                Graphics.Blit(clouds, acc, mat, 5);
+                Graphics.Blit(acc, history);
+                if (withDistance) Graphics.Blit(cloudDistance, historyDistance);
             }
-            bool allowTemporal = temporal && Application.isPlaying;
-#if UNITY_EDITOR
-            allowTemporal = temporal && (Application.isPlaying || captureTemporal);
-#endif
-            bool useHistory = allowTemporal && historyValid && !cameraCut;
-            mat.SetVector("_Temporal", new Vector4((frameIdx - 1) % 64, useHistory ? temporalBlend : 0f, deckTop, withDistance ? 1f : 0f));
-            mat.SetMatrix("_PrevVP", prevVP);
-            mat.SetVector("_PrevCameraPos", prevCameraPos);
-            mat.SetTexture("_History", history);
-            if (withDistance)
-            {
-                mat.SetTexture("_CloudDistanceTex", cloudDistance);
-                mat.SetTexture("_HistoryDistanceTex", historyDistance);
-            }
-            RenderTexture acc = RenderTexture.GetTemporary(w, h, 0, RenderTextureFormat.ARGBHalf);
-            acc.filterMode = FilterMode.Bilinear;
-            Graphics.Blit(clouds, acc, mat, 5);
-            Graphics.Blit(acc, history);
-            if (withDistance) Graphics.Blit(cloudDistance, historyDistance);
+            else if (history != null) ReleaseHistory();
             historyValid = allowTemporal;
             prevVP = cam.projectionMatrix * cam.worldToCameraMatrix;
             prevProjection = cam.projectionMatrix;
@@ -643,9 +654,15 @@ namespace SkyTide
             LastFrameUsedHistory = useHistory;
             LastFrameUsedCloudDistance = withDistance;
 #endif
+            mat.SetFloat("_FilterDetail", useHistory ? contourDetail * 0.5f : 0f);
             Graphics.Blit(acc, blurred, mat, 3);      // одно мягкое размытие (шум гасит накопление)
-            if (!useHistory) { Graphics.Blit(blurred, clouds, mat, 3); Graphics.Blit(clouds, blurred, mat, 3); }
-            RenderTexture.ReleaseTemporary(acc);
+            if (!useHistory)
+            {
+                Graphics.Blit(blurred, clouds, mat, 3);
+                mat.SetFloat("_FilterDetail", contourDetail);
+                Graphics.Blit(clouds, blurred, mat, 3);
+            }
+            if (acc != clouds) RenderTexture.ReleaseTemporary(acc);
             mat.SetTexture("_CloudTex", blurred);
             mat.SetTexture("_LowDepthTex", lowDepth);
             Graphics.Blit(src, dst, mat, 1);          // сведение с учётом глубины

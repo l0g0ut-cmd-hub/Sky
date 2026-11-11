@@ -32,6 +32,7 @@ Shader "Hidden/SkyTide/VolumetricClouds"
     float4x4 _InvProj;
     float4x4 _CamToWorld;
     float4 _LowRes;               // xy размер RT облаков
+    float _FilterDetail;          // сохранение контура только в последнем проходе фильтра
     float4 _Towers[MAX_TOWERS];   // x, y основания, z, R (м)
     float4 _TowerRot[MAX_TOWERS]; // cos, sin поворота, номер шаблона, высота шаблона (в R)
     sampler3D _TowerField;        // запечённое поле пухлости 3 шаблонов (сложены по z): (f + 1) / 2
@@ -521,6 +522,7 @@ Shader "Hidden/SkyTide/VolumetricClouds"
         float2 d = _LowRes.zw;
         float centerDepth = _Bake > 0.5 ? 0.0 : tex2D(_LowDepthTex, i.uv).r;
         float4 c = 0;
+        float4 mn = 1e6, mx = -1e6;
         float total = 0;
         [unroll] for (int y = -1; y <= 1; y++)
         [unroll] for (int x = -1; x <= 1; x++)
@@ -532,10 +534,23 @@ Shader "Hidden/SkyTide/VolumetricClouds"
                 float diff = abs(tex2D(_LowDepthTex, uv).r - centerDepth);
                 weight *= exp(-diff / max(2.0, centerDepth * 0.015));
             }
-            c += tex2D(_MainTex, uv) * weight;
+            float4 tap = tex2D(_MainTex, uv);
+            c += tap * weight;
             total += weight;
+            if (_FilterDetail > 0.0 && _Bake < 0.5 && weight > 0.01)
+            {
+                mn = min(mn, tap);
+                mx = max(mx, tap);
+            }
         }
-        return c / max(total, 1e-5);
+        float4 filtered = c / max(total, 1e-5);
+        if (_Bake > 0.5 || _FilterDetail <= 0.0) return filtered;
+        float4 center = tex2D(_MainTex, i.uv);
+        float contrast = (Luminance(mx.rgb) - Luminance(mn.rgb)) / max(0.2, Luminance(center.rgb));
+        float contour = max(contrast, (mx.a - mn.a) * 2.0);
+        float keep = saturate(_FilterDetail) * smoothstep(0.12, 0.4, contour);
+        // Положительная смесь двух уже сглаженных оценок: без выбросов яркости и тёмных ореолов.
+        return lerp(filtered, center, keep);
     }
 
     float SceneDepthForClouds(float2 uv)
@@ -615,6 +630,7 @@ Shader "Hidden/SkyTide/VolumetricClouds"
         Pass { CGPROGRAM
             #pragma vertex vert
             #pragma fragment fragBlur
+            #pragma target 3.0
             ENDCG }
         Pass { CGPROGRAM
             #pragma vertex vert

@@ -126,10 +126,11 @@ Shader "Hidden/SkyTide/CloudImpostor"
             {
                 float4 s0 = UNITY_SAMPLE_TEX2DARRAY(_ImpTex, float3(i.uv, i.slices.x));
                 float4 s1 = UNITY_SAMPLE_TEX2DARRAY(_ImpTex, float3(i.uv, i.slices.y));
-                float4 s = lerp(s0, s1, i.slices.z);
-                float a = s.a;
+                float a = lerp(s0.a, s1.a, i.slices.z);
                 if (a < 0.003) discard;
-                float3 light = s.rgb * s.rgb * 6.0;
+                // В атласе sqrt(свет/6), уже умноженного на покрытие. Смешиваем восстановленный свет:
+                // квадрат среднего занижал яркость между ракурсами, особенно у прозрачных краёв.
+                float3 light = lerp(s0.rgb * s0.rgb, s1.rgb * s1.rgb, i.slices.z) * 6.0;
 
                 float3 ro = _ImpCam.xyz;
                 float3 d = i.wpos - ro;

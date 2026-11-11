@@ -169,6 +169,9 @@ namespace SkyTide.EditorTools
                 bool environment = System.Environment.GetEnvironmentVariable("SKYTIDE_SHOT_PROFILE") != "fx";
                 if (environment) Render(oc, cam, boot, rt, tex, dir, new Shot("30_vol_toward_sun", 35f, 8f, 75f));
                 Render(oc, cam, boot, rt, tex, dir, new Shot("32_vol_side", 90f, 8f, 70f));
+                if (boot.Volumetric != null && boot.Volumetric.LastFrameUsedCloudDistance)
+                    throw new System.InvalidOperationException("Static capture unnecessarily used cloud-distance MRT");
+                Debug.Log("SkyTide: статический кадр — без MRT/истории, цвет через общий March");
                 if (environment)
                 {
                     Render(oc, cam, boot, rt, tex, dir, new Shot("36_vol_away_from_sun", 215f, 12f, 70f));
@@ -180,7 +183,7 @@ namespace SkyTide.EditorTools
                 else Debug.LogWarning("SkyTide: пушек нет — залп не снят");
                 // Четыре маленьких кадра, по одному Render на состояние: без дорогого многокадрового прогрева.
                 if (environment) CaptureTemporal(oc, cam, boot, dir);
-                Debug.Log("SkyTide: быстрая проверка " + (environment ? "визуала" : "залпов") + ", 800x380, кадров="
+                Debug.Log("SkyTide: быстрая проверка " + (environment ? "визуала (6 x 800x380 + 4 x 400x190)" : "залпов (6 x 800x380)") + ", кадров="
                     + Directory.GetFiles(dir, "*.jpg").Length + ", секунд=" + (Time.realtimeSinceStartup - start).ToString("F1"));
             }
             finally
