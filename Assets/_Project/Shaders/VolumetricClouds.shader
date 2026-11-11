@@ -75,7 +75,9 @@ Shader "Hidden/SkyTide/VolumetricClouds"
     float _Bake;
     float4 _Temporal;             // x номер кадра, y вес истории (0 — нет истории), z верх моря облаков
     float4x4 _PrevVP;             // прошлый кадр: projection * view (OpenGL)
-    sampler2D _History;                  // 1 — запекание снимков-импосторов (ортографический луч, без сцены и дымки)
+    sampler2D _History;
+    sampler2D _CloudDistanceTex, _HistoryDistanceTex;
+    float3 _PrevCameraPos;
     float4 _BakeOrigin, _BakeRight, _BakeUp, _BakeFwd;            // x начало, y конец растворения у камеры (м)
 
     struct v2f
@@ -249,8 +251,12 @@ Shader "Hidden/SkyTide/VolumetricClouds"
         return m * _Deck.z;
     }
 
-    float4 Deck(float3 ro, float3 rd, float tEnd, float jitter, float phase)
+    // front — часть моря перед башней; обе части считаются за один прежний марш.
+    float4 Deck(float3 ro, float3 rd, float tEnd, float jitter, float phase, float split,
+                out float4 front, out float2 moments)
     {
+        front = float4(0, 0, 0, 1);
+        moments = 0;
         float base = _Deck.x, top = _Deck.y;
         float t0 = 0.0, t1 = min(tEnd, _Deck3.x);
         if (abs(rd.y) > 1e-4)
@@ -293,22 +299,33 @@ Shader "Hidden/SkyTide/VolumetricClouds"
                 float3 src = (sunCol * sunT * min(phase, 1.6) + _MultiScatter.rgb * ms * h) * _Deck3.w + amb + SkyTideFlashLight(p);
                 float st = exp(-d * stepLen);
                 float wgt = trans * (1.0 - st);
+                float frontFraction = saturate((split - t) / max(stepLen, 1e-4) + 0.5);
+                float frontSt = exp(-d * stepLen * frontFraction);
+                float frontWeight = trans * (1.0 - frontSt);
+                front.rgb += src * 0.86 * frontWeight;
+                front.a *= frontSt;
+                moments.y += t * frontWeight;
                 light += src * 0.86 * wgt;
                 distAcc += t * wgt;
                 wAcc += wgt;
                 trans *= st;
-                if (trans < 0.03) { trans = 0; break; }
+                if (trans < 0.03) { trans = 0; if (frontFraction >= 1.0) front.a = 0; break; }
             }
             t += stepLen;
             stepLen += stepBase * grow;
         }
         float meanDist = wAcc > 1e-4 ? distAcc / wAcc : t1;
-        light = lerp(light, SkyTidePanorama(rd) * (1.0 - trans), _Aerial.x * saturate(SkyTideAerial(meanDist)));
+        float aerial = _Aerial.x * saturate(SkyTideAerial(meanDist));
+        float3 panorama = SkyTidePanorama(rd);
+        light = lerp(light, panorama * (1.0 - trans), aerial);
+        front.rgb = lerp(front.rgb, panorama * (1.0 - front.a), aerial);
+        moments.x = distAcc;
         return float4(light, trans);
     }
 
-    float4 fragMarch (v2f i) : SV_Target
+    float4 March(v2f i, out float cloudDistance)
     {
+        cloudDistance = 60000.0; // конечный sentinel помещается в RHalf
         float4 view = mul(_InvProj, float4(i.uv * 2.0 - 1.0, 1.0, 1.0));
         view.xyz /= view.w;
         float3 rd = normalize(mul((float3x3)_CamToWorld, view.xyz));
@@ -343,6 +360,7 @@ Shader "Hidden/SkyTide/VolumetricClouds"
         float3 light = 0;
         float trans = 1;
         float firstHit = 1e7;
+        float towerMoment = 0;
         float tA, tB;
         if (TowerInterval(ro, rd, tA, tB))
         {
@@ -388,7 +406,7 @@ Shader "Hidden/SkyTide/VolumetricClouds"
                         float w = trans * (1.0 - st);
                         distAcc += t * w;
                         wAcc += w;
-                        if (firstHit > 1e6 && w > 0.02) firstHit = t;
+                        if (firstHit > 1e6 && w > 1e-4) firstHit = t;
                         trans *= st;
                         if (trans < 0.02) { trans = 0; break; }
                     }
@@ -398,19 +416,56 @@ Shader "Hidden/SkyTide/VolumetricClouds"
                     if (t > tB) break;
                 }
                 float meanDist = wAcc > 1e-4 ? distAcc / wAcc : tB;
+                towerMoment = distAcc;
                 light = lerp(light, SkyTidePanorama(rd) * (1.0 - trans), _Aerial.x * saturate(SkyTideAerial(meanDist)));
             }
         }
         if (bake) return float4(light, trans);
 
-        // 2) Объёмное море облаков — до башни (за плотной башней его не видно) или до сцены.
-        float deckEnd = min(sceneDist, trans < 0.9 ? firstHit : 1e7);
-        float4 deck = Deck(ro, rd, deckEnd, jit, phaseH);
-        return float4(deck.rgb + light * deck.a, trans * deck.a);
+        // Море продолжается за полупрозрачным краем башни. Жёсткого порога trans < 0.9 нет.
+        // Полностью закрытую часть пропускаем; шаги и выборки плотности не удваиваются.
+        float deckEnd = trans <= 0.0 ? min(sceneDist, firstHit) : sceneDist;
+        float4 front;
+        float2 deckMoments;
+        float4 deck = Deck(ro, rd, deckEnd, jit, phaseH, firstHit, front, deckMoments);
+        float totalTrans = trans * deck.a;
+        float moment = deckMoments.y + front.a * towerMoment + trans * max(0.0, deckMoments.x - deckMoments.y);
+        if (totalTrans < 0.9999) cloudDistance = clamp(moment / max(1.0 - totalTrans, 1e-4), 1.0, 60000.0);
+        return float4(front.rgb + front.a * light + trans * max(0.0, deck.rgb - front.rgb), totalTrans);
     }
 
-    // Временное накопление облаков (как TAA): точка облака перепроецируется в прошлый кадр — по плоскости верха
-    // моря облаков для лучей вниз, по дальней точке для лучей вверх; история зажимается в мин/макс соседей.
+    float4 fragMarch(v2f i) : SV_Target
+    {
+        float distance;
+        return March(i, distance);
+    }
+
+    struct MarchOutput
+    {
+        float4 color : SV_Target0;
+        float distance : SV_Target1;
+    };
+
+    // Та же интеграция сразу записывает среднюю глубину: второго марша нет.
+    MarchOutput fragMarchDistance(v2f i)
+    {
+        MarchOutput o;
+        o.color = March(i, o.distance);
+        return o;
+    }
+
+    v2f vertMarchDistance(uint id : SV_VertexID)
+    {
+        v2f o;
+        o.uv = float2((id << 1) & 2, id & 2);
+        o.pos = float4(o.uv * 2.0 - 1.0, 0, 1);
+        #if UNITY_UV_STARTS_AT_TOP
+        o.pos.y = -o.pos.y;
+        #endif
+        return o;
+    }
+
+    // Перепроецирование по глубине облака, отсечение открывшихся областей и быстрых изменений света.
     float4 fragTemporal (v2f i) : SV_Target
     {
         float4 cur = tex2D(_MainTex, i.uv);
@@ -419,10 +474,21 @@ Shader "Hidden/SkyTide/VolumetricClouds"
         view.xyz /= view.w;
         float3 rd = normalize(mul((float3x3)_CamToWorld, view.xyz));
         float3 ro = _WorldSpaceCameraPos;
-        float dist = rd.y < -0.02 ? clamp((_Temporal.z - ro.y) / rd.y, 40.0, 6000.0) : 1500.0;
-        float4 pc = mul(_PrevVP, float4(ro + rd * dist, 1.0));
+        float dist = _Temporal.w > 0.5 ? tex2D(_CloudDistanceTex, i.uv).r
+            : (rd.y < -0.02 ? clamp((_Temporal.z - ro.y) / rd.y, 40.0, 6000.0) : 1500.0);
+        if (cur.a > 0.999 || dist > 59000.0) return cur;
+        float3 worldPoint = ro + rd * dist;
+        float4 pc = mul(_PrevVP, float4(worldPoint, 1.0));
         float2 puv = pc.xy / pc.w * 0.5 + 0.5;
         if (pc.w <= 0.0 || any(puv < 0.0) || any(puv > 1.0)) return cur;
+        float confidence = 1.0;
+        if (_Temporal.w > 0.5)
+        {
+            float oldDistance = tex2D(_HistoryDistanceTex, puv).r;
+            float expectedDistance = length(worldPoint - _PrevCameraPos);
+            float tolerance = max(12.0, expectedDistance * 0.08);
+            confidence *= 1.0 - smoothstep(tolerance, tolerance * 2.0, abs(oldDistance - expectedDistance));
+        }
         float4 mn = cur, mx = cur;
         float2 px = _LowRes.zw;
         [unroll] for (int y = -1; y <= 1; y++)
@@ -431,8 +497,14 @@ Shader "Hidden/SkyTide/VolumetricClouds"
             float4 c = tex2D(_MainTex, i.uv + float2(x, y) * px);
             mn = min(mn, c); mx = max(mx, c);
         }
-        float4 h = clamp(tex2D(_History, puv), mn, mx);
-        return lerp(cur, h, _Temporal.y);
+        float4 old = tex2D(_History, puv);
+        confidence *= 1.0 - saturate(abs(old.a - cur.a) * 4.0);
+        float lightChange = abs(Luminance(old.rgb) - Luminance(cur.rgb));
+        confidence *= 1.0 - saturate(lightChange / max(0.15, Luminance(cur.rgb) * 0.6));
+        float motion = length((puv - i.uv) * _LowRes.xy);
+        confidence *= lerp(1.0, 0.3, saturate(motion / 20.0));
+        float4 h = clamp(old, mn, mx);
+        return lerp(cur, h, _Temporal.y * confidence);
     }
 
     // Снимок для импостора: свет (уже умножен на покрытие) в кодировке sqrt(свет/6), альфа — покрытие.
@@ -553,6 +625,11 @@ Shader "Hidden/SkyTide/VolumetricClouds"
             #pragma vertex vert
             #pragma fragment fragTemporal
             #pragma target 3.0
+            ENDCG }
+        Pass { CGPROGRAM
+            #pragma vertex vertMarchDistance
+            #pragma fragment fragMarchDistance
+            #pragma target 3.5
             ENDCG }
     }
     Fallback Off

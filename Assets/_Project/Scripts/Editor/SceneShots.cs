@@ -126,6 +126,36 @@ namespace SkyTide.EditorTools
 
         // Обычная сборка проверяет только текущую задачу. Полная галерея на llvmpipe занимала ~69 минут.
         // Разрешение/число кадров меняются только у съёмки в редакторе, качество Android-игры прежнее.
+        static void CaptureTemporal(OrbitCamera oc, Camera cam, SkyTideBootstrap boot, string dir)
+        {
+            VolumetricClouds vol = boot.Volumetric;
+            if (vol == null) return;
+            RenderTexture rt = new RenderTexture(400, 190, 24, RenderTextureFormat.ARGB32);
+            Texture2D tex = new Texture2D(rt.width, rt.height, TextureFormat.RGB24, false);
+            try
+            {
+                vol.SetTemporalCapture(true);
+                Render(oc, cam, boot, rt, tex, dir, new Shot("50_temporal_seed", 90f, 8f, 70f));
+                if (vol.LastFrameUsedHistory) throw new System.InvalidOperationException("Cloud history was not reset before capture");
+                Render(oc, cam, boot, rt, tex, dir, new Shot("51_temporal_turn", 92f, 8f, 70f));
+                if (!vol.LastFrameUsedHistory) throw new System.InvalidOperationException("Cloud history was not used for a small camera turn");
+                Render(oc, cam, boot, rt, tex, dir, new Shot("52_temporal_cut", 215f, 12f, 70f));
+                if (vol.LastFrameUsedHistory) throw new System.InvalidOperationException("Cloud history survived a camera cut");
+                vol.SetTemporalCapture(true);
+                Render(oc, cam, boot, rt, tex, dir, new Shot("53_temporal_cut_reference", 215f, 12f, 70f));
+                Debug.Log("SkyTide: temporal — first/reset OK, small turn uses history, camera cut resets; actual cloud distance=" + vol.LastFrameUsedCloudDistance);
+            }
+            finally
+            {
+                vol.SetTemporalCapture(false);
+                cam.targetTexture = null;
+                RenderTexture.active = null;
+                rt.Release();
+                Object.DestroyImmediate(rt);
+                Object.DestroyImmediate(tex);
+            }
+        }
+
         static void CaptureQuick(OrbitCamera oc, Camera cam, SkyTideBootstrap boot, string dir)
         {
             float start = Time.realtimeSinceStartup;
@@ -148,6 +178,8 @@ namespace SkyTide.EditorTools
                 if (guns != null && guns.HasCannons && boot.Fx != null)
                     CaptureBroadside(oc, cam, boot, rt, tex, dir, guns, false, environment);
                 else Debug.LogWarning("SkyTide: пушек нет — залп не снят");
+                // Четыре маленьких кадра, по одному Render на состояние: без дорогого многокадрового прогрева.
+                if (environment) CaptureTemporal(oc, cam, boot, dir);
                 Debug.Log("SkyTide: быстрая проверка " + (environment ? "визуала" : "залпов") + ", 800x380, кадров="
                     + Directory.GetFiles(dir, "*.jpg").Length + ", секунд=" + (Time.realtimeSinceStartup - start).ToString("F1"));
             }

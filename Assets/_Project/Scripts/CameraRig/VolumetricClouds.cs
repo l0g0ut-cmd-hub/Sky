@@ -17,10 +17,26 @@ namespace SkyTide
         [Header("Временное накопление (чёткость вместо размытия)")]
         public bool temporal = true;
         [Range(0f, 0.97f)] public float temporalBlend = 0.88f;
-        RenderTexture history;
+        RenderTexture history, historyDistance;
         bool historyValid;
+        bool historyHasDistance;
         int frameIdx;
         Matrix4x4 prevVP = Matrix4x4.identity;
+        Matrix4x4 prevProjection;
+        Vector3 prevCameraPos;
+        Quaternion prevCameraRotation;
+        readonly RenderBuffer[] marchTargets = new RenderBuffer[2];
+#if UNITY_EDITOR
+        bool captureTemporal;
+        public bool LastFrameUsedHistory { get; private set; }
+        public bool LastFrameUsedCloudDistance { get; private set; }
+        public void SetTemporalCapture(bool enabled)
+        {
+            captureTemporal = enabled;
+            historyValid = false;
+            frameIdx = 0;
+        }
+#endif
         const int MaxTowers = 8;
         const int Puffs = 28;
         const int Templates = 3;
@@ -120,12 +136,20 @@ namespace SkyTide
         {
             if (mat != null) SkyTideBootstrap.SafeDestroy(mat);
             mat = null;
+            ReleaseHistory();
+        }
+
+        void ReleaseHistory()
+        {
+            if (history != null) { history.Release(); SkyTideBootstrap.SafeDestroy(history); history = null; }
+            if (historyDistance != null) { historyDistance.Release(); SkyTideBootstrap.SafeDestroy(historyDistance); historyDistance = null; }
+            historyValid = false;
         }
 
         void OnDestroy()
         {
             imp.Release();
-            if (history != null) { history.Release(); history = null; }
+            ReleaseHistory();
             if (noise != null) SkyTideBootstrap.SafeDestroy(noise);
             if (field != null && field != bakedField) SkyTideBootstrap.SafeDestroy(field);
         }
@@ -491,6 +515,37 @@ namespace SkyTide
             mat.SetFloat("_Bake", 0f);
         }
 
+        bool CameraCut()
+        {
+            if ((cam.transform.position - prevCameraPos).sqrMagnitude > 900f
+                || Quaternion.Angle(cam.transform.rotation, prevCameraRotation) > 12f) return true;
+            Matrix4x4 projection = cam.projectionMatrix;
+            for (int i = 0; i < 16; i++)
+                if (Mathf.Abs(projection[i] - prevProjection[i]) > 0.001f) return true;
+            return false;
+        }
+
+        // Цвет и глубина облака за один проход. Полноэкранный треугольник не зависит от GL-матриц камеры.
+        void MarchWithDistance(RenderTexture clouds, RenderTexture distance)
+        {
+            RenderTexture previous = RenderTexture.active;
+            bool srgb = GL.sRGBWrite;
+            try
+            {
+                marchTargets[0] = clouds.colorBuffer;
+                marchTargets[1] = distance.colorBuffer;
+                Graphics.SetRenderTarget(marchTargets, clouds.depthBuffer);
+                GL.sRGBWrite = false; // оба буфера линейные HDR/метры
+                mat.SetPass(6);
+                Graphics.DrawProceduralNow(MeshTopology.Triangles, 3);
+            }
+            finally
+            {
+                RenderTexture.active = previous;
+                GL.sRGBWrite = srgb;
+            }
+        }
+
         void OnRenderImage(RenderTexture src, RenderTexture dst)
         {
             Texture3D n = Noise();
@@ -526,10 +581,12 @@ namespace SkyTide
             int w = Mathf.Max(16, src.width / resolutionDivider);
             int h = Mathf.Max(16, src.height / resolutionDivider);
             mat.SetVector("_LowRes", new Vector4(w, h, 1f / w, 1f / h));
+            bool withDistance = SystemInfo.supportedRenderTargetCount >= 2;
             RenderTexture clouds = RenderTexture.GetTemporary(w, h, 0, RenderTextureFormat.ARGBHalf);
             RenderTextureFormat depthFmt = SystemInfo.SupportsRenderTextureFormat(RenderTextureFormat.RHalf) ? RenderTextureFormat.RHalf : RenderTextureFormat.ARGBHalf;
             RenderTexture lowDepth = RenderTexture.GetTemporary(w, h, 0, depthFmt);
-            clouds.filterMode = FilterMode.Point;
+            RenderTexture cloudDistance = withDistance ? RenderTexture.GetTemporary(w, h, 0, depthFmt) : null;
+            if (cloudDistance != null) cloudDistance.filterMode = FilterMode.Point;
             lowDepth.filterMode = FilterMode.Point;
             RenderTexture blurred = RenderTexture.GetTemporary(w, h, 0, RenderTextureFormat.ARGBHalf);
             clouds.filterMode = FilterMode.Bilinear;
@@ -538,27 +595,54 @@ namespace SkyTide
             // и последующее сведение по глубине не может убрать этот ореол.
             Graphics.Blit(src, lowDepth, mat, 2);
             mat.SetTexture("_LowDepthTex", lowDepth);
+            bool cameraCut = historyValid && CameraCut();
+            if (cameraCut) frameIdx = 0;
             mat.SetVector("_Temporal", new Vector4(frameIdx++ % 64, 0f, deckTop, 0f));
-            Graphics.Blit(src, clouds, mat, 0);       // марш луча
+            if (withDistance) MarchWithDistance(clouds, cloudDistance);
+            else Graphics.Blit(src, clouds, mat, 0);
             // Временное накопление: история — свой буфер, перепроецирование по прошлой матрице камеры.
-            if (history == null || history.width != w || history.height != h)
+            if (history == null || history.width != w || history.height != h || historyHasDistance != withDistance)
             {
-                if (history != null) history.Release();
+                ReleaseHistory();
                 history = new RenderTexture(w, h, 0, RenderTextureFormat.ARGBHalf);
                 history.filterMode = FilterMode.Bilinear;
                 history.Create();
-                historyValid = false;
+                if (withDistance)
+                {
+                    historyDistance = new RenderTexture(w, h, 0, depthFmt);
+                    historyDistance.filterMode = FilterMode.Point;
+                    historyDistance.Create();
+                }
+                historyHasDistance = withDistance;
             }
-            bool useHistory = temporal && historyValid && Application.isPlaying;
-            mat.SetVector("_Temporal", new Vector4((frameIdx - 1) % 64, useHistory ? temporalBlend : 0f, deckTop, 0f));
+            bool allowTemporal = temporal && Application.isPlaying;
+#if UNITY_EDITOR
+            allowTemporal = temporal && (Application.isPlaying || captureTemporal);
+#endif
+            bool useHistory = allowTemporal && historyValid && !cameraCut;
+            mat.SetVector("_Temporal", new Vector4((frameIdx - 1) % 64, useHistory ? temporalBlend : 0f, deckTop, withDistance ? 1f : 0f));
             mat.SetMatrix("_PrevVP", prevVP);
+            mat.SetVector("_PrevCameraPos", prevCameraPos);
             mat.SetTexture("_History", history);
+            if (withDistance)
+            {
+                mat.SetTexture("_CloudDistanceTex", cloudDistance);
+                mat.SetTexture("_HistoryDistanceTex", historyDistance);
+            }
             RenderTexture acc = RenderTexture.GetTemporary(w, h, 0, RenderTextureFormat.ARGBHalf);
             acc.filterMode = FilterMode.Bilinear;
             Graphics.Blit(clouds, acc, mat, 5);
             Graphics.Blit(acc, history);
-            historyValid = true;
+            if (withDistance) Graphics.Blit(cloudDistance, historyDistance);
+            historyValid = allowTemporal;
             prevVP = cam.projectionMatrix * cam.worldToCameraMatrix;
+            prevProjection = cam.projectionMatrix;
+            prevCameraPos = cam.transform.position;
+            prevCameraRotation = cam.transform.rotation;
+#if UNITY_EDITOR
+            LastFrameUsedHistory = useHistory;
+            LastFrameUsedCloudDistance = withDistance;
+#endif
             Graphics.Blit(acc, blurred, mat, 3);      // одно мягкое размытие (шум гасит накопление)
             if (!useHistory) { Graphics.Blit(blurred, clouds, mat, 3); Graphics.Blit(clouds, blurred, mat, 3); }
             RenderTexture.ReleaseTemporary(acc);
@@ -575,6 +659,7 @@ namespace SkyTide
             if (debugView == 0 && FxSystem.Instance != null) FxSystem.Instance.DrawExternal(cam, dst);
             RenderTexture.ReleaseTemporary(blurred);
             RenderTexture.ReleaseTemporary(lowDepth);
+            if (cloudDistance != null) RenderTexture.ReleaseTemporary(cloudDistance);
             RenderTexture.ReleaseTemporary(clouds);
         }
     }
