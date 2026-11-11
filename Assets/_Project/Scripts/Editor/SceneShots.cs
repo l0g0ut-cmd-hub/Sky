@@ -49,6 +49,12 @@ namespace SkyTide.EditorTools
                 case "61_ship_backlight": phase = 8; break;
                 case "63_muzzle_headon":
                 case "64_muzzle_legacy_reference": phase = 9; break;
+                case "70_target_intact":
+                case "71_target_impact":
+                case "72_target_damaged":
+                case "73_target_foundering":
+                case "74_target_cloud_entry":
+                case "75_target_restored": phase = 10; break;
             }
             if (phase >= 0 && boot.Volumetric != null) boot.Volumetric.SetStaticCapturePhase(phase);
             if (boot.Fx != null) boot.Fx.PrepareForRender(cam);
@@ -89,7 +95,7 @@ namespace SkyTide.EditorTools
             finally { cam.transform.SetPositionAndRotation(oldPosition, oldRotation); }
         }
 
-        static void CaptureBroadside(OrbitCamera oc, Camera cam, SkyTideBootstrap boot, RenderTexture rt, Texture2D tex, string dir, Broadside guns, bool full = true, bool environment = false)
+        static void CaptureBroadside(OrbitCamera oc, Camera cam, SkyTideBootstrap boot, RenderTexture rt, Texture2D tex, string dir, Broadside guns, bool full = true, bool environment = false, bool comparison = false)
         {
             Random.State random = Random.state;
             Random.InitState(74131);
@@ -102,7 +108,7 @@ namespace SkyTide.EditorTools
                 float time = 0f;
                 StepSalvo(guns, fx, ref time, 0.06f);
                 Render(oc, cam, boot, rt, tex, dir, new Shot("45_vol_muzzle_flash", 90f, 6f, 58f));
-                if (environment && !full)
+                if (environment && !full && comparison)
                 {
                     Render(oc, cam, boot, rt, tex, dir, new Shot("63_muzzle_headon", 145f, 6f, 52f));
                     fx.SetLegacyAppearanceCapture(true);
@@ -116,7 +122,7 @@ namespace SkyTide.EditorTools
                 }
                 StepSalvo(guns, fx, ref time, 0.75f);
                 Render(oc, cam, boot, rt, tex, dir, new Shot("40_vol_broadside_side", 90f, 8f, 70f));
-                if (environment && !full)
+                if (environment && !full && comparison)
                 {
                     fx.SetLegacyAppearanceCapture(true);
                     try { Render(oc, cam, boot, rt, tex, dir, new Shot("62_smoke_legacy_reference", 90f, 8f, 70f)); }
@@ -152,6 +158,88 @@ namespace SkyTide.EditorTools
             {
                 boot.Fx.Clear();
                 Random.state = random;
+            }
+        }
+
+        static void StepDamage(ShipDamageVisual damage, FxSystem fx, float duration)
+        {
+            while (duration > 1e-5f)
+            {
+                float dt = Mathf.Min(1f / 60f, duration);
+                damage.Simulate(dt, fx);
+                fx.Simulate(dt);
+                duration -= dt;
+            }
+        }
+
+        static void CaptureDamage(OrbitCamera oc, Camera cam, SkyTideBootstrap boot, RenderTexture rt, Texture2D tex, string dir)
+        {
+            TargetShip target = boot.Target;
+            if (target == null || target.DamageVisual == null || target.DamageVisual.Model == null)
+                throw new System.InvalidOperationException("Target damage visual is missing");
+            ShipDamageVisual damage = target.DamageVisual;
+            Transform oldTarget = oc.target;
+            Vector3 oldPosition = target.transform.position;
+            Quaternion oldRotation = target.transform.rotation;
+            float oldLookHeight = oc.lookHeight;
+            Random.State random = Random.state;
+            Random.InitState(47071);
+            try
+            {
+                target.ResetDamageCapture();
+                boot.Fx.Clear();
+                target.transform.SetPositionAndRotation(boot.Ship.transform.position + boot.Ship.transform.right * 90f, boot.Ship.transform.rotation);
+                oc.target = target.transform;
+                MeshFilter mf = damage.Model.GetComponent<MeshFilter>();
+                Bounds bounds = mf.sharedMesh.bounds;
+                oc.lookHeight = bounds.center.y;
+                Vector3 restPosition = damage.Model.localPosition;
+                Quaternion restRotation = damage.Model.localRotation;
+                Render(oc, cam, boot, rt, tex, dir, new Shot("70_target_intact", 215f, 13f, 68f));
+                Vector3 point = damage.Model.TransformPoint(bounds.center + new Vector3(bounds.extents.x * 0.8f, -bounds.extents.y * 0.5f, bounds.extents.z * 0.15f));
+                target.OnHit(point);
+                StepDamage(damage, boot.Fx, 0.12f);
+                if (target.HitCount != 1 || damage.DebrisCount == 0 || !target.Alive || damage.Sinking)
+                    throw new System.InvalidOperationException("Impact did not preserve target life or emit 3D fragments");
+                Render(oc, cam, boot, rt, tex, dir, new Shot("71_target_impact", 215f, 13f, 68f));
+                while (target.HitCount < 12)
+                {
+                    Vector3 hit = point + damage.Model.forward * ((target.HitCount % 3 - 1) * 2f);
+                    target.OnHit(hit);
+                }
+                boot.Fx.Clear();
+                StepDamage(damage, boot.Fx, 1.6f);
+                if (damage.VentCount != 3 || damage.Sinking || !target.Alive || damage.DebrisCount > 32)
+                    throw new System.InvalidOperationException("Persistent damage or debris bounds failed");
+                Render(oc, cam, boot, rt, tex, dir, new Shot("72_target_damaged", 215f, 13f, 68f));
+                while (target.HitCount < target.hitsToSink - 1) target.OnHit(point);
+                boot.Fx.Clear();
+                target.OnHit(point);
+                StepDamage(damage, boot.Fx, 0.8f);
+                if (target.Alive || !damage.Sinking || damage.Hidden || !damage.Model.gameObject.activeSelf || damage.DebrisCount == 0)
+                    throw new System.InvalidOperationException("Sinking target disappeared before falling into clouds");
+                Render(oc, cam, boot, rt, tex, dir, new Shot("73_target_foundering", 215f, 13f, 68f));
+                StepDamage(damage, boot.Fx, 1.9f);
+                // Только съёмка: кадр удерживает падающий корабль. Игровая камера не меняется.
+                oc.lookHeight = damage.Model.TransformPoint(bounds.center).y - target.transform.position.y;
+                Render(oc, cam, boot, rt, tex, dir, new Shot("74_target_cloud_entry", 215f, 20f, 80f));
+                StepDamage(damage, boot.Fx, 2.5f);
+                if (!damage.Hidden || damage.Model.gameObject.activeSelf)
+                    throw new System.InvalidOperationException("Wreck did not disappear entirely below the cloud deck");
+                int splashes = boot.Fx.CloudSplashCount;
+                if (splashes != 1) throw new System.InvalidOperationException("Wreck must produce exactly one cloud-entry splash, got " + splashes);
+                target.ResetDamageCapture(); boot.Fx.Clear(); oc.lookHeight = bounds.center.y;
+                if (damage.Sinking || damage.Hidden || damage.VentCount != 0 || damage.DebrisCount != 0
+                    || damage.Model.localPosition != restPosition || Quaternion.Angle(damage.Model.localRotation, restRotation) > 0.001f || !target.Alive)
+                    throw new System.InvalidOperationException("Damage state leaked into a restored target");
+                Render(oc, cam, boot, rt, tex, dir, new Shot("75_target_restored", 215f, 13f, 68f));
+                Debug.Log("SkyTide: damage — impact/debris OK, 3 vents, 30 hits, visible sinking, cloud contact=" + splashes + ", hidden below deck, restore clean");
+            }
+            finally
+            {
+                target.ResetDamageCapture(); boot.Fx.Clear(); Random.state = random;
+                target.transform.SetPositionAndRotation(oldPosition, oldRotation);
+                oc.target = oldTarget; oc.lookHeight = oldLookHeight;
             }
         }
 
@@ -196,8 +284,10 @@ namespace SkyTide.EditorTools
             {
                 boot.SetVolumetric(true);
                 if (boot.Volumetric != null) boot.Volumetric.ResetTowers(boot.Ship.transform.position);
-                // По умолчанию — свет с разных сторон и два эффекта; профиль fx оставляет прежние 6 фаз залпа.
-                bool environment = System.Environment.GetEnvironmentVariable("SKYTIDE_SHOT_PROFILE") != "fx";
+                // Текущий пакет — повреждения; appearance оставляет галерею 46, fx — прежние фазы залпа.
+                string profile = System.Environment.GetEnvironmentVariable("SKYTIDE_SHOT_PROFILE") ?? "damage";
+                bool environment = profile != "fx";
+                bool appearance = profile == "appearance";
                 if (environment) Render(oc, cam, boot, rt, tex, dir, new Shot("30_vol_toward_sun", 35f, 8f, 75f));
                 Render(oc, cam, boot, rt, tex, dir, new Shot("32_vol_side", 90f, 8f, 70f));
                 if (boot.Volumetric != null && boot.Volumetric.LastFrameUsedCloudDistance)
@@ -210,16 +300,17 @@ namespace SkyTide.EditorTools
                 }
                 Broadside guns = boot.Ship != null ? boot.Ship.GetComponent<Broadside>() : null;
                 if (guns != null && guns.HasCannons && boot.Fx != null)
-                    CaptureBroadside(oc, cam, boot, rt, tex, dir, guns, false, environment);
+                    CaptureBroadside(oc, cam, boot, rt, tex, dir, guns, false, environment, appearance);
                 else Debug.LogWarning("SkyTide: пушек нет — залп не снят");
-                if (environment)
+                if (appearance)
                 {
                     Render(oc, cam, boot, rt, tex, dir, new Shot("60_ship_materials", 215f, 12f, 40f));
                     Render(oc, cam, boot, rt, tex, dir, new Shot("61_ship_backlight", 90f, 10f, 42f));
                 }
                 // Четыре маленьких кадра, по одному Render на состояние: без дорогого многокадрового прогрева.
-                if (environment) CaptureTemporal(oc, cam, boot, dir);
-                Debug.Log("SkyTide: быстрая проверка " + (environment ? "визуала (12 x 800x380 + 4 x 400x190)" : "залпов (6 x 800x380)") + ", кадров="
+                if (appearance) CaptureTemporal(oc, cam, boot, dir);
+                else if (environment) CaptureDamage(oc, cam, boot, rt, tex, dir);
+                Debug.Log("SkyTide: быстрая проверка " + profile + " (800x380; temporal 400x190 только в appearance), кадров="
                     + Directory.GetFiles(dir, "*.jpg").Length + ", секунд=" + (Time.realtimeSinceStartup - start).ToString("F1"));
             }
             finally
@@ -352,6 +443,7 @@ namespace SkyTide.EditorTools
             catch (System.Exception e)
             {
                 Debug.LogWarning("SkyTide: кадры не сняты: " + e);
+                if (Application.isBatchMode) throw;
             }
             finally
             {

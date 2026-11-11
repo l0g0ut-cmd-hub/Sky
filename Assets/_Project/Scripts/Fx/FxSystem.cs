@@ -4,7 +4,7 @@ using UnityEngine;
 namespace SkyTide
 {
     /// <summary>
-    /// Частицы залпа: ядра (баллистика, шлейф дыма), вспышки у дул, пороховой дым.
+    /// Частицы залпа: чугунные ядра по баллистике, вспышки у дул, пороховой дым.
     /// Все частицы — один динамический меш квадов (шейдер Hidden/SkyTide/Fx), отсортированный от дальних к ближним.
     /// В объёмном режиме рисуется из VolumetricClouds после облаков, иначе — обычной очередью прозрачных.
     /// </summary>
@@ -31,7 +31,6 @@ namespace SkyTide
             public float age, life, size0, size1, rot, spin, drag, rise, seed, alpha;
             public Color color;
             public Kind kind;
-            public float trailAcc;
             public Vector3 axis;
             public float aspect, surfaceY;
         }
@@ -148,6 +147,16 @@ namespace SkyTide
         {
             if (ps.Count >= MaxParticles) return;
             ps.Add(p);
+        }
+
+        /// <summary>Дым из закреплённой на повреждённом корпусе точки; не из летящего ядра.</summary>
+        public void DamageSmoke(Vector3 at, float severity)
+        {
+            Add(new P { kind = Kind.Smoke, pos = at + Random.insideUnitSphere * 0.3f,
+                vel = Vector3.up * Random.Range(1.2f, 2.5f), life = Random.Range(2.1f, 3.1f),
+                size0 = Random.Range(0.7f, 1.2f), size1 = Mathf.Lerp(3f, 5.5f, severity),
+                rot = Random.Range(0f, 6.28f), spin = Random.Range(-0.35f, 0.35f), drag = 0.8f, rise = 1.7f,
+                color = new Color(0.22f, 0.2f, 0.19f), alpha = Mathf.Lerp(0.34f, 0.56f, severity), seed = Random.value * 10f });
         }
 
         // ---------- симуляция ----------
@@ -270,7 +279,7 @@ namespace SkyTide
                     Vector3 cloudPoint;
                     bool entered = TryCloudEntry(prev, p.pos, out cloudPoint);
                     Vector3 end = entered ? cloudPoint : p.pos;
-                    // Попадание до входа в облака: шлейф обрывается именно на корпусе/поверхности.
+                    // Попадание до входа в облака: ядро исчезает именно на корпусе/поверхности.
                     bool hit = false;
                     if (p.kind == Kind.Ball)
                     {
@@ -290,21 +299,6 @@ namespace SkyTide
                         if (target != null) { end = hitPoint; hit = true; target.OnHit(hitPoint); }
                     }
                     p.pos = end;
-                    // Шлейф: клочки дыма вдоль пути через равные промежутки.
-                    if (p.kind == Kind.Ball) p.trailAcc += Vector3.Distance(prev, p.pos);
-                    float spacing = 1.5f;
-                    while (p.kind == Kind.Ball && p.trailAcc > spacing && p.age < 4.5f)
-                    {
-                        p.trailAcc -= spacing;
-                        Vector3 at = Vector3.Lerp(p.pos, prev, p.trailAcc / Mathf.Max(Vector3.Distance(prev, p.pos), 1e-3f));
-                        float fade = 1f - p.age / 4.5f;
-                        Add(new P
-                        {
-                            kind = Kind.Smoke, pos = at, vel = Random.insideUnitSphere * 0.8f, life = Random.Range(0.9f, 1.5f),
-                            size0 = 0.65f, size1 = Random.Range(2f, 3.2f), rot = Random.Range(0f, 6.28f), spin = Random.Range(-0.6f, 0.6f),
-                            drag = 1f, rise = 0.5f, color = new Color(0.44f, 0.4f, 0.39f), alpha = 0.16f * fade, seed = Random.value * 10f
-                        });
-                    }
                     if (entered || hit)
                     {
                         p.life = 0f;

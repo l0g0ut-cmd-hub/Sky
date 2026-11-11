@@ -25,10 +25,13 @@ namespace SkyTide
         float nextPick;
         int hits;
         float deadUntil = -1f;
+        ShipDamageVisual damageVisual;
 
         public bool Alive { get { return deadUntil < 0f; } }
+        public ShipDamageVisual DamageVisual { get { return damageVisual; } }
+        public int HitCount { get { return hits; } }
 
-        public void Setup(ShipController c, Transform player)
+        public void Setup(ShipController c, Transform player, Material debrisWood = null)
         {
             ctrl = c;
             this.player = player;
@@ -36,6 +39,8 @@ namespace SkyTide
             model = v != null && v.childCount > 0 ? v.GetChild(0) : v;
             MeshFilter mf = model != null ? model.GetComponent<MeshFilter>() : null;
             box = mf != null && mf.sharedMesh != null ? mf.sharedMesh.bounds : new Bounds(Vector3.up * 8f, new Vector3(10f, 14f, 36f));
+            damageVisual = gameObject.AddComponent<ShipDamageVisual>();
+            damageVisual.Configure(model, box, debrisWood);
             Pick();
         }
 
@@ -88,11 +93,13 @@ namespace SkyTide
             if (!Alive) return;
             hits++;
             FxSystem fx = FxSystem.Instance;
+            Vector3 velocity = transform.forward * ctrl.Speed;
+            if (damageVisual != null) damageVisual.Hit(point, hits / (float)Mathf.Max(1, hitsToSink), velocity);
             if (hits >= hitsToSink)
             {
                 if (fx != null) fx.Explosion(model.TransformPoint(box.center), 3f);
                 deadUntil = Time.time + respawnDelay;
-                ctrl.visual.gameObject.SetActive(false);
+                if (damageVisual != null) damageVisual.BeginSink(point, velocity);
                 ctrl.throttle = 0f;
                 ctrl.turn = 0f;
             }
@@ -103,6 +110,7 @@ namespace SkyTide
         {
             deadUntil = -1f;
             hits = 0;
+            if (damageVisual != null) damageVisual.ResetDamage();
             Vector3 c = player != null ? player.position : Vector3.zero;
             float a = Random.Range(0f, Mathf.PI * 2f);
             transform.position = new Vector3(c.x + Mathf.Cos(a) * maxRange, transform.position.y, c.z + Mathf.Sin(a) * maxRange);
@@ -110,5 +118,13 @@ namespace SkyTide
             ctrl.visual.gameObject.SetActive(true);
             Pick();
         }
+
+#if UNITY_EDITOR
+        public void ResetDamageCapture()
+        {
+            hits = 0; deadUntil = -1f;
+            if (damageVisual != null) damageVisual.ResetDamage();
+        }
+#endif
     }
 }

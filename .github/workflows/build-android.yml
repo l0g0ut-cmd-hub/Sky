@@ -117,6 +117,9 @@ jobs:
           git init -q; git checkout -q -b apk-latest
           sudo cp "$GITHUB_WORKSPACE"/build/Android/*.apk ./SkyTide.apk; sudo chown "$(id -u)" SkyTide.apk
           if ls "$GITHUB_WORKSPACE"/build/shots/*.jpg >/dev/null 2>&1; then mkdir -p shots; sudo cp "$GITHUB_WORKSPACE"/build/shots/*.jpg shots/; sudo chown -R "$(id -u)" shots; fi
+          # Настоящие настройки импорта Unity: сохраняем GUID и HQ-параметры для следующей сборки.
+          mkdir -p import-meta
+          (cd "$GITHUB_WORKSPACE" && find Assets/_Project/Models Assets/_Project/Art -type f -name '*.meta' -print0 | tar --null -T - -cf -) | tar -xf - -C import-meta
           echo "run ${GITHUB_RUN_NUMBER} sha ${GITHUB_SHA}" > info.txt
           git -c user.name=ci -c user.email=ci@local add -A
           git -c user.name=ci -c user.email=ci@local commit -qm "apk run ${GITHUB_RUN_NUMBER}"

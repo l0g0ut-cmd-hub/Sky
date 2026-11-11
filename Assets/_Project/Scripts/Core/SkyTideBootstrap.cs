@@ -105,7 +105,7 @@ namespace SkyTide
             {
                 ShipController t = ShipFactory.Build("Target Ship", spawnPosition + new Vector3(260f, 0f, 220f), spawnHeading + 140f, materials, targetShip);
                 Target = t.gameObject.AddComponent<TargetShip>();
-                Target.Setup(t, Ship.transform);
+                Target.Setup(t, Ship.transform, materials.darkWood);
             }
 
             cam.target = Ship.transform;
