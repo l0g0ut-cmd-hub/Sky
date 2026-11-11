@@ -220,10 +220,14 @@ namespace SkyTide.EditorTools
                     if(max>.002f)moving++;
                 }
                 if(moving!=10)throw new System.InvalidOperationException("Crew work cycles are static: moving="+moving);
-                Render(oc,cam,boot,rt,tex,dir,new Shot("100_upper_crew",215f,32f,43f));
+                Vector3 focus=visual.TransformPoint(new Vector3(0,9f,-4f));
+                Vector3 camera=visual.TransformPoint(new Vector3(-16f,15f,-4f));
+                cam.transform.SetPositionAndRotation(camera,Quaternion.LookRotation(focus-camera,visual.up));
+                SaveFrame(cam,boot,rt,tex,dir,"100_upper_crew");
                 controls.SetHudCapture(true,960,456);HudLayout layout=controls.Layout(960,456);
-                Vector3 focus=visual.TransformPoint(new Vector3(0,ShipCrew.QuarterDeck+1f,-14.7f));
-                Vector3 camera=visual.TransformPoint(new Vector3(1.8f,ShipCrew.QuarterDeck+2.15f,-17.0f));
+                // Port/front view: the aft sail occludes the starboard/rear view of the helm.
+                focus=visual.TransformPoint(new Vector3(0,ShipCrew.QuarterDeck+1.28f,-14.94f));
+                camera=visual.TransformPoint(new Vector3(-1.4f,ShipCrew.QuarterDeck+1.84f,-13.3f));
                 cam.transform.SetPositionAndRotation(camera,Quaternion.LookRotation(focus-camera,visual.up));
                 float[] inputs={-1f,0f,1f};string[] names={"101_helm_left","102_helm_center","103_helm_right"};
                 float maxError=0f;
@@ -256,6 +260,7 @@ namespace SkyTide.EditorTools
                 float time=0f;StepSalvo(guns,boot.Fx,ref time,.34f);crew.Pose(time);
                 if(crew.BarrelOffsetCapture(1).magnitude<.05f||crew.BarrelOffsetCapture(-1).sqrMagnitude!=0f)
                     throw new System.InvalidOperationException("Upper gun recoil not tied to its shot");
+                boot.Fx.Clear(); // Keep the inspection view readable after verifying the actual shot/recoil.
                 focus=visual.TransformPoint(new Vector3(5.65f,8f,1.9f));camera=visual.TransformPoint(new Vector3(9.1f,10.4f,5.8f));
                 cam.transform.SetPositionAndRotation(camera,Quaternion.LookRotation(focus-camera,visual.up));
                 SaveFrame(cam,boot,rt,tex,dir,"104_upper_gun_crew");
@@ -551,7 +556,15 @@ namespace SkyTide.EditorTools
                 boot.SetVolumetric(true);
                 if (boot.Volumetric != null) boot.Volumetric.ResetTowers(boot.Ship.transform.position);
                 // Каждый пакет снимает свои состояния. Предыдущие профили остаются доступны отдельно.
-                string profile = System.Environment.GetEnvironmentVariable("SKYTIDE_SHOT_PROFILE") ?? "crew";
+                string profile = System.Environment.GetEnvironmentVariable("SKYTIDE_SHOT_PROFILE") ?? "crew-review";
+                // Camera-only follow-up: keep the full seven-view comparison in the "crew" profile.
+                if(profile=="crew-review")
+                {
+                    CaptureCrew(oc,cam,boot,dir);
+                    Debug.Log("SkyTide: быстрая проверка crew-review (5x960x456), кадров="
+                        +Directory.GetFiles(dir,"*.jpg").Length+", секунд="+(Time.realtimeSinceStartup-start).ToString("F1"));
+                    return;
+                }
                 bool environment = profile != "fx";
                 bool appearance = profile == "appearance";
                 if (environment) Render(oc, cam, boot, rt, tex, dir, new Shot("30_vol_toward_sun", 35f, 8f, 75f));
