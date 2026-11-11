@@ -39,6 +39,9 @@ namespace SkyTide
             if (b == null) b = ctrl.gameObject.AddComponent<Broadside>();
             b.SetModel(ctrl, model, model != null && variant != null ? Broadside.Parse(variant.cannons) : null,
                 variant != null ? variant.recoil : null);
+            ShipCrew crew=ctrl.GetComponent<ShipCrew>();
+            if(crew==null)crew=ctrl.gameObject.AddComponent<ShipCrew>();
+            crew.Configure(ctrl,visual,variant);b.crew=crew;
         }
 
         static Transform BuildFromMesh(Transform visual, Mesh mesh, Material[] mats)

@@ -1,0 +1,166 @@
+using UnityEngine;
+
+namespace SkyTide
+{
+    /// <summary>A real skinned deckhand: planted feet, two-bone arm IK and individual work cycles.</summary>
+    public sealed class CrewActor
+    {
+        public enum Duty {Helmsman,Captain,Gunner,Loader,Rigger,Patrol,Lookout}
+        public readonly Transform root;
+        public readonly Transform[] bones;
+        public readonly SkinnedMeshRenderer renderer;
+        public readonly Duty duty;
+        public readonly Vector3 station;
+        public readonly float yaw,phase;
+        readonly CrewModelData.CrewRig rig;
+        public Vector3 leftGoal,rightGoal;
+        public Transform tool;
+        public LineRenderer rope;
+        public readonly Vector3[] ropePoints=new Vector3[4];
+        public int side;
+
+        public CrewActor(Transform parent,CrewModelData model,Duty duty,Vector3 position,float yaw,int index)
+        {
+            this.duty=duty;station=position;this.yaw=yaw;phase=index*1.731f;rig=model.Rig;
+            root=new GameObject(duty+" "+index).transform;root.SetParent(parent,false);
+            root.localPosition=position;root.localRotation=Quaternion.Euler(0,yaw,0);
+            bones=new Transform[rig.names.Length];
+            for(int i=0;i<bones.Length;i++)
+            {
+                bones[i]=new GameObject(rig.names[i]).transform;
+                bones[i].SetParent(rig.parents[i]<0?root:bones[rig.parents[i]],false);
+                bones[i].localPosition=rig.Point(i)-(rig.parents[i]<0?Vector3.zero:rig.Point(rig.parents[i]));
+            }
+            renderer=root.gameObject.AddComponent<SkinnedMeshRenderer>();renderer.sharedMesh=model.Mesh;renderer.sharedMaterial=model.material;
+            renderer.bones=bones;renderer.rootBone=root;renderer.quality=SkinQuality.Bone4;
+            renderer.localBounds=new Bounds(new Vector3(0,.95f,0),new Vector3(2.3f,2.8f,2.3f));
+            renderer.shadowCastingMode=UnityEngine.Rendering.ShadowCastingMode.On;
+            renderer.updateWhenOffscreen=false;
+            MaterialPropertyBlock tint=new MaterialPropertyBlock();
+            Color[] tones={Color.white,new Color(.90f,.93f,.96f),new Color(.96f,.91f,.85f),new Color(.89f,.88f,.85f)};
+            tint.SetColor("_Color",tones[index%tones.Length]);renderer.SetPropertyBlock(tint);
+        }
+
+        static void Aim(Transform joint,Vector3 bindDirection,Vector3 direction)
+        {
+            if(direction.sqrMagnitude<1e-8f)return;
+            joint.rotation=Quaternion.FromToRotation(joint.TransformDirection(bindDirection),direction)*joint.rotation;
+        }
+
+        void IK(int upper,int lower,int end,Vector3 target,Vector3 hint)
+        {
+            Vector3 a=bones[upper].position;
+            float l=bones[lower].localPosition.magnitude,m=bones[end].localPosition.magnitude;
+            Vector3 direction=target-a;float d=Mathf.Clamp(direction.magnitude,Mathf.Abs(l-m)+.004f,l+m-.002f);
+            Vector3 axis=direction.sqrMagnitude>.000001f?direction.normalized:root.forward;
+            Vector3 bend=Vector3.ProjectOnPlane(hint-a,axis).normalized;
+            if(bend.sqrMagnitude<.1f)bend=Vector3.ProjectOnPlane(root.forward,axis).normalized;
+            float along=(l*l-m*m+d*d)/(2f*d);
+            Vector3 knee=a+axis*along+bend*Mathf.Sqrt(Mathf.Max(0,l*l-along*along));
+            Aim(bones[upper],bones[lower].localPosition,knee-a);
+            Aim(bones[lower],bones[end].localPosition,a+axis*d-bones[lower].position);
+        }
+
+        void Arm(bool left,Vector3 target,Quaternion? palm=null)
+        {
+            int upper=left?6:10,lower=left?7:11,hand=left?8:12;
+            IK(upper,lower,hand,target,root.TransformPoint(new Vector3(left?-.65f:.65f,1.15f,-.3f)));
+            if(palm.HasValue)bones[hand].rotation=palm.Value;
+        }
+
+        public void Pose(float time,Transform wheel,float shotAge)
+        {
+            for(int i=0;i<bones.Length;i++)
+            {
+                bones[i].localRotation=Quaternion.identity;
+                bones[i].localPosition=rig.Point(i)-(rig.parents[i]<0?Vector3.zero:rig.Point(rig.parents[i]));
+            }
+            float t=time+phase;root.localPosition=station;root.localRotation=Quaternion.Euler(0,yaw,0);
+            bool walking=duty==Duty.Patrol;
+            float gait=0f;
+            if(walking)
+            {
+                float a=time*.23f+phase;
+                gait=(a*.935f-.23f*Mathf.Sin(2f*a))*Mathf.PI*2f/.44f;
+                root.localPosition=station+new Vector3(.42f*Mathf.Sin(a),0,1.35f*Mathf.Cos(a));
+                Vector3 velocity=new Vector3(.42f*.23f*Mathf.Cos(a),0,-1.35f*.23f*Mathf.Sin(a));
+                root.localRotation=Quaternion.LookRotation(velocity,Vector3.up);
+            }
+            float work=Mathf.Sin(t*2.1f),breathe=Mathf.Sin(t*1.7f);
+            float crouch=duty==Duty.Gunner&&shotAge>=0&&shotAge<.6f?Mathf.Sin(shotAge/.6f*Mathf.PI)*.045f:0f;
+            bones[0].localPosition+=Vector3.up*(breathe*.005f-crouch);
+            bones[1].localRotation=Quaternion.Euler(breathe*.7f,0,Mathf.Sin(t*.65f)*.8f);
+            bones[4].localRotation=Quaternion.Euler(Mathf.Sin(t*.8f)*3f,Mathf.Sin(t*.45f)*13f,0);
+            Vector3 l=new Vector3(-.29f,1.025f,.015f),r=new Vector3(.29f,1.025f,.015f);
+            if(duty==Duty.Helmsman&&wheel!=null)
+            {
+                leftGoal=wheel.TransformPoint(new Vector3(-.23f,0,-.07f));rightGoal=wheel.TransformPoint(new Vector3(.23f,0,-.07f));
+                Quaternion palm=wheel.rotation*Quaternion.Euler(-90f,0,0);
+                Arm(true,leftGoal,palm);Arm(false,rightGoal,palm);
+            }
+            else
+            {
+                if(duty==Duty.Gunner)
+                {
+                    float kick=shotAge>=0?Broadside.CannonRecoil(shotAge):0;
+                    l=new Vector3(-.12f,1.55f,.23f-kick*.35f);r=new Vector3(.12f,1.55f,.23f-kick*.35f);
+                    bones[2].localRotation=Quaternion.Euler(-3f+work*2f,0,0);
+                }
+                else if(duty==Duty.Loader)
+                {
+                    l=new Vector3(-.14f,1.10f,.24f+work*.07f);r=new Vector3(.12f,1.22f,.28f+work*.07f);
+                    bones[1].localRotation=Quaternion.Euler(5f+work*4f,0,0);
+                }
+                else if(duty==Duty.Rigger)
+                {
+                    l=new Vector3(-.07f,1.26f+work*.07f,.20f);r=new Vector3(.07f,1.26f-work*.07f,.20f);
+                    bones[1].localRotation=Quaternion.Euler(work*3f,0,0);
+                }
+                else if(duty==Duty.Captain)
+                {
+                    float order=Mathf.Pow(Mathf.Max(0,Mathf.Sin(t*.7f)),3);
+                    if(shotAge>=0f&&shotAge<1.2f)order=Mathf.Max(order,Mathf.Sin(shotAge/1.2f*Mathf.PI));
+                    r=Vector3.Lerp(r,new Vector3(.22f,1.45f,.26f),order);
+                    l=new Vector3(-.20f,1.02f,.10f);
+                }
+                else if(duty==Duty.Lookout)
+                {
+                    float scan=.5f+.5f*Mathf.Sin(t*.4f);
+                    r=Vector3.Lerp(r,new Vector3(.13f,1.56f,.19f),scan);
+                }
+                else if(walking)
+                {
+                    l.y=r.y=1.08f;l.z+=Mathf.Sin(gait)*.08f;r.z-=Mathf.Sin(gait)*.08f;
+                    bones[0].localRotation=Quaternion.Euler(0,Mathf.Sin(gait)*2f,0);
+                }
+                leftGoal=root.TransformPoint(l);rightGoal=root.TransformPoint(r);
+                Arm(true,leftGoal);Arm(false,rightGoal);
+            }
+            for(int sideIndex=0;sideIndex<2;sideIndex++)
+            {
+                int upper=sideIndex==0?13:17,lower=upper+1,foot=upper+2;
+                Vector3 goal=rig.Point(foot);
+                if(walking)
+                {
+                    float cycle=Mathf.Repeat(gait/(Mathf.PI*2f)+sideIndex*.5f,1f);
+                    if(cycle<.4f)
+                    {
+                        float swing=cycle/.4f;
+                        goal.z+=Mathf.Lerp(-.13f,.13f,swing*swing*(3f-2f*swing));goal.y+=Mathf.Sin(swing*Mathf.PI)*.075f;
+                    }
+                    else goal.z+=Mathf.Lerp(.13f,-.13f,(cycle-.4f)/.6f);
+                }
+                Vector3 world=root.TransformPoint(goal);
+                IK(upper,lower,foot,world,root.TransformPoint(new Vector3(sideIndex==0?-.3f:.3f,.5f,.5f)));
+                bones[foot].rotation=root.rotation;
+            }
+            if(tool!=null)
+            {
+                Vector3 a=bones[8].position,b=bones[12].position;
+                tool.position=(a+b)*.5f-root.up*.05f;tool.rotation=Quaternion.LookRotation(b-a,root.forward);
+            }
+        }
+
+        public float HandError { get { return Mathf.Max(Vector3.Distance(bones[8].position,leftGoal),Vector3.Distance(bones[12].position,rightGoal)); } }
+    }
+}

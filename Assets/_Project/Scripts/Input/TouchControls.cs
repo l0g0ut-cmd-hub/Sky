@@ -178,7 +178,7 @@ namespace SkyTide
             lastPinch = dist;
         }
 
-        void ApplyToShip()
+        void ApplyToShip(bool readKeyboard=true)
         {
             float r = Mathf.Max(1f, Layout(ViewWidth, ViewHeight).radius);
             if (stickId != int.MinValue)
@@ -194,15 +194,18 @@ namespace SkyTide
             }
 
             float kx = 0f, ky = 0f;
-            if (Input.GetKey(KeyCode.A) || Input.GetKey(KeyCode.LeftArrow)) kx -= 1f;
-            if (Input.GetKey(KeyCode.D) || Input.GetKey(KeyCode.RightArrow)) kx += 1f;
-            if (Input.GetKey(KeyCode.W) || Input.GetKey(KeyCode.UpArrow)) ky += 1f;
-            if (Input.GetKey(KeyCode.S) || Input.GetKey(KeyCode.DownArrow)) ky -= 1f;
-            if (Input.GetKeyDown(KeyCode.Tab) && game != null) game.NextShip();
-            Broadside guns = Guns();
-            if (guns != null && Input.GetKeyDown(KeyCode.Q)) guns.Fire(-1);
-            if (guns != null && Input.GetKeyDown(KeyCode.E)) guns.Fire(1);
-            if (guns != null && Input.GetKeyDown(KeyCode.R)) guns.ripple = !guns.ripple;
+            if(readKeyboard)
+            {
+                if (Input.GetKey(KeyCode.A) || Input.GetKey(KeyCode.LeftArrow)) kx -= 1f;
+                if (Input.GetKey(KeyCode.D) || Input.GetKey(KeyCode.RightArrow)) kx += 1f;
+                if (Input.GetKey(KeyCode.W) || Input.GetKey(KeyCode.UpArrow)) ky += 1f;
+                if (Input.GetKey(KeyCode.S) || Input.GetKey(KeyCode.DownArrow)) ky -= 1f;
+                if (Input.GetKeyDown(KeyCode.Tab) && game != null) game.NextShip();
+                Broadside guns = Guns();
+                if (guns != null && Input.GetKeyDown(KeyCode.Q)) guns.Fire(-1);
+                if (guns != null && Input.GetKeyDown(KeyCode.E)) guns.Fire(1);
+                if (guns != null && Input.GetKeyDown(KeyCode.R)) guns.ripple = !guns.ripple;
+            }
 
             if (ship != null)
             {
@@ -320,6 +323,7 @@ namespace SkyTide
         public bool CapturedAsCamera(int id) {Owner o;return owners.TryGetValue(id,out o)&&o==Owner.Camera;}
         public int ActivePointersCapture {get {return owners.Count;} }
         public void PinchCapture() {Pinch();}
+        public void ApplyStickCapture() {ApplyToShip(false);}
 #endif
     }
 }

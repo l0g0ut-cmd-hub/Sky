@@ -33,6 +33,7 @@ namespace SkyTide
         public float cooldown = 2.2f;
         [Tooltip("true — волной от носа к корме, false — весь борт разом")]
         public bool ripple = true;
+        [NonSerialized] public ShipCrew crew;
 
         ShipController ship;
         Transform model;
@@ -155,6 +156,9 @@ namespace SkyTide
             ready[k] = now + cooldown;
             List<CannonMount> list = new List<CannonMount>();
             foreach (CannonMount m in mounts) if (Mathf.Sign(m.side) == Mathf.Sign(side)) list.Add(m);
+            CannonMount upper=crew!=null?crew.UpperMount(side):null;
+            if(upper!=null)list.Add(upper);
+            if(crew!=null)crew.NotifySalvo(now);
             list.Sort((a, b) => b.Muzzle.z.CompareTo(a.Muzzle.z));   // от носа к корме
             for (int i = 0; i < list.Count; i++)
                 queue.Add(new KeyValuePair<float, CannonMount>(now + (ripple ? i * rippleDelay + UnityEngine.Random.Range(0f, 0.03f) : UnityEngine.Random.Range(0f, 0.025f)), list[i]));
@@ -190,6 +194,7 @@ namespace SkyTide
             Vector3 muzzle = model.TransformPoint(m.Muzzle);
             Vector3 dir = model.TransformDirection(m.Dir).normalized;
             FxSystem.Instance.Fire(muzzle, dir, velocity, muzzleSpeed);
+            if(crew!=null)crew.NotifyShot(m,now);
             if (recoilEnabled)
             {
                 int id = Array.IndexOf(mounts, m);

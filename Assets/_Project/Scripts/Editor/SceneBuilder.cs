@@ -190,11 +190,31 @@ namespace SkyTide.EditorTools
                 repaired.cannons = AssetDatabase.LoadAssetAtPath<TextAsset>(Models + "CorsairRepaired_cannons.json");
                 repaired.recoil = AssetDatabase.LoadAssetAtPath<TextAsset>(Models + "CorsairRepaired_recoil.json");
                 if (repaired.recoil == null) throw new System.InvalidOperationException("Corsair cannon recoil map is missing");
+                repaired.crew=BuildCrewModel();
+                repaired.upperGun=AssetDatabase.LoadAssetAtPath<TextAsset>(Models+"Crew/UpperGunBarrel.bytes");
+                if(repaired.upperGun==null)throw new System.InvalidOperationException("Upper gun geometry is missing");
                 list.Add(repaired);
             }
             TextAsset meshy = AssetDatabase.LoadAssetAtPath<TextAsset>(Models + "Corsair.bytes");
             // Модель Meshy — больше не в выборе: это корабль-мишень (SkyTideBootstrap.targetShip).
             return list.ToArray();
+        }
+
+        static CrewModelData BuildCrewModel()
+        {
+            const string folder=Models+"Crew/";
+            Material material=MaterialFactory.Opaque("Deckhand PBR",Color.white,.4f);
+            material.mainTexture=Tex(folder+"Deckhand_Albedo.jpg",false,false,TextureWrapMode.Clamp,TextureWrapMode.Clamp,2048,true);
+            material.SetTexture("_BumpMap",Tex(folder+"Deckhand_Normal.jpg",true,false,TextureWrapMode.Clamp,TextureWrapMode.Clamp,2048,true));
+            material.SetFloat("_BumpScale",1f);material.EnableKeyword("_NORMALMAP");
+            material.SetFloat("_Metallic",1f);material.SetFloat("_GlossMapScale",1f);
+            material.SetTexture("_MetallicGlossMap",Tex(folder+"Deckhand_MetalSmooth.png",false,true,TextureWrapMode.Clamp,TextureWrapMode.Clamp,2048,true,false,true));
+            material.EnableKeyword("_METALLICGLOSSMAP");AssetDatabase.CreateAsset(material,MaterialFolder+"/Deckhand.mat");
+            CrewModelData result=new CrewModelData{material=material,geometry=AssetDatabase.LoadAssetAtPath<TextAsset>(folder+"Deckhand.bytes"),
+                skeleton=AssetDatabase.LoadAssetAtPath<TextAsset>(folder+"Deckhand_rig.json")};
+            if(!result.IsValid||material.mainTexture==null||material.GetTexture("_BumpMap")==null||material.GetTexture("_MetallicGlossMap")==null)
+                throw new System.InvalidOperationException("Crew model/PBR assets are missing");
+            return result;
         }
 
         static ShipVariant SceneVariant(string file, string title)
