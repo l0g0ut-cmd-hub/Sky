@@ -37,7 +37,8 @@ namespace SkyTide
             else BuildPrimitive(visual, m);
             Broadside b = ctrl.GetComponent<Broadside>();
             if (b == null) b = ctrl.gameObject.AddComponent<Broadside>();
-            b.SetModel(ctrl, model, model != null && variant != null ? Broadside.Parse(variant.cannons) : null);
+            b.SetModel(ctrl, model, model != null && variant != null ? Broadside.Parse(variant.cannons) : null,
+                variant != null ? variant.recoil : null);
         }
 
         static Transform BuildFromMesh(Transform visual, Mesh mesh, Material[] mats)

@@ -41,6 +41,15 @@ namespace SkyTide
         readonly List<KeyValuePair<float, CannonMount>> queue = new List<KeyValuePair<float, CannonMount>>();
         Vector3 lastPos;
         Vector3 velocity;
+        MeshRenderer gunRenderer;
+        MaterialPropertyBlock gunProperties;
+        readonly float[] firedAt = new float[16];
+        readonly Vector4[] gunOffsets = new Vector4[16];
+        static readonly int GunOffsetsId = Shader.PropertyToID("_ShipGunOffsets");
+        bool recoilEnabled, recoilWasActive;
+#if UNITY_EDITOR
+        bool recoilCapture;
+#endif
 
         public bool HasCannons { get { return mounts.Length > 0; } }
 
@@ -51,13 +60,71 @@ namespace SkyTide
             return l != null && l.cannons != null ? l.cannons : new CannonMount[0];
         }
 
-        public void SetModel(ShipController ctrl, Transform modelTransform, CannonMount[] cannons)
+        public void SetModel(ShipController ctrl, Transform modelTransform, CannonMount[] cannons, TextAsset recoil = null)
         {
+            ClearRecoil();
             ship = ctrl;
             model = modelTransform;
             mounts = cannons ?? new CannonMount[0];
             queue.Clear();
+            gunRenderer = model != null ? model.GetComponent<MeshRenderer>() : null;
+            recoilEnabled = recoil != null && gunRenderer != null;
+            if (recoilEnabled)
+            {
+                ShipGunWeights.Map map = JsonUtility.FromJson<ShipGunWeights.Map>(recoil.text);
+                if (map.names == null || map.names.Length != mounts.Length || mounts.Length != firedAt.Length)
+                    throw new InvalidOperationException("Cannon recoil IDs do not match mounts");
+                for (int i = 0; i < mounts.Length; i++)
+                    if (map.names[i] != mounts[i].name) throw new InvalidOperationException("Cannon recoil mount order changed");
+                if (gunProperties == null) gunProperties = new MaterialPropertyBlock();
+                ClearRecoil();
+            }
         }
+
+        /// <summary>Fast inward kick followed by a damped run-out; fully home before reload completes.</summary>
+        public static float CannonRecoil(float age)
+        {
+            if (age < 0f || age >= 0.9f) return 0f;
+            float t = age < 0.06f ? age / 0.06f : (age - 0.06f) / 0.84f;
+            float smooth = t * t * (3f - 2f * t);
+            return 0.32f * (age < 0.06f ? smooth : 1f - smooth);
+        }
+
+        void ClearRecoil()
+        {
+            for (int i = 0; i < firedAt.Length; i++) { firedAt[i] = -100f; gunOffsets[i] = Vector4.zero; }
+            recoilWasActive = false;
+            PublishRecoil();
+        }
+
+        void PublishRecoil()
+        {
+            if (gunRenderer == null || gunProperties == null) return;
+            gunRenderer.GetPropertyBlock(gunProperties);
+            gunProperties.SetVectorArray(GunOffsetsId, gunOffsets);
+            gunRenderer.SetPropertyBlock(gunProperties);
+        }
+
+        void ApplyRecoil(float now)
+        {
+            if (!recoilEnabled) return;
+            bool animate = Application.isPlaying;
+#if UNITY_EDITOR
+            animate |= recoilCapture;
+#endif
+            bool active = false;
+            for (int i = 0; i < mounts.Length; i++)
+            {
+                float amount = animate ? CannonRecoil(now - firedAt[i]) : 0f;
+                Vector3 offset = -mounts[i].Dir.normalized * amount;
+                gunOffsets[i] = new Vector4(offset.x, offset.y, offset.z, 0f);
+                active |= amount > 0f;
+            }
+            if (active || recoilWasActive) PublishRecoil();
+            recoilWasActive = active;
+        }
+
+        void OnDisable() { ClearRecoil(); queue.Clear(); }
 
         public float Readiness(int side)
         {
@@ -67,6 +134,9 @@ namespace SkyTide
         }
 
 #if UNITY_EDITOR
+        public void SetRecoilCapture(bool on) { recoilCapture = on; ClearRecoil(); }
+        public Vector4 RecoilCapture(int index) { return gunOffsets[index]; }
+
         public void SetReadinessCapture(float port, float starboard)
         {
             ready[0] = (1f - Mathf.Clamp01(port)) * cooldown;
@@ -108,17 +178,23 @@ namespace SkyTide
             for (int i = 0; i < queue.Count;)
             {
                 if (queue[i].Key > now) { i++; continue; }
-                Shoot(queue[i].Value);
+                Shoot(queue[i].Value, now);
                 queue.RemoveAt(i);
             }
+            ApplyRecoil(now);
         }
 
-        void Shoot(CannonMount m)
+        void Shoot(CannonMount m, float now)
         {
             if (model == null || FxSystem.Instance == null) return;
             Vector3 muzzle = model.TransformPoint(m.Muzzle);
             Vector3 dir = model.TransformDirection(m.Dir).normalized;
             FxSystem.Instance.Fire(muzzle, dir, velocity, muzzleSpeed);
+            if (recoilEnabled)
+            {
+                int id = Array.IndexOf(mounts, m);
+                if (id >= 0) firedAt[id] = now;
+            }
             if (ship != null) ship.Recoil(m.side);
         }
     }

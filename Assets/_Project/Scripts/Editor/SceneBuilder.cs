@@ -188,6 +188,8 @@ namespace SkyTide.EditorTools
                 repaired.wind = AssetDatabase.LoadAssetAtPath<TextAsset>(Models + "CorsairRepaired_wind.json");
                 if (repaired.wind == null) throw new System.InvalidOperationException("Corsair cloth wind map is missing");
                 repaired.cannons = AssetDatabase.LoadAssetAtPath<TextAsset>(Models + "CorsairRepaired_cannons.json");
+                repaired.recoil = AssetDatabase.LoadAssetAtPath<TextAsset>(Models + "CorsairRepaired_recoil.json");
+                if (repaired.recoil == null) throw new System.InvalidOperationException("Corsair cannon recoil map is missing");
                 list.Add(repaired);
             }
             TextAsset meshy = AssetDatabase.LoadAssetAtPath<TextAsset>(Models + "Corsair.bytes");
@@ -210,6 +212,12 @@ namespace SkyTide.EditorTools
                 float transmission = j.name == "Old linen repair patches" ? 0.07f : (j.name == "Oxblood pennant" ? 0.12f : 0.2f);
                 Material m = cloth ? MaterialFactory.Cloth(file + "_" + i, c, Mathf.Clamp01(j.smoothness), transmission)
                     : MaterialFactory.Opaque(file + "_" + i, c, Mathf.Clamp01(j.smoothness));
+                if (j.name == "Black forged iron")
+                {
+                    Shader iron = Shader.Find("SkyTide/ShipIron");
+                    if (iron == null) throw new System.InvalidOperationException("ShipIron shader is missing");
+                    m.shader = iron;
+                }
                 m.SetFloat("_Metallic", Mathf.Clamp01(j.metallic));
                 if (!string.IsNullOrEmpty(j.albedo)) m.mainTexture = Tex(Models + j.albedo, false, false, TextureWrapMode.Repeat, TextureWrapMode.Repeat, 4096, true);
                 if (!string.IsNullOrEmpty(j.normal))

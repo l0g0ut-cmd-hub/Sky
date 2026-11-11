@@ -13,7 +13,7 @@ namespace SkyTide
     /// </summary>
     public static class ShipMeshLoader
     {
-        public static Mesh Load(TextAsset asset, TextAsset wind = null)
+        public static Mesh Load(TextAsset asset, TextAsset wind = null, TextAsset recoil = null)
         {
             if (asset == null) return null;
             byte[] b = asset.bytes;
@@ -75,6 +75,7 @@ namespace SkyTide
             mesh.RecalculateBounds();
             mesh.RecalculateTangents();
             ShipWindWeights.Apply(mesh, b, wind);
+            ShipGunWeights.Apply(mesh, b, recoil);
             mesh.UploadMeshData(true);
             return mesh;
         }

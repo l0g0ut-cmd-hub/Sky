@@ -12,6 +12,7 @@ namespace SkyTide
         public Material[] materials;
         public TextAsset cannons;   // <модель>_cannons.json — дула и оси стволов (tools/extract_cannons.py)
         public TextAsset wind;      // sparse cloth weights; no changes to source positions/UV/triangles
+        public TextAsset recoil;    // sparse complete barrel IDs in the same Color32 stream
 
         [NonSerialized] Mesh cached;
 
@@ -19,7 +20,7 @@ namespace SkyTide
         {
             get
             {
-                if (cached == null) cached = ShipMeshLoader.Load(mesh, wind);
+                if (cached == null) cached = ShipMeshLoader.Load(mesh, wind, recoil);
                 return cached;
             }
         }

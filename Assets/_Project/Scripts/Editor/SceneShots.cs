@@ -62,6 +62,10 @@ namespace SkyTide.EditorTools
                 case "84_wind_phase_a":
                 case "85_wind_phase_b":
                 case "86_wind_phase_c": phase = 12; break;
+                case "90_gun_rest":
+                case "91_gun_recoil":
+                case "92_gun_return":
+                case "93_gun_restored": phase = 13; break;
             }
             if (phase >= 0 && boot.Volumetric != null) boot.Volumetric.SetStaticCapturePhase(phase);
             if (boot.Fx != null) boot.Fx.PrepareForRender(cam);
@@ -165,6 +169,66 @@ namespace SkyTide.EditorTools
             {
                 boot.Fx.Clear();
                 Random.state = random;
+            }
+        }
+
+        static void CaptureRecoil(OrbitCamera oc, Camera cam, SkyTideBootstrap boot, string dir)
+        {
+            Broadside guns = boot.Ship.GetComponent<Broadside>();
+            Transform model = boot.Ship.visual.Find("Model");
+            if (model == null || boot.CurrentShip.recoil == null) throw new System.InvalidOperationException("Recoil model/map missing");
+            ShipGunWeights.Map map = JsonUtility.FromJson<ShipGunWeights.Map>(boot.CurrentShip.recoil.text);
+            if (map.names.Length != 16 || map.indices.Length != 3072) throw new System.InvalidOperationException("Revalidate recoil geometry");
+            Vector3 oldPosition = cam.transform.position;
+            Quaternion oldRotation = cam.transform.rotation;
+            Random.State random = Random.state;
+            bool ripple = guns.ripple;
+            RenderTexture rt = new RenderTexture(960,456,24,RenderTextureFormat.ARGB32);
+            Texture2D tex = new Texture2D(960,456,TextureFormat.RGB24,false);
+            try
+            {
+                Random.InitState(52711);
+                boot.Fx.Clear(); boot.SetWindCapture(0f,0f);
+                guns.SetReadinessCapture(1f,1f); guns.SetRecoilCapture(true); guns.ripple = true;
+                Vector3 focus = model.TransformPoint(new Vector3(6.8f,4.55f,2.5f));
+                Vector3 position = model.TransformPoint(new Vector3(19f,8f,6.5f));
+                cam.transform.SetPositionAndRotation(position,Quaternion.LookRotation(focus-position,model.up));
+                SaveFrame(cam,boot,rt,tex,dir,"90_gun_rest");
+                if (!guns.Fire(1)) throw new System.InvalidOperationException("Recoil capture salvo rejected");
+                float time = 0f;
+                StepSalvo(guns,boot.Fx,ref time,0.1f); boot.Fx.Clear();
+                float first = ((Vector3)guns.RecoilCapture(8)).magnitude;
+                if (first < 0.30f || ((Vector3)guns.RecoilCapture(0)).sqrMagnitude != 0f
+                    || ((Vector3)guns.RecoilCapture(15)).sqrMagnitude != 0f)
+                    throw new System.InvalidOperationException("Recoil must follow actual ripple shot times, leaving unfired barrels fixed");
+                MaterialPropertyBlock block = new MaterialPropertyBlock(); model.GetComponent<MeshRenderer>().GetPropertyBlock(block);
+                Vector4[] offsets = block.GetVectorArray("_ShipGunOffsets");
+                if (offsets.Length != 16 || (offsets[8]-guns.RecoilCapture(8)).sqrMagnitude > 1e-8f)
+                    throw new System.InvalidOperationException("Recoil offsets not bound to renderer");
+                SaveFrame(cam,boot,rt,tex,dir,"91_gun_recoil");
+                StepSalvo(guns,boot.Fx,ref time,0.44f); boot.Fx.Clear();
+                float returning = ((Vector3)guns.RecoilCapture(8)).magnitude;
+                if (returning <= 0f || returning >= first) throw new System.InvalidOperationException("Barrel must run out smoothly");
+                SaveFrame(cam,boot,rt,tex,dir,"92_gun_return");
+                StepSalvo(guns,boot.Fx,ref time,1.7f); boot.Fx.Clear();
+                for (int i=0;i<16;i++) if (guns.RecoilCapture(i).sqrMagnitude != 0f) throw new System.InvalidOperationException("Barrel did not return home");
+                SaveFrame(cam,boot,rt,tex,dir,"93_gun_restored");
+                guns.SetReadinessCapture(1f,1f); guns.SetRecoilCapture(true); guns.ripple = false;
+                guns.Fire(-1); guns.Pump(0.03f); guns.Pump(0.09f);
+                for (int i=0;i<16;i++)
+                {
+                    float amount=((Vector3)guns.RecoilCapture(i)).magnitude;
+                    if (i<8 ? Mathf.Abs(amount-0.32f)>0.0001f : amount!=0f)
+                        throw new System.InvalidOperationException("Simultaneous salvo recoil differs between barrels/sides");
+                }
+                Debug.Log("SkyTide: cannon recoil — 16 barrels/3072 vertices, renderer offsets OK; ripple and simultaneous fire OK; kick="
+                    +first.ToString("F4")+", return="+returning.ToString("F4")+", restored=0; four GPU phases rendered");
+            }
+            finally
+            {
+                guns.SetRecoilCapture(false); guns.SetReadinessCapture(1f,1f); guns.ripple=ripple;
+                boot.Fx.Clear(); Random.state=random; cam.transform.SetPositionAndRotation(oldPosition,oldRotation);
+                cam.targetTexture=null; RenderTexture.active=null; rt.Release(); Object.DestroyImmediate(rt); Object.DestroyImmediate(tex);
             }
         }
 
@@ -386,7 +450,7 @@ namespace SkyTide.EditorTools
                 boot.SetVolumetric(true);
                 if (boot.Volumetric != null) boot.Volumetric.ResetTowers(boot.Ship.transform.position);
                 // Каждый пакет снимает свои состояния. Предыдущие профили остаются доступны отдельно.
-                string profile = System.Environment.GetEnvironmentVariable("SKYTIDE_SHOT_PROFILE") ?? "wind";
+                string profile = System.Environment.GetEnvironmentVariable("SKYTIDE_SHOT_PROFILE") ?? "recoil";
                 bool environment = profile != "fx";
                 bool appearance = profile == "appearance";
                 if (environment) Render(oc, cam, boot, rt, tex, dir, new Shot("30_vol_toward_sun", 35f, 8f, 75f));
@@ -412,8 +476,9 @@ namespace SkyTide.EditorTools
                 if (appearance) CaptureTemporal(oc, cam, boot, dir);
                 else if (profile == "damage") CaptureDamage(oc, cam, boot, rt, tex, dir);
                 else if (profile == "hud") CaptureHud(oc, cam, boot, dir);
-                else if (environment) CaptureWind(oc, cam, boot, dir);
-                string sizes = profile == "wind" ? "7x800x380 + 4x960x456"
+                else if (profile == "wind") CaptureWind(oc, cam, boot, dir);
+                else if (environment) CaptureRecoil(oc, cam, boot, dir);
+                string sizes = profile == "wind" || profile == "recoil" ? "7x800x380 + 4x960x456"
                     : profile == "hud" ? "7x800x380 + 2x960x432 + 1x1008x432"
                     : appearance ? "12x800x380 + 4x400x190" : "800x380";
                 Debug.Log("SkyTide: быстрая проверка " + profile + " (" + sizes + "), кадров="
