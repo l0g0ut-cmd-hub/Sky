@@ -102,12 +102,16 @@ namespace SkyTide
             SetVolumetric(volumetricClouds);
 
             Ship = ShipFactory.Build("Player Ship", spawnPosition, spawnHeading, materials, CurrentShip);
+            PlayerHull hull = Ship.GetComponent<PlayerHull>();
+            if (hull == null) hull = Ship.gameObject.AddComponent<PlayerHull>();
+            hull.Setup(Ship);
 
             if (targetShip != null && targetShip.IsValid)
             {
                 ShipController t = ShipFactory.Build("Target Ship", spawnPosition + new Vector3(260f, 0f, 220f), spawnHeading + 140f, materials, targetShip);
                 Target = t.gameObject.AddComponent<TargetShip>();
                 Target.Setup(t, Ship.transform, materials.darkWood,targetShip.mesh);
+                if (Application.isPlaying) t.gameObject.AddComponent<EnemyGunner>().Setup(Target, t);
             }
 
             cam.target = Ship.transform;

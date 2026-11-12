@@ -33,6 +33,7 @@ namespace SkyTide
             public Kind kind;
             public Vector3 axis;
             public float aspect, surfaceY;
+            public bool hostile;   // ядро врага: бьёт по кораблю игрока, а не по мишеням
         }
 
         readonly List<P> ps = new List<P>(MaxParticles);
@@ -71,14 +72,14 @@ namespace SkyTide
         // ---------- выстрел ----------
 
         /// <summary>Выстрел из ствола: точка дула и направление ствола — в мире; скорость корабля добавляется к ядру и дыму.</summary>
-        public void Fire(Vector3 muzzle, Vector3 dir, Vector3 shipVel, float muzzleSpeed)
+        public void Fire(Vector3 muzzle, Vector3 dir, Vector3 shipVel, float muzzleSpeed, bool hostile = false)
         {
             dir.Normalize();
             float s = Random.value * 10f;
             // Ядро
             Add(new P
             {
-                kind = Kind.Ball, pos = muzzle, vel = dir * muzzleSpeed + shipVel, life = 7f,
+                kind = Kind.Ball, pos = muzzle, vel = dir * muzzleSpeed + shipVel, life = 7f, hostile = hostile,
                 size0 = 0.85f, size1 = 0.7f, color = new Color(0.2f, 0.15f, 0.12f), alpha = 1f, seed = s
             });
             Flash(muzzle, 2.5f, 32f);
@@ -312,7 +313,12 @@ namespace SkyTide
                         TargetShip target = null;
                         Vector3 hitPoint = end;
                         float nearest = float.MaxValue;
-                        for (int j = 0; j < TargetShip.All.Count; j++)
+                        if (p.hostile)
+                        {
+                            Vector3 hp; PlayerHull ph = PlayerHull.Instance;
+                            if (ph != null && ph.TryHit(prev, end, out hp)) { end = hp; hit = true; ph.OnHit(hp); }
+                        }
+                        else for (int j = 0; j < TargetShip.All.Count; j++)
                         {
                             Vector3 hp;
                             if (TargetShip.All[j].TryHit(prev, end, out hp) && (hp - prev).sqrMagnitude < nearest)

@@ -269,6 +269,31 @@ namespace SkyTide
             }
         }
 
+        /// <summary>Прочность корпуса — под плашкой курса; при попадании плашка вздрагивает красным.</summary>
+        void Hull(HudLayout l)
+        {
+            PlayerHull hull = PlayerHull.Instance;
+            if (hull == null) return;
+            float f = hull.Health01;
+            float flash = Mathf.Clamp01(1f - (Time.time - hull.LastHitTime) / 0.5f);
+            Rect bar = new Rect(l.course.x + l.unit * 0.02f, l.course.yMax + l.unit * 0.012f, l.course.width - l.unit * 0.04f, l.unit * 0.028f);
+            Color fill = Color.Lerp(new Color(1f, 0.35f, 0.2f), Color.white, Mathf.Clamp01((f - 0.25f) / 0.5f));
+            if (HasKit)
+            {
+                Sprite(bar, KGroove, Color.white);
+                if (f > 0.001f) Sprite(new Rect(bar.x, bar.y, bar.width * f, bar.height), new Rect(KFill.x, KFill.y, KFill.width * f, KFill.height), fill);
+            }
+            else
+            {
+                Box(bar, new Color(0.015f, 0.02f, 0.026f, 0.9f));
+                Box(new Rect(bar.x, bar.y, bar.width * f, bar.height), fill * gold);
+            }
+            if (flash > 0f) Box(new Rect(bar.x, bar.y, bar.width, bar.height), new Color(1f, 0.2f, 0.1f, 0.35f * flash));
+            Text(new Rect(bar.x, bar.yMax, bar.width, l.unit * 0.032f), "КОРПУС " + Mathf.RoundToInt(f * 100f) + "%", l.unit * 0.02f, f < 0.3f ? new Color(1f, 0.55f, 0.45f) : muted);
+            if (!hull.Alive)
+                Text(new Rect(l.safe.x, l.safe.center.y - l.unit * 0.06f, l.safe.width, l.unit * 0.12f), "КОРАБЛЬ ПОДБИТ", l.unit * 0.06f, new Color(1f, 0.5f, 0.35f));
+        }
+
         void RadarKit(TouchControls input,HudLayout l,Vector2 c,float R,float range)
         {
             Sprite(new Rect(c.x-R,c.y-R*KRadar.height/KRadar.width,R*2f,R*2f*KRadar.height/KRadar.width),KRadar,Color.white);
@@ -315,6 +340,7 @@ namespace SkyTide
                     Panel(l.course,l.unit); Text(l.course,"КУРС "+(Mathf.RoundToInt(input.ship.transform.eulerAngles.y)%360).ToString("000")+"°",l.unit*0.028f,cream);
                     Panel(l.speed,l.unit);Text(l.speed,"ХОД "+input.ship.Speed.ToString("F1")+" м/с",l.unit*0.027f,cream);
                     Radar(input,l);
+                    Hull(l);
                     Panel(l.fps,l.unit);Text(l.fps,Application.isPlaying?Mathf.RoundToInt(input.Fps)+" FPS":"FPS —",l.unit*0.024f,muted);
                     Text(l.version,input.BuildText,l.unit*0.023f,cream);
                     Broadside guns=input.Guns();
