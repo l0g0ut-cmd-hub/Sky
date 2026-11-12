@@ -20,6 +20,7 @@ namespace SkyTide
         public Transform cargo;
         public float conversation;
         public Vector3 conversationPartner;
+        public float report,reportYaw;
         public int gunIndex=-1;
         public Transform gunBarrel;
         public int commandSide;
@@ -146,6 +147,10 @@ namespace SkyTide
             if(duty==Duty.Gunner)bones[0].localPosition+=Vector3.back*(kick*.10f);
             bones[1].localRotation=Quaternion.Euler(breathe*.7f,0,Mathf.Sin(t*.65f)*.8f);
             bones[4].localRotation=Quaternion.Euler(Mathf.Sin(t*.8f)*3f,Mathf.Sin(t*.45f)*13f,0);
+            if(duty==Duty.Lookout&&conversation<.01f)
+                bones[4].localRotation=Quaternion.Euler(-2f,Mathf.Lerp(Mathf.Sin(time*.32f+phase)*38f,reportYaw,report),0);
+            if(duty==Duty.Captain&&report>0)
+                bones[4].localRotation=Quaternion.Euler(Mathf.Sin(time*5f)*report*4f,reportYaw*report,0);
             ReloadAmount=duty==Duty.Loader&&shotAge>=.9f&&shotAge<2.15f?Mathf.Sin((shotAge-.9f)/1.25f*Mathf.PI):0;
             if(duty==Duty.Gunner)bones[1].localRotation=Quaternion.Euler(-3f-kick*7f,0,0);
             if(duty==Duty.Loader)
@@ -223,6 +228,7 @@ namespace SkyTide
                 else if(duty==Duty.Captain)
                 {
                     l=new Vector3(-.20f,1.02f,.10f);
+                    if(order<=0)r=Vector3.Lerp(r,new Vector3(.25f,1.32f,.23f),report);
                     if(commandSide<0)l=Vector3.Lerp(l,new Vector3(-.22f,1.42f,.30f),order);
                     else r=Vector3.Lerp(r,new Vector3(.22f,1.45f,.30f),order);
                 }
@@ -230,6 +236,7 @@ namespace SkyTide
                 {
                     float scan=.5f+.5f*Mathf.Sin(t*.4f);
                     r=Vector3.Lerp(r,new Vector3(.13f,1.56f,.19f),scan);
+                    if(conversation<.01f)r=Vector3.Lerp(r,new Vector3(.28f,1.67f,.21f),report);
                 }
                 else if(walking)
                 {

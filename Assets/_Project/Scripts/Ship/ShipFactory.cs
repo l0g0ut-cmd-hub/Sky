@@ -45,6 +45,7 @@ namespace SkyTide
             ShipCrew crew=ctrl.GetComponent<ShipCrew>();
             if(crew==null)crew=ctrl.gameObject.AddComponent<ShipCrew>();
             crew.Configure(ctrl,visual,variant);b.crew=crew;
+            ShipDeckDressing.Build(visual,variant);
         }
 
         static Transform BuildFromMesh(Transform visual, Mesh mesh, Material[] mats)

@@ -26,12 +26,17 @@ namespace SkyTide
         int hits;
         float deadUntil = -1f;
         ShipDamageVisual damageVisual;
+        ShipHitSurface surface;
+        ShipHitSurface.Contact lastContact;
+        bool hasContact;
 
         public bool Alive { get { return deadUntil < 0f; } }
         public ShipDamageVisual DamageVisual { get { return damageVisual; } }
         public int HitCount { get { return hits; } }
+        public ShipHitSurface Surface {get {return surface;}}
+        public Vector3 ImpactNormal {get {return model.TransformDirection(lastContact.normal).normalized;}}
 
-        public void Setup(ShipController c, Transform player, Material debrisWood = null)
+        public void Setup(ShipController c, Transform player, Material debrisWood = null,TextAsset geometry=null)
         {
             ctrl = c;
             this.player = player;
@@ -40,7 +45,8 @@ namespace SkyTide
             MeshFilter mf = model != null ? model.GetComponent<MeshFilter>() : null;
             box = mf != null && mf.sharedMesh != null ? mf.sharedMesh.bounds : new Bounds(Vector3.up * 8f, new Vector3(10f, 14f, 36f));
             damageVisual = gameObject.AddComponent<ShipDamageVisual>();
-            damageVisual.Configure(model, box, debrisWood);
+            if(geometry!=null)surface=new ShipHitSurface(geometry);
+            damageVisual.Configure(model, box, debrisWood,surface);
             Pick();
         }
 
@@ -77,6 +83,12 @@ namespace SkyTide
         {
             point = b;
             if (!Alive || model == null) return false;
+            if(surface!=null)
+            {
+                hasContact=surface.Trace(model.InverseTransformPoint(a),model.InverseTransformPoint(b),out lastContact);
+                if(hasContact)point=model.TransformPoint(lastContact.point);
+                return hasContact;
+            }
             Bounds bb = box;
             bb.Expand(1.2f);
             const int n = 6;
@@ -94,7 +106,16 @@ namespace SkyTide
             hits++;
             FxSystem fx = FxSystem.Instance;
             Vector3 velocity = transform.forward * ctrl.Speed;
-            if (damageVisual != null) damageVisual.Hit(point, hits / (float)Mathf.Max(1, hitsToSink), velocity);
+            Vector3 normal=(point-model.TransformPoint(box.center)).normalized;
+            if(hasContact&&(point-model.TransformPoint(lastContact.point)).sqrMagnitude<.01f)normal=ImpactNormal;
+            else if(surface!=null)
+            {
+                Vector3 local=model.InverseTransformPoint(point),outward=(local-box.center).normalized;
+                if(outward.sqrMagnitude<.1f)outward=Vector3.right;
+                if(surface.Trace(local+outward*5f,local-outward*15f,out lastContact)){point=model.TransformPoint(lastContact.point);normal=ImpactNormal;}
+            }
+            hasContact=false;
+            if (damageVisual != null) damageVisual.Hit(point, hits / (float)Mathf.Max(1, hitsToSink), velocity,normal);
             if (hits >= hitsToSink)
             {
                 if (fx != null) fx.Explosion(model.TransformPoint(box.center), 3f);
@@ -103,7 +124,7 @@ namespace SkyTide
                 ctrl.throttle = 0f;
                 ctrl.turn = 0f;
             }
-            else if (fx != null) fx.Explosion(point, 1f);
+            else if (fx != null) fx.HullImpact(point,normal,velocity);
         }
 
         void Respawn()

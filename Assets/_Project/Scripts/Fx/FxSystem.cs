@@ -23,7 +23,7 @@ namespace SkyTide
         const int MaxLights = 2;   // только vertex light, без теней и дополнительных forward-проходов
 
         // Значения совпадают с Fx.shader.
-        enum Kind { Glow = 0, Smoke = 1, Ball = 2, Muzzle = 3, Spark = 4, Foam = 5, Wave = 6, Splinter = 7 }
+        enum Kind { Glow = 0, Smoke = 1, Ball = 2, Muzzle = 3, Spark = 4, Foam = 5, Wave = 6, Splinter = 7, Flame = 8 }
 
         struct P
         {
@@ -51,6 +51,7 @@ namespace SkyTide
         public VolumetricClouds volumetric;
         public int CloudSplashCount { get; private set; }
         public Vector3 LastCloudSplash { get; private set; }
+        public int ActiveFlames {get {int n=0;foreach(P p in ps)if(p.kind==Kind.Flame)n++;return n;}}
 #if UNITY_EDITOR
         bool legacyAppearanceCapture;
         public void SetLegacyAppearanceCapture(bool enabled) { legacyAppearanceCapture = enabled; }
@@ -147,6 +148,31 @@ namespace SkyTide
         {
             if (ps.Count >= MaxParticles) return;
             ps.Add(p);
+        }
+
+        public void HullImpact(Vector3 at,Vector3 outward,Vector3 inheritedVelocity)
+        {
+            Explosion(at,1f);
+            // Splinters leave the struck face instead of scattering equally into the hull.
+            for(int i=0;i<9;i++)
+            {
+                Vector3 direction=(outward+Random.insideUnitSphere*.55f+Vector3.up*.2f).normalized;
+                Add(new P{kind=Kind.Splinter,pos=at+outward*.2f,vel=inheritedVelocity+direction*Random.Range(8f,18f),axis=Random.onUnitSphere,
+                    aspect=Random.Range(.07f,.16f),life=Random.Range(1.2f,2.4f),size0=Random.Range(.45f,1.2f),
+                    color=new Color(.34f,.16f,.055f),alpha=1,spin=Random.Range(-7f,7f),seed=Random.value*10});
+            }
+        }
+
+        public void DamageFire(Vector3 at,Vector3 outward,float severity,Vector3 inheritedVelocity)
+        {
+            float height=Mathf.Lerp(2.2f,3.8f,severity)*Random.Range(.8f,1.1f);
+            Vector3 axis=(Vector3.up+wind*.035f).normalized;
+            Add(new P{kind=Kind.Flame,pos=at+axis*(height*.42f)+Random.insideUnitSphere*.16f,
+                vel=inheritedVelocity+axis*.5f,axis=axis,aspect=.5f,life=Random.Range(.55f,.9f),size0=height,size1=height*1.2f,
+                color=new Color(1,.37f,.065f),alpha=.65f,seed=Random.value*10});
+            Vector3 velocity=inheritedVelocity+Vector3.up*Random.Range(2f,4f)+wind*.18f+outward*.6f;
+            Add(new P{kind=Kind.Spark,pos=at+Vector3.up*.4f,vel=velocity,axis=Vector3.up,aspect=.2f,
+                life=Random.Range(.65f,1.2f),size0=.22f,size1=.05f,color=new Color(1,.5f,.08f),alpha=.65f});
         }
 
         /// <summary>Дым из закреплённой на повреждённом корпусе точки; не из летящего ядра.</summary>
@@ -433,7 +459,7 @@ namespace SkyTide
                     size = Mathf.Lerp(p.size0, p.size1, 1f - (1f - t) * (1f - t));
                     a = p.alpha * Mathf.Clamp01(p.age / 0.08f) * (1f - t) * (1f - t);
                 }
-                else if (p.kind == Kind.Glow || p.kind == Kind.Muzzle || p.kind == Kind.Spark)
+                else if (p.kind == Kind.Glow || p.kind == Kind.Muzzle || p.kind == Kind.Spark || p.kind == Kind.Flame)
                 {
                     size = Mathf.Lerp(p.size0, p.size1, t);
                     a = p.alpha * (1f - t);

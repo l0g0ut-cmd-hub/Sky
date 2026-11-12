@@ -112,6 +112,20 @@ namespace SkyTide
             wheel.localRotation=Quaternion.Euler(0,0,WheelAngle);
             DeckRoutine.Frame conversation=patrolRoutine.Sample(time);
             lookout.conversation=conversation.talk;lookout.conversationPartner=conversation.position;
+            lookout.report=captain.report=0;
+            foreach(TargetShip target in TargetShip.All)
+            {
+                if(!target.Alive)continue;
+                Vector3 local=lookout.root.parent.InverseTransformPoint(target.transform.position)-lookout.station;
+                float bearing=Mathf.Atan2(local.x,local.z)*Mathf.Rad2Deg;
+                if(local.sqrMagnitude>700f*700f||Mathf.Abs(bearing)>100f)continue;
+                float cycle=Mathf.Repeat(time,22f);
+                lookout.report=Mathf.SmoothStep(0,1,Mathf.Clamp01((cycle-.4f)/.4f))*(1f-Mathf.SmoothStep(0,1,Mathf.Clamp01((cycle-2.4f)/.5f)));
+                lookout.report*=1f-lookout.conversation;lookout.reportYaw=Mathf.Clamp(bearing,-60,60);
+                captain.report=Mathf.SmoothStep(0,1,Mathf.Clamp01((cycle-1.4f)/.4f))*(1f-Mathf.SmoothStep(0,1,Mathf.Clamp01((cycle-3.2f)/.5f)));
+                Vector3 toward=lookout.station-captain.station;captain.reportYaw=Mathf.Clamp(Mathf.Atan2(toward.x,toward.z)*Mathf.Rad2Deg-captain.yaw,-45,45);
+                break;
+            }
             float open=cargoRoutine.LockerOpen(time);
             for(int i=0;i<2;i++)lockerDoors[i].localRotation=Quaternion.Euler(0,(i==0?-1:1)*open*115f,0);
             storedCargo.gameObject.SetActive(cargoRoutine.Sample(time).stored);

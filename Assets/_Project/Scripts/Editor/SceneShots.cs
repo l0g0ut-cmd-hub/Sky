@@ -86,6 +86,11 @@ namespace SkyTide.EditorTools
                 case "121_rigging_pull": phase = 24; break;
                 case "122_crew_bank_left":
                 case "123_crew_bank_right": phase = 25; break;
+                case "130_deck_supplies": phase = 26; break;
+                case "131_target_report": phase = 27; break;
+                case "132_hull_impact":
+                case "133_battle_scars":
+                case "134_hull_fire": phase = 28; break;
             }
             if (phase >= 0 && boot.Volumetric != null) boot.Volumetric.SetStaticCapturePhase(phase);
             if (boot.Fx != null) boot.Fx.PrepareForRender(cam);
@@ -924,7 +929,7 @@ namespace SkyTide.EditorTools
                 if (!damage.Hidden || damage.Model.gameObject.activeSelf)
                     throw new System.InvalidOperationException("Wreck did not disappear entirely below the cloud deck");
                 int splashes = boot.Fx.CloudSplashCount;
-                if (splashes != 1) throw new System.InvalidOperationException("Wreck must produce exactly one cloud-entry splash, got " + splashes);
+                if (damage.HullCloudContacts!=1||splashes<1) throw new System.InvalidOperationException("Wreck must produce one hull/cloud contact; fragment splashes remain independent");
                 target.ResetDamageCapture(); boot.Fx.Clear(); oc.lookHeight = bounds.center.y;
                 if (damage.Sinking || damage.Hidden || damage.VentCount != 0 || damage.DebrisCount != 0
                     || damage.Model.localPosition != restPosition || Quaternion.Angle(damage.Model.localRotation, restRotation) > 0.001f || !target.Alive)
@@ -972,6 +977,78 @@ namespace SkyTide.EditorTools
             }
         }
 
+        static Vector3 BattleHit(TargetShip target,float z)
+        {
+            Transform model=target.DamageVisual.Model;Bounds box=target.Surface.Bounds;
+            Vector3 a=model.TransformPoint(new Vector3(box.max.x+5f,3f,z)),b=model.TransformPoint(new Vector3(box.min.x-5f,3f,z)),hit;
+            if(!target.TryHit(a,b,out hit))throw new System.InvalidOperationException("Surface shot missed the known hull section");
+            Vector3 local=model.InverseTransformPoint(hit);
+            if(z==0f&&(local.x<6f||local.x>7f))throw new System.InvalidOperationException("Hull impact is still on the enclosing box: "+local);
+            target.OnHit(hit);return hit;
+        }
+
+        static void CaptureBattleLife(Camera cam,SkyTideBootstrap boot,string dir)
+        {
+            TargetShip target=boot.Target;ShipDamageVisual damage=target.DamageVisual;ShipCrew crew=boot.Ship.GetComponent<ShipCrew>();Transform visual=boot.Ship.visual;
+            Vector3 oldTarget=target.transform.position,oldCamera=cam.transform.position;Quaternion oldTargetRotation=target.transform.rotation,oldCameraRotation=cam.transform.rotation;
+            Random.State random=Random.state;RenderTexture rt=new RenderTexture(960,456,24,RenderTextureFormat.ARGB32);Texture2D tex=new Texture2D(960,456,TextureFormat.RGB24,false);
+            bool[] recalculate=new bool[crew.Count];int at=0;foreach(CrewActor actor in crew.ActorsCapture){recalculate[at++]=actor.renderer.forceMatrixRecalculationPerRender;actor.renderer.forceMatrixRecalculationPerRender=true;}
+            try
+            {
+                Random.InitState(62131);boot.Fx.Clear();target.ResetDamageCapture();crew.SetVisible(true);crew.Pose(8f);
+                Transform supplies=visual.Find("Deck supplies");
+                if(supplies==null||supplies.childCount!=6)throw new System.InvalidOperationException("Deck barrel/rope fittings missing");
+                Vector3 focus=visual.TransformPoint(new Vector3(-4.1f,ShipCrew.MainDeck+.6f,-3.6f));
+                Vector3 camera=visual.TransformPoint(new Vector3(-.4f,ShipCrew.MainDeck+3.3f,-1.1f));
+                cam.transform.SetPositionAndRotation(camera,Quaternion.LookRotation(focus-camera,visual.up));SaveFrame(cam,boot,rt,tex,dir,"130_deck_supplies");
+                target.transform.position=boot.Ship.transform.position+boot.Ship.transform.forward*240f+boot.Ship.transform.right*120f;
+                CheckCrewPose(crew,1.9f);CrewActor lookout=crew.LookoutCapture,captain=null;
+                foreach(CrewActor actor in crew.ActorsCapture)if(actor.duty==CrewActor.Duty.Captain)captain=actor;
+                if(lookout.report<.95f||captain.report<.95f||lookout.HandError>.002f)throw new System.InvalidOperationException("Lookout/captain report not synchronized");
+                focus=lookout.root.TransformPoint(new Vector3(0,1.4f,.12f));camera=lookout.root.TransformPoint(new Vector3(-1.65f,2f,2.1f));
+                cam.transform.SetPositionAndRotation(camera,Quaternion.LookRotation(focus-camera,visual.up));SaveFrame(cam,boot,rt,tex,dir,"131_target_report");
+                crew.SetVisible(false);target.transform.SetPositionAndRotation(boot.Ship.transform.position+boot.Ship.transform.right*90f,Quaternion.Euler(7,37,-4));
+                Transform model=damage.Model;Bounds box=target.Surface.Bounds;Vector3 miss;
+                Vector3 corner=new Vector3(box.max.x-.05f,box.max.y-.05f,box.max.z-.05f);
+                if(target.TryHit(model.TransformPoint(corner),model.TransformPoint(corner+Vector3.left*.08f),out miss))
+                    throw new System.InvalidOperationException("Empty space inside target bounds still reports a hit");
+                Vector3 hit=BattleHit(target,0f);
+                if(damage.ScarCount!=1||damage.ScarVertices<29||damage.DebrisCount==0)throw new System.InvalidOperationException("Projected scar or physical splinters missing");
+                Vector3 localFocus=model.InverseTransformPoint(hit),localNormal=model.InverseTransformDirection(target.ImpactNormal);
+                StepDamage(damage,boot.Fx,.09f);
+                focus=model.TransformPoint(localFocus);camera=model.TransformPoint(localFocus+localNormal*16f+Vector3.up*5f+Vector3.forward*4f);
+                cam.transform.SetPositionAndRotation(camera,Quaternion.LookRotation(focus-camera,Vector3.up));SaveFrame(cam,boot,rt,tex,dir,"132_hull_impact");
+                BattleHit(target,-5f);BattleHit(target,5f);StepDamage(damage,boot.Fx,1f);boot.Fx.Clear();
+                focus=model.TransformPoint(new Vector3(6,3,0));camera=model.TransformPoint(new Vector3(24,7,8));
+                cam.transform.SetPositionAndRotation(camera,Quaternion.LookRotation(focus-camera,Vector3.up));SaveFrame(cam,boot,rt,tex,dir,"133_battle_scars");
+                while(target.HitCount<15)BattleHit(target,(target.HitCount%3-1)*5f);
+                boot.Fx.Clear();StepDamage(damage,boot.Fx,2f);
+                if(!damage.Burning||boot.Fx.ActiveFlames==0||damage.VentCount!=3||damage.ScarCount>16)
+                    throw new System.InvalidOperationException("Persistent hull fire/scar limits failed");
+                cam.transform.SetPositionAndRotation(model.TransformPoint(new Vector3(27,9,10)),Quaternion.LookRotation(model.TransformPoint(new Vector3(5,4,0))-model.TransformPoint(new Vector3(27,9,10)),Vector3.up));
+                SaveFrame(cam,boot,rt,tex,dir,"134_hull_fire");
+                int flames=boot.Fx.ActiveFlames;
+                while(target.HitCount<target.hitsToSink)BattleHit(target,0f);
+                if(target.Alive||!damage.Sinking||damage.Hidden)throw new System.InvalidOperationException("Thirty hits no longer start visible foundering");
+                boot.Fx.Clear();StepDamage(damage,boot.Fx,5.4f);
+                if(!damage.Hidden||damage.HullCloudContacts!=1)throw new System.InvalidOperationException("Wreck/cloud entry must happen once before hiding");
+                target.ResetDamageCapture();boot.Fx.Clear();
+                if(damage.ScarCount!=0||damage.ScarVertices!=0||damage.Burning||damage.DebrisCount!=0||!target.Alive)
+                    throw new System.InvalidOperationException("Battle damage leaked into respawn");
+                OrbitCamera orbit=boot.Cam;orbit.SalvoImpulse(1);float peak=0;
+                for(int frame=0;frame<120;frame++){orbit.Apply(1f/60f);peak=Mathf.Max(peak,orbit.RecoilAngle);}
+                if(peak<.03f||peak>.3f||orbit.RecoilAngle>.001f)throw new System.InvalidOperationException("Salvo camera impulse failed to settle");
+                Debug.Log("SkyTide: battle-life verified — exact source triangle hit under rotation, empty bounding-box corner rejected; projected scars/wood fragments; 3 attached fire vents, flames="+flames+"; thirty hits, one wreck/cloud entry, clean respawn; 4 staved barrels/2 rope coils; lookout/captain report; camera impulse peak="+peak.ToString("F3")+" deg and settled; five detail frames rendered");
+            }
+            finally
+            {
+                target.ResetDamageCapture();boot.Fx.Clear();target.transform.SetPositionAndRotation(oldTarget,oldTargetRotation);Random.state=random;
+                crew.SetVisible(false);at=0;foreach(CrewActor actor in crew.ActorsCapture)actor.renderer.forceMatrixRecalculationPerRender=recalculate[at++];
+                cam.transform.SetPositionAndRotation(oldCamera,oldCameraRotation);cam.targetTexture=null;RenderTexture.active=null;
+                rt.Release();Object.DestroyImmediate(rt);Object.DestroyImmediate(tex);
+            }
+        }
+
         static void CaptureQuick(OrbitCamera oc, Camera cam, SkyTideBootstrap boot, string dir)
         {
             float start = Time.realtimeSinceStartup;
@@ -982,7 +1059,23 @@ namespace SkyTide.EditorTools
                 boot.SetVolumetric(true);
                 if (boot.Volumetric != null) boot.Volumetric.ResetTowers(boot.Ship.transform.position);
                 // Каждый пакет снимает свои состояния. Предыдущие профили остаются доступны отдельно.
-                string profile = System.Environment.GetEnvironmentVariable("SKYTIDE_SHOT_PROFILE") ?? "deck-motion";
+                string profile = System.Environment.GetEnvironmentVariable("SKYTIDE_SHOT_PROFILE") ?? "battle-life";
+                if(profile=="battle-life")
+                {
+                    CaptureLife(oc,cam,boot,dir,true,false);boot.Fx.Clear();
+                    Render(oc,cam,boot,rt,tex,dir,new Shot("30_vol_toward_sun",35,8,75));
+                    Render(oc,cam,boot,rt,tex,dir,new Shot("32_vol_side",90,8,70));
+                    CaptureBattleLife(cam,boot,dir);
+                    Broadside reviewGuns=boot.Ship.GetComponent<Broadside>();bool ripple=reviewGuns.ripple;Random.State random=Random.state;
+                    try
+                    {
+                        reviewGuns.ripple=true;reviewGuns.SetReadinessCapture(1,1);Random.InitState(74131);reviewGuns.Fire(-1);reviewGuns.Fire(1);float time=0;
+                        StepSalvo(reviewGuns,boot.Fx,ref time,.06f);Render(oc,cam,boot,rt,tex,dir,new Shot("45_vol_muzzle_flash",90,6,58));
+                    }
+                    finally{reviewGuns.ripple=ripple;reviewGuns.SetReadinessCapture(1,1);boot.Fx.Clear();Random.state=random;}
+                    Debug.Log("SkyTide: быстрая проверка battle-life (3x800x380 + 5x960x456), кадров="+Directory.GetFiles(dir,"*.jpg").Length+", секунд="+(Time.realtimeSinceStartup-start).ToString("F1"));
+                    return;
+                }
                 if(profile=="deck-motion")
                 {
                     CaptureLife(oc,cam,boot,dir,true,false);CaptureDeckMotion(cam,boot,dir);

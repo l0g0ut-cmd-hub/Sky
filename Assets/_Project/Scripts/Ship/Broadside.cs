@@ -154,6 +154,11 @@ namespace SkyTide
             float now = Application.isPlaying ? Time.time : 0f;
             if (now < ready[k]) return false;
             ready[k] = now + cooldown;
+            if(Application.isPlaying&&Camera.main!=null)
+            {
+                OrbitCamera view=Camera.main.GetComponent<OrbitCamera>();
+                if(view!=null&&view.target==transform)view.SalvoImpulse(side);
+            }
             List<CannonMount> list = new List<CannonMount>();
             foreach (CannonMount m in mounts) if (Mathf.Sign(m.side) == Mathf.Sign(side)) list.Add(m);
             if(crew!=null)for(int gun=0;gun<2;gun++){CannonMount upper=crew.UpperMount(side,gun);if(upper!=null)list.Add(upper);}

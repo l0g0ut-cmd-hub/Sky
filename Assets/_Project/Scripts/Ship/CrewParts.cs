@@ -168,6 +168,48 @@ namespace SkyTide
             }
             return g.Finish("Bound cargo crate with side grips");
         }
+        public static Mesh StavedBarrel()
+        {
+            CrewParts g=new CrewParts();float[] y={0,.08f,.28f,.52f,.78f,.99f,1.04f},radius={.30f,.32f,.37f,.39f,.37f,.32f,.30f};
+            const int staves=20;
+            for(int stave=0;stave<staves;stave++)for(int ring=0;ring<y.Length-1;ring++)
+            {
+                float a=stave*Mathf.PI*2/staves+.004f,b=(stave+1)*Mathf.PI*2/staves-.004f;
+                Vector3 na=new Vector3(Mathf.Cos(a),0,Mathf.Sin(a)),nb=new Vector3(Mathf.Cos(b),0,Mathf.Sin(b));
+                int p=g.Add(na*radius[ring]+Vector3.up*y[ring],na),q=g.Add(nb*radius[ring]+Vector3.up*y[ring],nb);
+                int r=g.Add(nb*radius[ring+1]+Vector3.up*y[ring+1],nb),s=g.Add(na*radius[ring+1]+Vector3.up*y[ring+1],na);
+                g.Triangle(p,q,r,0);g.Triangle(p,r,s,0);
+            }
+            g.Cylinder(new Vector3(0,1.015f,0),new Vector3(0,1.04f,0),.30f);
+            float[] bands={.13f,.52f,.93f},sizes={.345f,.405f,.345f};
+            for(int k=0;k<bands.Length;k++)
+            {
+                g.Cylinder(Vector3.up*(bands[k]-.028f),Vector3.up*(bands[k]+.028f),sizes[k],1,24);
+                for(int i=0;i<8;i++)
+                {
+                    float a=i*Mathf.PI/4;Vector3 d=new Vector3(Mathf.Cos(a),0,Mathf.Sin(a));
+                    g.Cylinder(Vector3.up*bands[k]+d*sizes[k],Vector3.up*bands[k]+d*(sizes[k]+.018f),.017f,1,8);
+                }
+            }
+            return g.Finish("Staved supply barrel with iron hoops and rivets");
+        }
+        public static Mesh SpareRope()
+        {
+            CrewParts g=new CrewParts();const int rings=97,sides=8;
+            for(int i=0;i<rings;i++)
+            {
+                float t=(float)i/(rings-1),a=t*Mathf.PI*6,r=.10f+t*.28f;
+                Vector3 center=new Vector3(Mathf.Cos(a)*r,.025f,Mathf.Sin(a)*r);
+                Vector3 axis=new Vector3(-Mathf.Sin(a)*r+Mathf.Cos(a)*.28f/(Mathf.PI*6),0,Mathf.Cos(a)*r+Mathf.Sin(a)*.28f/(Mathf.PI*6)).normalized;
+                Vector3 side=Vector3.Cross(axis,Vector3.up);
+                for(int j=0;j<sides;j++){float b=j*Mathf.PI*2/sides;Vector3 n=Vector3.up*Mathf.Cos(b)+side*Mathf.Sin(b);g.Add(center+n*.018f,n);}
+            }
+            for(int i=0;i<rings-1;i++)for(int j=0;j<sides;j++)
+            {
+                int a=i*sides+j,b=i*sides+(j+1)%sides,c=b+sides,d=a+sides;g.Triangle(a,b,c,0);g.Triangle(a,c,d,0);
+            }
+            return g.Finish("Coiled spare running rope");
+        }
         public static Mesh Locker()
         {
             CrewParts g=new CrewParts();g.Box(new Vector3(0,.04f,0),new Vector3(1f,.08f,.54f));

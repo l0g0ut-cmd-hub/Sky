@@ -145,6 +145,19 @@ Shader "Hidden/SkyTide/Fx"
                     float a = (1.0 - smoothstep(0.8, 1.0, r)) * i.color.a * m;
                     return half4(col * a, a);   // железное ядро, не светящийся шар
                 }
+                if (kind > 7.5)
+                {
+                    float x = i.uv.x + 0.5;
+                    float n = tex2D(_SkyTideNoise, i.uv * float2(1.4, 3.4) + i.data.ww + float2(-i.anim.x * 1.9, i.anim.x * 0.6)).g;
+                    float sway = sin(x * 8.0 - i.anim.x * 12.0 + i.data.w) * 0.045 * x;
+                    float width = (1.0 - x) * 0.44 + 0.025;
+                    float shape = 1.0 - smoothstep(width * 0.35, width, abs(i.uv.y - sway));
+                    float envelope = smoothstep(0.0, 0.07, x) * (1.0 - smoothstep(0.72, 1.0, x));
+                    float core = saturate((1.0 - abs(i.uv.y) * 4.0) * (1.0 - x));
+                    float3 col = lerp(float3(1, 0.13, 0.018), float3(1, 0.85, 0.3), core);
+                    float a = shape * envelope * lerp(0.55, 1.0, n) * i.color.a * m;
+                    return half4(col * a * _FxParams.x * 0.65, a * 0.5);
+                }
                 if (kind > 6.5)
                 {
                     float edge = (1.0 - smoothstep(0.32, 0.5, abs(i.uv.x))) * (1.0 - smoothstep(0.25, 0.5, abs(i.uv.y)));

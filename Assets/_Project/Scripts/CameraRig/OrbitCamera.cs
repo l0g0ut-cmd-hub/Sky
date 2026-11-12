@@ -22,6 +22,20 @@ namespace SkyTide
 
         float smoothHeading;
         bool snapped;
+        Vector2 recoil,recoilVelocity;
+        public float RecoilAngle {get {return recoil.magnitude;}}
+        public void SalvoImpulse(int side)
+        {
+            float strength=Mathf.Clamp01(55f/Mathf.Max(27f,distance));
+            recoilVelocity+=new Vector2(5f,side*3f)*strength;
+        }
+        void OnDisable(){recoil=recoilVelocity=Vector2.zero;}
+        void StepRecoil(float dt)
+        {
+            if(dt<=0)return;
+            const float w=16f;float fade=Mathf.Exp(-w*dt);Vector2 b=recoilVelocity+w*recoil;
+            recoil=(recoil+b*dt)*fade;recoilVelocity=(recoilVelocity-w*b*dt)*fade;
+        }
 
         public void Snap()
         {
@@ -59,6 +73,8 @@ namespace SkyTide
             transform.position = desired;
             snapped = true;
             transform.rotation = Quaternion.LookRotation(pivot - transform.position, Vector3.up);
+            StepRecoil(dt);
+            if(recoil.sqrMagnitude>1e-10f)transform.rotation*=Quaternion.Euler(recoil.x,recoil.y,recoil.y*.35f);
         }
     }
 }

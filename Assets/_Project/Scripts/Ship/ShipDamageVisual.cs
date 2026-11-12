@@ -16,6 +16,10 @@ namespace SkyTide
         Quaternion restRotation;
         Vector2 angle, angularVelocity;
         readonly Vector3[] vents = new Vector3[3];
+        readonly Vector3[] ventNormals=new Vector3[3];
+        ShipImpactMarks marks;
+        int impactSerial;
+        ShipController controller;
         int ventCount, ventCursor;
         float damage, smokeClock, sinkAge = -1f, sinkSide = 1f;
         bool cloudContact;
@@ -26,10 +30,15 @@ namespace SkyTide
         public int VentCount { get { return ventCount; } }
         public int DebrisCount { get { return debris != null ? debris.Count : 0; } }
         public Transform Model { get { return model; } }
+        public int ScarCount {get {return marks!=null?marks.Count:0;}}
+        public int ScarVertices {get {return marks!=null?marks.VertexCount:0;}}
+        public bool Burning {get {return !Hidden&&damage>=.4f&&ventCount>0;}}
+        public int HullCloudContacts {get;private set;}
 
-        public void Configure(Transform body, Bounds bounds, Material wood)
+        public void Configure(Transform body, Bounds bounds, Material wood,ShipHitSurface surface=null)
         {
             model = body;
+            controller=GetComponent<ShipController>();
             box = bounds;
             if (model == null) return;
             restPosition = model.localPosition;
@@ -39,9 +48,10 @@ namespace SkyTide
             lightOffsets = new Vector3[hullLights.Length];
             for (int i = 0; i < hullLights.Length; i++) lightOffsets[i] = model.InverseTransformPoint(hullLights[i].transform.position);
             debris = new WreckDebris(wood);
+            if(surface!=null)marks=new ShipImpactMarks(model,surface);
         }
 
-        public void Hit(Vector3 at, float fraction, Vector3 shipVelocity)
+        public void Hit(Vector3 at, float fraction, Vector3 shipVelocity,Vector3 normal)
         {
             if (model == null || Sinking) return;
             Vector3 local = model.InverseTransformPoint(at) - box.center;
@@ -49,9 +59,11 @@ namespace SkyTide
             angularVelocity.x = Mathf.Clamp(angularVelocity.x - local.z / Mathf.Max(1f, box.extents.z) * 6f, -18f, 18f);
             angularVelocity.y = Mathf.Clamp(angularVelocity.y + side * 10f, -28f, 28f);
             damage = Mathf.Clamp01(fraction);
+            if(marks!=null)marks.Add(at,normal,damage,++impactSerial);
             if (damage >= 0.1f)
             {
-                vents[ventCursor] = box.ClosestPoint(model.InverseTransformPoint(at));
+                vents[ventCursor] = model.InverseTransformPoint(at);
+                ventNormals[ventCursor]=model.InverseTransformDirection(normal).normalized;
                 ventCursor = (ventCursor + 1) % vents.Length;
                 ventCount = Mathf.Min(ventCount + 1, vents.Length);
             }
@@ -112,6 +124,7 @@ namespace SkyTide
                 if (!cloudContact && fx != null && fx.TryCloudEntry(oldKeel, keel, out contact))
                 {
                     cloudContact = true;
+                    HullCloudContacts++;
                     fx.CloudSplash(contact, 2.4f);
                 }
                 float bottom = fx != null && fx.volumetric != null ? fx.volumetric.deckBase : -60f;
@@ -129,7 +142,11 @@ namespace SkyTide
                 {
                     smokeClock %= 0.18f;
                     for (int i = 0; i < ventCount; i++)
-                        fx.DamageSmoke(model.TransformPoint(vents[i]), damage);
+                    {
+                        Vector3 at=model.TransformPoint(vents[i]),normal=model.TransformDirection(ventNormals[i]);
+                        fx.DamageSmoke(at+normal*.25f,damage);
+                        if(Burning)fx.DamageFire(at+normal*.4f,normal,damage,controller!=null?controller.transform.forward*controller.Speed:Vector3.zero);
+                    }
                 }
             }
             UpdateLights();
@@ -152,8 +169,10 @@ namespace SkyTide
             angle = angularVelocity = Vector2.zero;
             damage = smokeClock = 0f;
             ventCount = ventCursor = 0;
+            impactSerial=0;if(marks!=null)marks.Clear();
             sinkAge = -1f;
             cloudContact = Hidden = false;
+            HullCloudContacts=0;
             if (model != null)
             {
                 model.localPosition = restPosition;
@@ -164,7 +183,7 @@ namespace SkyTide
             if (debris != null) debris.Clear();
         }
 
-        void OnDestroy() { if (debris != null) debris.Dispose(); }
+        void OnDestroy() { if (debris != null) debris.Dispose();if(marks!=null)marks.Dispose(); }
     }
 
     /// <summary>До 32 объёмных деревянных обломков одним мешем, без Rigidbody и отдельных GameObject на щепку.</summary>
