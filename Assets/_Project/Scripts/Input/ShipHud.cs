@@ -31,7 +31,7 @@ namespace SkyTide
             Quad(new Vector2(r.x,r.y),new Vector2(r.xMax,r.y),new Vector2(r.xMax,r.yMax),new Vector2(r.x,r.yMax),Vector2.zero,Vector2.zero,Vector2.zero,Vector2.zero);
         }
         // ---------- нарисованный набор HUD (Resources/UI/hud_kit.png, 1254×1254, координаты в пикселях листа) ----------
-        struct Spr { public Vector2 a, b, c, d, ua, ub, uc, ud; public Color col; }
+        struct Spr { public Vector2 a, b, c, d, ua, ub, uc, ud; public Color col; public Texture2D tex; }
         readonly List<Spr> sprites = new List<Spr>(64);
         Texture2D kit; bool kitTried;
         const float Kit = 1254f;
@@ -45,7 +45,7 @@ namespace SkyTide
         static Vector2 UV(float x, float y) { return new Vector2(x / Kit, 1f - y / Kit); }
         void Sprite(Vector2 a, Vector2 b, Vector2 c, Vector2 d, Rect src, Color col)
         {
-            sprites.Add(new Spr { a = a, b = b, c = c, d = d, ua = UV(src.x, src.y), ub = UV(src.xMax, src.y), uc = UV(src.xMax, src.yMax), ud = UV(src.x, src.yMax), col = col });
+            sprites.Add(new Spr { a = a, b = b, c = c, d = d, ua = UV(src.x, src.y), ub = UV(src.xMax, src.y), uc = UV(src.xMax, src.yMax), ud = UV(src.x, src.yMax), col = col, tex = kit });
         }
         void Sprite(Rect dst, Rect src, Color col)
         {
@@ -77,17 +77,86 @@ namespace SkyTide
             }
             else Slice9(r, pressed ? PanelP[k] : PanelN[k], 30f, 30f * sc, Color.white);
         }
+        /// <summary>Отдельная картинка целиком (радар), повёрнутая вокруг центра.</summary>
+        void Image(Texture2D tex, Vector2 center, float size, float angle, Color col)
+        {
+            if (tex == null) return;
+            float cs = Mathf.Cos(angle), sn = Mathf.Sin(angle);
+            Vector2 ex = new Vector2(cs, sn) * size * 0.5f, ey = new Vector2(-sn, cs) * size * 0.5f;
+            sprites.Add(new Spr { a = center - ex - ey, b = center + ex - ey, c = center + ex + ey, d = center - ex + ey,
+                ua = new Vector2(0, 1), ub = new Vector2(1, 1), uc = new Vector2(1, 0), ud = new Vector2(0, 0), col = col, tex = tex });
+        }
         void FlushSprites()
         {
-            if (sprites.Count == 0 || !HasKit) { sprites.Clear(); return; }
-            material.SetTexture("_MainTex", kit);
-            if (!material.SetPass(2)) { sprites.Clear(); return; }
-            GL.Begin(GL.TRIANGLES);
+            int i = 0;
             try
             {
-                foreach (Spr q in sprites) { Tint(q.col); Quad(q.a, q.b, q.c, q.d, q.ua, q.ub, q.uc, q.ud); }
+                while (i < sprites.Count)
+                {
+                    Texture2D t = sprites[i].tex;
+                    int j = i; while (j < sprites.Count && sprites[j].tex == t) j++;
+                    if (t != null)
+                    {
+                        material.SetTexture("_MainTex", t);
+                        if (material.SetPass(2))
+                        {
+                            GL.Begin(GL.TRIANGLES);
+                            try { for (int k = i; k < j; k++) { Spr q = sprites[k]; Tint(q.col); Quad(q.a, q.b, q.c, q.d, q.ua, q.ub, q.uc, q.ud); } }
+                            finally { GL.End(); }
+                        }
+                    }
+                    i = j;
+                }
             }
-            finally { GL.End(); sprites.Clear(); }
+            finally { sprites.Clear(); }
+        }
+
+        // ---------- радар (Resources/UI/radar_*, 1024²: рамка, стекло, луч; 128²: свой корабль, цель, цель за пределом) ----------
+        Texture2D rFrame, rFace, rSweep, rShip, rEnemy, rFar; bool radarTried;
+        bool HasRadar
+        {
+            get
+            {
+                if (!radarTried)
+                {
+                    radarTried = true;
+                    rFrame = Resources.Load<Texture2D>("UI/radar_frame"); rFace = Resources.Load<Texture2D>("UI/radar_face");
+                    rSweep = Resources.Load<Texture2D>("UI/radar_sweep"); rShip = Resources.Load<Texture2D>("UI/radar_ship");
+                    rEnemy = Resources.Load<Texture2D>("UI/radar_enemy"); rFar = Resources.Load<Texture2D>("UI/radar_enemy_far");
+                }
+                return rFrame != null && rFace != null;
+            }
+        }
+        const float SweepPeriod = 3f;
+        void RadarArt(TouchControls input, HudLayout l, Vector2 c, float R, float range)
+        {
+            float size = R * 2f * 1024f / 900f;           // рамка (с выступами) — 900 из 1024 пикселей по ширине
+            float face = size * (250f / 1024f);            // внутренний край кольца рамки
+            float t = Time.realtimeSinceStartup;
+            float sweep = Mathf.Repeat(t / SweepPeriod, 1f) * Mathf.PI * 2f;
+            const float edge0 = -60f * Mathf.Deg2Rad;     // передний край луча на картинке (вверх-вправо)
+            Image(rFace, c, size, 0f, Color.white);
+            if (rSweep != null) Image(rSweep, c, size, sweep, new Color(1f, 1f, 1f, 0.9f));
+            foreach (TargetShip ts in TargetShip.All)
+            {
+                if (ts == null || !ts.Alive) continue;
+                Vector3 local = input.ship.transform.InverseTransformPoint(ts.transform.position);
+                Vector2 v = new Vector2(local.x, -local.z); float dist = v.magnitude; bool outside = dist > range;
+                Vector2 dir = dist > 1e-3f ? v / dist : Vector2.up;
+                Vector2 p = c + dir * Mathf.Min(dist / range, 1f) * face * (outside ? 0.93f : 0.88f);
+                // Отметка вспыхивает, когда по ней проходит луч, и гаснет до следующего оборота.
+                float beta = Mathf.Atan2(dir.y, dir.x);
+                float since = Mathf.Repeat(edge0 + sweep - beta, Mathf.PI * 2f) / (Mathf.PI * 2f) * SweepPeriod;
+                float glow = 0.55f + 0.45f * Mathf.Exp(-since * 1.6f);
+                float g = R * (outside ? 0.26f : 0.24f) * (0.9f + 0.15f * Mathf.Exp(-since * 3f));
+                if (outside && rFar != null) Image(rFar, p, g, beta + 45f * Mathf.Deg2Rad, new Color(1f, 1f, 1f, glow));
+                else if (rEnemy != null) Image(rEnemy, p, g, 0f, new Color(1f, 1f, 1f, glow));
+                string txt = dist >= 1000f ? (dist / 1000f).ToString("F1") + " км" : Mathf.RoundToInt(dist / 10f) * 10 + " м";
+                float fs = l.unit * 0.022f, tw = l.unit * 0.16f; bool left = p.x > c.x + R * 0.2f;
+                Text(new Rect(left ? p.x - tw - g * 0.45f : p.x + g * 0.45f, p.y - fs * 0.75f, tw, fs * 1.5f), txt, fs, new Color(1f, 0.8f, 0.62f, 1f));
+            }
+            Image(rFrame, c, size, 0f, Color.white);
+            if (rShip != null) Image(rShip, c, R * 0.3f, 0f, Color.white);
         }
 
         void Panel(Rect r, float u, bool lit = false, bool pressed = false)
@@ -169,6 +238,7 @@ namespace SkyTide
             Rect r=l.radar; if(r.width<l.unit*0.08f||input.ship==null)return;
             const float range=1500f;
             Vector2 c=r.center; float R=r.width*0.5f, lw=Mathf.Max(1f,l.unit*0.0025f);
+            if(HasRadar) { RadarArt(input,l,c,R,range); return; }
             if(HasKit) { RadarKit(input,l,c,R,range); return; }
             Disc(c,R,new Color(0.03f,0.04f,0.05f,0.72f));
             Ring(c,R,lw*1.4f,gold);
