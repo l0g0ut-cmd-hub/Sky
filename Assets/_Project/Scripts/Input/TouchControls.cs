@@ -48,7 +48,7 @@ namespace SkyTide
         {
             if (!legacyInputOk) return;
             // Заставка студии и главное меню закрывают экран — касания им, а не кораблю.
-            if (StudioSplash.Active || MainMenu.Active || PerfPanel.Open) { if (owners.Count > 0 || stickId != int.MinValue) ResetInteraction(); return; }
+            if (StudioSplash.Active || MainMenu.Active) { if (owners.Count > 0 || stickId != int.MinValue) ResetInteraction(); return; }
             try
             {
                 ReadPointers();
@@ -104,6 +104,14 @@ namespace SkyTide
                     owners[id] = Owner.Button;
                     lastPos[id] = p;
                     game.NextShip();
+                    return;
+                }
+                if (PerfPanel.Open && PerfPanel.Area.Contains(p)) { owners[id] = Owner.Button; lastPos[id] = p; return; }   // касания панели — ей
+                if (FpsButtonRect().Contains(p))
+                {
+                    owners[id] = Owner.Button;
+                    lastPos[id] = p;
+                    PerfPanel.Toggle();
                     return;
                 }
                 if (game != null && CloudButtonRect().Contains(p))
@@ -217,6 +225,9 @@ namespace SkyTide
         }
 
         Rect ShipButtonRect() { return Layout(ViewWidth,ViewHeight).ship; }
+        /// <summary>Плашка FPS — касание открывает/закрывает отладочную панель.</summary>
+        Rect FpsButtonRect() { return Layout(ViewWidth,ViewHeight).fps; }
+
         Rect CloudButtonRect() { return Layout(ViewWidth,ViewHeight).clouds; }
         Rect VolleyModeRect() { return Layout(ViewWidth,ViewHeight).mode; }
         Rect VolleyRect(int side) { HudLayout l=Layout(ViewWidth,ViewHeight); return side<0?l.port:l.starboard; }

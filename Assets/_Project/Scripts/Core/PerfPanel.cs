@@ -3,13 +3,17 @@ using UnityEngine;
 namespace SkyTide
 {
     /// <summary>
-    /// Отладочная панель производительности: касание тремя пальцами (или F1) — открыть/закрыть.
+    /// Отладочная панель производительности: касание плашки FPS (или F1) — открыть/закрыть.
     /// Время кадра процессора и видеокарты (FrameTimingManager), средний FPS, и переключатели крупных частей
     /// картинки — чтобы на телефоне увидеть, что сколько стоит. Переключатели только для замера, в сохранение не идут.
     /// </summary>
     public class PerfPanel : MonoBehaviour
     {
         public static bool Open { get; private set; }
+        /// <summary>Касание плашки FPS в HUD.</summary>
+        public static void Toggle() { Open = !Open; }
+        /// <summary>Область панели на экране (пиксели, начало сверху-слева) — касания внутри не уходят кораблю.</summary>
+        public static Rect Area { get; private set; }
         SkyTideBootstrap game;
         readonly FrameTiming[] timings = new FrameTiming[1];
         float cpu, gpu, fps, acc; int frames;
@@ -26,8 +30,7 @@ namespace SkyTide
 
         void Update()
         {
-            bool three = Input.touchCount == 3 && Input.GetTouch(2).phase == TouchPhase.Began;
-            if (three || Input.GetKeyDown(KeyCode.F1)) Open = !Open;
+            if (Input.GetKeyDown(KeyCode.F1)) Open = !Open;
             FrameTimingManager.CaptureFrameTimings();
             if (FrameTimingManager.GetLatestTimings(1, timings) > 0)
             {
@@ -51,6 +54,7 @@ namespace SkyTide
                 button = new GUIStyle(GUI.skin.button) { fontSize = Mathf.RoundToInt(u * 0.032f) };
             }
             Rect r = new Rect(Screen.width * 0.27f, u * 0.05f, Screen.width * 0.46f, u * 0.86f);
+            Area = r;
             GUI.color = new Color(0f, 0f, 0f, 0.8f); GUI.DrawTexture(r, Texture2D.whiteTexture); GUI.color = Color.white;
             float y = r.y + u * 0.02f, h = u * 0.075f, x = r.x + u * 0.03f, w = r.width - u * 0.06f;
             GUI.Label(new Rect(x, y, w, h), string.Format("FPS {0:F0}   ЦП {1:F1} мс   ВК {2}", fps, cpu, gpu > 0.01f ? gpu.ToString("F1") + " мс" : "нет данных"), label); y += h;
@@ -68,7 +72,7 @@ namespace SkyTide
             SkyTidePost post = Camera.main != null ? Camera.main.GetComponent<SkyTidePost>() : null;
             if (post != null && Toggle(x, ref y, w, h, "Пост-обработка", post.enabled)) post.enabled = !post.enabled;
             if (game.Fx != null && Toggle(x, ref y, w, h, "Дым, вспышки, всплески", !game.Fx.debugHidden)) game.Fx.debugHidden = !game.Fx.debugHidden;
-            if (GUI.Button(new Rect(x, y + h * 0.2f, w, h), "Закрыть (3 пальца)", button)) Open = false;
+            if (GUI.Button(new Rect(x, y + h * 0.2f, w, h), "Закрыть", button)) Open = false;
         }
 
         bool Toggle(float x, ref float y, float w, float h, string name, bool on)
