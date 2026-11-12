@@ -15,14 +15,16 @@ namespace SkyTide
         public TextAsset recoil;    // sparse complete barrel IDs in the same Color32 stream
         public CrewModelData crew;
         public TextAsset upperGun;
+        public TextAsset steering;
 
-        [NonSerialized] Mesh cached;
+        [NonSerialized] Mesh cached,cachedSteering;
+        public Mesh SteeringMesh {get {if(cached==null){Mesh unused=Mesh;}return cachedSteering;}}
 
         public Mesh Mesh
         {
             get
             {
-                if (cached == null) cached = ShipMeshLoader.Load(mesh, wind, recoil);
+                if (cached == null) cached = ShipMeshLoader.Load(mesh, wind, recoil,steering,out cachedSteering);
                 return cached;
             }
         }

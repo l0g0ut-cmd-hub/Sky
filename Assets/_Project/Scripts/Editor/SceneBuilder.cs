@@ -191,6 +191,8 @@ namespace SkyTide.EditorTools
                 repaired.recoil = AssetDatabase.LoadAssetAtPath<TextAsset>(Models + "CorsairRepaired_recoil.json");
                 if (repaired.recoil == null) throw new System.InvalidOperationException("Corsair cannon recoil map is missing");
                 repaired.crew=BuildCrewModel();
+                repaired.steering=AssetDatabase.LoadAssetAtPath<TextAsset>(Models+"CorsairRepaired_steering.json");
+                if(repaired.steering==null)throw new System.InvalidOperationException("Steering sail map is missing");
                 repaired.upperGun=AssetDatabase.LoadAssetAtPath<TextAsset>(Models+"Crew/UpperGunBarrel.bytes");
                 if(repaired.upperGun==null)throw new System.InvalidOperationException("Upper gun geometry is missing");
                 list.Add(repaired);

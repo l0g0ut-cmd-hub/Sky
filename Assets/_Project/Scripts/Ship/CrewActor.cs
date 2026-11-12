@@ -5,7 +5,7 @@ namespace SkyTide
     /// <summary>A real skinned deckhand: planted feet, two-bone arm IK and individual work cycles.</summary>
     public sealed class CrewActor
     {
-        public enum Duty {Helmsman,Captain,Gunner,Loader,Rigger,Patrol,Lookout}
+        public enum Duty {Helmsman,Captain,Gunner,Loader,Rigger,Patrol,Lookout,Carrier}
         public readonly Transform root;
         public readonly Transform[] bones;
         public readonly SkinnedMeshRenderer renderer;
@@ -14,6 +14,13 @@ namespace SkyTide
         public readonly float yaw,phase;
         readonly CrewModelData.CrewRig rig;
         readonly CrewModelData.GripPose grip;
+        readonly Mesh openHands,closedHands;
+        public DeckRoutine routine;
+        public DeckRoutine.Frame activity;
+        public Transform cargo;
+        public float conversation;
+        public Vector3 conversationPartner;
+        public int gunIndex=-1;
         public Vector3 leftGoal,rightGoal;
         public Transform tool;
         public LineRenderer rope;
@@ -23,7 +30,8 @@ namespace SkyTide
         public CrewActor(Transform parent,CrewModelData model,Duty duty,Vector3 position,float yaw,int index)
         {
             this.duty=duty;station=position;this.yaw=yaw;phase=index*1.731f;rig=model.Rig;
-            grip=duty==Duty.Helmsman?model.Grip:null;
+            bool usesGrip=duty==Duty.Helmsman||duty==Duty.Carrier;
+            grip=usesGrip?model.Grip:null;openHands=model.Mesh;closedHands=usesGrip?model.MeshFor(true):null;
             root=new GameObject(duty+" "+index).transform;root.SetParent(parent,false);
             root.localPosition=position;root.localRotation=Quaternion.Euler(0,yaw,0);
             bones=new Transform[rig.names.Length];
@@ -92,21 +100,29 @@ namespace SkyTide
                 bones[i].localPosition=rig.Point(i)-(rig.parents[i]<0?Vector3.zero:rig.Point(rig.parents[i]));
             }
             float t=time+phase;root.localPosition=station;root.localRotation=Quaternion.Euler(0,yaw,0);
-            bool walking=duty==Duty.Patrol;
+            if(routine!=null)activity=routine.Sample(time);
+            bool walking=routine!=null&&activity.speed>.001f;
             float gait=0f;
-            if(walking)
+            if(routine!=null)
             {
-                float a=time*.23f+phase;
-                gait=(a*.935f-.23f*Mathf.Sin(2f*a))*Mathf.PI*2f/.44f;
-                root.localPosition=station+new Vector3(.42f*Mathf.Sin(a),0,1.35f*Mathf.Cos(a));
-                Vector3 velocity=new Vector3(.42f*.23f*Mathf.Cos(a),0,-1.35f*.23f*Mathf.Sin(a));
-                root.localRotation=Quaternion.LookRotation(velocity,Vector3.up);
+                root.localPosition=activity.position;root.localRotation=Quaternion.LookRotation(activity.forward,Vector3.up);
+                gait=activity.distance*Mathf.PI*2f/.44f;
             }
+            if(conversation>.001f&&duty==Duty.Lookout)
+                root.localRotation=Quaternion.Slerp(root.localRotation,Quaternion.LookRotation(conversationPartner-root.localPosition,Vector3.up),conversation);
+            bool closed=duty==Duty.Helmsman||(duty==Duty.Carrier&&activity.grip>.001f);
+            Mesh desired=closed?closedHands:openHands;if(renderer.sharedMesh!=desired)renderer.sharedMesh=desired;
             float work=Mathf.Sin(t*2.1f),breathe=Mathf.Sin(t*1.7f);
             float crouch=duty==Duty.Gunner&&shotAge>=0&&shotAge<.6f?Mathf.Sin(shotAge/.6f*Mathf.PI)*.045f:0f;
             bones[0].localPosition+=Vector3.up*(breathe*.005f-crouch);
             bones[1].localRotation=Quaternion.Euler(breathe*.7f,0,Mathf.Sin(t*.65f)*.8f);
             bones[4].localRotation=Quaternion.Euler(Mathf.Sin(t*.8f)*3f,Mathf.Sin(t*.45f)*13f,0);
+            if(duty==Duty.Carrier)
+            {
+                bones[0].localPosition-=Vector3.up*(activity.crouch*.64f);
+                bones[1].localRotation=Quaternion.Euler(activity.crouch*28f+breathe*.7f,0,0);
+                if(cargo!=null){cargo.gameObject.SetActive(activity.cargo);cargo.localPosition=DeckRoutine.CrateCenter(activity.lift);}
+            }
             Vector3 l=new Vector3(-.29f,1.025f,.015f),r=new Vector3(.29f,1.025f,.015f);
             if(duty==Duty.Helmsman&&wheel!=null)
             {
@@ -151,8 +167,22 @@ namespace SkyTide
                     l.y=r.y=1.08f;l.z+=Mathf.Sin(gait)*.08f;r.z-=Mathf.Sin(gait)*.08f;
                     bones[0].localRotation=Quaternion.Euler(0,Mathf.Sin(gait)*2f,0);
                 }
+                float talk=Mathf.Max(conversation,routine!=null?activity.talk:0f);
+                if(talk>.001f)
+                {
+                    float gesture=.5f+.5f*Mathf.Sin(t*2.5f);
+                    r=Vector3.Lerp(r,new Vector3(.23f,1.27f+gesture*.08f,.23f),talk);
+                    bones[4].localRotation=Quaternion.Euler(Mathf.Sin(t*2.2f)*talk*4f,Mathf.Sin(t*.7f)*5f,0);
+                }
+                if(duty==Duty.Carrier&&activity.grip>.001f)
+                {
+                    Vector3 center=DeckRoutine.CrateCenter(activity.lift);
+                    l=Vector3.Lerp(l,center+new Vector3(-.32f,.09f,0)-grip.Center(true),activity.grip);
+                    r=Vector3.Lerp(r,center+new Vector3(.32f,.09f,0)-grip.Center(false),activity.grip);
+                }
                 leftGoal=root.TransformPoint(l);rightGoal=root.TransformPoint(r);
-                Arm(true,leftGoal);Arm(false,rightGoal);
+                if(duty==Duty.Carrier&&activity.grip>.001f){Arm(true,leftGoal,root.rotation);Arm(false,rightGoal,root.rotation);}
+                else{Arm(true,leftGoal);Arm(false,rightGoal);}
             }
             for(int sideIndex=0;sideIndex<2;sideIndex++)
             {
@@ -167,6 +197,7 @@ namespace SkyTide
                         goal.z+=Mathf.Lerp(-.13f,.13f,swing*swing*(3f-2f*swing));goal.y+=Mathf.Sin(swing*Mathf.PI)*.075f;
                     }
                     else goal.z+=Mathf.Lerp(.13f,-.13f,(cycle-.4f)/.6f);
+                    goal=Vector3.Lerp(rig.Point(foot),goal,Mathf.Clamp01(activity.speed/.4f));
                 }
                 Vector3 world=root.TransformPoint(goal);
                 IK(upper,lower,foot,world,root.TransformPoint(new Vector3(sideIndex==0?-.3f:.3f,.5f,.5f)));

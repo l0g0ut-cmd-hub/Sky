@@ -15,6 +15,11 @@ namespace SkyTide
     {
         public static Mesh Load(TextAsset asset, TextAsset wind = null, TextAsset recoil = null)
         {
+            Mesh ignored;return Load(asset,wind,recoil,null,out ignored);
+        }
+        public static Mesh Load(TextAsset asset,TextAsset wind,TextAsset recoil,TextAsset steering,out Mesh sail)
+        {
+            sail=null;
             if (asset == null) return null;
             byte[] b = asset.bytes;
             string magic = b.Length >= 12 ? Encoding.ASCII.GetString(b, 0, 4) : "";
@@ -76,6 +81,7 @@ namespace SkyTide
             mesh.RecalculateTangents();
             ShipWindWeights.Apply(mesh, b, wind);
             ShipGunWeights.Apply(mesh, b, recoil);
+            sail=ShipSteeringSail.Split(mesh,b,steering);
             mesh.UploadMeshData(true);
             return mesh;
         }

@@ -131,5 +131,34 @@ namespace SkyTide
             CrewParts g=new CrewParts();g.Cylinder(new Vector3(0,0,-.45f),new Vector3(0,0,.65f),.016f);
             g.Cylinder(new Vector3(0,0,.58f),new Vector3(0,0,.72f),.04f,1);return g.Finish("Gun rammer");
         }
+        public static Mesh CargoCrate()
+        {
+            CrewParts g=new CrewParts();g.Box(Vector3.zero,new Vector3(.5f,.42f,.42f));
+            for(int side=-1;side<=1;side+=2)
+            {
+                g.Box(new Vector3(side*.22f,0,0),new Vector3(.025f,.445f,.445f),1);
+                g.Cylinder(new Vector3(side*.32f,.09f,-.09f),new Vector3(side*.32f,.09f,.09f),GripWoodRadius);
+                for(int end=-1;end<=1;end+=2)g.Cylinder(new Vector3(side*.25f,.09f,end*.085f),new Vector3(side*.32f,.09f,end*.085f),.012f,1);
+            }
+            return g.Finish("Bound cargo crate with side grips");
+        }
+        public static Mesh Locker()
+        {
+            CrewParts g=new CrewParts();g.Box(new Vector3(0,.04f,0),new Vector3(1f,.08f,.54f));
+            g.Box(new Vector3(0,1.36f,0),new Vector3(1f,.08f,.54f));
+            g.Box(new Vector3(0,.7f,-.24f),new Vector3(1f,1.4f,.06f));
+            for(int side=-1;side<=1;side+=2)g.Box(new Vector3(side*.47f,.7f,0),new Vector3(.06f,1.4f,.54f));
+            return g.Finish("Quarter-deck stores locker");
+        }
+        public static Mesh CargoPallet()
+        {
+            CrewParts g=new CrewParts();g.Box(new Vector3(0,.04f,0),new Vector3(.9f,.08f,.8f));return g.Finish("Cargo pickup pallet");
+        }
+        public static Mesh LockerDoor(int side)
+        {
+            CrewParts g=new CrewParts();g.Box(new Vector3(-side*.22f,.7f,0),new Vector3(.44f,1.28f,.045f));
+            g.Box(new Vector3(-side*.39f,.72f,.04f),new Vector3(.035f,.1f,.04f),1);
+            return g.Finish("Hinged stores door");
+        }
     }
 }

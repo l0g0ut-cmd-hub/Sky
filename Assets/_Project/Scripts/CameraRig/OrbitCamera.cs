@@ -15,7 +15,7 @@ namespace SkyTide
         public float distance = 62f;
         public float minPitch = -25f;
         public float maxPitch = 75f;
-        public float minDistance = 35f;
+        public float minDistance = 27f;
         public float maxDistance = 140f;
         public float lookHeight = 10f;
         public float followSharpness = 6f;

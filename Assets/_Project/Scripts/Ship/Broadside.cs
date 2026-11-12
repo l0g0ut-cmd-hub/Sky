@@ -156,8 +156,7 @@ namespace SkyTide
             ready[k] = now + cooldown;
             List<CannonMount> list = new List<CannonMount>();
             foreach (CannonMount m in mounts) if (Mathf.Sign(m.side) == Mathf.Sign(side)) list.Add(m);
-            CannonMount upper=crew!=null?crew.UpperMount(side):null;
-            if(upper!=null)list.Add(upper);
+            if(crew!=null)for(int gun=0;gun<2;gun++){CannonMount upper=crew.UpperMount(side,gun);if(upper!=null)list.Add(upper);}
             if(crew!=null)crew.NotifySalvo(now);
             list.Sort((a, b) => b.Muzzle.z.CompareTo(a.Muzzle.z));   // от носа к корме
             for (int i = 0; i < list.Count; i++)

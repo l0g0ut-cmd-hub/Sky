@@ -35,6 +35,9 @@ namespace SkyTide
             Transform model = null;
             if (mesh != null) model = BuildFromMesh(visual, mesh, variant.materials);
             else BuildPrimitive(visual, m);
+            ShipSteeringSail steering=ctrl.GetComponent<ShipSteeringSail>();
+            if(steering==null)steering=ctrl.gameObject.AddComponent<ShipSteeringSail>();
+            if(variant!=null)steering.Configure(ctrl,model,variant);
             Broadside b = ctrl.GetComponent<Broadside>();
             if (b == null) b = ctrl.gameObject.AddComponent<Broadside>();
             b.SetModel(ctrl, model, model != null && variant != null ? Broadside.Parse(variant.cannons) : null,
