@@ -435,6 +435,10 @@ namespace SkyTide.EditorTools
         static void CheckGunCrew(ShipCrew crew,CrewModelData model,float time)
         {
             CheckCrewPose(crew,time);Mesh baked=new Mesh();
+            byte[] source=model.geometry.bytes;int count=System.BitConverter.ToInt32(source,4),faces=System.BitConverter.ToInt32(source,8);
+            int ids=16+count*32+faces*12,weights=ids+count*4;bool[] head=new bool[count];
+            for(int i=0;i<count;i++)for(int slot=0;slot<4;slot++)
+                if(source[ids+i*4+slot]==4&&System.BitConverter.ToSingle(source,weights+(i*4+slot)*4)>.5f)head[i]=true;
             try
             {
                 foreach(CrewActor actor in crew.ActorsCapture)
@@ -444,6 +448,12 @@ namespace SkyTide.EditorTools
                     actor.renderer.BakeMesh(baked);Vector3[] vertices=baked.vertices;
                     Transform frame=actor.duty==CrewActor.Duty.Gunner?actor.gunBarrel:actor.tool;
                     for(int i=0;i<vertices.Length;i++)vertices[i]=frame.InverseTransformPoint(actor.root.TransformPoint(vertices[i]));
+                    if(actor.duty==CrewActor.Duty.Loader)for(int i=0;i<count;i++)
+                    {
+                        Vector3 p=vertices[i];
+                        if(head[i]&&p.z>=-.15f&&p.z<=1.02f&&new Vector2(p.x,p.y).magnitude<.030f)
+                            throw new System.InvalidOperationException("Rammer touches loader face");
+                    }
                     for(int side=0;side<2;side++)
                     {
                         int[] tri=side==0?model.Grip.leftTriangles:model.Grip.rightTriangles;float clearance=float.PositiveInfinity;

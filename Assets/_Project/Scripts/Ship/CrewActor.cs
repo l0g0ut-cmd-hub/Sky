@@ -161,7 +161,7 @@ namespace SkyTide
             else if(duty==Duty.Loader)
             {
                 Quaternion palm=root.rotation*Quaternion.Euler(0,0,180f);
-                Vector3 axis=root.TransformPoint(new Vector3(0,1.55f+ReloadAmount*.13f,.29f+ReloadAmount*.05f));
+                Vector3 axis=root.TransformPoint(new Vector3(.16f,1.55f+ReloadAmount*.13f,.29f+ReloadAmount*.05f));
                 Vector3 direction=root.forward;
                 leftGoal=axis-direction*.08f-palm*grip.Center(true);
                 rightGoal=axis+direction*.08f-palm*grip.Center(false);
