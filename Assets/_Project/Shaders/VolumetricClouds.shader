@@ -282,9 +282,11 @@ Shader "Hidden/SkyTide/VolumetricClouds"
         if (t1 <= t0) return float4(0, 0, 0, 1);
 
         int n = (int)_Deck.w;
-        float stepBase = (t1 - t0) / n;
-        float stepLen = stepBase * 0.4;
-        float grow = 1.2 / n;
+        // Шаги растут геометрически: у камеры ~10 м (крупный первый шаг 30–40 м давал «рябь полосами» —
+        // слои равного расстояния пересекали бугристый верх моря), к 18-му шагу покрывают ~1.6 км пути в слое.
+        const float ratio = 1.22;
+        float sumK = (pow(ratio, n) - 1.0) / (ratio - 1.0);
+        float stepLen = min(10.0, (t1 - t0) / sumK);
         float t = t0 + stepLen * jitter;
         float3 L = normalize(_SkyTideSunDir.xyz);
         float3 light = 0;
@@ -323,7 +325,7 @@ Shader "Hidden/SkyTide/VolumetricClouds"
                 if (trans < 0.03) { trans = 0; if (frontFraction >= 1.0) front.a = 0; break; }
             }
             t += stepLen;
-            stepLen += stepBase * grow;
+            stepLen *= ratio;
         }
         float meanDist = wAcc > 1e-4 ? distAcc / wAcc : t1;
         float aerial = _Aerial.x * saturate(SkyTideAerial(meanDist));
