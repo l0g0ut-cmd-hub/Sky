@@ -256,9 +256,9 @@ namespace SkyTide.EditorTools
                 cam.transform.SetPositionAndRotation(camera,Quaternion.LookRotation(focus-camera,visual.up));
                 SaveFrame(cam,boot,rt,tex,dir,"100_upper_crew");
                 controls.SetHudCapture(true,960,456);HudLayout layout=controls.Layout(960,456);
-                // Port/front view: the aft sail occludes the starboard/rear view of the helm.
-                focus=visual.TransformPoint(new Vector3(0,ShipCrew.QuarterDeck+1.28f,-14.94f));
-                camera=visual.TransformPoint(new Vector3(-1.4f,ShipCrew.QuarterDeck+1.84f,-13.3f));
+                // Keep the inspection camera with the complete helm station when its layout changes.
+                focus=visual.TransformPoint(ShipCrew.HelmStation+new Vector3(0,1.28f,.06f));
+                camera=visual.TransformPoint(ShipCrew.HelmStation+new Vector3(-1.8f,2.1f,1.0f));
                 cam.transform.SetPositionAndRotation(camera,Quaternion.LookRotation(focus-camera,visual.up));
                 float[] inputs={-1f,0f,1f};string[] names={"101_helm_left","102_helm_center","103_helm_right"};
                 Vector3[][] handCenters=new Vector3[inputs.Length][];
@@ -595,7 +595,7 @@ namespace SkyTide.EditorTools
                 boot.SetVolumetric(true);
                 if (boot.Volumetric != null) boot.Volumetric.ResetTowers(boot.Ship.transform.position);
                 // Каждый пакет снимает свои состояния. Предыдущие профили остаются доступны отдельно.
-                string profile = System.Environment.GetEnvironmentVariable("SKYTIDE_SHOT_PROFILE") ?? "crew-review";
+                string profile = System.Environment.GetEnvironmentVariable("SKYTIDE_SHOT_PROFILE") ?? "crew";
                 // Camera-only follow-up: keep the full seven-view comparison in the "crew" profile.
                 if(profile=="crew-review")
                 {

@@ -6,6 +6,8 @@ namespace SkyTide
     public class ShipCrew : MonoBehaviour
     {
         public const float MainDeck=6.444f,QuarterDeck=10.414f,PlatformTop=6.824f;
+        // Keep the complete station clear of the aft sail's sweep and the quarter-deck edge.
+        public static readonly Vector3 HelmStation=new Vector3(-1.8f,QuarterDeck,-9.5f);
         readonly List<CrewActor> actors=new List<CrewActor>();
         readonly CannonMount[] upperMounts=new CannonMount[2];
         readonly Transform[] barrels=new Transform[2];
@@ -28,8 +30,8 @@ namespace SkyTide
             group=new GameObject("Upper deck crew").transform;group.SetParent(visual,false);
             Material wood=variant.materials[5],iron=variant.materials[1],bronze=variant.materials[6];
             Material hat=MaterialFactory.Opaque("Captain dark tricorn",new Color(.035f,.025f,.025f),.18f);
-            CrewParts.Object("Helm stand",group,CrewParts.Stand(),wood,bronze,new Vector3(0,QuarterDeck,-14.72f));
-            wheel=CrewParts.Object("Working helm",group,CrewParts.Wheel(),wood,bronze,new Vector3(0,QuarterDeck+1.24f,-14.78f));
+            CrewParts.Object("Helm stand",group,CrewParts.Stand(),wood,bronze,HelmStation+new Vector3(0,0,.28f));
+            wheel=CrewParts.Object("Working helm",group,CrewParts.Wheel(),wood,bronze,HelmStation+new Vector3(0,1.24f,.22f));
             Mesh platform=CrewParts.GunPlatform(),stand=CrewParts.GunStand(),barrel=ShipMeshLoader.Load(variant.upperGun);
             Mesh rammer=CrewParts.Ramrod();
             for(int i=0;i<2;i++)
@@ -41,7 +43,7 @@ namespace SkyTide
                 barrels[i]=CrewParts.Object("Recoiling barrel",mount,barrel,iron,iron,new Vector3(0,1.68f,0));
                 upperMounts[i]=new CannonMount{name="UpperDeck_"+i,side=side,muzzle=new[]{side*6.719f,PlatformTop+1.68f,1.50f},dir=new[]{side,0f,0f},length=1.195f};
             }
-            Add(variant.crew,CrewActor.Duty.Helmsman,new Vector3(0,QuarterDeck,-15f),0);
+            Add(variant.crew,CrewActor.Duty.Helmsman,HelmStation,0);
             CrewActor captain=Add(variant.crew,CrewActor.Duty.Captain,new Vector3(-2f,QuarterDeck,-11.4f),10f);
             CrewParts.Object("Captain tricorn",captain.bones[4],CrewParts.Hat(),hat,bronze,new Vector3(0,.03f,0));
             for(int i=0;i<2;i++)
