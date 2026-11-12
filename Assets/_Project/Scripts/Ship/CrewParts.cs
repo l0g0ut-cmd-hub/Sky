@@ -131,6 +131,18 @@ namespace SkyTide
             CrewParts g=new CrewParts();g.Cylinder(new Vector3(0,0,-.25f),new Vector3(0,0,.95f),GripWoodRadius);
             g.Cylinder(new Vector3(0,0,.88f),new Vector3(0,0,1.02f),.04f,1);return g.Finish("Gun rammer");
         }
+        public static Mesh BelayingCleat()
+        {
+            CrewParts g=new CrewParts();g.Box(new Vector3(0,.035f,0),new Vector3(.28f,.07f,.18f));
+            g.Cylinder(new Vector3(0,.07f,0),new Vector3(0,.20f,0),.035f,1);
+            g.Cylinder(new Vector3(-.17f,.20f,0),new Vector3(.17f,.20f,0),.027f);
+            for(int side=-1;side<=1;side+=2)g.Cylinder(new Vector3(side*.15f,.20f,0),new Vector3(side*.19f,.20f,0),.031f,1);
+            return g.Finish("Bronze-footed rope cleat");
+        }
+        public static Mesh BelayingTurn()
+        {
+            CrewParts g=new CrewParts();g.Torus(.054f,CrewRope.Radius,0,24);return g.Finish("Rope turn around belaying cleat");
+        }
         public static Mesh BreechHandles()
         {
             CrewParts g=new CrewParts();

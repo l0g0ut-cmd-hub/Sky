@@ -26,14 +26,17 @@ namespace SkyTide
         public float ReloadAmount {get;private set;}
         public Vector3 leftGoal,rightGoal;
         public Transform tool;
-        public LineRenderer rope;
-        public readonly Vector3[] ropePoints=new Vector3[4];
+        public CrewRope rope;
+        public readonly Vector3[] ropePoints=new Vector3[6];
+        public Vector3 ropeUpper,ropeLower,ropeAxis;
+        public float RiggingPull {get;private set;}
+        public Quaternion Balance {get;private set;}
         public int side;
 
         public CrewActor(Transform parent,CrewModelData model,Duty duty,Vector3 position,float yaw,int index)
         {
             this.duty=duty;station=position;this.yaw=yaw;phase=index*1.731f;rig=model.Rig;
-            bool usesGrip=duty==Duty.Helmsman||duty==Duty.Carrier||duty==Duty.Gunner||duty==Duty.Loader;
+            bool usesGrip=duty==Duty.Helmsman||duty==Duty.Carrier||duty==Duty.Gunner||duty==Duty.Loader||duty==Duty.Rigger;
             grip=usesGrip?model.Grip:null;openHands=model.Mesh;closedHands=usesGrip?model.MeshFor(true):null;
             root=new GameObject(duty+" "+index).transform;root.SetParent(parent,false);
             root.localPosition=position;root.localRotation=Quaternion.Euler(0,yaw,0);
@@ -96,6 +99,25 @@ namespace SkyTide
             }
         }
 
+        void BalanceOnDeck()
+        {
+            // Counter the real deck tilt in the sailor's facing direction, before solving contacts.
+            Vector3 upright=root.InverseTransformDirection(Vector3.up);
+            bool held=duty==Duty.Helmsman||duty==Duty.Gunner||duty==Duty.Loader||(duty==Duty.Carrier&&activity.grip>.001f);
+            Quaternion correction=Quaternion.FromToRotation(Vector3.up,upright);
+            Balance=Quaternion.RotateTowards(Quaternion.identity,Quaternion.Slerp(Quaternion.identity,correction,held?.18f:.65f),4.5f);
+            bones[1].localRotation=Balance*bones[1].localRotation;
+        }
+
+        public static float RiggingStroke(float time,float offset)
+        {
+            float cycle=Mathf.Repeat(time/5.6f+offset*.13f,1f);
+            // A deliberate pull, a short hold, then a gentler recovery. No sharp wrap at the seam.
+            if(cycle<.42f)return Mathf.SmoothStep(0,1,cycle/.42f);
+            if(cycle<.56f)return 1f;
+            return 1f-Mathf.SmoothStep(0,1,(cycle-.56f)/.44f);
+        }
+
         public void Pose(float time,Transform wheel,float shotAge)
         {
             for(int i=0;i<bones.Length;i++)
@@ -114,12 +136,13 @@ namespace SkyTide
             }
             if(conversation>.001f&&duty==Duty.Lookout)
                 root.localRotation=Quaternion.Slerp(root.localRotation,Quaternion.LookRotation(conversationPartner-root.localPosition,Vector3.up),conversation);
-            bool closed=duty==Duty.Helmsman||duty==Duty.Gunner||duty==Duty.Loader||(duty==Duty.Carrier&&activity.grip>.001f);
+            bool closed=duty==Duty.Helmsman||duty==Duty.Gunner||duty==Duty.Loader||duty==Duty.Rigger||(duty==Duty.Carrier&&activity.grip>.001f);
             Mesh desired=closed?closedHands:openHands;if(renderer.sharedMesh!=desired)renderer.sharedMesh=desired;
             float work=Mathf.Sin(t*2.1f),breathe=Mathf.Sin(t*1.7f);
             float kick=duty==Duty.Gunner&&shotAge>=0?Broadside.CannonRecoil(shotAge)/.32f:0;
             float crouch=kick*.10f;
-            bones[0].localPosition+=Vector3.up*(breathe*.005f-crouch);
+            // Keep breathing below the fully extended bind stance so IK never lifts planted boots.
+            bones[0].localPosition+=Vector3.up*((breathe-1f)*.005f-.003f-crouch);
             if(duty==Duty.Gunner)bones[0].localPosition+=Vector3.back*(kick*.10f);
             bones[1].localRotation=Quaternion.Euler(breathe*.7f,0,Mathf.Sin(t*.65f)*.8f);
             bones[4].localRotation=Quaternion.Euler(Mathf.Sin(t*.8f)*3f,Mathf.Sin(t*.45f)*13f,0);
@@ -129,6 +152,12 @@ namespace SkyTide
             {
                 bones[1].localRotation=Quaternion.Euler(6f+ReloadAmount*5f,0,0);
                 bones[0].localPosition+=Vector3.forward*(ReloadAmount*.02f);
+            }
+            RiggingPull=duty==Duty.Rigger?RiggingStroke(time,phase):0;
+            if(duty==Duty.Rigger)
+            {
+                bones[1].localRotation=Quaternion.Euler(8f-14f*RiggingPull,0,0);
+                bones[0].localPosition+=Vector3.forward*(.015f-.04f*RiggingPull);
             }
             float order=duty==Duty.Captain&&shotAge>=0&&shotAge<1.2f?Mathf.Sin(shotAge/1.2f*Mathf.PI):0;
             if(order>0)
@@ -143,6 +172,7 @@ namespace SkyTide
                 bones[1].localRotation=Quaternion.Euler(activity.crouch*28f+breathe*.7f,0,0);
                 if(cargo!=null){cargo.gameObject.SetActive(activity.cargo);cargo.localPosition=DeckRoutine.CrateCenter(activity.lift);}
             }
+            BalanceOnDeck();
             Vector3 l=new Vector3(-.29f,1.025f,.015f),r=new Vector3(.29f,1.025f,.015f);
             if(duty==Duty.Helmsman&&wheel!=null)
             {
@@ -169,6 +199,15 @@ namespace SkyTide
                 Arm(true,leftGoal,palm);Arm(false,rightGoal,palm);
                 if(tool!=null){tool.position=axis;tool.rotation=palm;}
             }
+            else if(duty==Duty.Rigger)
+            {
+                Vector3 center=root.TransformPoint(new Vector3(0,1.32f-.14f*RiggingPull,.44f-.16f*RiggingPull));
+                Vector3 anchor=root.parent.parent.TransformPoint(ShipCrew.RiggingAnchor);
+                ropeAxis=(anchor-center).normalized;ropeUpper=center+ropeAxis*.14f;ropeLower=center-ropeAxis*.14f;
+                Quaternion palm=Quaternion.LookRotation(ropeAxis,-root.forward);
+                leftGoal=ropeUpper-palm*grip.Center(true);rightGoal=ropeLower-palm*grip.Center(false);
+                Arm(true,leftGoal,palm);Arm(false,rightGoal,palm);
+            }
             else
             {
                 if(duty==Duty.Gunner)
@@ -180,11 +219,6 @@ namespace SkyTide
                 {
                     l=new Vector3(-.14f,1.10f,.24f+work*.07f);r=new Vector3(.12f,1.22f,.28f+work*.07f);
                     bones[1].localRotation=Quaternion.Euler(5f+work*4f,0,0);
-                }
-                else if(duty==Duty.Rigger)
-                {
-                    l=new Vector3(-.07f,1.26f+work*.07f,.20f);r=new Vector3(.07f,1.26f-work*.07f,.20f);
-                    bones[1].localRotation=Quaternion.Euler(work*3f,0,0);
                 }
                 else if(duty==Duty.Captain)
                 {

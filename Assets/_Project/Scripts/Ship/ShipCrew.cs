@@ -8,6 +8,8 @@ namespace SkyTide
         public const float MainDeck=6.444f,QuarterDeck=10.414f,PlatformTop=6.824f;
         // Keep the complete station clear of the aft sail's sweep and the quarter-deck edge.
         public static readonly Vector3 HelmStation=new Vector3(-1.8f,QuarterDeck,-9.5f);
+        public static readonly Vector3 RiggingAnchor=new Vector3(0,13.1f,-1.78f);
+        public static readonly Vector3 RiggingCleat=new Vector3(0,.254f,.47f);
         readonly List<CrewActor> actors=new List<CrewActor>();
         readonly CannonMount[] upperMounts=new CannonMount[4];
         readonly Transform[] barrels=new Transform[4];
@@ -59,8 +61,9 @@ namespace SkyTide
                 CrewActor loader=Add(variant.crew,CrewActor.Duty.Loader,new Vector3(side*5.30f,PlatformTop,z+1.15f),side*80f);loader.side=side;loader.gunIndex=index;
                 loader.tool=CrewParts.Object("Rammer",group,rammer,wood,bronze,Vector3.zero);
             }
-            AddRigger(variant.crew,new Vector3(-3f,MainDeck,-1f),100f,variant.materials[2]);
-            AddRigger(variant.crew,new Vector3(3f,MainDeck,-1f),-100f,variant.materials[2]);
+            Mesh cleat=CrewParts.BelayingCleat(),belay=CrewParts.BelayingTurn();
+            AddRigger(variant.crew,new Vector3(-3f,MainDeck,-1f),100f,variant.materials[2],cleat,belay,wood,bronze);
+            AddRigger(variant.crew,new Vector3(3f,MainDeck,-1f),-100f,variant.materials[2],cleat,belay,wood,bronze);
             patrol=Add(variant.crew,CrewActor.Duty.Patrol,new Vector3(-2.4f,MainDeck,-5.6f),0);patrol.routine=patrolRoutine;
             lookout=Add(variant.crew,CrewActor.Duty.Lookout,DeckRoutine.LookoutStation,0);
             carrier=Add(variant.crew,CrewActor.Duty.Carrier,DeckRoutine.CargoSource,180f);carrier.routine=cargoRoutine;
@@ -86,12 +89,13 @@ namespace SkyTide
         {
             CrewActor a=new CrewActor(group,model,duty,position,yaw,actors.Count);actors.Add(a);return a;
         }
-        void AddRigger(CrewModelData model,Vector3 position,float yaw,Material material)
+        void AddRigger(CrewModelData model,Vector3 position,float yaw,Material material,Mesh cleat,Mesh belay,Material wood,Material bronze)
         {
             CrewActor a=Add(model,CrewActor.Duty.Rigger,position,yaw);
-            a.rope=new GameObject("Running rigging").AddComponent<LineRenderer>();a.rope.transform.SetParent(group,false);
-            a.rope.sharedMaterial=material;a.rope.useWorldSpace=true;a.rope.positionCount=4;
-            a.rope.startWidth=a.rope.endWidth=.025f;a.rope.numCornerVertices=2;a.rope.generateLightingData=true;
+            a.rope=new CrewRope(group,material);
+            Transform fitting=CrewParts.Object("Rigging belaying cleat",group,cleat,wood,bronze,position+Quaternion.Euler(0,yaw,0)*new Vector3(0,0,RiggingCleat.z));
+            fitting.localRotation=Quaternion.Euler(0,yaw,0);
+            CrewParts.Object("Belayed rope turn",fitting,belay,material,material,Vector3.up*.20f).localRotation=Quaternion.Euler(0,90f,0);
         }
         public void SetVisible(bool on){if(group!=null)group.gameObject.SetActive(on);}
         public CannonMount UpperMount(int side,int gun=0){return Visible?upperMounts[(side<0?0:2)+gun]:null;}
@@ -119,10 +123,12 @@ namespace SkyTide
                 actor.Pose(time,wheel,age);
                 if(actor.rope!=null)
                 {
-                    Vector3 a=actor.bones[8].position,b=actor.bones[12].position;
-                    actor.ropePoints[0]=group.parent.TransformPoint(new Vector3(0,13.1f,-1.78f));
-                    actor.ropePoints[1]=a.y>b.y?a:b;actor.ropePoints[2]=a.y>b.y?b:a;
-                    actor.ropePoints[3]=actor.root.TransformPoint(new Vector3(0,.15f,.3f));actor.rope.SetPositions(actor.ropePoints);
+                    actor.ropePoints[0]=group.parent.TransformPoint(RiggingAnchor);
+                    actor.ropePoints[1]=actor.ropeUpper+actor.ropeAxis*.14f;
+                    actor.ropePoints[2]=actor.ropeUpper;actor.ropePoints[3]=actor.ropeLower;
+                    actor.ropePoints[4]=actor.ropeLower-actor.ropeAxis*.14f;
+                    actor.ropePoints[5]=actor.root.TransformPoint(RiggingCleat);
+                    actor.rope.SetPositions(actor.ropePoints);
                 }
             }
         }
