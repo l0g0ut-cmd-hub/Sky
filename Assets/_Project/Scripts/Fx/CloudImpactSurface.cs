@@ -60,8 +60,13 @@ namespace SkyTide
         {
             float h = Mathf.Clamp01((p.y - v.deckBase) / Mathf.Max(v.deckTop - v.deckBase, 0.01f));
             float dx = v.wind.x * time, dz = v.wind.z * time;
-            float u = (p.x + dx) / v.deckWeatherScale, wv = (p.z + dz) / v.deckWeatherScale;
-            float w = Weather(u, wv, false) * 0.6f + Weather(u * 2.7f + 0.37f, wv * 2.7f + 0.37f, true) * 0.4f;
+            // Та же «погода», что в DeckDensity шейдера (три повёрнутые октавы канала R с искажением).
+            float qx = p.x + dx, qz = p.z + dz, S = v.deckWeatherScale;
+            float wx = Weather(qx / (S * 2.3f) + 0.13f, qz / (S * 2.3f) + 0.13f, false) - 0.5f;
+            float wz = Weather(qz / (S * 2.9f) + 0.57f, qx / (S * 2.9f) + 0.57f, false) - 0.5f;
+            float w = Weather((qx * 0.819f - qz * 0.574f) / S + wx * 0.55f, (qx * 0.574f + qz * 0.819f) / S + wz * 0.55f, false) * 0.55f
+                    + Weather((qx * -0.666f - qz * 0.746f) / (S * 0.43f) + 0.31f, (qx * 0.746f + qz * -0.666f) / (S * 0.43f) + 0.31f, false) * 0.3f
+                    + Weather((qx * 0.122f - qz * 0.993f) / (S * 0.19f) + 0.71f, (qx * 0.993f + qz * 0.122f) / (S * 0.19f) + 0.71f, false) * 0.15f;
             float cov = Mathf.Clamp01((w - v.deckCoverage) / 0.35f);
             Vector3 wp = p + new Vector3(dx, time * 0.4f, dz);
             float top = cov * (0.45f + 0.55f * Noise(wp, v.deckLobeScale, 0)) + 0.12f;
