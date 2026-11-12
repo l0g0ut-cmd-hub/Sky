@@ -211,7 +211,9 @@ namespace SkyTide.EditorTools
             material.SetTexture("_MetallicGlossMap",Tex(folder+"Deckhand_MetalSmooth.png",false,true,TextureWrapMode.Clamp,TextureWrapMode.Clamp,2048,true,false,true));
             material.EnableKeyword("_METALLICGLOSSMAP");AssetDatabase.CreateAsset(material,MaterialFolder+"/Deckhand.mat");
             CrewModelData result=new CrewModelData{material=material,geometry=AssetDatabase.LoadAssetAtPath<TextAsset>(folder+"Deckhand.bytes"),
-                skeleton=AssetDatabase.LoadAssetAtPath<TextAsset>(folder+"Deckhand_rig.json")};
+                skeleton=AssetDatabase.LoadAssetAtPath<TextAsset>(folder+"Deckhand_rig.json"),
+                helmGeometry=AssetDatabase.LoadAssetAtPath<TextAsset>(folder+"Deckhand_HelmGrip.bytes"),
+                helmPose=AssetDatabase.LoadAssetAtPath<TextAsset>(folder+"Deckhand_HelmGrip.json")};
             if(!result.IsValid||material.mainTexture==null||material.GetTexture("_BumpMap")==null||material.GetTexture("_MetallicGlossMap")==null)
                 throw new System.InvalidOperationException("Crew model/PBR assets are missing");
             return result;

@@ -71,6 +71,7 @@ namespace SkyTide.EditorTools
                 case "102_helm_center":
                 case "103_helm_right": phase = 15; break;
                 case "104_upper_gun_crew": phase = 16; break;
+                case "105_captain_hat": phase = 17; break;
             }
             if (phase >= 0 && boot.Volumetric != null) boot.Volumetric.SetStaticCapturePhase(phase);
             if (boot.Fx != null) boot.Fx.PrepareForRender(cam);
@@ -227,6 +228,76 @@ namespace SkyTide.EditorTools
             finally{Object.DestroyImmediate(baked);}
         }
 
+        static float Cross(Vector2 a,Vector2 b){return a.x*b.y-a.y*b.x;}
+        static float EdgeRadius(Vector2 a,Vector2 b)
+        {
+            Vector2 edge=b-a;float t=Mathf.Clamp01(-Vector2.Dot(a,edge)/Mathf.Max(edge.sqrMagnitude,1e-12f));
+            return (a+edge*t).magnitude;
+        }
+        static float TriangleRadius(Vector2 a,Vector2 b,Vector2 c)
+        {
+            float ab=Cross(b-a,-a),bc=Cross(c-b,-b),ca=Cross(a-c,-c);
+            bool inside=(ab>=0f&&bc>=0f&&ca>=0f)||(ab<=0f&&bc<=0f&&ca<=0f);
+            if(inside&&Mathf.Abs(Cross(b-a,c-a))>1e-10f)return 0f;
+            return Mathf.Min(EdgeRadius(a,b),EdgeRadius(b,c),EdgeRadius(c,a));
+        }
+
+        static void CheckHelmSurface(CrewModelData model,ShipCrew crew)
+        {
+            CrewActor actor=crew.Helmsman;Mesh baked=new Mesh();
+            try
+            {
+                actor.renderer.BakeMesh(baked);Vector3[] vertices=baked.vertices;
+                for(int i=0;i<vertices.Length;i++)vertices[i]=crew.Wheel.InverseTransformPoint(actor.root.TransformPoint(vertices[i]));
+                for(int side=0;side<2;side++)
+                {
+                    int[] triangles=side==0?model.Grip.leftTriangles:model.Grip.rightTriangles;
+                    if(triangles==null||triangles.Length<300)throw new System.InvalidOperationException("Closed hand surface is missing");
+                    float clearance=float.PositiveInfinity;
+                    for(int i=0;i<triangles.Length;i+=3)
+                    {
+                        Vector3 a=vertices[triangles[i]],b=vertices[triangles[i+1]],c=vertices[triangles[i+2]];
+                        foreach(Vector3 point in new[]{a,b,c})
+                        {
+                            float radial=point.x*(side==0?-1f:1f);
+                            if(radial<.285f||radial>.45f)throw new System.InvalidOperationException("Closed fingers left their wooden handle");
+                        }
+                        clearance=Mathf.Min(clearance,TriangleRadius(new Vector2(a.y,a.z),new Vector2(b.y,b.z),new Vector2(c.y,c.z))-CrewParts.GripWoodRadius);
+                    }
+                    // Test the baked triangle surfaces against solid wood, not the wrist target.
+                    if(clearance<-.0005f||clearance>.004f)
+                        throw new System.InvalidOperationException("Helm finger/wood contact failed: side="+side+", clearance="+clearance);
+                    Debug.Log("SkyTide: closed helm contact — side="+side+", angle="+crew.WheelAngle.ToString("F1")
+                        +", surface clearance="+clearance.ToString("F5")+" m, triangles="+triangles.Length/3);
+                }
+            }
+            finally{Object.DestroyImmediate(baked);}
+        }
+
+        static CrewActor CheckCaptainHat(CrewModelData model,ShipCrew crew)
+        {
+            CrewActor captain=null;foreach(CrewActor actor in crew.ActorsCapture)if(actor.duty==CrewActor.Duty.Captain)captain=actor;
+            if(captain==null)throw new System.InvalidOperationException("Captain missing");
+            Transform hat=captain.bones[4].Find("Captain tricorn");
+            if(hat==null)throw new System.InvalidOperationException("Captain hat missing");
+            byte[] data=model.geometry.bytes;int count=System.BitConverter.ToInt32(data,4),triangles=System.BitConverter.ToInt32(data,8);
+            int ids=16+count*32+triangles*12,weights=ids+count*4;
+            Mesh baked=new Mesh();float hairTop=float.NegativeInfinity;
+            try
+            {
+                captain.renderer.BakeMesh(baked);Vector3[] vertices=baked.vertices;
+                for(int i=0;i<count;i++)for(int slot=0;slot<4;slot++)
+                    if(data[ids+i*4+slot]==4&&System.BitConverter.ToSingle(data,weights+(i*4+slot)*4)>.5f)
+                        hairTop=Mathf.Max(hairTop,captain.bones[4].InverseTransformPoint(captain.root.TransformPoint(vertices[i])).y);
+            }
+            finally{Object.DestroyImmediate(baked);}
+            float crownBottom=hat.localPosition.y+hat.GetComponent<MeshFilter>().sharedMesh.bounds.min.y;
+            float overlap=hairTop-crownBottom;
+            if(overlap<.03f||overlap>.13f)throw new System.InvalidOperationException("Captain hat floats or covers face: overlap="+overlap);
+            Debug.Log("SkyTide: captain hat fitted — hair/crown overlap="+overlap.ToString("F4")+" m, follows animated head");
+            return captain;
+        }
+
         static void CaptureCrew(OrbitCamera oc,Camera cam,SkyTideBootstrap boot,string dir)
         {
             ShipCrew crew=boot.Ship.GetComponent<ShipCrew>();
@@ -281,6 +352,7 @@ namespace SkyTide.EditorTools
                     maxError=Mathf.Max(maxError,crew.Helmsman.HandError);
                     if(maxError>.035f)throw new System.InvalidOperationException("Helmsman hands left wheel: "+maxError);
                     handCenters[i]=CrewHandLandmarks(boot.CurrentShip.crew,crew.Helmsman);
+                    CheckHelmSurface(boot.CurrentShip.crew,crew);
                     SaveFrame(cam,boot,rt,tex,dir,names[i]);
                 }
                 float leftTravel=Vector3.Distance(handCenters[0][0],handCenters[2][0]);
@@ -304,9 +376,15 @@ namespace SkyTide.EditorTools
                 SaveFrame(cam,boot,rt,tex,dir,"104_upper_gun_crew");
                 StepSalvo(guns,boot.Fx,ref time,1.8f);crew.Pose(time);
                 if(crew.BarrelOffsetCapture(1).sqrMagnitude!=0f)throw new System.InvalidOperationException("Upper barrel did not return home");
+                boot.Fx.Clear();crew.Pose(2.15f);
+                CrewActor captain=CheckCaptainHat(boot.CurrentShip.crew,crew);
+                focus=captain.root.TransformPoint(new Vector3(0,1.69f,0));
+                camera=captain.root.TransformPoint(new Vector3(-.45f,1.90f,.95f));
+                cam.transform.SetPositionAndRotation(camera,Quaternion.LookRotation(focus-camera,visual.up));
+                SaveFrame(cam,boot,rt,tex,dir,"105_captain_hat");
                 Debug.Log("SkyTide: upper crew verified — 10 skinned sailors, 21 joints each, all on upper decks; animated="+moving
                     +"; real joystick full left/neutral/right, release and focus reset OK; helm hand error="+maxError.ToString("F4")
-                    +" m; two upper gun mounts, firing/recoil/run-out OK; five frames rendered");
+                    +" m; closed finger surfaces/wood contact and fitted captain hat OK; two upper gun mounts, firing/recoil/run-out OK; six frames rendered");
             }
             finally
             {
@@ -600,7 +678,7 @@ namespace SkyTide.EditorTools
                 if(profile=="crew-review")
                 {
                     CaptureCrew(oc,cam,boot,dir);
-                    Debug.Log("SkyTide: быстрая проверка crew-review (5x960x456), кадров="
+                    Debug.Log("SkyTide: быстрая проверка crew-review (6x960x456), кадров="
                         +Directory.GetFiles(dir,"*.jpg").Length+", секунд="+(Time.realtimeSinceStartup-start).ToString("F1"));
                     return;
                 }
@@ -632,7 +710,7 @@ namespace SkyTide.EditorTools
                 else if (profile == "wind") CaptureWind(oc, cam, boot, dir);
                 else if (profile == "crew") CaptureCrew(oc, cam, boot, dir);
                 else if (environment) CaptureRecoil(oc, cam, boot, dir);
-                string sizes = profile == "crew" ? "7x800x380 + 5x960x456"
+                string sizes = profile == "crew" ? "7x800x380 + 6x960x456"
                     : profile == "wind" || profile == "recoil" ? "7x800x380 + 4x960x456"
                     : profile == "hud" ? "7x800x380 + 2x960x432 + 1x1008x432"
                     : appearance ? "12x800x380 + 4x400x190" : "800x380";

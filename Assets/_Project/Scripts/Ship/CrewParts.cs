@@ -6,6 +6,7 @@ namespace SkyTide
     /// <summary>Shared deck fittings, built once from proper shaded geometry.</summary>
     public sealed class CrewParts
     {
+        public const float WheelHeight=1.42f,GripRadius=.375f,GripWoodRadius=.025f;
         readonly List<Vector3> v=new List<Vector3>(),n=new List<Vector3>();
         readonly List<Vector2> uv=new List<Vector2>();
         readonly List<int>[] tris={new List<int>(),new List<int>()};
@@ -81,14 +82,16 @@ namespace SkyTide
             {
                 float t=i*Mathf.PI/4;Vector3 d=new Vector3(Mathf.Cos(t),Mathf.Sin(t),0);
                 g.Cylinder(d*.04f,d*.35f,.016f);g.Cylinder(d*.25f,d*.285f,.023f,1);
+                g.Cylinder(d*.285f,d*.45f,GripWoodRadius);
             }
             return g.Finish("Bronze-bound wooden helm");
         }
         public static Mesh Stand()
         {
             CrewParts g=new CrewParts();g.Box(new Vector3(0,.08f,.07f),new Vector3(.36f,.16f,.46f));
-            g.Box(new Vector3(0,.65f,.08f),new Vector3(.14f,1.05f,.16f));
-            g.Cylinder(new Vector3(0,1.22f,-.06f),new Vector3(0,1.22f,.16f),.045f,1);
+            float top=WheelHeight-.045f,bottom=.125f;
+            g.Box(new Vector3(0,(top+bottom)*.5f,.08f),new Vector3(.14f,top-bottom,.16f));
+            g.Cylinder(new Vector3(0,WheelHeight,-.06f),new Vector3(0,WheelHeight,.16f),.045f,1);
             return g.Finish("Helm pedestal");
         }
         public static Mesh GunPlatform()

@@ -13,6 +13,7 @@ namespace SkyTide
         public readonly Vector3 station;
         public readonly float yaw,phase;
         readonly CrewModelData.CrewRig rig;
+        readonly CrewModelData.GripPose grip;
         public Vector3 leftGoal,rightGoal;
         public Transform tool;
         public LineRenderer rope;
@@ -22,6 +23,7 @@ namespace SkyTide
         public CrewActor(Transform parent,CrewModelData model,Duty duty,Vector3 position,float yaw,int index)
         {
             this.duty=duty;station=position;this.yaw=yaw;phase=index*1.731f;rig=model.Rig;
+            grip=duty==Duty.Helmsman?model.Grip:null;
             root=new GameObject(duty+" "+index).transform;root.SetParent(parent,false);
             root.localPosition=position;root.localRotation=Quaternion.Euler(0,yaw,0);
             bones=new Transform[rig.names.Length];
@@ -31,7 +33,7 @@ namespace SkyTide
                 bones[i].SetParent(rig.parents[i]<0?root:bones[rig.parents[i]],false);
                 bones[i].localPosition=rig.Point(i)-(rig.parents[i]<0?Vector3.zero:rig.Point(rig.parents[i]));
             }
-            renderer=root.gameObject.AddComponent<SkinnedMeshRenderer>();renderer.sharedMesh=model.Mesh;renderer.sharedMaterial=model.material;
+            renderer=root.gameObject.AddComponent<SkinnedMeshRenderer>();renderer.sharedMesh=model.MeshFor(duty==Duty.Helmsman);renderer.sharedMaterial=model.material;
             renderer.bones=bones;renderer.rootBone=root;renderer.quality=SkinQuality.Bone4;
             renderer.localBounds=new Bounds(new Vector3(0,.95f,0),new Vector3(2.3f,2.8f,2.3f));
             renderer.shadowCastingMode=UnityEngine.Rendering.ShadowCastingMode.On;
@@ -65,7 +67,21 @@ namespace SkyTide
         {
             int upper=left?6:10,lower=left?7:11,hand=left?8:12;
             IK(upper,lower,hand,target,root.TransformPoint(new Vector3(left?-.65f:.65f,1.15f,-.3f)));
-            if(palm.HasValue)bones[hand].rotation=palm.Value;
+            if(palm.HasValue)
+            {
+                // Spread pronation down the forearm without moving the solved wrist position.
+                Vector3 axis=(bones[hand].position-bones[lower].position).normalized;
+                Quaternion delta=palm.Value*Quaternion.Inverse(bones[hand].rotation);
+                Vector3 projected=Vector3.Project(new Vector3(delta.x,delta.y,delta.z),axis);
+                Quaternion twist=new Quaternion(projected.x,projected.y,projected.z,delta.w);
+                float length=Mathf.Sqrt(projected.sqrMagnitude+delta.w*delta.w);
+                if(length>.0001f)
+                {
+                    twist=new Quaternion(twist.x/length,twist.y/length,twist.z/length,twist.w/length);
+                    bones[lower].rotation=Quaternion.Slerp(Quaternion.identity,twist,.65f)*bones[lower].rotation;
+                }
+                bones[hand].rotation=palm.Value;
+            }
         }
 
         public void Pose(float time,Transform wheel,float shotAge)
@@ -94,9 +110,11 @@ namespace SkyTide
             Vector3 l=new Vector3(-.29f,1.025f,.015f),r=new Vector3(.29f,1.025f,.015f);
             if(duty==Duty.Helmsman&&wheel!=null)
             {
-                leftGoal=wheel.TransformPoint(new Vector3(-.23f,0,-.07f));rightGoal=wheel.TransformPoint(new Vector3(.23f,0,-.07f));
-                Quaternion palm=wheel.rotation*Quaternion.Euler(-90f,0,0);
-                Arm(true,leftGoal,palm);Arm(false,rightGoal,palm);
+                Quaternion leftPalm=wheel.rotation*Quaternion.Euler(0,0,-90f)*Quaternion.Euler(-90f,0,0);
+                Quaternion rightPalm=wheel.rotation*Quaternion.Euler(0,0,90f)*Quaternion.Euler(-90f,0,0);
+                leftGoal=wheel.TransformPoint(new Vector3(-CrewParts.GripRadius,0,0))-leftPalm*grip.Center(true);
+                rightGoal=wheel.TransformPoint(new Vector3(CrewParts.GripRadius,0,0))-rightPalm*grip.Center(false);
+                Arm(true,leftGoal,leftPalm);Arm(false,rightGoal,rightPalm);
             }
             else
             {

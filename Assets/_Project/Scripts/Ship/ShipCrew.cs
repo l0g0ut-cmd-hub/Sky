@@ -31,7 +31,7 @@ namespace SkyTide
             Material wood=variant.materials[5],iron=variant.materials[1],bronze=variant.materials[6];
             Material hat=MaterialFactory.Opaque("Captain dark tricorn",new Color(.035f,.025f,.025f),.18f);
             CrewParts.Object("Helm stand",group,CrewParts.Stand(),wood,bronze,HelmStation+new Vector3(0,0,.28f));
-            wheel=CrewParts.Object("Working helm",group,CrewParts.Wheel(),wood,bronze,HelmStation+new Vector3(0,1.24f,.22f));
+            wheel=CrewParts.Object("Working helm",group,CrewParts.Wheel(),wood,bronze,HelmStation+new Vector3(0,CrewParts.WheelHeight,.22f));
             Mesh platform=CrewParts.GunPlatform(),stand=CrewParts.GunStand(),barrel=ShipMeshLoader.Load(variant.upperGun);
             Mesh rammer=CrewParts.Ramrod();
             for(int i=0;i<2;i++)
@@ -45,7 +45,7 @@ namespace SkyTide
             }
             Add(variant.crew,CrewActor.Duty.Helmsman,HelmStation,0);
             CrewActor captain=Add(variant.crew,CrewActor.Duty.Captain,new Vector3(-2f,QuarterDeck,-11.4f),10f);
-            CrewParts.Object("Captain tricorn",captain.bones[4],CrewParts.Hat(),hat,bronze,new Vector3(0,.03f,0));
+            CrewParts.Object("Captain tricorn",captain.bones[4],CrewParts.Hat(),hat,bronze,new Vector3(0,-.06f,0));
             for(int i=0;i<2;i++)
             {
                 int side=i==0?-1:1;
