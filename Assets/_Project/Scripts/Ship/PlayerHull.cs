@@ -62,9 +62,11 @@ namespace SkyTide
             Health -= damagePerHit;
             LastHitTime = Time.time;
             FxSystem fx = FxSystem.Instance;
+            SkySound.HullHit(point, Health <= damagePerHit * 2f);
             if (Health <= 0f)
             {
                 Health = 0f;
+                SkySound.ShipDestroyed(Center);
                 if (fx != null) fx.Explosion(Center, 3f);
                 deadUntil = Time.time + respawnDelay;
                 if (ctrl != null && ctrl.visual != null) ctrl.visual.gameObject.SetActive(false);

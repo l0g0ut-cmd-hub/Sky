@@ -1,0 +1,11 @@
+Звуки «Небесного прилива»
+
+cannon_fire, hit_ship, hit_ship_heavy, cannon_miss, ship_destroyed, hit_metal —
+  OpenGameArt, набор морского боя (cannon fire / hit / miss / ship destroyed), CC0 (общественное достояние).
+  https://opengameart.org/node/136787
+
+sail_loop (CLOTHFlp_FlagFlapping_LOOP_01), creak_1, creak_2 (WOODFric_CreaksCreepy_OS_01/02),
+reload_clank (METLImpt_HammerAnvil_OS_01) —
+  "Oculus Audio Pack 01" by Oculus VR, LLC (https://developers.meta.com/vr/downloads/package/oculus-audio-pack-1/),
+  licensed under CC BY 4.0 (https://creativecommons.org/licenses/by/4.0/).
+  Источник: https://github.com/facebookincubator/Meta-open-sound (corpora/oculus-audio-pack). Файлы переименованы.

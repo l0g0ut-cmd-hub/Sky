@@ -83,6 +83,7 @@ namespace SkyTide
                 size0 = 0.85f, size1 = 0.7f, color = new Color(0.2f, 0.15f, 0.12f), alpha = 1f, seed = s
             });
             Flash(muzzle, 2.5f, 32f);
+            SkySound.CannonFired(muzzle, hostile);
             // Короткий направленный факел с горячей сердцевиной, затем остаётся только дым.
             Add(new P { kind = Kind.Glow, pos = muzzle + dir * 0.6f, vel = shipVel, life = 0.07f,
                         size0 = 1.4f, size1 = 2.4f, color = new Color(1f, 0.72f, 0.35f), alpha = 0.65f });
@@ -266,7 +267,7 @@ namespace SkyTide
         /// <summary>Неогненный всплеск: рваная волна, выброс пены вверх и оседание. Обломок даёт маленький клуб.</summary>
         public void CloudSplash(Vector3 at, float scale = 1f)
         {
-            if (scale >= 0.7f) { CloudSplashCount++; LastCloudSplash = at; }
+            if (scale >= 0.7f) { CloudSplashCount++; LastCloudSplash = at; SkySound.CloudMiss(at); }
             Color tint = volumetric != null ? Color.Lerp(volumetric.ambientTop, volumetric.sunGold, 0.35f) : new Color(0.62f, 0.5f, 0.55f);
             tint = Color.Lerp(tint, new Color(0.7f, 0.65f, 0.68f), 0.4f);
             if (scale >= 0.7f)

@@ -178,7 +178,19 @@ namespace SkyTide
                 lastPos = transform.position;
             }
             Pump(Application.isPlaying ? Time.time : float.MaxValue);
-            if (Application.isPlaying) AimPreview();
+            if (Application.isPlaying) { AimPreview(); ReloadSound(); }
+        }
+
+        bool[] wasReady = { true, true };
+        void ReloadSound()
+        {
+            if (mounts.Length == 0) return;
+            for (int k = 0; k < 2; k++)
+            {
+                bool r = Readiness(k == 0 ? -1 : 1) >= 0.999f;
+                if (r && !wasReady[k]) SkySound.Reloaded(transform.position + transform.right * (k == 0 ? -5f : 5f));
+                wasReady[k] = r;
+            }
         }
 
         [Tooltip("Прицельная дуга борта, обращённого к цели")]

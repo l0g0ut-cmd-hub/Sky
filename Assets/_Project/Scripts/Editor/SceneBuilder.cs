@@ -148,6 +148,19 @@ namespace SkyTide.EditorTools
             Texture2D layer = Tex(Art + "CloudLayer.png", false, true, TextureWrapMode.Repeat, TextureWrapMode.Repeat, 1024, true, true);
             if (layer != null) mats.cloudLayer = MaterialFactory.CloudSea("CloudLayer", layer, true);
             Texture2D sprites = Tex(Art + "CloudAtlas.png", false, true, TextureWrapMode.Clamp, TextureWrapMode.Clamp, 4096, true);
+            // Звук: моно, Vorbis; длинные — сжатыми в памяти.
+            foreach (string guid in AssetDatabase.FindAssets("t:AudioClip", new[] { "Assets/_Project/Resources/Audio" }))
+            {
+                string ap = AssetDatabase.GUIDToAssetPath(guid);
+                AudioImporter ai = AssetImporter.GetAtPath(ap) as AudioImporter;
+                if (ai == null) continue;
+                AudioImporterSampleSettings ss = ai.defaultSampleSettings;
+                bool longClip = ap.Contains("ship_destroyed") || ap.Contains("sail_loop");
+                ss.loadType = longClip ? AudioClipLoadType.CompressedInMemory : AudioClipLoadType.DecompressOnLoad;
+                ss.compressionFormat = AudioCompressionFormat.Vorbis; ss.quality = 0.7f;
+                ai.defaultSampleSettings = ss; ai.forceToMono = !ap.Contains("sail_loop"); ai.loadInBackground = false;
+                ai.SaveAndReimport();
+            }
             // Интерфейс: набор HUD (с альфой), главное меню, фон меню, заставка — без сжатия и мипов.
             Tex("Assets/_Project/Resources/UI/hud_kit.png", false, true, TextureWrapMode.Clamp, TextureWrapMode.Clamp, 2048, false, true);
             foreach (string rp in new[] { "radar_frame", "radar_face", "radar_sweep", "radar_ship", "radar_enemy", "radar_enemy_far" })

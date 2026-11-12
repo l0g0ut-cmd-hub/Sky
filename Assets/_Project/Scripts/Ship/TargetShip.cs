@@ -118,8 +118,10 @@ namespace SkyTide
             }
             hasContact=false;
             if (damageVisual != null) damageVisual.Hit(point, hits / (float)Mathf.Max(1, hitsToSink), velocity,normal);
+            SkySound.HullHit(point, hits % 3 == 0);
             if (hits >= hitsToSink)
             {
+                SkySound.ShipDestroyed(point);
                 if (fx != null) fx.Explosion(model.TransformPoint(box.center), 3f);
                 deadUntil = Time.time + respawnDelay;
                 if (damageVisual != null) damageVisual.BeginSink(point, velocity);
