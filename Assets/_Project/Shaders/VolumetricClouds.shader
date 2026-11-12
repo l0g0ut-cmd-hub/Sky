@@ -430,7 +430,7 @@ Shader "Hidden/SkyTide/VolumetricClouds"
                 }
                 float meanDist = wAcc > 1e-4 ? distAcc / wAcc : tB;
                 towerMoment = distAcc;
-                light = lerp(light, SkyTidePanorama(rd) * (1.0 - trans), _Aerial.x * saturate(SkyTideAerial(meanDist)));
+                light = lerp(light, SkyTideAerialColor(rd) * (1.0 - trans), SkyTideAerialAmount(_Aerial.x, meanDist));
             }
         }
         if (bake) return float4(light, trans);

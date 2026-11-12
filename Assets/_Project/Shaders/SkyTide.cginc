@@ -11,6 +11,17 @@ float4 _SkyTideFlashColors[4];   // rgb цвет, w радиус в метрах
 float _SkyTideFlashCount;
 
 // Локальная подсветка облаков и дыма. Вне залпа — ранний выход без четырёх расчётов на каждом шаге марша.
+// Цвет воздушной дымки для облаков: горизонт в этом азимуте (а не пиксель неба прямо за облаком —
+// иначе дальнее облако перекрашивается в рисунок панорамы за ним и выглядит полупрозрачным).
+// Доля ограничена: облако остаётся облаком.
+inline float SkyTideAerialAmount(float strength, float dist) { return min(strength * saturate(SkyTideAerial(dist)), 0.55); }
+inline float3 SkyTideAerialColor(float3 rd)
+{
+    float3 h = normalize(float3(rd.x, 0.03, rd.z));
+    float3 side = normalize(float3(-rd.z, 0.0, rd.x)) * 0.08;
+    return (SkyTidePanorama(h) + SkyTidePanorama(normalize(h + side)) + SkyTidePanorama(normalize(h - side))) / 3.0;
+}
+
 inline float3 SkyTideFlashLight(float3 p)
 {
     if (_SkyTideFlashCount < 0.5) return float3(0, 0, 0);

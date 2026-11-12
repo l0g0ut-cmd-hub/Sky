@@ -138,7 +138,7 @@ Shader "Hidden/SkyTide/CloudImpostor"
                 float3 rd = d / max(dist, 1e-3);
 
                 // Воздушная перспектива — как у объёмных башен.
-                light = lerp(light, SkyTidePanorama(rd) * a, _ImpParams.x * saturate(SkyTideAerial(dist)));
+                light = lerp(light, SkyTideAerialColor(rd) * a, SkyTideAerialAmount(_ImpParams.x, dist));
 
                 float m = i.slices.w;
                 // Низ облака тонет в объёмном море облаков.
