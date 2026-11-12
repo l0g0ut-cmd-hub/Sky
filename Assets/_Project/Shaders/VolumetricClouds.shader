@@ -237,8 +237,18 @@ Shader "Hidden/SkyTide/VolumetricClouds"
     {
         float h = saturate((p.y - _Deck.x) / (_Deck.y - _Deck.x));
         float2 drift = _Wind.xz * _Wind.w;
-        float2 wuv = (p.xz + drift) / _Deck2.x;
-        float w = tex2Dlod(_SkyTideNoise, float4(wuv, 0, 0)).r * 0.6 + tex2Dlod(_SkyTideNoise, float4(wuv * 2.7 + 0.37, 0, 0)).g * 0.4;
+        // «Погода» без рядов: текстура шума мала (256², повтор каждые ~1.4 км), а в канале G есть тёмная полоса
+        // на шве — в перспективе это давало ровные ряды клубов. Теперь три октавы канала R с поворотом на
+        // «нерациональные» углы, некратными масштабами и искажением координат — повтор не складывается в сетку.
+        float2 q = p.xz + drift;
+        float2 warp = float2(tex2Dlod(_SkyTideNoise, float4(q / (_Deck2.x * 2.3) + 0.13, 0, 0)).r,
+                             tex2Dlod(_SkyTideNoise, float4(q.yx / (_Deck2.x * 2.9) + 0.57, 0, 0)).r) - 0.5;
+        float2 qa = float2(q.x * 0.819 - q.y * 0.574, q.x * 0.574 + q.y * 0.819) / _Deck2.x + warp * 0.55;
+        float2 qb = float2(q.x * -0.666 - q.y * 0.746, q.x * 0.746 + q.y * -0.666) / (_Deck2.x * 0.43) + 0.31;
+        float2 qc = float2(q.x * 0.122 - q.y * 0.993, q.x * 0.993 + q.y * 0.122) / (_Deck2.x * 0.19) + 0.71;
+        float w = tex2Dlod(_SkyTideNoise, float4(qa, 0, 0)).r * 0.55
+                + tex2Dlod(_SkyTideNoise, float4(qb, 0, 0)).r * 0.3
+                + tex2Dlod(_SkyTideNoise, float4(qc, 0, 0)).r * 0.15;
         float cov = saturate((w - _Deck2.y) / 0.35);
         float3 wp = p + float3(drift.x, _Wind.w * 0.4, drift.y);
         float n = tex3Dlod(_Noise3D, float4(wp / _Deck2.z, 0)).r;
