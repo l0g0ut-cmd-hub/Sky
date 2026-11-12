@@ -213,7 +213,7 @@ namespace SkyTide
         /// 35–145°), — пунктир светящихся точек до входа в море облаков или до корпуса цели; там — крупная отметка.
         /// Янтарная — борт готов, серая — перезарядка.
         /// </summary>
-        void AimPreview()
+        public void AimPreview()
         {
             FxSystem fx = FxSystem.Instance;
             if (fx == null) return;

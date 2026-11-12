@@ -31,6 +31,10 @@ namespace SkyTide.EditorTools
                 Directory.CreateDirectory(Path.GetDirectoryName(Path.GetFullPath(path)));
 
                 Debug.Log("SkyTide: сборка APK → " + path);
+                // Ошибки шейдеров не валят сборку Unity сами — ловим их и валим сборку (иначе розовый экран на телефоне).
+                System.Collections.Generic.List<string> shaderErrors = new System.Collections.Generic.List<string>();
+                Application.LogCallback watch = (msg, st, type) => { if (msg != null && msg.StartsWith("Shader error")) lock (shaderErrors) shaderErrors.Add(msg); };
+                Application.logMessageReceivedThreaded += watch;
 
                 SceneBuilder.Build();
                 SceneShots.Capture(SceneBuilder.ScenePath);   // кадры для оценки картинки (build/shots)
@@ -47,6 +51,13 @@ namespace SkyTide.EditorTools
                 BuildSummary sum = report.summary;
                 Debug.Log("SkyTide: результат=" + sum.result + ", ошибок=" + sum.totalErrors + ", размер=" + sum.totalSize + " байт");
 
+                Application.logMessageReceivedThreaded -= watch;
+                if (shaderErrors.Count > 0)
+                {
+                    Debug.LogError("SkyTide: ошибки шейдеров (" + shaderErrors.Count + "), первая: " + shaderErrors[0]);
+                    if (Application.isBatchMode) EditorApplication.Exit(3);
+                    return;
+                }
                 if (sum.result == BuildResult.Succeeded)
                 {
                     Debug.Log("Build succeeded!");

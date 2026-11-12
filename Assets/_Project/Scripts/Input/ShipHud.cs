@@ -210,7 +210,7 @@ namespace SkyTide
                 Rect ir=side<0?new Rect(r.x+l.unit*0.014f,r.y+(r.height-icon)*0.45f,iw,icon):new Rect(r.xMax-l.unit*0.014f-iw,r.y+(r.height-icon)*0.45f,iw,icon);
                 Sprite(ir,src,new Color(1f,1f,1f,ready?1f:0.6f));
                 icon=iw+l.unit*0.01f;
-                r=side<0?new Rect(r.x+icon,r.y,r.width-icon,r.height):new Rect(r.x,r.y,r.width-icon,r.height);
+                r=side<0?new Rect(r.x+icon,r.y,r.width-icon-l.unit*0.02f,r.height):new Rect(r.x+l.unit*0.02f,r.y,r.width-icon-l.unit*0.02f,r.height);
             }
             Rect title=new Rect(r.x,r.y+l.unit*0.012f,r.width,r.height*0.44f);
             Text(title,side<0?"ЛЕВЫЙ БОРТ":"ПРАВЫЙ БОРТ",l.unit*0.028f,cream);
@@ -408,7 +408,10 @@ namespace SkyTide
                 width+=c.advance; if(label.text[i]!=' ') {minY=Mathf.Min(minY,c.minY);maxY=Mathf.Max(maxY,c.maxY);}
             }
             if(width<=0f||maxY<minY)return;
-            float scale=Mathf.Clamp01((label.rect.width-6f)/width);
+            // Текст никогда не выходит за свою плашку: поля по бокам под угловой орнамент, по высоте — 80% плашки.
+            float side=Mathf.Max(6f,label.rect.height*0.3f);
+            float scale=Mathf.Clamp01((label.rect.width-side*2f)/width);
+            scale=Mathf.Min(scale,label.rect.height*0.8f/Mathf.Max(1f,maxY-minY));
             float x=label.rect.center.x-width*scale*0.5f;
             float baseline=label.rect.center.y+(minY+maxY)*0.5f*scale;
             for(int i=0;i<label.text.Length;i++)

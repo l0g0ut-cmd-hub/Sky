@@ -1049,6 +1049,77 @@ namespace SkyTide.EditorTools
             }
         }
 
+        /// <summary>
+        /// Обзор (проверки Claude): 4 кадра 960×456 с HUD — общий вид, против солнца, сверху на море облаков, взрыв на мишени.
+        /// Каждый кадр проверяется автоматически: розовая заливка (шейдер не скомпилировался), чёрный/пустой кадр,
+        /// пересвет (почти белый кадр). Провал — исключение, сборка падает сразу, а не на телефоне.
+        /// </summary>
+        static void CaptureOverview(OrbitCamera oc, Camera cam, SkyTideBootstrap boot, string dir)
+        {
+            float start = Time.realtimeSinceStartup;
+            TouchControls controls = Object.FindFirstObjectByType<TouchControls>();
+            RenderTexture rt = new RenderTexture(960, 456, 24, RenderTextureFormat.ARGB32);
+            Texture2D tex = new Texture2D(rt.width, rt.height, TextureFormat.RGB24, false);
+            Broadside guns = boot.Ship != null ? boot.Ship.GetComponent<Broadside>() : null;
+            TargetShip target = boot.Target;
+            Vector3 oldTarget = target != null ? target.transform.position : Vector3.zero;
+            Quaternion oldRot = target != null ? target.transform.rotation : Quaternion.identity;
+            try
+            {
+                boot.SetVolumetric(true);
+                boot.Fx.Clear();
+                if (controls != null) controls.SetHudCapture(true, rt.width, rt.height);
+                if (target != null)
+                {
+                    // Мишень на правом траверзе в 260 м — видно радар, дугу прицела и корпус цели.
+                    Transform s = boot.Ship.transform;
+                    target.transform.SetPositionAndRotation(s.position + s.right * 260f + s.forward * 40f, Quaternion.LookRotation(s.forward));
+                }
+                if (guns != null) { guns.SetReadinessCapture(1, 1); guns.AimPreview(); }
+                OverviewFrame(oc, cam, boot, rt, tex, dir, new Shot("200_overview_chase", 0f, 14f, 62f));
+                if (guns != null) guns.AimPreview();
+                OverviewFrame(oc, cam, boot, rt, tex, dir, new Shot("201_overview_sun", 35f, 8f, 75f));
+                if (guns != null) guns.AimPreview();
+                OverviewFrame(oc, cam, boot, rt, tex, dir, new Shot("202_overview_down", 140f, 45f, 110f));
+                if (target != null)
+                {
+                    boot.Fx.ClearPreview();
+                    boot.Fx.Explosion(target.transform.position + Vector3.up * 8f, 1f);
+                    for (int k = 0; k < 4; k++) boot.Fx.Simulate(0.05f);
+                }
+                OverviewFrame(oc, cam, boot, rt, tex, dir, new Shot("203_overview_hit", 80f, 8f, 90f));
+                Debug.Log("SkyTide: обзор и проверки кадров — успешно, секунд=" + (Time.realtimeSinceStartup - start).ToString("F1"));
+            }
+            finally
+            {
+                if (controls != null) controls.SetHudCapture(false);
+                if (target != null) target.transform.SetPositionAndRotation(oldTarget, oldRot);
+                boot.Fx.ClearPreview(); boot.Fx.Clear();
+                cam.targetTexture = null; RenderTexture.active = null; rt.Release(); Object.DestroyImmediate(rt); Object.DestroyImmediate(tex);
+            }
+        }
+
+        static void OverviewFrame(OrbitCamera oc, Camera cam, SkyTideBootstrap boot, RenderTexture rt, Texture2D tex, string dir, Shot s)
+        {
+            Render(oc, cam, boot, rt, tex, dir, s);
+            Color32[] px = tex.GetPixels32();
+            int magenta = 0; double lum = 0; int white = 0;
+            for (int i = 0; i < px.Length; i += 3)
+            {
+                Color32 c = px[i];
+                if (c.r > 200 && c.b > 200 && c.g < 70) magenta++;
+                float l = (0.3f * c.r + 0.59f * c.g + 0.11f * c.b) / 255f;
+                lum += l;
+                if (l > 0.97f) white++;
+            }
+            int n = (px.Length + 2) / 3;
+            float mf = magenta / (float)n, ml = (float)(lum / n), wf = white / (float)n;
+            Debug.Log("SkyTide: проверка " + s.name + " — розовое " + (mf * 100f).ToString("F2") + "%, яркость " + ml.ToString("F2") + ", пересвет " + (wf * 100f).ToString("F1") + "%");
+            if (mf > 0.005f) throw new System.InvalidOperationException("Кадр " + s.name + ": розовая заливка " + (mf * 100f).ToString("F1") + "% — шейдер не скомпилировался");
+            if (ml < 0.03f) throw new System.InvalidOperationException("Кадр " + s.name + ": почти чёрный (яркость " + ml.ToString("F3") + ")");
+            if (wf > 0.35f) throw new System.InvalidOperationException("Кадр " + s.name + ": пересвет, белого " + (wf * 100f).ToString("F0") + "%");
+        }
+
         static void CaptureQuick(OrbitCamera oc, Camera cam, SkyTideBootstrap boot, string dir)
         {
             float start = Time.realtimeSinceStartup;
@@ -1073,7 +1144,8 @@ namespace SkyTide.EditorTools
                         StepSalvo(reviewGuns,boot.Fx,ref time,.06f);Render(oc,cam,boot,rt,tex,dir,new Shot("45_vol_muzzle_flash",90,6,58));
                     }
                     finally{reviewGuns.ripple=ripple;reviewGuns.SetReadinessCapture(1,1);boot.Fx.Clear();Random.state=random;}
-                    Debug.Log("SkyTide: быстрая проверка battle-life (3x800x380 + 5x960x456), кадров="+Directory.GetFiles(dir,"*.jpg").Length+", секунд="+(Time.realtimeSinceStartup-start).ToString("F1"));
+                    CaptureOverview(oc,cam,boot,dir);
+                    Debug.Log("SkyTide: быстрая проверка battle-life (3x800x380 + 5x960x456 + обзор 4x960x456), кадров="+Directory.GetFiles(dir,"*.jpg").Length+", секунд="+(Time.realtimeSinceStartup-start).ToString("F1"));
                     return;
                 }
                 if(profile=="deck-motion")
