@@ -163,6 +163,7 @@ namespace SkyTide.EditorTools
             }
             // Интерфейс: набор HUD (с альфой), главное меню, фон меню, заставка — без сжатия и мипов.
             Tex("Assets/_Project/Resources/UI/hud_kit.png", false, true, TextureWrapMode.Clamp, TextureWrapMode.Clamp, 2048, false, true);
+            Tex("Assets/_Project/Resources/UI/aim_kit.png", false, true, TextureWrapMode.Clamp, TextureWrapMode.Clamp, 2048, true, true);
             foreach (string rp in new[] { "radar_frame", "radar_face", "radar_sweep", "radar_ship", "radar_enemy", "radar_enemy_far" })
                 Tex("Assets/_Project/Resources/UI/" + rp + ".png", false, true, TextureWrapMode.Clamp, TextureWrapMode.Clamp, 1024, true, true);
             Tex("Assets/_Project/Resources/UI/main_menu.jpg", false, false, TextureWrapMode.Clamp, TextureWrapMode.Clamp, 2048, false, true);

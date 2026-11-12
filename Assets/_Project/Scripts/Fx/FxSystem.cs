@@ -23,7 +23,7 @@ namespace SkyTide
         const int MaxLights = 2;   // только vertex light, без теней и дополнительных forward-проходов
 
         // Значения совпадают с Fx.shader.
-        enum Kind { Glow = 0, Smoke = 1, Ball = 2, Muzzle = 3, Spark = 4, Foam = 5, Wave = 6, Splinter = 7, Flame = 8 }
+        enum Kind { Glow = 0, Smoke = 1, Ball = 2, Muzzle = 3, Spark = 4, Foam = 5, Wave = 6, Splinter = 7, Flame = 8, Aim = 9 }
 
         struct P
         {
@@ -399,6 +399,11 @@ namespace SkyTide
         [System.NonSerialized] public bool debugHidden;   // отладочная панель: эффекты не рисуются (симуляция идёт)
         public void PrepareForRender(Camera cam)
         {
+            if (!External && BuildAim())
+            {
+                aimMat.SetFloat("_AimExternal", 0f); aimMat.SetFloat("_ZTest", (float)UnityEngine.Rendering.CompareFunction.Always);
+                Graphics.DrawMesh(aimMesh, Matrix4x4.identity, aimMat, 0, Application.isPlaying ? null : cam);
+            }
             if (debugHidden || !Ensure()) return;
             BuildMesh(cam);
             if (drawn == 0 || External) return;
@@ -411,6 +416,7 @@ namespace SkyTide
         /// <summary>Отрисовка поверх объёмных облаков (из VolumetricClouds.OnRenderImage).</summary>
         public void DrawExternal(Camera cam, RenderTexture target)
         {
+            DrawAimExternal(cam, target);
             if (debugHidden || drawn == 0 || !Ensure()) return;
             SetCommon(cam);
             mat.SetFloat("_FxExternal", 1f);
@@ -420,8 +426,11 @@ namespace SkyTide
             if (mat.SetPass(0)) Graphics.DrawMeshNow(mesh, Matrix4x4.identity);
         }
 
+        Texture2D aimTex; bool aimTried;
         void SetCommon(Camera cam)
         {
+            if (!aimTried) { aimTried = true; aimTex = Resources.Load<Texture2D>("UI/aim_kit"); }
+            if (aimTex != null) mat.SetTexture("_FxAimTex", aimTex);
             mat.SetVector("_FxRight", cam.transform.right);
             mat.SetVector("_FxUp", cam.transform.up);
             mat.SetMatrix("_FxCamVP", cam.projectionMatrix * cam.worldToCameraMatrix);
@@ -433,12 +442,64 @@ namespace SkyTide
             mat.SetVector("_FxParams", new Vector4(glowIntensity, smokeLight, deckTop, appearance));
         }
 
+        // ---------- прицельная дуга (Resources/UI/aim_kit, 1254², пиксельные прямоугольники) ----------
+        public Shader aimShader;
+        Material aimMat; Mesh aimMesh; Texture2D aimTex; bool aimTried;
+        readonly List<Vector3> aimV = new List<Vector3>(512);
+        readonly List<Vector2> aimUV = new List<Vector2>(512);
+        readonly List<Color> aimC = new List<Color>(512);
+        readonly List<int> aimT = new List<int>(768);
+        public static readonly Rect AimDash = new Rect(164, 91, 538, 108), AimDashCold = new Rect(142, 258, 560, 93),
+            AimChevron = new Rect(927, 118, 163, 191), AimRing = new Rect(19, 377, 795, 799), AimHit = new Rect(812, 503, 388, 405);
+        public bool HasAimArt { get { if (!aimTried) { aimTried = true; aimTex = Resources.Load<Texture2D>("UI/aim_kit"); } return aimTex != null; } }
+        public void ClearAim() { aimV.Clear(); aimUV.Clear(); aimC.Clear(); aimT.Clear(); }
+        /// <summary>Квадрат дуги в мире: углы a-b-c-d по часовой, прямоугольник атласа в пикселях.</summary>
+        public void AimQuad(Vector3 a, Vector3 b, Vector3 c, Vector3 d, Rect px, Color col)
+        {
+            int i = aimV.Count;
+            aimV.Add(a); aimV.Add(b); aimV.Add(c); aimV.Add(d);
+            const float K = 1254f;
+            aimUV.Add(new Vector2(px.x / K, 1f - px.y / K)); aimUV.Add(new Vector2(px.xMax / K, 1f - px.y / K));
+            aimUV.Add(new Vector2(px.xMax / K, 1f - px.yMax / K)); aimUV.Add(new Vector2(px.x / K, 1f - px.yMax / K));
+            for (int k = 0; k < 4; k++) aimC.Add(col);
+            aimT.Add(i); aimT.Add(i + 1); aimT.Add(i + 2); aimT.Add(i); aimT.Add(i + 2); aimT.Add(i + 3);
+        }
+        bool BuildAim()
+        {
+            if (aimV.Count == 0 || !HasAimArt) return false;
+            if (aimShader == null) aimShader = Shader.Find("Hidden/SkyTide/Aim");
+            if (aimShader == null || !aimShader.isSupported) return false;
+            if (aimMat == null) { aimMat = new Material(aimShader) { hideFlags = HideFlags.HideAndDontSave }; aimMat.mainTexture = aimTex; }
+            if (aimMesh == null) { aimMesh = new Mesh { name = "Aim" }; aimMesh.MarkDynamic(); }
+            aimMesh.Clear(false);
+            aimMesh.SetVertices(aimV); aimMesh.SetUVs(0, aimUV); aimMesh.SetColors(aimC); aimMesh.SetTriangles(aimT, 0);
+            aimMesh.bounds = new Bounds(Vector3.zero, Vector3.one * 1e6f);
+            return true;
+        }
+
         readonly List<P> preview = new List<P>(160);
         /// <summary>Точки прицельной дуги: живут один кадр, не симулируются (Broadside очищает и заполняет каждый кадр).</summary>
         public void ClearPreview() { preview.Clear(); }
         public void AddPreview(Vector3 pos, float size, Color c)
         {
             preview.Add(new P { kind = Kind.Glow, pos = pos, life = 1f, size0 = size, size1 = size, color = c, alpha = c.a });
+        }
+
+        void DrawAimExternal(Camera cam, RenderTexture target)
+        {
+            if (!BuildAim()) return;
+            aimMat.SetFloat("_AimExternal", 1f);
+            aimMat.SetMatrix("_AimVP", GL.GetGPUProjectionMatrix(cam.projectionMatrix, target != null) * cam.worldToCameraMatrix);
+            RenderTexture.active = target;
+            if (aimMat.SetPass(0)) Graphics.DrawMeshNow(aimMesh, Matrix4x4.identity);
+        }
+
+        /// <summary>Элемент прицельного набора (UI/aim_kit): 0/1 — штрих янтарь/серебро вдоль axis, 2 — кольцо на облаках,
+        /// 3 — прицел на корпусе, 4 — шеврон у дула. aspect — ширина/длина для штрихов.</summary>
+        public void AddAim(Vector3 pos, Vector3 axis, float size, int element, float aspect, float alpha)
+        {
+            preview.Add(new P { kind = Kind.Aim, pos = pos, axis = axis.normalized, aspect = aspect, life = 1f, size0 = size, size1 = size,
+                                color = Color.white, alpha = alpha, seed = element });
         }
 
         void BuildMesh(Camera cam)

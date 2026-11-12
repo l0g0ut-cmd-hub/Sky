@@ -181,6 +181,18 @@ namespace SkyTide
             if (Application.isPlaying) { AimPreview(); ReloadSound(); }
         }
 
+        /// <summary>Квадрат вдоль направления along (длина len), поперёк — перпендикулярно взгляду (ширина wid).</summary>
+        static void Billboard(FxSystem fx, Vector3 center, Vector3 along, float len, float wid, Rect px, Color col, Vector3 cam)
+        {
+            Vector3 view = (center - cam).normalized;
+            Vector3 side = Vector3.Cross(along, view);
+            if (side.sqrMagnitude < 1e-6f) side = Vector3.up;
+            side = side.normalized * (wid * 0.5f);
+            Vector3 ax = along.normalized * (len * 0.5f);
+            // левый край картинки — хвост (позади), правый — голова (вперёд по ходу)
+            fx.AimQuad(center - ax + side, center + ax + side, center + ax - side, center - ax - side, px, col);
+        }
+
         bool[] wasReady = { true, true };
         void ReloadSound()
         {
@@ -226,19 +238,38 @@ namespace SkyTide
             midZ /= count; float bestDz = float.MaxValue;
             foreach (CannonMount m in mounts) if (Mathf.Sign(m.side) == side && Mathf.Abs(m.Muzzle.z - midZ) < bestDz) { bestDz = Mathf.Abs(m.Muzzle.z - midZ); mid = m; }
             bool ready = Readiness((int)side) >= 0.999f;
-            Color dot = ready ? new Color(1f, 0.62f, 0.25f, 0.55f) : new Color(0.7f, 0.75f, 0.8f, 0.3f);
             Vector3 p = model.TransformPoint(mid.Muzzle);
             Vector3 v = model.TransformDirection(mid.Dir).normalized * muzzleSpeed + velocity;
+            float alpha = ready ? 0.95f : 0.55f;
+            fx.AddAim(p + v.normalized * 2.5f, v, 3.2f, 4, 187f / 158f, alpha);   // шеврон у дула
             float g = fx.gravity, step = 0.06f;
+            Vector3 segStart = p;
             for (int i = 0; i < 120; i++)
             {
                 Vector3 prev = p;
                 v.y -= g * step; p += v * step;
                 Vector3 hp;
-                if ((p - best.transform.position).sqrMagnitude < 45f * 45f && best.TryHit(prev, p, out hp)) { fx.AddPreview(hp, 7f, new Color(1f, 0.35f, 0.2f, ready ? 0.9f : 0.5f)); return; }
-                if (p.y < fx.deckTop - 5f) { fx.AddPreview(prev, 6f, new Color(dot.r, dot.g, dot.b, dot.a * 1.3f)); return; }
-                if (i % 2 == 1) fx.AddPreview(p, 1.6f, dot);
+                if ((p - best.transform.position).sqrMagnitude < 45f * 45f && best.TryHit(prev, p, out hp))
+                {
+                    fx.AddAim(hp, Vector3.up, 9f, 3, 1f, ready ? 1f : 0.6f);   // прицел на корпусе цели
+                    return;
+                }
+                if (p.y < fx.deckTop - 5f)
+                {
+                    fx.AddAim(prev, Vector3.up, 20f, 2, 1f, alpha);           // кольцо падения на облаках
+                    return;
+                }
+                if (i % 3 == 2)
+                {
+                    // Штрих на отрезке пути (голова — вперёд по полёту), с промежутком.
+                    Vector3 c = Vector3.Lerp(segStart, p, 0.5f);
+                    float len = Vector3.Distance(segStart, p) * 0.8f;
+                    fx.AddAim(c, p - segStart, len, ready ? 0 : 1, 104f / 523f * 1.6f, alpha);
+                    segStart = p;
+                }
             }
+        }
+        }
         }
 
         /// <summary>Выпустить ядра, чьё время пришло; CI тоже может прокручивать волну по времени.</summary>

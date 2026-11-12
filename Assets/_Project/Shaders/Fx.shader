@@ -25,6 +25,14 @@ Shader "Hidden/SkyTide/Fx"
             #include "SkyTide.cginc"
 
             UNITY_DECLARE_DEPTH_TEXTURE(_CameraDepthTexture);
+            sampler2D _FxAimTex;   // UI/aim_kit 1254²: прицельная дуга (вид 9), номер элемента — data.w
+            // Прямоугольники элементов в UV (низ-лево): штрих янтарь, штрих серебро, кольцо, прицел, шеврон.
+            static const float4 kAimRect[5] = {
+                float4(176.0/1254, 1.0-(93.0+104)/1254, 523.0/1254, 104.0/1254),
+                float4(156.0/1254, 1.0-(260.0+88)/1254, 544.0/1254, 88.0/1254),
+                float4(21.0/1254, 1.0-(381.0+791)/1254, 789.0/1254, 791.0/1254),
+                float4(818.0/1254, 1.0-(508.0+396)/1254, 378.0/1254, 396.0/1254),
+                float4(929.0/1254, 1.0-(120.0+187)/1254, 158.0/1254, 187.0/1254) };
             float4 _FxRight, _FxUp;
             float4x4 _FxVP;       // проекция на цель (GPU), только для внешней отрисовки
             float4x4 _FxCamVP;    // проекция камеры (OpenGL) — координаты экрана
@@ -83,6 +91,12 @@ Shader "Hidden/SkyTide/Fx"
                 }
                 else if (kind > 5.5 && kind < 6.5)
                     offset = float3(q.x, 0, q.y);   // волна лежит на поверхности, не поворачивается за камерой
+                if (kind > 8.5)
+                {
+                    int e = (int)(v.data.w + 0.5);
+                    if (e == 2) offset = float3(q.x, 0, q.y);          // кольцо — плашмя на облаках
+                    else if (e == 3) offset = _FxRight.xyz * q.x + _FxUp.xyz * q.y;   // прицел — к камере
+                }
                 float3 wpos = v.vertex.xyz + offset * v.data.x;
                 o.pos = _FxExternal > 0.5 ? mul(_FxVP, float4(wpos, 1.0)) : mul(UNITY_MATRIX_VP, float4(wpos, 1.0));
                 o.uv = v.uv;
@@ -98,6 +112,22 @@ Shader "Hidden/SkyTide/Fx"
             {
                 float r = length(i.uv) * 2.0;
                 float kind = i.data.z;
+                if (kind > 8.5)
+                {
+                    float4 rc = kAimRect[clamp((int)(i.data.w + 0.5), 0, 4)];
+                    float4 t = tex2D(_FxAimTex, rc.xy + (i.uv + 0.5) * rc.zw);
+                    float ma = 1.0;
+                    if (_FxExternal > 0.5)
+                    {
+                        float4 cpa = mul(_FxCamVP, float4(i.wpos, 1.0));
+                        float2 sa = cpa.xy / cpa.w * 0.5 + 0.5;
+                        float eyeA = -mul(_FxCamV, float4(i.wpos, 1.0)).z;
+                        float rawA = SAMPLE_DEPTH_TEXTURE(_CameraDepthTexture, sa);
+                        if (Linear01Depth(rawA) < 0.999) ma = saturate((LinearEyeDepth(rawA) - eyeA) / 1.5);
+                    }
+                    float a = t.a * i.color.a * ma;
+                    return half4(t.rgb * i.color.rgb * a * 1.6, a * 0.85);   // чуть ярче — свечение читается на закате
+                }
                 bool directional = (kind > 2.5 && kind < 4.5) || kind > 6.5;
                 if (!directional && r > 1.0) discard;
                 bool cloud = kind > 4.5 && kind < 6.5;
