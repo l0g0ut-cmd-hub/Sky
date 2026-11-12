@@ -157,7 +157,7 @@ namespace SkyTide
             List<CannonMount> list = new List<CannonMount>();
             foreach (CannonMount m in mounts) if (Mathf.Sign(m.side) == Mathf.Sign(side)) list.Add(m);
             if(crew!=null)for(int gun=0;gun<2;gun++){CannonMount upper=crew.UpperMount(side,gun);if(upper!=null)list.Add(upper);}
-            if(crew!=null)crew.NotifySalvo(now);
+            if(crew!=null)crew.NotifySalvo(now,side);
             list.Sort((a, b) => b.Muzzle.z.CompareTo(a.Muzzle.z));   // от носа к корме
             for (int i = 0; i < list.Count; i++)
                 queue.Add(new KeyValuePair<float, CannonMount>(now + (ripple ? i * rippleDelay + UnityEngine.Random.Range(0f, 0.03f) : UnityEngine.Random.Range(0f, 0.025f)), list[i]));

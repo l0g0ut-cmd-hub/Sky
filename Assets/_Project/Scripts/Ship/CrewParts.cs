@@ -128,8 +128,22 @@ namespace SkyTide
         }
         public static Mesh Ramrod()
         {
-            CrewParts g=new CrewParts();g.Cylinder(new Vector3(0,0,-.45f),new Vector3(0,0,.65f),.016f);
-            g.Cylinder(new Vector3(0,0,.58f),new Vector3(0,0,.72f),.04f,1);return g.Finish("Gun rammer");
+            CrewParts g=new CrewParts();g.Cylinder(new Vector3(0,0,-.15f),new Vector3(0,0,.95f),GripWoodRadius);
+            g.Cylinder(new Vector3(0,0,.88f),new Vector3(0,0,1.02f),.04f,1);return g.Finish("Gun rammer");
+        }
+        public static Mesh BreechHandles()
+        {
+            CrewParts g=new CrewParts();
+            for(int side=-1;side<=1;side+=2)
+            {
+                g.Cylinder(new Vector3(-.75f,-.28f,side*.24f),new Vector3(-.57f,-.28f,side*.24f),GripWoodRadius);
+                for(int end=0;end<2;end++)
+                {
+                    float x=end==0?-.75f:-.57f;
+                    g.Cylinder(new Vector3(x,-.14f,side*.13f),new Vector3(x,-.28f,side*.24f),.012f,1);
+                }
+            }
+            return g.Finish("Wooden breech control handles");
         }
         public static Mesh CargoCrate()
         {

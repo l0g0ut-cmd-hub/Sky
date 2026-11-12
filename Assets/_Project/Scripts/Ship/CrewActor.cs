@@ -21,6 +21,9 @@ namespace SkyTide
         public float conversation;
         public Vector3 conversationPartner;
         public int gunIndex=-1;
+        public Transform gunBarrel;
+        public int commandSide;
+        public float ReloadAmount {get;private set;}
         public Vector3 leftGoal,rightGoal;
         public Transform tool;
         public LineRenderer rope;
@@ -30,7 +33,7 @@ namespace SkyTide
         public CrewActor(Transform parent,CrewModelData model,Duty duty,Vector3 position,float yaw,int index)
         {
             this.duty=duty;station=position;this.yaw=yaw;phase=index*1.731f;rig=model.Rig;
-            bool usesGrip=duty==Duty.Helmsman||duty==Duty.Carrier;
+            bool usesGrip=duty==Duty.Helmsman||duty==Duty.Carrier||duty==Duty.Gunner||duty==Duty.Loader;
             grip=usesGrip?model.Grip:null;openHands=model.Mesh;closedHands=usesGrip?model.MeshFor(true):null;
             root=new GameObject(duty+" "+index).transform;root.SetParent(parent,false);
             root.localPosition=position;root.localRotation=Quaternion.Euler(0,yaw,0);
@@ -110,13 +113,29 @@ namespace SkyTide
             }
             if(conversation>.001f&&duty==Duty.Lookout)
                 root.localRotation=Quaternion.Slerp(root.localRotation,Quaternion.LookRotation(conversationPartner-root.localPosition,Vector3.up),conversation);
-            bool closed=duty==Duty.Helmsman||(duty==Duty.Carrier&&activity.grip>.001f);
+            bool closed=duty==Duty.Helmsman||duty==Duty.Gunner||duty==Duty.Loader||(duty==Duty.Carrier&&activity.grip>.001f);
             Mesh desired=closed?closedHands:openHands;if(renderer.sharedMesh!=desired)renderer.sharedMesh=desired;
             float work=Mathf.Sin(t*2.1f),breathe=Mathf.Sin(t*1.7f);
-            float crouch=duty==Duty.Gunner&&shotAge>=0&&shotAge<.6f?Mathf.Sin(shotAge/.6f*Mathf.PI)*.045f:0f;
+            float kick=duty==Duty.Gunner&&shotAge>=0?Broadside.CannonRecoil(shotAge)/.32f:0;
+            float crouch=kick*.10f;
             bones[0].localPosition+=Vector3.up*(breathe*.005f-crouch);
+            if(duty==Duty.Gunner)bones[0].localPosition+=Vector3.back*(kick*.10f);
             bones[1].localRotation=Quaternion.Euler(breathe*.7f,0,Mathf.Sin(t*.65f)*.8f);
             bones[4].localRotation=Quaternion.Euler(Mathf.Sin(t*.8f)*3f,Mathf.Sin(t*.45f)*13f,0);
+            ReloadAmount=duty==Duty.Loader&&shotAge>=.9f&&shotAge<2.15f?Mathf.Sin((shotAge-.9f)/1.25f*Mathf.PI):0;
+            if(duty==Duty.Gunner)bones[1].localRotation=Quaternion.Euler(-3f-kick*7f,0,0);
+            if(duty==Duty.Loader)
+            {
+                bones[1].localRotation=Quaternion.Euler(6f+ReloadAmount*5f,0,0);
+                bones[0].localPosition+=Vector3.forward*(ReloadAmount*.02f);
+            }
+            float order=duty==Duty.Captain&&shotAge>=0&&shotAge<1.2f?Mathf.Sin(shotAge/1.2f*Mathf.PI):0;
+            if(order>0)
+            {
+                root.localRotation=Quaternion.Euler(0,yaw+commandSide*28f*order,0);
+                bones[2].localRotation=Quaternion.Euler(0,commandSide*6f*order,0);
+                bones[4].localRotation=Quaternion.Euler(-order*2f,commandSide*12f*order,0);
+            }
             if(duty==Duty.Carrier)
             {
                 bones[0].localPosition-=Vector3.up*(activity.crouch*.64f);
@@ -132,11 +151,27 @@ namespace SkyTide
                 rightGoal=wheel.TransformPoint(new Vector3(CrewParts.GripRadius,0,0))-rightPalm*grip.Center(false);
                 Arm(true,leftGoal,leftPalm);Arm(false,rightGoal,rightPalm);
             }
+            else if(duty==Duty.Gunner&&gunBarrel!=null)
+            {
+                Quaternion palm=root.rotation;
+                leftGoal=gunBarrel.TransformPoint(new Vector3(-.66f,-.28f,.24f))-palm*grip.Center(true);
+                rightGoal=gunBarrel.TransformPoint(new Vector3(-.66f,-.28f,-.24f))-palm*grip.Center(false);
+                Arm(true,leftGoal,palm);Arm(false,rightGoal,palm);
+            }
+            else if(duty==Duty.Loader)
+            {
+                Quaternion palm=root.rotation*Quaternion.Euler(0,0,180f);
+                Vector3 axis=root.TransformPoint(new Vector3(0,1.55f+ReloadAmount*.13f,.29f+ReloadAmount*.05f));
+                Vector3 direction=root.forward;
+                leftGoal=axis-direction*.08f-palm*grip.Center(true);
+                rightGoal=axis+direction*.08f-palm*grip.Center(false);
+                Arm(true,leftGoal,palm);Arm(false,rightGoal,palm);
+                if(tool!=null){tool.position=axis;tool.rotation=palm;}
+            }
             else
             {
                 if(duty==Duty.Gunner)
                 {
-                    float kick=shotAge>=0?Broadside.CannonRecoil(shotAge):0;
                     l=new Vector3(-.12f,1.55f,.23f-kick*.35f);r=new Vector3(.12f,1.55f,.23f-kick*.35f);
                     bones[2].localRotation=Quaternion.Euler(-3f+work*2f,0,0);
                 }
@@ -152,10 +187,9 @@ namespace SkyTide
                 }
                 else if(duty==Duty.Captain)
                 {
-                    float order=Mathf.Pow(Mathf.Max(0,Mathf.Sin(t*.7f)),3);
-                    if(shotAge>=0f&&shotAge<1.2f)order=Mathf.Max(order,Mathf.Sin(shotAge/1.2f*Mathf.PI));
-                    r=Vector3.Lerp(r,new Vector3(.22f,1.45f,.26f),order);
                     l=new Vector3(-.20f,1.02f,.10f);
+                    if(commandSide<0)l=Vector3.Lerp(l,new Vector3(-.22f,1.42f,.30f),order);
+                    else r=Vector3.Lerp(r,new Vector3(.22f,1.45f,.30f),order);
                 }
                 else if(duty==Duty.Lookout)
                 {
@@ -203,7 +237,7 @@ namespace SkyTide
                 IK(upper,lower,foot,world,root.TransformPoint(new Vector3(sideIndex==0?-.3f:.3f,.5f,.5f)));
                 bones[foot].rotation=root.rotation;
             }
-            if(tool!=null)
+            if(tool!=null&&duty!=Duty.Loader)
             {
                 Vector3 a=bones[8].position,b=bones[12].position;
                 tool.position=(a+b)*.5f-root.up*.05f;tool.rotation=Quaternion.LookRotation(b-a,root.forward);

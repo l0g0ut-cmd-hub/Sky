@@ -15,7 +15,7 @@ namespace SkyTide
         readonly DeckRoutine patrolRoutine=new DeckRoutine(false),cargoRoutine=new DeckRoutine(true);
         Transform storedCargo;
         readonly Transform[] lockerDoors=new Transform[2];
-        CrewActor patrol,lookout,carrier;
+        CrewActor patrol,lookout,carrier,captain;
         Transform group,wheel;
         ShipController ship;
         float commandAt=-100f;
@@ -37,7 +37,7 @@ namespace SkyTide
             CrewParts.Object("Helm stand",group,CrewParts.Stand(),wood,bronze,HelmStation+new Vector3(0,0,.28f));
             wheel=CrewParts.Object("Working helm",group,CrewParts.Wheel(),wood,bronze,HelmStation+new Vector3(0,CrewParts.WheelHeight,.22f));
             Mesh platform=CrewParts.GunPlatform(),stand=CrewParts.GunStand(),barrel=ShipMeshLoader.Load(variant.upperGun);
-            Mesh rammer=CrewParts.Ramrod();
+            Mesh rammer=CrewParts.Ramrod(),breechHandles=CrewParts.BreechHandles();
             for(int sideIndex=0;sideIndex<2;sideIndex++)for(int gun=0;gun<2;gun++)
             {
                 int i=sideIndex*2+gun;float side=sideIndex==0?-1:1,z=1.5f-gun*3f;
@@ -45,15 +45,17 @@ namespace SkyTide
                 Transform mount=CrewParts.Object("Upper swivel gun "+i,group,stand,wood,iron,new Vector3(side*6.30f,PlatformTop,z));
                 mount.localRotation=Quaternion.Euler(0,side<0?180f:0,0);
                 barrels[i]=CrewParts.Object("Recoiling barrel",mount,barrel,iron,iron,new Vector3(0,1.68f,0));
+                CrewParts.Object("Breech grips",barrels[i],breechHandles,wood,bronze,Vector3.zero);
                 upperMounts[i]=new CannonMount{name="UpperDeck_"+i,side=side,muzzle=new[]{side*6.719f,PlatformTop+1.68f,z},dir=new[]{side,0f,0f},length=1.195f};
             }
             Add(variant.crew,CrewActor.Duty.Helmsman,HelmStation,0);
-            CrewActor captain=Add(variant.crew,CrewActor.Duty.Captain,new Vector3(-2f,QuarterDeck,-11.4f),10f);
+            captain=Add(variant.crew,CrewActor.Duty.Captain,new Vector3(-2f,QuarterDeck,-11.4f),10f);
             CrewParts.Object("Captain tricorn",captain.bones[4],CrewParts.Hat(),hat,bronze,new Vector3(0,-.06f,0));
             for(int sideIndex=0;sideIndex<2;sideIndex++)for(int gun=0;gun<2;gun++)
             {
                 int side=sideIndex==0?-1:1,index=sideIndex*2+gun;float z=1.5f-gun*3f;
                 CrewActor gunner=Add(variant.crew,CrewActor.Duty.Gunner,new Vector3(side*5.30f,PlatformTop,z),side*90f);gunner.side=side;gunner.gunIndex=index;
+                gunner.gunBarrel=barrels[index];
                 CrewActor loader=Add(variant.crew,CrewActor.Duty.Loader,new Vector3(side*5.30f,PlatformTop,z+1.15f),side*80f);loader.side=side;loader.gunIndex=index;
                 loader.tool=CrewParts.Object("Rammer",group,rammer,wood,bronze,Vector3.zero);
             }
@@ -93,7 +95,7 @@ namespace SkyTide
         }
         public void SetVisible(bool on){if(group!=null)group.gameObject.SetActive(on);}
         public CannonMount UpperMount(int side,int gun=0){return Visible?upperMounts[(side<0?0:2)+gun]:null;}
-        public void NotifySalvo(float now){commandAt=now;}
+        public void NotifySalvo(float now,int side=0){commandAt=now;if(captain!=null)captain.commandSide=side;}
         public void NotifyShot(CannonMount mount,float now)
         {
             for(int i=0;i<4;i++)if(object.ReferenceEquals(mount,upperMounts[i]))firedAt[i]=now;

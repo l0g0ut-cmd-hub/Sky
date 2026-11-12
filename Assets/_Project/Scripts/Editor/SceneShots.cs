@@ -78,6 +78,10 @@ namespace SkyTide.EditorTools
                 case "113_direction_left":
                 case "114_direction_right": phase = 20; break;
                 case "115_camera_close": phase = 21; break;
+                case "116_gunner_grip":
+                case "117_gunner_recoil":
+                case "118_loader_reload": phase = 22; break;
+                case "119_captain_order": phase = 23; break;
             }
             if (phase >= 0 && boot.Volumetric != null) boot.Volumetric.SetStaticCapturePhase(phase);
             if (boot.Fx != null) boot.Fx.PrepareForRender(cam);
@@ -428,7 +432,40 @@ namespace SkyTide.EditorTools
             finally{Object.DestroyImmediate(baked);}
         }
 
-        static void CaptureLife(OrbitCamera oc,Camera cam,SkyTideBootstrap boot,string dir)
+        static void CheckGunCrew(ShipCrew crew,CrewModelData model,float time)
+        {
+            CheckCrewPose(crew,time);Mesh baked=new Mesh();
+            try
+            {
+                foreach(CrewActor actor in crew.ActorsCapture)
+                {
+                    if(actor.duty!=CrewActor.Duty.Gunner&&actor.duty!=CrewActor.Duty.Loader)continue;
+                    if(actor.HandError>.002f)throw new System.InvalidOperationException("Ordnance wrist target unreachable: "+actor.duty+" "+actor.HandError);
+                    actor.renderer.BakeMesh(baked);Vector3[] vertices=baked.vertices;
+                    Transform frame=actor.duty==CrewActor.Duty.Gunner?actor.gunBarrel:actor.tool;
+                    for(int i=0;i<vertices.Length;i++)vertices[i]=frame.InverseTransformPoint(actor.root.TransformPoint(vertices[i]));
+                    for(int side=0;side<2;side++)
+                    {
+                        int[] tri=side==0?model.Grip.leftTriangles:model.Grip.rightTriangles;float clearance=float.PositiveInfinity;
+                        for(int i=0;i<tri.Length;i+=3)
+                        {
+                            Vector3 a=vertices[tri[i]],b=vertices[tri[i+1]],c=vertices[tri[i+2]];Vector2 pa,pb,pc;
+                            if(actor.duty==CrewActor.Duty.Gunner)
+                            {
+                                Vector2 center=new Vector2(-.28f,side==0?.24f:-.24f);
+                                pa=new Vector2(a.y,a.z)-center;pb=new Vector2(b.y,b.z)-center;pc=new Vector2(c.y,c.z)-center;
+                            }
+                            else{pa=new Vector2(a.x,a.y);pb=new Vector2(b.x,b.y);pc=new Vector2(c.x,c.y);}
+                            clearance=Mathf.Min(clearance,TriangleRadius(pa,pb,pc)-CrewParts.GripWoodRadius);
+                        }
+                        if(clearance<-.0005f||clearance>.004f)throw new System.InvalidOperationException("Ordnance hand/wood contact failed: "+actor.duty+" "+clearance);
+                    }
+                }
+            }
+            finally{Object.DestroyImmediate(baked);}
+        }
+
+        static void CaptureLife(OrbitCamera oc,Camera cam,SkyTideBootstrap boot,string dir,bool workReview=false)
         {
             // Keep the existing helm, hat and all-sailor skin checks, without rendering another gallery.
             CaptureCrew(oc,cam,boot,dir,false);
@@ -442,6 +479,11 @@ namespace SkyTide.EditorTools
             try
             {
                 crew.SetVisible(true);boot.Fx.Clear();boot.SetWindCapture(0,0);
+                for(int side=-1;side<=1;side+=2)for(int gun=0;gun<2;gun++)crew.NotifyShot(crew.UpperMount(side,gun),0);
+                foreach(float age in new[]{0f,.06f,.45f,.9f,1.5f,2.2f})CheckGunCrew(crew,boot.CurrentShip.crew,age);
+                foreach(CrewActor actor in crew.ActorsCapture)if(actor.duty==CrewActor.Duty.Loader&&actor.ReloadAmount!=0)
+                    throw new System.InvalidOperationException("Reload did not settle before readiness returned");
+                Debug.Log("SkyTide: ordnance grip verified — 4 gunners + 4 loaders, actual hand/wood surfaces through rest/kick/return/reload/ready; feet planted");
                 DeckRoutine cargo=crew.CargoRoutineCapture,patrol=crew.PatrolRoutineCapture;
                 foreach(float t in new[]{0f,.8f,2.15f,8f,cargo.Arrival+DeckRoutine.DropTime*.5f,cargo.Arrival+DeckRoutine.DropTime*.98f})
                 {
@@ -452,18 +494,18 @@ namespace SkyTide.EditorTools
                     ||Mathf.Abs(walking.speed-DeckRoutine.PatrolSpeed)>.001f||Vector3.Distance(loaded.position,walking.position)<1f||returned.cargo)
                     throw new System.InvalidOperationException("Deck jobs share a route/speed or cargo was not released");
                 crew.Pose(6f);Vector3 focus=crew.CarrierCapture.root.position+visual.up*1.05f;
-                Vector3 camera=crew.CarrierCapture.root.position+visual.TransformDirection(new Vector3(3.3f,2.25f,1.8f));
+                Vector3 camera=crew.CarrierCapture.root.TransformPoint(new Vector3(-2.4f,2.0f,2.4f));
                 cam.transform.SetPositionAndRotation(camera,Quaternion.LookRotation(focus-camera,visual.up));SaveFrame(cam,boot,rt,tex,dir,"110_cargo_carry");
                 crew.Pose(cargo.Arrival+DeckRoutine.DropTime*.85f);
                 focus=visual.TransformPoint(DeckRoutine.CargoDestination+new Vector3(0,.8f,-.4f));camera=visual.TransformPoint(DeckRoutine.CargoDestination+new Vector3(-2.4f,1.8f,2f));
-                cam.transform.SetPositionAndRotation(camera,Quaternion.LookRotation(focus-camera,visual.up));SaveFrame(cam,boot,rt,tex,dir,"111_cargo_stores");
+                cam.transform.SetPositionAndRotation(camera,Quaternion.LookRotation(focus-camera,visual.up));if(!workReview)SaveFrame(cam,boot,rt,tex,dir,"111_cargo_stores");
                 crew.Pose(cargo.Arrival+DeckRoutine.DropTime+DeckRoutine.RecoveryTime+2f);
                 if(crew.CarrierCapture.cargo.gameObject.activeSelf||!crew.CarrierCapture.activity.stored)throw new System.InvalidOperationException("Box not deposited in stores");
                 crew.Pose(patrol.Arrival+2.1f);
                 if(crew.PatrolCapture.activity.talk<.95f||crew.LookoutCapture.conversation<.95f||crew.PatrolCapture.activity.speed!=0)
                     throw new System.InvalidOperationException("Deck conversation not synchronized");
                 focus=(crew.PatrolCapture.root.position+crew.LookoutCapture.root.position)*.5f+visual.up*1.15f;
-                camera=focus+visual.TransformDirection(new Vector3(3.4f,1.4f,2.5f));
+                camera=focus+visual.TransformDirection(new Vector3(-2.4f,1.0f,-1.2f));
                 cam.transform.SetPositionAndRotation(camera,Quaternion.LookRotation(focus-camera,visual.up));SaveFrame(cam,boot,rt,tex,dir,"112_deck_conversation");
                 guns.SetReadinessCapture(1,1);guns.SetRecoilCapture(true);guns.ripple=true;Random.InitState(56041);
                 if(!guns.Fire(-1)||!guns.Fire(1))throw new System.InvalidOperationException("Four upper gun salvo rejected");
@@ -485,14 +527,41 @@ namespace SkyTide.EditorTools
                     sail.SetCapture(boot.Ship.turn);crew.Pose(2.15f);
                     if(Mathf.Abs(sail.Angle+boot.Ship.turn*ShipSteeringSail.MaxAngle)>.001f)throw new System.InvalidOperationException("Sail does not follow joystick");
                     edges[i]=visual.InverseTransformPoint(sail.Sail.TransformPoint(new Vector3(.2f,10,-16.99f))).x;
-                    SaveFrame(cam,boot,rt,tex,dir,names[i]);
+                    if(!workReview)SaveFrame(cam,boot,rt,tex,dir,names[i]);
                 }
                 if(Mathf.Abs(edges[1]-edges[0])<1.1f)throw new System.InvalidOperationException("Direction sail does not visibly deflect");
                 controls.ResetInteraction();sail.SetCapture(0);crew.Pose(6f);
                 Vector2 a=new Vector2(650,240),b=new Vector2(800,240);controls.PointerCapture(251,a,true,false);controls.PointerCapture(252,b,true,false);controls.PinchCapture();
                 controls.PointerCapture(252,b+Vector2.right*2000f,false,false);controls.PinchCapture();oc.Apply(0);
                 if(Mathf.Abs(oc.distance-27f)>.001f)throw new System.InvalidOperationException("Two-finger zoom did not reach the new close limit");
-                controls.ResetInteraction();Render(oc,cam,boot,rt,tex,dir,new Shot("115_camera_close",215,20,oc.minDistance));
+                controls.ResetInteraction();if(!workReview)Render(oc,cam,boot,rt,tex,dir,new Shot("115_camera_close",215,20,oc.minDistance));
+                if(workReview)
+                {
+                    controls.SetHudCapture(false);CrewActor gunner=null,loader=null,captain=null;
+                    foreach(CrewActor actor in crew.ActorsCapture)
+                    {
+                        if(actor.gunIndex==2&&actor.duty==CrewActor.Duty.Gunner)gunner=actor;
+                        if(actor.gunIndex==2&&actor.duty==CrewActor.Duty.Loader)loader=actor;
+                        if(actor.duty==CrewActor.Duty.Captain)captain=actor;
+                    }
+                    crew.Pose(3f);focus=gunner.root.TransformPoint(new Vector3(0,1.45f,.34f));camera=gunner.root.TransformPoint(new Vector3(-2.2f,1.8f,1.2f));
+                    cam.transform.SetPositionAndRotation(camera,Quaternion.LookRotation(focus-camera,visual.up));SaveFrame(cam,boot,rt,tex,dir,"116_gunner_grip");
+                    crew.NotifyShot(crew.UpperMount(1,0),3f);CheckGunCrew(crew,boot.CurrentShip.crew,3.06f);
+                    SaveFrame(cam,boot,rt,tex,dir,"117_gunner_recoil");
+                    CheckGunCrew(crew,boot.CurrentShip.crew,4.35f);
+                    if(loader.ReloadAmount<.8f)throw new System.InvalidOperationException("Loader did not work after barrel return");
+                    focus=loader.root.TransformPoint(new Vector3(0,1.45f,.35f));camera=loader.root.TransformPoint(new Vector3(-1.8f,2f,1.5f));
+                    cam.transform.SetPositionAndRotation(camera,Quaternion.LookRotation(focus-camera,visual.up));SaveFrame(cam,boot,rt,tex,dir,"118_loader_reload");
+                    for(int side=-1;side<=1;side+=2)
+                    {
+                        crew.NotifySalvo(5f,side);crew.Pose(5.6f);
+                        if(Mathf.Abs(Mathf.DeltaAngle(captain.yaw,captain.root.localEulerAngles.y)-side*28f)>.1f)
+                            throw new System.InvalidOperationException("Captain order points at the wrong broadside");
+                    }
+                    focus=captain.root.TransformPoint(new Vector3(0,1.5f,.12f));camera=captain.root.TransformPoint(new Vector3(-.65f,1.95f,1.25f));
+                    cam.transform.SetPositionAndRotation(camera,Quaternion.LookRotation(focus-camera,visual.up));SaveFrame(cam,boot,rt,tex,dir,"119_captain_order");
+                    Debug.Log("SkyTide: gun crew verified — grips follow the real recoiling breech, loader starts after 0.9s return and settles before 2.2s readiness; captain points to both firing sides; six work frames rendered");
+                }
                 Debug.Log("SkyTide: deck life verified — 15 moving sailors; loaded/empty cargo speeds="+loaded.speed+"/"+returned.speed
                     +", patrol="+walking.speed+" m/s; pickup/wood contact/deposit/empty return OK; synchronized conversation OK; 4 upper guns fire/recoil/return; sail +/-12 deg, tail travel="
                     +Mathf.Abs(edges[1]-edges[0]).ToString("F3")+" m, joystick/release OK; real pinch limit="+oc.distance+" m; six frames rendered");
@@ -784,11 +853,11 @@ namespace SkyTide.EditorTools
                 boot.SetVolumetric(true);
                 if (boot.Volumetric != null) boot.Volumetric.ResetTowers(boot.Ship.transform.position);
                 // Каждый пакет снимает свои состояния. Предыдущие профили остаются доступны отдельно.
-                string profile = System.Environment.GetEnvironmentVariable("SKYTIDE_SHOT_PROFILE") ?? "life-review";
-                if(profile=="life-review")
+                string profile = System.Environment.GetEnvironmentVariable("SKYTIDE_SHOT_PROFILE") ?? "crew-work";
+                if(profile=="life-review"||profile=="crew-work")
                 {
-                    CaptureLife(oc,cam,boot,dir);
-                    Debug.Log("SkyTide: быстрая проверка life-review (6x960x456), кадров="
+                    CaptureLife(oc,cam,boot,dir,profile=="crew-work");
+                    Debug.Log("SkyTide: быстрая проверка "+profile+" (6x960x456), кадров="
                         +Directory.GetFiles(dir,"*.jpg").Length+", секунд="+(Time.realtimeSinceStartup-start).ToString("F1"));
                     return;
                 }
