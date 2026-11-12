@@ -9,3 +9,6 @@ reload_clank (METLImpt_HammerAnvil_OS_01) —
   "Oculus Audio Pack 01" by Oculus VR, LLC (https://developers.meta.com/vr/downloads/package/oculus-audio-pack-1/),
   licensed under CC BY 4.0 (https://creativecommons.org/licenses/by/4.0/).
   Источник: https://github.com/facebookincubator/Meta-open-sound (corpora/oculus-audio-pack). Файлы переименованы.
+
+explosion_crunch_0..4, explosion_low_0..1 — Kenney, Sci-fi Sounds (https://kenney.nl/assets/sci-fi-sounds), CC0
+  (из сборника «150 Combat Sound Effects», CC0), переведены в моно Vorbis.

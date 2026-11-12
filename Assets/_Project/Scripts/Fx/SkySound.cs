@@ -17,7 +17,7 @@ namespace SkyTide
         const float SpeedOfSound = 343f;
 
         AudioClip fire, hit, hitHeavy, miss, destroyed, metal, sail, clank;
-        AudioClip[] creaks;
+        AudioClip[] creaks, crunch, lowBoom;
         readonly AudioSource[] pool = new AudioSource[Voices];
         int next;
         AudioSource sailSource, creakSource;
@@ -41,6 +41,8 @@ namespace SkyTide
             fire = Load("cannon_fire"); hit = Load("hit_ship"); hitHeavy = Load("hit_ship_heavy"); miss = Load("cannon_miss");
             destroyed = Load("ship_destroyed"); metal = Load("hit_metal"); sail = Load("sail_loop"); clank = Load("reload_clank");
             creaks = new[] { Load("creak_1"), Load("creak_2") };
+            crunch = new[] { Load("explosion_crunch_0"), Load("explosion_crunch_1"), Load("explosion_crunch_2"), Load("explosion_crunch_3"), Load("explosion_crunch_4") };
+            lowBoom = new[] { Load("explosion_low_0"), Load("explosion_low_1") };
             for (int i = 0; i < Voices; i++)
             {
                 GameObject v = new GameObject("Voice " + i);
@@ -78,9 +80,20 @@ namespace SkyTide
 
         // ---------- события игры ----------
         public static void CannonFired(Vector3 muzzle, bool hostile) { if (Instance != null) Instance.At(Instance.fire, muzzle, hostile ? 0.9f : 0.75f, 0.08f, 30f, 2000f); }
-        public static void HullHit(Vector3 at, bool heavy) { if (Instance != null) Instance.At(heavy ? Instance.hitHeavy : Instance.hit, at, 1f, 0.07f, 30f, 1600f); }
+        public static void HullHit(Vector3 at, bool heavy)
+        {
+            if (Instance == null) return;
+            Instance.At(heavy ? Instance.hitHeavy : Instance.hit, at, 1f, 0.07f, 30f, 1600f);
+            Instance.At(Pick(Instance.crunch), at, 0.55f, 0.1f, 25f, 1400f);   // взрывной слой поверх треска дерева
+        }
+        static AudioClip Pick(AudioClip[] a) { return a == null || a.Length == 0 ? null : a[Random.Range(0, a.Length)]; }
         public static void CloudMiss(Vector3 at) { if (Instance != null) Instance.At(Instance.miss, at, 0.55f, 0.12f, 20f, 900f); }
-        public static void ShipDestroyed(Vector3 at) { if (Instance != null) Instance.At(Instance.destroyed, at, 1f, 0.03f, 60f, 2500f); }
+        public static void ShipDestroyed(Vector3 at)
+        {
+            if (Instance == null) return;
+            Instance.At(Pick(Instance.lowBoom), at, 1f, 0.04f, 60f, 3000f);
+            Instance.At(Instance.destroyed, at, 0.9f, 0.03f, 60f, 2500f);
+        }
         public static void MetalHit(Vector3 at) { if (Instance != null) Instance.At(Instance.metal, at, 0.7f, 0.08f, 20f, 900f); }
         public static void Reloaded(Vector3 at) { if (Instance != null) Instance.At(Instance.clank, at, 0.35f, 0.05f, 8f, 150f); }
 
