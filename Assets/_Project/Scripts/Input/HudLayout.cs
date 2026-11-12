@@ -5,7 +5,7 @@ namespace SkyTide
     /// <summary>Одна геометрия в пикселях (начало сверху слева) для рисования и попадания пальца.</summary>
     public struct HudLayout
     {
-        public Rect safe, port, starboard, mode, clouds, ship, course, speed, fps, version, hint;
+        public Rect safe, port, starboard, mode, clouds, ship, course, speed, fps, version, hint, radar;
         public Vector2 wheel;
         public float unit, radius;
 
@@ -24,6 +24,8 @@ namespace SkyTide
             l.course = new Rect(safeArea.center.x - u * 0.15f, safeArea.y + m, u * 0.3f, u * 0.075f);
             l.fps = new Rect(safeArea.x + m, safeArea.y + m, u * 0.22f, u * 0.065f);
             l.speed = new Rect(safeArea.x + m, safeArea.yMax - u * 0.425f, u * 0.34f, u * 0.07f);
+            float rd = Mathf.Min(u * 0.3f, l.speed.y - l.fps.yMax - gap * 2f);
+            l.radar = new Rect(safeArea.x + m, l.fps.yMax + gap, rd, rd);
             l.version = new Rect(l.port.x, safeArea.yMax - u * 0.065f, l.mode.width, u * 0.04f);
             l.radius = u * stickRadius;
             l.wheel = new Vector2(safeArea.x + u * 0.19f, safeArea.yMax - u * 0.215f);

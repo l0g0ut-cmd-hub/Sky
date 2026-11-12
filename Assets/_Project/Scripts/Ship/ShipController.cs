@@ -9,17 +9,17 @@ namespace SkyTide
     public class ShipController : MonoBehaviour
     {
         [Header("Ход")]
-        public float maxSpeed = 18f;
-        public float maxReverseSpeed = 4f;
-        public float acceleration = 3.5f;
-        public float deceleration = 5f;
+        public float maxSpeed = 32f;
+        public float maxReverseSpeed = 7f;
+        public float acceleration = 7f;
+        public float deceleration = 9f;
 
         [Header("Поворот")]
-        public float maxYawRate = 22f;
-        public float turnResponse = 2.5f;
+        public float maxYawRate = 42f;
+        public float turnResponse = 4.5f;
 
         [Header("Граница мира")]
-        public float arenaRadius = 1100f;
+        public float arenaRadius = 1800f;
 
         [Header("Ввод (-1..1)")]
         public float throttle;

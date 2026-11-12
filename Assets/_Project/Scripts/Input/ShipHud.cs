@@ -83,6 +83,41 @@ namespace SkyTide
             Box(new Rect(track.x,track.y,track.width*Mathf.Clamp01(readiness),track.height),ready?gold:new Color(0.51f,0.56f,0.6f));
         }
 
+        /// <summary>Радар: курс корабля — вверх, цель — точка с расстоянием рядом; за пределом дальности — на ободе.</summary>
+        void Radar(TouchControls input,HudLayout l)
+        {
+            Rect r=l.radar; if(r.width<l.unit*0.08f||input.ship==null)return;
+            const float range=1500f;
+            Vector2 c=r.center; float R=r.width*0.5f, lw=Mathf.Max(1f,l.unit*0.0025f);
+            Disc(c,R,new Color(0.03f,0.04f,0.05f,0.72f));
+            Ring(c,R,lw*1.4f,gold);
+            Ring(c,R*0.5f,lw,new Color(gold.r,gold.g,gold.b,0.35f));
+            Tint(new Color(gold.r,gold.g,gold.b,0.25f));
+            Quad(new Vector2(c.x-R,c.y-lw*0.5f),new Vector2(c.x+R,c.y-lw*0.5f),new Vector2(c.x+R,c.y+lw*0.5f),new Vector2(c.x-R,c.y+lw*0.5f),Vector2.zero,Vector2.zero,Vector2.zero,Vector2.zero);
+            Quad(new Vector2(c.x-lw*0.5f,c.y-R),new Vector2(c.x+lw*0.5f,c.y-R),new Vector2(c.x+lw*0.5f,c.y+R),new Vector2(c.x-lw*0.5f,c.y+R),Vector2.zero,Vector2.zero,Vector2.zero,Vector2.zero);
+            // Свой корабль — стрелка носом вверх
+            float s=R*0.09f; Tint(cream);
+            Vertex(c+new Vector2(0,-s*1.6f),Vector2.zero);Vertex(c+new Vector2(s,s),Vector2.zero);Vertex(c+new Vector2(-s,s),Vector2.zero);
+            foreach(TargetShip t in TargetShip.All)
+            {
+                if(t==null||!t.Alive)continue;
+                Vector3 local=input.ship.transform.InverseTransformPoint(t.transform.position);
+                Vector2 v=new Vector2(local.x,-local.z);
+                float dist=v.magnitude;
+                bool outside=dist>range;
+                Vector2 p=c+(dist>1e-3f?v/dist:Vector2.zero)*Mathf.Min(dist/range,1f)*(R-lw*3f);
+                float pulse=0.75f+0.25f*Mathf.Sin(Time.realtimeSinceStartup*5f);
+                Color red=new Color(1f,0.32f,0.18f,outside?0.7f:pulse);
+                Disc(p,R*(outside?0.055f:0.07f),red);
+                if(outside)Ring(p,R*0.085f,lw,red);
+                string txt=dist>=1000f?(dist/1000f).ToString("F1")+" км":Mathf.RoundToInt(dist/10f)*10+" м";
+                float fs=l.unit*0.022f, tw=l.unit*0.16f;
+                bool left=p.x>c.x+R*0.2f;
+                Rect lr=new Rect(left?p.x-tw-R*0.1f:p.x+R*0.1f,p.y-fs*0.75f,tw,fs*1.5f);
+                Text(lr,txt,fs,new Color(1f,0.72f,0.55f,1f));
+            }
+        }
+
         public void Draw(TouchControls input,RenderTexture target,int width,int height,Shader shader,Font typeface)
         {
             if(shader==null||!shader.isSupported||typeface==null) throw new System.InvalidOperationException("HUD shader/font is missing");
@@ -108,6 +143,7 @@ namespace SkyTide
                     if(input.game.ships!=null&&input.game.ships.Length>1) {Panel(l.ship,l.unit);Text(l.ship,input.game.CurrentShipName,l.unit*0.025f,cream);}
                     Panel(l.course,l.unit); Text(l.course,"КУРС "+(Mathf.RoundToInt(input.ship.transform.eulerAngles.y)%360).ToString("000")+"°",l.unit*0.028f,cream);
                     Panel(l.speed,l.unit);Text(l.speed,"ХОД "+input.ship.Speed.ToString("F1")+" м/с",l.unit*0.027f,cream);
+                    Radar(input,l);
                     Panel(l.fps,l.unit);Text(l.fps,Application.isPlaying?Mathf.RoundToInt(input.Fps)+" FPS":"FPS —",l.unit*0.024f,muted);
                     Text(l.version,input.BuildText,l.unit*0.023f,cream);
                     Broadside guns=input.Guns();
