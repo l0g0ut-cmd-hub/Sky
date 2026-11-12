@@ -233,9 +233,10 @@ Shader "Hidden/SkyTide/VolumetricClouds"
     // Слой между _Deck.x и _Deck.y (м): покрытие — 2D-«погода», верх слоя бугрится 3D-шумом (клубы),
     // края разъедает детализация. Свет: два шага к солнцу (бока клубов к солнцу светятся, задние — в тени),
     // верх ярче низа, фиолетовое заполнение в глубине — та же палитра, что у башен.
-    float DeckDensity(float3 p, bool detail)
+    // Покрытие (2D-«погода») меняется на сотнях метров — для шагов к солнцу (18 и 55 м) берётся то же, что в точке:
+    // 1 выборка 3D-шума вместо 6 выборок на шаг к солнцу, картинка та же.
+    float DeckCoverage(float3 p)
     {
-        float h = saturate((p.y - _Deck.x) / (_Deck.y - _Deck.x));
         float2 drift = _Wind.xz * _Wind.w;
         // «Погода» без рядов: текстура шума мала (256², повтор каждые ~1.4 км), а в канале G есть тёмная полоса
         // на шве — в перспективе это давало ровные ряды клубов. Теперь три октавы канала R с поворотом на
@@ -249,7 +250,14 @@ Shader "Hidden/SkyTide/VolumetricClouds"
         float w = tex2Dlod(_SkyTideNoise, float4(qa, 0, 0)).r * 0.55
                 + tex2Dlod(_SkyTideNoise, float4(qb, 0, 0)).r * 0.3
                 + tex2Dlod(_SkyTideNoise, float4(qc, 0, 0)).r * 0.15;
-        float cov = saturate((w - _Deck2.y) / 0.35);
+        return saturate((w - _Deck2.y) / 0.35);
+    }
+
+    float DeckShape(float3 p, float cov, bool detail)
+    {
+        float h = saturate((p.y - _Deck.x) / (_Deck.y - _Deck.x));
+        if (cov * 1.0 + 0.12 <= h) return 0.0;            // выше любого клуба в этой точке — шум не нужен
+        float2 drift = _Wind.xz * _Wind.w;
         float3 wp = p + float3(drift.x, _Wind.w * 0.4, drift.y);
         float n = tex3Dlod(_Noise3D, float4(wp / _Deck2.z, 0)).r;
         float topH = cov * (0.45 + 0.55 * n) + 0.12;
@@ -262,12 +270,15 @@ Shader "Hidden/SkyTide/VolumetricClouds"
         return m * _Deck.z;
     }
 
+    float DeckDensity(float3 p, bool detail) { return DeckShape(p, DeckCoverage(p), detail); }
+
     // front — часть моря перед башней; обе части считаются за один прежний марш.
     float4 Deck(float3 ro, float3 rd, float tEnd, float jitter, float phase, float split,
                 out float4 front, out float2 moments)
     {
         front = float4(0, 0, 0, 1);
         moments = 0;
+        if (_Deck.w < 0.5) return float4(0, 0, 0, 1);   // море выключено (отладочная панель)
         float base = _Deck.x, top = _Deck.y;
         float t0 = 0.0, t1 = min(tEnd, _Deck3.x);
         if (abs(rd.y) > 1e-4)
@@ -297,11 +308,12 @@ Shader "Hidden/SkyTide/VolumetricClouds"
         {
             if (t > t1) break;
             float3 p = ro + rd * t;
-            float d = DeckDensity(p, t < 1500.0) * ClearFactor(p, ro);
+            float cov = DeckCoverage(p);
+            float d = DeckShape(p, cov, t < 1500.0) * ClearFactor(p, ro);
             if (d > 1e-5)
             {
-                float d1 = DeckDensity(p + L * 18.0, false);
-                float d2 = DeckDensity(p + L * 55.0, false);
+                float d1 = DeckShape(p + L * 18.0, cov, false);
+                float d2 = DeckShape(p + L * 55.0, cov, false);
                 float tau = (d1 * 18.0 + d2 * 37.0) * _Deck3.z;
                 float sunT = exp(-tau);
                 float ms = exp(-tau * 0.25) * _MultiScatter.a;

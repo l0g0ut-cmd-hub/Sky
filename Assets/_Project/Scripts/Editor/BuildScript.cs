@@ -100,6 +100,7 @@ namespace SkyTide.EditorTools
 
             PlayerSettings.SetApplicationIdentifier(NamedBuildTarget.Android, "com.skytide.prototype");
             PlayerSettings.SetScriptingBackend(NamedBuildTarget.Android, ScriptingImplementation.IL2CPP);
+            PlayerSettings.enableFrameTimingStats = true;   // время кадра видеокарты для отладочной панели
             PlayerSettings.Android.targetArchitectures = AndroidArchitecture.ARM64;
             PlayerSettings.Android.minSdkVersion = AndroidSdkVersions.AndroidApiLevel26;
 

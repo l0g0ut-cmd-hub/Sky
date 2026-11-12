@@ -48,7 +48,7 @@ namespace SkyTide
         {
             if (!legacyInputOk) return;
             // Заставка студии и главное меню закрывают экран — касания им, а не кораблю.
-            if (StudioSplash.Active || MainMenu.Active) { if (owners.Count > 0 || stickId != int.MinValue) ResetInteraction(); return; }
+            if (StudioSplash.Active || MainMenu.Active || PerfPanel.Open) { if (owners.Count > 0 || stickId != int.MinValue) ResetInteraction(); return; }
             try
             {
                 ReadPointers();

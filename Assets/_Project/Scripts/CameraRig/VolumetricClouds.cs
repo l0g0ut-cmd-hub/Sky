@@ -50,6 +50,7 @@ namespace SkyTide
         public Shader impostorShader;
         [Header("Импосторы (дальние облака — снимки объёмных)")]
         public bool impostors = true;
+        [System.NonSerialized] public bool debugTowers = true, debugDeck = true;   // отладочная панель (3 пальца)
         [Range(32, 200)] public int impostorBakeSteps = 112;
         readonly CloudImpostors imp = new CloudImpostors();
         public Light sun;
@@ -492,12 +493,12 @@ namespace SkyTide
             mat.SetTexture("_TowerField", field);
             mat.SetVector("_FieldBox", new Vector4(FieldHalf, FieldBottom, FieldHeight, Templates));
             mat.SetVector("_Haze", new Vector4(hazeDensity, hazeTop, hazeDistance, hazeSteps));
-            mat.SetVector("_Deck", new Vector4(deckBase, deckTop, deckDensity, deckSteps));
+            mat.SetVector("_Deck", new Vector4(deckBase, deckTop, deckDensity, debugDeck ? deckSteps : 0));
             mat.SetVector("_Deck2", new Vector4(deckWeatherScale, deckCoverage, deckLobeScale, deckDetailScale));
             mat.SetVector("_Deck3", new Vector4(deckDistance, 1600f, deckAbsorption, deckSunScale));
             mat.SetVectorArray("_Towers", towers);
             mat.SetVectorArray("_TowerRot", towerRot);
-            mat.SetFloat("_TowerCount", towerCount);
+            mat.SetFloat("_TowerCount", debugTowers ? towerCount : 0);
             mat.SetVector("_Shape", new Vector4(lobeScale, detailScale, lobeAmount, erosion));
             mat.SetVector("_DensityParams", new Vector4(density, lightAbsorption, steps, marchDistance));
             mat.SetVector("_Wind", new Vector4(wind.x, wind.y, wind.z, t));

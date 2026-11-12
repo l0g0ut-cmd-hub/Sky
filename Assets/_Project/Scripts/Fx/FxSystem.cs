@@ -389,9 +389,10 @@ namespace SkyTide
         }
 
         /// <summary>Собрать меш под камеру; в обычном режиме — поставить в очередь отрисовки.</summary>
+        [System.NonSerialized] public bool debugHidden;   // отладочная панель: эффекты не рисуются (симуляция идёт)
         public void PrepareForRender(Camera cam)
         {
-            if (!Ensure()) return;
+            if (debugHidden || !Ensure()) return;
             BuildMesh(cam);
             if (drawn == 0 || External) return;
             SetCommon(cam);
@@ -403,7 +404,7 @@ namespace SkyTide
         /// <summary>Отрисовка поверх объёмных облаков (из VolumetricClouds.OnRenderImage).</summary>
         public void DrawExternal(Camera cam, RenderTexture target)
         {
-            if (drawn == 0 || !Ensure()) return;
+            if (debugHidden || drawn == 0 || !Ensure()) return;
             SetCommon(cam);
             mat.SetFloat("_FxExternal", 1f);
             mat.SetFloat("_ZTest", (float)UnityEngine.Rendering.CompareFunction.Always);
