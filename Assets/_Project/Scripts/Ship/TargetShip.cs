@@ -38,6 +38,8 @@ namespace SkyTide
 
         public void Setup(ShipController c, Transform player, Material debrisWood = null,TextAsset geometry=null)
         {
+            // OnEnable в редакторе (кадры CI) не вызывается — регистрируемся сами, иначе попадания и доклад впередсмотрящего не видят мишень.
+            if (!All.Contains(this)) All.Add(this);
             ctrl = c;
             this.player = player;
             Transform v = c.visual;
