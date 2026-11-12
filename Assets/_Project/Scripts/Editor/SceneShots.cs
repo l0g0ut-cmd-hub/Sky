@@ -195,6 +195,10 @@ namespace SkyTide.EditorTools
                 {
                     if(actor.root.localPosition.y<ShipCrew.MainDeck-.001f)throw new System.InvalidOperationException("Crew below upper deck");
                     actor.renderer.BakeMesh(baked);
+                    Bounds reported=baked.bounds;baked.RecalculateBounds();
+                    if(actor.duty==CrewActor.Duty.Carrier&&time==0f)
+                        Debug.Log("SkyTide: cargo bounds — skinning estimate="+reported+", actual vertices="+baked.bounds
+                            +", feet="+actor.root.InverseTransformPoint(actor.bones[15].position)+"/"+actor.root.InverseTransformPoint(actor.bones[19].position));
                     if(baked.vertexCount!=actor.renderer.sharedMesh.vertexCount||baked.bounds.min.y<-.10f||baked.bounds.max.y>2.2f||baked.bounds.size.x>2f||baked.bounds.size.z>2f)
                         throw new System.InvalidOperationException("Crew skin outside anatomical bounds: "+actor.duty+" "+baked.bounds);
                     Vector3[] vertices=baked.vertices;result[index++]=vertices;
@@ -780,7 +784,14 @@ namespace SkyTide.EditorTools
                 boot.SetVolumetric(true);
                 if (boot.Volumetric != null) boot.Volumetric.ResetTowers(boot.Ship.transform.position);
                 // Каждый пакет снимает свои состояния. Предыдущие профили остаются доступны отдельно.
-                string profile = System.Environment.GetEnvironmentVariable("SKYTIDE_SHOT_PROFILE") ?? "life";
+                string profile = System.Environment.GetEnvironmentVariable("SKYTIDE_SHOT_PROFILE") ?? "life-review";
+                if(profile=="life-review")
+                {
+                    CaptureLife(oc,cam,boot,dir);
+                    Debug.Log("SkyTide: быстрая проверка life-review (6x960x456), кадров="
+                        +Directory.GetFiles(dir,"*.jpg").Length+", секунд="+(Time.realtimeSinceStartup-start).ToString("F1"));
+                    return;
+                }
                 // Camera-only follow-up: keep the full seven-view comparison in the "crew" profile.
                 if(profile=="crew-review")
                 {
