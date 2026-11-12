@@ -77,7 +77,8 @@ namespace SkyTide
         void Arm(bool left,Vector3 target,Quaternion? palm=null)
         {
             int upper=left?6:10,lower=left?7:11,hand=left?8:12;
-            IK(upper,lower,hand,target,root.TransformPoint(new Vector3(left?-.65f:.65f,1.15f,-.3f)));
+            Vector3 hint=duty==Duty.Loader?new Vector3(left?-.55f:.55f,1.25f,.45f):new Vector3(left?-.65f:.65f,1.15f,-.3f);
+            IK(upper,lower,hand,target,root.TransformPoint(hint));
             if(palm.HasValue)
             {
                 // Spread pronation down the forearm without moving the solved wrist position.
@@ -160,11 +161,11 @@ namespace SkyTide
             }
             else if(duty==Duty.Loader)
             {
-                Quaternion palm=root.rotation*Quaternion.Euler(0,0,180f);
-                Vector3 axis=root.TransformPoint(new Vector3(.16f,1.55f+ReloadAmount*.13f,.29f+ReloadAmount*.05f));
-                Vector3 direction=root.forward;
-                leftGoal=axis-direction*.08f-palm*grip.Center(true);
-                rightGoal=axis+direction*.08f-palm*grip.Center(false);
+                Quaternion palm=root.rotation*Quaternion.Euler(0,-90f,0)*Quaternion.Euler(0,0,180f);
+                Vector3 axis=root.TransformPoint(new Vector3(0,1.50f+ReloadAmount*.10f,.32f+ReloadAmount*.05f));
+                Vector3 direction=palm*Vector3.forward;
+                leftGoal=axis+direction*.18f-palm*grip.Center(true);
+                rightGoal=axis-direction*.18f-palm*grip.Center(false);
                 Arm(true,leftGoal,palm);Arm(false,rightGoal,palm);
                 if(tool!=null){tool.position=axis;tool.rotation=palm;}
             }

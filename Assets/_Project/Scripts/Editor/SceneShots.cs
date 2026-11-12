@@ -451,7 +451,7 @@ namespace SkyTide.EditorTools
                     if(actor.duty==CrewActor.Duty.Loader)for(int i=0;i<count;i++)
                     {
                         Vector3 p=vertices[i];
-                        if(head[i]&&p.z>=-.15f&&p.z<=1.02f&&new Vector2(p.x,p.y).magnitude<.030f)
+                        if(head[i]&&p.z>=-.25f&&p.z<=1.02f&&new Vector2(p.x,p.y).magnitude<.030f)
                             throw new System.InvalidOperationException("Rammer touches loader face");
                     }
                     for(int side=0;side<2;side++)

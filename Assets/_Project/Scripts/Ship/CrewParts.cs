@@ -128,7 +128,7 @@ namespace SkyTide
         }
         public static Mesh Ramrod()
         {
-            CrewParts g=new CrewParts();g.Cylinder(new Vector3(0,0,-.15f),new Vector3(0,0,.95f),GripWoodRadius);
+            CrewParts g=new CrewParts();g.Cylinder(new Vector3(0,0,-.25f),new Vector3(0,0,.95f),GripWoodRadius);
             g.Cylinder(new Vector3(0,0,.88f),new Vector3(0,0,1.02f),.04f,1);return g.Finish("Gun rammer");
         }
         public static Mesh BreechHandles()
