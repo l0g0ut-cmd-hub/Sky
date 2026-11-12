@@ -200,6 +200,33 @@ namespace SkyTide.EditorTools
             return result;
         }
 
+        static Vector3[] CrewHandLandmarks(CrewModelData model,CrewActor actor)
+        {
+            byte[] data=model.geometry.bytes;
+            int vertices=System.BitConverter.ToInt32(data,4),triangles=System.BitConverter.ToInt32(data,8);
+            int ids=16+vertices*32+triangles*12,weights=ids+vertices*4;
+            int[] joints={System.Array.IndexOf(model.Rig.names,"LHand"),System.Array.IndexOf(model.Rig.names,"RHand")};
+            Vector3[] centers=new Vector3[2];float[] totals=new float[2];
+            Mesh baked=new Mesh();
+            try
+            {
+                actor.renderer.BakeMesh(baked);Vector3[] positions=baked.vertices;
+                for(int i=0;i<vertices;i++)for(int slot=0;slot<4;slot++)
+                {
+                    int joint=data[ids+i*4+slot];float weight=System.BitConverter.ToSingle(data,weights+(i*4+slot)*4);
+                    if(weight<=.25f)continue;
+                    for(int hand=0;hand<2;hand++)if(joint==joints[hand]){centers[hand]+=positions[i]*weight;totals[hand]+=weight;}
+                }
+                for(int hand=0;hand<2;hand++)
+                {
+                    if(totals[hand]<1f)throw new System.InvalidOperationException("Helm hand skin has no meaningful weights");
+                    centers[hand]/=totals[hand];
+                }
+                return centers;
+            }
+            finally{Object.DestroyImmediate(baked);}
+        }
+
         static void CaptureCrew(OrbitCamera oc,Camera cam,SkyTideBootstrap boot,string dir)
         {
             ShipCrew crew=boot.Ship.GetComponent<ShipCrew>();
@@ -210,8 +237,12 @@ namespace SkyTide.EditorTools
             Texture2D tex=new Texture2D(960,456,TextureFormat.RGB24,false);
             Vector3 oldPos=cam.transform.position;Quaternion oldRot=cam.transform.rotation;
             Random.State random=Random.state;bool ripple=guns.ripple;
+            bool[] recalculate=new bool[crew.Count];int rendererIndex=0;
+            foreach(CrewActor actor in crew.ActorsCapture)recalculate[rendererIndex++]=actor.renderer.forceMatrixRecalculationPerRender;
             try
             {
+                // Camera.Render runs repeatedly within one editor update; refresh the real skin for every view.
+                foreach(CrewActor actor in crew.ActorsCapture)actor.renderer.forceMatrixRecalculationPerRender=true;
                 crew.SetVisible(true);boot.SetWindCapture(0f,0f);boot.Fx.Clear();
                 Vector3[][] before=CheckCrewPose(crew,0f),after=CheckCrewPose(crew,2.15f);int moving=0;
                 for(int i=0;i<before.Length;i++)
@@ -230,6 +261,7 @@ namespace SkyTide.EditorTools
                 camera=visual.TransformPoint(new Vector3(-1.4f,ShipCrew.QuarterDeck+1.84f,-13.3f));
                 cam.transform.SetPositionAndRotation(camera,Quaternion.LookRotation(focus-camera,visual.up));
                 float[] inputs={-1f,0f,1f};string[] names={"101_helm_left","102_helm_center","103_helm_right"};
+                Vector3[][] handCenters=new Vector3[inputs.Length][];
                 float maxError=0f;
                 for(int i=0;i<inputs.Length;i++)
                 {
@@ -248,8 +280,14 @@ namespace SkyTide.EditorTools
                     if(Mathf.Abs(crew.WheelAngle+turn*50f)>.001f)throw new System.InvalidOperationException("Helm/joystick angle differs");
                     maxError=Mathf.Max(maxError,crew.Helmsman.HandError);
                     if(maxError>.035f)throw new System.InvalidOperationException("Helmsman hands left wheel: "+maxError);
+                    handCenters[i]=CrewHandLandmarks(boot.CurrentShip.crew,crew.Helmsman);
                     SaveFrame(cam,boot,rt,tex,dir,names[i]);
                 }
+                float leftTravel=Vector3.Distance(handCenters[0][0],handCenters[2][0]);
+                float rightTravel=Vector3.Distance(handCenters[0][1],handCenters[2][1]);
+                if(Mathf.Min(leftTravel,rightTravel)<.10f)throw new System.InvalidOperationException("Helm bones move but hand skin does not follow");
+                Debug.Log("SkyTide: helm skin verified — hand vertex travel left="+leftTravel.ToString("F4")
+                    +" m, right="+rightTravel.ToString("F4")+" m; per-render skin matrices refreshed");
                 controls.PointerCapture(141,layout.wheel+Vector2.right*layout.radius,false,true);
                 controls.ApplyStickCapture();crew.Pose(2.15f);
                 if(crew.WheelAngle!=0f)throw new System.InvalidOperationException("Helm did not return to neutral after joystick release");
@@ -272,6 +310,7 @@ namespace SkyTide.EditorTools
             }
             finally
             {
+                rendererIndex=0;foreach(CrewActor actor in crew.ActorsCapture)actor.renderer.forceMatrixRecalculationPerRender=recalculate[rendererIndex++];
                 controls.SetHudCapture(false);controls.ResetInteraction();crew.SetVisible(false);guns.SetReadinessCapture(1f,1f);guns.SetRecoilCapture(false);guns.ripple=ripple;
                 boot.Fx.Clear();Random.state=random;cam.transform.SetPositionAndRotation(oldPos,oldRot);
                 cam.targetTexture=null;RenderTexture.active=null;rt.Release();Object.DestroyImmediate(rt);Object.DestroyImmediate(tex);
