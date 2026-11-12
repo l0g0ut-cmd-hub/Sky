@@ -278,6 +278,7 @@ namespace SkyTide
             float flash = Mathf.Clamp01(1f - (Time.time - hull.LastHitTime) / 0.5f);
             Rect bar = new Rect(l.course.x + l.unit * 0.02f, l.course.yMax + l.unit * 0.012f, l.course.width - l.unit * 0.04f, l.unit * 0.028f);
             Color fill = Color.Lerp(new Color(1f, 0.35f, 0.2f), Color.white, Mathf.Clamp01((f - 0.25f) / 0.5f));
+            fill = Color.Lerp(fill, new Color(1f, 0.15f, 0.08f), flash);
             if (HasKit)
             {
                 Sprite(bar, KGroove, Color.white);
@@ -288,7 +289,6 @@ namespace SkyTide
                 Box(bar, new Color(0.015f, 0.02f, 0.026f, 0.9f));
                 Box(new Rect(bar.x, bar.y, bar.width * f, bar.height), fill * gold);
             }
-            if (flash > 0f) Box(new Rect(bar.x, bar.y, bar.width, bar.height), new Color(1f, 0.2f, 0.1f, 0.35f * flash));
             Text(new Rect(bar.x, bar.yMax, bar.width, l.unit * 0.032f), "КОРПУС " + Mathf.RoundToInt(f * 100f) + "%", l.unit * 0.02f, f < 0.3f ? new Color(1f, 0.55f, 0.45f) : muted);
             if (!hull.Alive)
                 Text(new Rect(l.safe.x, l.safe.center.y - l.unit * 0.06f, l.safe.width, l.unit * 0.12f), "КОРАБЛЬ ПОДБИТ", l.unit * 0.06f, new Color(1f, 0.5f, 0.35f));
