@@ -52,6 +52,13 @@ namespace SkyTide
             }
             Add(variant.crew,CrewActor.Duty.Helmsman,HelmStation,0);
             captain=Add(variant.crew,CrewActor.Duty.Captain,new Vector3(-2f,QuarterDeck,-11.4f),10f);
+            if(variant.crew.captainAlbedo!=null)
+            {
+                // Капитан — в красном кителе: та же модель, своя текстура.
+                Material coat=new Material(variant.crew.material){name="Captain red coat"};
+                coat.mainTexture=variant.crew.captainAlbedo;
+                captain.renderer.sharedMaterial=coat;
+            }
             CrewParts.Object("Captain tricorn",captain.bones[4],CrewParts.Hat(),hat,bronze,new Vector3(0,-.06f,0));
             for(int sideIndex=0;sideIndex<2;sideIndex++)for(int gun=0;gun<2;gun++)
             {

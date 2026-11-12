@@ -222,7 +222,8 @@ namespace SkyTide.EditorTools
             CrewModelData result=new CrewModelData{material=material,geometry=AssetDatabase.LoadAssetAtPath<TextAsset>(folder+"Deckhand.bytes"),
                 skeleton=AssetDatabase.LoadAssetAtPath<TextAsset>(folder+"Deckhand_rig.json"),
                 helmGeometry=AssetDatabase.LoadAssetAtPath<TextAsset>(folder+"Deckhand_HelmGrip.bytes"),
-                helmPose=AssetDatabase.LoadAssetAtPath<TextAsset>(folder+"Deckhand_HelmGrip.json")};
+                helmPose=AssetDatabase.LoadAssetAtPath<TextAsset>(folder+"Deckhand_HelmGrip.json"),
+                captainAlbedo=Tex(folder+"Captain_Albedo.jpg",false,false,TextureWrapMode.Clamp,TextureWrapMode.Clamp,2048,true)};
             if(!result.IsValid||material.mainTexture==null||material.GetTexture("_BumpMap")==null||material.GetTexture("_MetallicGlossMap")==null)
                 throw new System.InvalidOperationException("Crew model/PBR assets are missing");
             return result;

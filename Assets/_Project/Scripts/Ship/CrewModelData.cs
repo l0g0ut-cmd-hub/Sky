@@ -9,6 +9,7 @@ namespace SkyTide
     {
         public TextAsset geometry, skeleton, helmGeometry, helmPose;
         public Material material;
+        public Texture2D captainAlbedo;   // та же развёртка, торс и рукава перекрашены в красный китель (tools: см. sky-log)
         [NonSerialized] Mesh cached, cachedHelm;
         [NonSerialized] CrewRig cachedRig;
         [NonSerialized] GripPose cachedGrip;
