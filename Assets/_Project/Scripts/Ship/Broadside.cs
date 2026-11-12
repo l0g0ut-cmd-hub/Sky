@@ -178,6 +178,55 @@ namespace SkyTide
                 lastPos = transform.position;
             }
             Pump(Application.isPlaying ? Time.time : float.MaxValue);
+            if (Application.isPlaying) AimPreview();
+        }
+
+        [Tooltip("Прицельная дуга борта, обращённого к цели")]
+        public bool showAim = true;
+
+        /// <summary>
+        /// Прицельная дуга: путь ядра средней пушки борта, обращённого к ближайшей цели (до 1.2 км, курсовой угол
+        /// 35–145°), — пунктир светящихся точек до входа в море облаков или до корпуса цели; там — крупная отметка.
+        /// Янтарная — борт готов, серая — перезарядка.
+        /// </summary>
+        void AimPreview()
+        {
+            FxSystem fx = FxSystem.Instance;
+            if (fx == null) return;
+            fx.ClearPreview();
+            if (!showAim || model == null || mounts.Length == 0) return;
+            TargetShip best = null; float bestD = 1200f;
+            foreach (TargetShip t in TargetShip.All)
+            {
+                if (t == null || !t.Alive) continue;
+                float d = Vector3.Distance(t.transform.position, transform.position);
+                if (d < bestD) { bestD = d; best = t; }
+            }
+            if (best == null) return;
+            Vector3 local = transform.InverseTransformPoint(best.transform.position);
+            float bearing = Mathf.Atan2(Mathf.Abs(local.x), local.z) * Mathf.Rad2Deg;
+            if (bearing < 35f || bearing > 145f) return;
+            float side = local.x > 0f ? 1f : -1f;
+            // Средняя по длине пушка этого борта.
+            CannonMount mid = null; float midZ = 0f; int count = 0;
+            foreach (CannonMount m in mounts) if (Mathf.Sign(m.side) == side) { midZ += m.Muzzle.z; count++; }
+            if (count == 0) return;
+            midZ /= count; float bestDz = float.MaxValue;
+            foreach (CannonMount m in mounts) if (Mathf.Sign(m.side) == side && Mathf.Abs(m.Muzzle.z - midZ) < bestDz) { bestDz = Mathf.Abs(m.Muzzle.z - midZ); mid = m; }
+            bool ready = Readiness((int)side) >= 0.999f;
+            Color dot = ready ? new Color(1f, 0.62f, 0.25f, 0.55f) : new Color(0.7f, 0.75f, 0.8f, 0.3f);
+            Vector3 p = model.TransformPoint(mid.Muzzle);
+            Vector3 v = model.TransformDirection(mid.Dir).normalized * muzzleSpeed + velocity;
+            float g = fx.gravity, step = 0.06f;
+            for (int i = 0; i < 120; i++)
+            {
+                Vector3 prev = p;
+                v.y -= g * step; p += v * step;
+                Vector3 hp;
+                if ((p - best.transform.position).sqrMagnitude < 45f * 45f && best.TryHit(prev, p, out hp)) { fx.AddPreview(hp, 7f, new Color(1f, 0.35f, 0.2f, ready ? 0.9f : 0.5f)); return; }
+                if (p.y < fx.deckTop - 5f) { fx.AddPreview(prev, 6f, new Color(dot.r, dot.g, dot.b, dot.a * 1.3f)); return; }
+                if (i % 2 == 1) fx.AddPreview(p, 1.6f, dot);
+            }
         }
 
         /// <summary>Выпустить ядра, чьё время пришло; CI тоже может прокручивать волну по времени.</summary>

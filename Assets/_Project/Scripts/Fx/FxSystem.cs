@@ -432,7 +432,23 @@ namespace SkyTide
             mat.SetVector("_FxParams", new Vector4(glowIntensity, smokeLight, deckTop, appearance));
         }
 
+        readonly List<P> preview = new List<P>(160);
+        /// <summary>Точки прицельной дуги: живут один кадр, не симулируются (Broadside очищает и заполняет каждый кадр).</summary>
+        public void ClearPreview() { preview.Clear(); }
+        public void AddPreview(Vector3 pos, float size, Color c)
+        {
+            preview.Add(new P { kind = Kind.Glow, pos = pos, life = 1f, size0 = size, size1 = size, color = c, alpha = c.a });
+        }
+
         void BuildMesh(Camera cam)
+        {
+            int baseCount = ps.Count;
+            ps.AddRange(preview);
+            try { BuildMeshCore(cam); }
+            finally { ps.RemoveRange(baseCount, ps.Count - baseCount); }
+        }
+
+        void BuildMeshCore(Camera cam)
         {
             int n = ps.Count;
             drawn = n;
