@@ -148,6 +148,11 @@ namespace SkyTide.EditorTools
             Texture2D layer = Tex(Art + "CloudLayer.png", false, true, TextureWrapMode.Repeat, TextureWrapMode.Repeat, 1024, true, true);
             if (layer != null) mats.cloudLayer = MaterialFactory.CloudSea("CloudLayer", layer, true);
             Texture2D sprites = Tex(Art + "CloudAtlas.png", false, true, TextureWrapMode.Clamp, TextureWrapMode.Clamp, 4096, true);
+            // Интерфейс: набор HUD (с альфой), главное меню, фон меню, заставка — без сжатия и мипов.
+            Tex("Assets/_Project/Resources/UI/hud_kit.png", false, true, TextureWrapMode.Clamp, TextureWrapMode.Clamp, 2048, false, true);
+            Tex("Assets/_Project/Resources/UI/main_menu.jpg", false, false, TextureWrapMode.Clamp, TextureWrapMode.Clamp, 2048, false, true);
+            Tex("Assets/_Project/Resources/UI/menu_bg.jpg", false, false, TextureWrapMode.Clamp, TextureWrapMode.Clamp, 2048, false, true);
+            Tex("Assets/_Project/Resources/UI/splash_studio.jpg", false, false, TextureWrapMode.Clamp, TextureWrapMode.Clamp, 2048, false, true);
             if (sprites != null) mats.cloudSprite = MaterialFactory.CloudSprites(sprites);
 
             Texture2D albedo = Tex(Models + "Corsair_Albedo.jpg", false, false, TextureWrapMode.Clamp, TextureWrapMode.Clamp, 4096, true);

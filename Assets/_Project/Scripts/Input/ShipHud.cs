@@ -30,8 +30,69 @@ namespace SkyTide
             Tint(c);
             Quad(new Vector2(r.x,r.y),new Vector2(r.xMax,r.y),new Vector2(r.xMax,r.yMax),new Vector2(r.x,r.yMax),Vector2.zero,Vector2.zero,Vector2.zero,Vector2.zero);
         }
+        // ---------- нарисованный набор HUD (Resources/UI/hud_kit.png, 1254×1254, координаты в пикселях листа) ----------
+        struct Spr { public Vector2 a, b, c, d, ua, ub, uc, ud; public Color col; }
+        readonly List<Spr> sprites = new List<Spr>(64);
+        Texture2D kit; bool kitTried;
+        const float Kit = 1254f;
+        static readonly Rect[] PanelN = { new Rect(21,80,575,104), new Rect(619,80,345,102), new Rect(986,80,248,102) };
+        static readonly Rect[] PanelL = { new Rect(12,218,594,123), new Rect(607,218,365,123), new Rect(975,218,268,124) };
+        static readonly Rect[] PanelP = { new Rect(21,370,575,105), new Rect(620,370,343,105), new Rect(986,370,248,105) };
+        static readonly Rect KWheel = new Rect(24,503,422,442), KRadar = new Rect(447,498,407,437), KArrow = new Rect(872,606,72,81),
+            KGem = new Rect(870,722,73,84), KCannonL = new Rect(960,546,271,174), KCannonR = new Rect(966,740,270,175),
+            KKnob = new Rect(61,930,159,163), KGroove = new Rect(280,977,442,67), KFill = new Rect(758,977,439,67);
+        bool HasKit { get { if (!kitTried) { kitTried = true; kit = Resources.Load<Texture2D>("UI/hud_kit"); } return kit != null; } }
+        static Vector2 UV(float x, float y) { return new Vector2(x / Kit, 1f - y / Kit); }
+        void Sprite(Vector2 a, Vector2 b, Vector2 c, Vector2 d, Rect src, Color col)
+        {
+            sprites.Add(new Spr { a = a, b = b, c = c, d = d, ua = UV(src.x, src.y), ub = UV(src.xMax, src.y), uc = UV(src.xMax, src.yMax), ud = UV(src.x, src.yMax), col = col });
+        }
+        void Sprite(Rect dst, Rect src, Color col)
+        {
+            Sprite(new Vector2(dst.x, dst.y), new Vector2(dst.xMax, dst.y), new Vector2(dst.xMax, dst.yMax), new Vector2(dst.x, dst.yMax), src, col);
+        }
+        void SpriteRot(Vector2 center, Vector2 size, float angle, Rect src, Color col)
+        {
+            float cs = Mathf.Cos(angle), sn = Mathf.Sin(angle);
+            Vector2 ex = new Vector2(cs, sn) * size.x * 0.5f, ey = new Vector2(-sn, cs) * size.y * 0.5f;
+            Sprite(center - ex - ey, center + ex - ey, center + ex + ey, center - ex + ey, src, col);
+        }
+        /// <summary>Растяжение по 9 частям: углы с орнаментом не искажаются.</summary>
+        void Slice9(Rect dst, Rect src, float bs, float bd, Color col)
+        {
+            float[] dx = { dst.x, dst.x + bd, dst.xMax - bd, dst.xMax }, dy = { dst.y, dst.y + bd, dst.yMax - bd, dst.yMax };
+            float[] sx = { src.x, src.x + bs, src.xMax - bs, src.xMax }, sy = { src.y, src.y + bs, src.yMax - bs, src.yMax };
+            for (int j = 0; j < 3; j++) for (int i = 0; i < 3; i++)
+                Sprite(new Rect(dx[i], dy[j], dx[i + 1] - dx[i], dy[j + 1] - dy[j]), new Rect(sx[i], sy[j], sx[i + 1] - sx[i], sy[j + 1] - sy[j]), col);
+        }
+        void KitPanel(Rect r, bool lit, bool pressed)
+        {
+            float asp = r.width / Mathf.Max(1f, r.height);
+            int k = asp > 4.6f ? 0 : asp > 2.9f ? 1 : 2;
+            float sc = r.height / PanelN[k].height;
+            if (lit)
+            {
+                float g = 10f * sc;
+                Slice9(new Rect(r.x - g, r.y - g, r.width + g * 2f, r.height + g * 2f), PanelL[k], 40f, 40f * sc, Color.white);
+            }
+            else Slice9(r, pressed ? PanelP[k] : PanelN[k], 30f, 30f * sc, Color.white);
+        }
+        void FlushSprites()
+        {
+            if (sprites.Count == 0 || !HasKit) { sprites.Clear(); return; }
+            material.SetTexture("_MainTex", kit);
+            if (!material.SetPass(2)) { sprites.Clear(); return; }
+            GL.Begin(GL.TRIANGLES);
+            try
+            {
+                foreach (Spr q in sprites) { Tint(q.col); Quad(q.a, q.b, q.c, q.d, q.ua, q.ub, q.uc, q.ud); }
+            }
+            finally { GL.End(); sprites.Clear(); }
+        }
+
         void Panel(Rect r, float u, bool lit = false, bool pressed = false)
         {
+            if (HasKit) { KitPanel(r, lit, pressed); return; }
             Box(new Rect(r.x + 1f, r.y + 2f, r.width, r.height), new Color(0f,0f,0f,0.25f));
             Box(r, lit ? new Color(0.16f,0.1f,0.055f,0.9f) : new Color(0.055f,0.062f,0.073f,0.86f));
             if (pressed) Box(r, new Color(0.7f,0.43f,0.14f,0.24f));
@@ -73,14 +134,33 @@ namespace SkyTide
         {
             bool ready=readiness>=0.9999f;
             Panel(r,l.unit,ready,input.Pressed(r));
+            float icon=HasKit?r.height*0.62f:0f;
+            if(HasKit)
+            {
+                Rect src=side<0?KCannonL:KCannonR; float iw=icon*src.width/src.height;
+                Rect ir=side<0?new Rect(r.x+l.unit*0.014f,r.y+(r.height-icon)*0.45f,iw,icon):new Rect(r.xMax-l.unit*0.014f-iw,r.y+(r.height-icon)*0.45f,iw,icon);
+                Sprite(ir,src,new Color(1f,1f,1f,ready?1f:0.6f));
+                icon=iw+l.unit*0.01f;
+                r=side<0?new Rect(r.x+icon,r.y,r.width-icon,r.height):new Rect(r.x,r.y,r.width-icon,r.height);
+            }
             Rect title=new Rect(r.x,r.y+l.unit*0.012f,r.width,r.height*0.44f);
             Text(title,side<0?"ЛЕВЫЙ БОРТ":"ПРАВЫЙ БОРТ",l.unit*0.028f,cream);
             Rect state=new Rect(r.x,r.y+r.height*0.5f,r.width,r.height*0.24f);
             Text(state,ready?"ГОТОВ":"ПЕРЕЗАРЯДКА "+((1f-readiness)*cooldown).ToString("F1")+" с",l.unit*0.022f,ready?gold:muted);
             float inset=l.unit*0.022f, h=Mathf.Max(2f,l.unit*0.006f);
             Rect track=new Rect(r.x+inset,r.yMax-l.unit*0.023f,r.width-inset*2f,h);
-            Box(track,new Color(0.015f,0.02f,0.026f,1f));
-            Box(new Rect(track.x,track.y,track.width*Mathf.Clamp01(readiness),track.height),ready?gold:new Color(0.51f,0.56f,0.6f));
+            if(HasKit)
+            {
+                float bh=Mathf.Max(h*3f,l.unit*0.016f); Rect bar=new Rect(track.x,track.center.y-bh*0.5f,track.width,bh);
+                Sprite(bar,KGroove,Color.white);
+                float f=Mathf.Clamp01(readiness);
+                if(f>0.001f) Sprite(new Rect(bar.x,bar.y,bar.width*f,bar.height),new Rect(KFill.x,KFill.y,KFill.width*f,KFill.height),ready?Color.white:new Color(0.75f,0.8f,0.85f,0.8f));
+            }
+            else
+            {
+                Box(track,new Color(0.015f,0.02f,0.026f,1f));
+                Box(new Rect(track.x,track.y,track.width*Mathf.Clamp01(readiness),track.height),ready?gold:new Color(0.51f,0.56f,0.6f));
+            }
         }
 
         /// <summary>Радар: курс корабля — вверх, цель — точка с расстоянием рядом; за пределом дальности — на ободе.</summary>
@@ -89,6 +169,7 @@ namespace SkyTide
             Rect r=l.radar; if(r.width<l.unit*0.08f||input.ship==null)return;
             const float range=1500f;
             Vector2 c=r.center; float R=r.width*0.5f, lw=Mathf.Max(1f,l.unit*0.0025f);
+            if(HasKit) { RadarKit(input,l,c,R,range); return; }
             Disc(c,R,new Color(0.03f,0.04f,0.05f,0.72f));
             Ring(c,R,lw*1.4f,gold);
             Ring(c,R*0.5f,lw,new Color(gold.r,gold.g,gold.b,0.35f));
@@ -115,6 +196,26 @@ namespace SkyTide
                 bool left=p.x>c.x+R*0.2f;
                 Rect lr=new Rect(left?p.x-tw-R*0.1f:p.x+R*0.1f,p.y-fs*0.75f,tw,fs*1.5f);
                 Text(lr,txt,fs,new Color(1f,0.72f,0.55f,1f));
+            }
+        }
+
+        void RadarKit(TouchControls input,HudLayout l,Vector2 c,float R,float range)
+        {
+            Sprite(new Rect(c.x-R,c.y-R*KRadar.height/KRadar.width,R*2f,R*2f*KRadar.height/KRadar.width),KRadar,Color.white);
+            float face=R*0.6f;
+            float s=R*0.2f; Sprite(new Rect(c.x-s*0.45f,c.y-s*0.5f,s*0.9f,s),KArrow,Color.white);
+            foreach(TargetShip t in TargetShip.All)
+            {
+                if(t==null||!t.Alive)continue;
+                Vector3 local=input.ship.transform.InverseTransformPoint(t.transform.position);
+                Vector2 v=new Vector2(local.x,-local.z); float dist=v.magnitude; bool outside=dist>range;
+                Vector2 p=c+(dist>1e-3f?v/dist:Vector2.zero)*Mathf.Min(dist/range,1f)*face;
+                float pulse=0.8f+0.2f*Mathf.Sin(Time.realtimeSinceStartup*5f);
+                float g=R*(outside?0.13f:0.17f)*pulse;
+                Sprite(new Rect(p.x-g*0.45f,p.y-g*0.5f,g*0.9f,g),KGem,new Color(1f,1f,1f,outside?0.65f:1f));
+                string txt=dist>=1000f?(dist/1000f).ToString("F1")+" км":Mathf.RoundToInt(dist/10f)*10+" м";
+                float fs=l.unit*0.022f, tw=l.unit*0.16f; bool left=p.x>c.x+R*0.2f;
+                Text(new Rect(left?p.x-tw-g*0.5f:p.x+g*0.5f,p.y-fs*0.75f,tw,fs*1.5f),txt,fs,new Color(1f,0.78f,0.6f,1f));
             }
         }
 
@@ -156,6 +257,17 @@ namespace SkyTide
                     }
                     Vector2 home=input.StickActive?l.ClampWheel(input.StickOrigin):l.wheel;
                     float r=l.radius, a=input.StickActive?0.85f:0.45f;
+                    if(HasKit)
+                    {
+                        // Штурвал поворачивается вместе с рулём, ручка — палец.
+                        Vector2 off=input.StickOffset(l.radius);
+                        float ang=Mathf.Clamp(off.x/Mathf.Max(1f,l.radius),-1f,1f)*1.2f;
+                        float d=r*2.35f;
+                        SpriteRot(home,new Vector2(d,d*KWheel.height/KWheel.width),ang,KWheel,new Color(1f,1f,1f,input.StickActive?1f:0.7f));
+                        float kd=r*0.66f; Sprite(new Rect(home.x+off.x-kd*0.5f,home.y+off.y-kd*0.5f,kd,kd*KKnob.height/KKnob.width),KKnob,new Color(1f,1f,1f,input.StickActive?1f:0.8f));
+                    }
+                    else
+                    {
                     Disc(home,r*1.12f,new Color(0.04f,0.045f,0.055f,a*0.65f));
                     Ring(home,r*1.12f,Mathf.Max(1f,l.unit*0.003f),new Color(gold.r,gold.g,gold.b,a));
                     Ring(home,r*0.94f,Mathf.Max(1f,l.unit*0.002f),new Color(gold.r,gold.g,gold.b,a*0.55f));
@@ -168,6 +280,7 @@ namespace SkyTide
                     }
                     Vector2 knob=home+input.StickOffset(l.radius);
                     Disc(knob,r*0.31f,new Color(0.2f,0.17f,0.12f,a));Ring(knob,r*0.31f,Mathf.Max(1f,l.unit*0.004f),new Color(gold.r,gold.g,gold.b,a));
+                    }
                     if(input.HintAlpha>0f)
                     {
                         Color hint=new Color(cream.r,cream.g,cream.b,input.HintAlpha*0.85f);
@@ -176,6 +289,7 @@ namespace SkyTide
                     }
                 }
                 finally {GL.End();}
+                FlushSprites();
                 // Все размеры запрашиваются до чтения UV: перестройка атласа не портит уже собранные буквы.
                 for(int i=0;i<labels.Count;i++) font.RequestCharactersInTexture(labels[i].text,labels[i].size,FontStyle.Normal);
                 material.SetTexture("_MainTex",font.material.mainTexture);
