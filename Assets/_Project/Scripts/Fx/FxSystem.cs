@@ -23,7 +23,7 @@ namespace SkyTide
         const int MaxLights = 2;   // только vertex light, без теней и дополнительных forward-проходов
 
         // Значения совпадают с Fx.shader.
-        enum Kind { Glow = 0, Smoke = 1, Ball = 2, Muzzle = 3, Spark = 4, Foam = 5, Wave = 6, Splinter = 7, Flame = 8, Aim = 9 }
+        enum Kind { Glow = 0, Smoke = 1, Ball = 2, Muzzle = 3, Spark = 4, Foam = 5, Wave = 6, Splinter = 7, Flame = 8, Aim = 9, Flip = 10 }
 
         struct P
         {
@@ -88,7 +88,18 @@ namespace SkyTide
             Add(new P { kind = Kind.Glow, pos = muzzle + dir * 0.6f, vel = shipVel, life = 0.07f,
                         size0 = 1.4f, size1 = 2.4f, color = new Color(1f, 0.72f, 0.35f), alpha = 0.65f });
             Add(new P { kind = Kind.Muzzle, pos = muzzle + dir * 2f, vel = shipVel + dir * 10f, axis = dir, aspect = 0.34f,
-                        life = 0.12f, size0 = 4f, size1 = 6.5f, color = new Color(1f, 0.52f, 0.16f), alpha = 0.9f, seed = s });
+                        life = 0.12f, size0 = 4f, size1 = 6.5f, color = new Color(1f, 0.52f, 0.16f), alpha = 0.5f, seed = s });
+            // Нарисованная вспышка у дула (лист 4) и пороховой клуб (лист 2) + два рваных клуба (лист 6).
+            Add(new P { kind = Kind.Flip, pos = muzzle + dir * 3.2f, vel = shipVel + dir * 4f, axis = dir, aspect = 0.8f,
+                        life = 0.34f, size0 = 7f, size1 = 8.5f, color = Color.white, alpha = 1f, seed = 4f + Random.value * 0.999f });
+            Add(new P { kind = Kind.Flip, pos = muzzle + dir * 4.5f, vel = dir * 7f + shipVel * 0.85f, life = 2.9f,
+                        size0 = 6.5f, size1 = 11f, rot = Random.Range(0f, 6.28f), spin = Random.Range(-0.3f, 0.3f), drag = 1.5f, rise = 0.9f,
+                        color = new Color(0.92f, 0.88f, 0.85f), alpha = 0.85f, seed = 2f + Random.value * 0.999f });
+            for (int k = 0; k < 2; k++)
+                Add(new P { kind = Kind.Flip, pos = muzzle + dir * Random.Range(3f, 7f) + Random.insideUnitSphere, vel = dir * Random.Range(4f, 9f) + shipVel * 0.85f,
+                            age = -0.08f - k * 0.1f, life = Random.Range(2.6f, 3.6f), size0 = 3.5f, size1 = 8f, rot = Random.Range(0f, 6.28f),
+                            spin = Random.Range(-0.25f, 0.25f), drag = 1.4f, rise = 1f, color = new Color(0.9f, 0.86f, 0.83f), alpha = 0.6f,
+                            seed = 6f + Random.value * 0.999f });
             for (int k = 0; k < 3; k++)
             {
                 Vector3 velocity = dir * Random.Range(24f, 42f) + Random.insideUnitSphere * 9f + shipVel;
@@ -115,6 +126,12 @@ namespace SkyTide
         public void Explosion(Vector3 at, float scale)
         {
             Flash(at, 4f * scale, 45f * Mathf.Sqrt(scale));
+            // Нарисованный взрыв (лист 0, гибель — лист 1) и тяжёлый клуб дыма после него (лист 2).
+            Add(new P { kind = Kind.Flip, pos = at, vel = Vector3.up * 1.5f, life = 1.25f * Mathf.Sqrt(scale), size0 = 9f * scale, size1 = 11.5f * scale,
+                        rot = Random.Range(-0.4f, 0.4f), color = Color.white, alpha = 1f, seed = (scale >= 2f ? 1f : 0f) + Random.value * 0.999f });
+            Add(new P { kind = Kind.Flip, pos = at + Vector3.up * 2f * scale, vel = Vector3.up * 2.5f, age = -0.35f * Mathf.Sqrt(scale),
+                        life = 4.5f * Mathf.Sqrt(scale), size0 = 8f * scale, size1 = 17f * scale, rot = Random.Range(0f, 6.28f), spin = Random.Range(-0.15f, 0.15f),
+                        drag = 1f, rise = 1.2f, color = new Color(0.5f, 0.45f, 0.43f), alpha = 0.9f, seed = 2f + Random.value * 0.999f });
             Add(new P { kind = Kind.Glow, pos = at, life = 0.14f * Mathf.Sqrt(scale), size0 = 4f * scale, size1 = 9f * scale, color = new Color(1f, 0.76f, 0.4f), alpha = 1f });
             for (int k = 0; k < 6 * scale; k++)
             {
@@ -172,6 +189,9 @@ namespace SkyTide
             Add(new P{kind=Kind.Flame,pos=at+axis*(height*.42f)+Random.insideUnitSphere*.16f,
                 vel=inheritedVelocity+axis*.5f,axis=axis,aspect=.5f,life=Random.Range(.55f,.9f),size0=height,size1=height*1.2f,
                 color=new Color(1,.37f,.065f),alpha=.65f,seed=Random.value*10});
+            if(Random.value<.35f)   // нарисованный огонь (лист 5, петля) — языки разной высоты
+                Add(new P{kind=Kind.Flip,pos=at+axis*(height*.5f)+outward*.15f,vel=inheritedVelocity+axis*.3f,life=Random.Range(.8f,1.2f),
+                    size0=height*1.15f,size1=height*1.3f,rot=Random.Range(-.12f,.12f),color=Color.white,alpha=.95f,seed=5f+Random.value*.999f});
             Vector3 velocity=inheritedVelocity+Vector3.up*Random.Range(2f,4f)+wind*.18f+outward*.6f;
             Add(new P{kind=Kind.Spark,pos=at+Vector3.up*.4f,vel=velocity,axis=Vector3.up,aspect=.2f,
                 life=Random.Range(.65f,1.2f),size0=.22f,size1=.05f,color=new Color(1,.5f,.08f),alpha=.65f});
@@ -270,6 +290,9 @@ namespace SkyTide
             if (scale >= 0.7f) { CloudSplashCount++; LastCloudSplash = at; SkySound.CloudMiss(at); }
             Color tint = volumetric != null ? Color.Lerp(volumetric.ambientTop, volumetric.sunGold, 0.35f) : new Color(0.62f, 0.5f, 0.55f);
             tint = Color.Lerp(tint, new Color(0.7f, 0.65f, 0.68f), 0.4f);
+            if (scale >= 0.7f)   // нарисованный всплеск облака (лист 3): низ кадра — у поверхности
+                Add(new P { kind = Kind.Flip, pos = at + Vector3.up * 9f * scale, surfaceY = at.y, vel = Vector3.up * 1.2f, life = 1.8f,
+                            size0 = 22f * scale, size1 = 26f * scale, color = Color.Lerp(tint, Color.white, 0.45f), alpha = 0.9f, seed = 3f + Random.value * 0.999f });
             if (scale >= 0.7f)
                 Add(new P { kind = Kind.Wave, pos = at + Vector3.up * 1.3f, surfaceY = at.y, life = 1.35f,
                             size0 = 3f, size1 = 48f * scale, color = tint, alpha = 0.38f, seed = Random.value * 10f });
@@ -346,6 +369,13 @@ namespace SkyTide
                     p.pos += (p.vel + wind * 0.35f) * dt;
                     p.rot += p.spin * dt;
                 }
+                else if (p.kind == Kind.Flip)
+                {
+                    p.vel *= Mathf.Exp(-p.drag * dt);
+                    p.vel.y += p.rise * dt;
+                    p.pos += (p.vel + (p.drag > 0f ? wind * 0.5f : Vector3.zero)) * dt;
+                    p.rot += p.spin * dt;
+                }
                 else if (p.kind == Kind.Smoke)
                 {
                     p.vel *= Mathf.Exp(-p.drag * dt);
@@ -420,10 +450,13 @@ namespace SkyTide
             if (mat.SetPass(0)) Graphics.DrawMeshNow(mesh, Matrix4x4.identity);
         }
 
+        Texture2D flipTex; bool flipTried;
         void SetCommon(Camera cam)
         {
             if (!aimTried) { aimTried = true; aimTex = Resources.Load<Texture2D>("UI/aim_kit"); }
             if (aimTex != null) mat.SetTexture("_FxAimTex", aimTex);
+            if (!flipTried) { flipTried = true; flipTex = Resources.Load<Texture2D>("FX/fx_flipbooks"); }
+            mat.SetTexture("_FxFlipTex", flipTex != null ? flipTex : Texture2D.blackTexture);
             mat.SetVector("_FxRight", cam.transform.right);
             mat.SetVector("_FxUp", cam.transform.up);
             mat.SetMatrix("_FxCamVP", cam.projectionMatrix * cam.worldToCameraMatrix);
@@ -502,6 +535,14 @@ namespace SkyTide
                     size = Mathf.Lerp(p.size0, p.size1, t);
                     a = p.alpha * (1f - t);
                 }
+                else if (p.kind == Kind.Flip)
+                {
+                    int sheet = (int)p.seed;
+                    size = Mathf.Lerp(p.size0, p.size1, 1f - (1f - t) * (1f - t));
+                    if (sheet == 5) a = p.alpha * Mathf.Clamp01(p.age / 0.12f) * Mathf.Clamp01((1f - t) / 0.3f);
+                    else if (sheet == 2 || sheet == 6) a = p.alpha * Mathf.Clamp01(p.age / 0.15f) * (1f - t);
+                    else a = p.alpha * Mathf.Clamp01((1f - t) / 0.1f);   // кадры листа сами гаснут
+                }
                 else if (p.kind == Kind.Wave)
                 {
                     size = Mathf.Lerp(p.size0, p.size1, 1f - (1f - t) * (1f - t));
@@ -517,7 +558,7 @@ namespace SkyTide
                 c.a = a;
                 Vector4 d = new Vector4(size, p.rot, (float)p.kind, p.seed);
                 Vector4 axis = new Vector4(p.axis.x, p.axis.y, p.axis.z, p.aspect);
-                Vector4 anim = new Vector4(Mathf.Max(p.age, 0f), t, p.kind == Kind.Foam || p.kind == Kind.Wave ? p.surfaceY : deckTop, 0f);
+                Vector4 anim = new Vector4(Mathf.Max(p.age, 0f), t, p.kind == Kind.Foam || p.kind == Kind.Wave || (p.kind == Kind.Flip && (int)p.seed == 3) ? p.surfaceY : deckTop, 0f);
                 int v = j * 4;
                 for (int q = 0; q < 4; q++)
                 {

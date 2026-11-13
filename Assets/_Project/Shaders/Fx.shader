@@ -33,6 +33,19 @@ Shader "Hidden/SkyTide/Fx"
                 float4(21.0/1254, 1.0-(381.0+791)/1254, 789.0/1254, 791.0/1254),
                 float4(818.0/1254, 1.0-(508.0+396)/1254, 378.0/1254, 396.0/1254),
                 float4(929.0/1254, 1.0-(120.0+187)/1254, 158.0/1254, 187.0/1254) };
+            sampler2D _FxFlipTex;  // FX/fx_flipbooks 4096x2048: нарисованные покадровые листы (вид 10), номер листа — целая часть data.w
+            // Лист: xy — низ-лево в UV, zw — размер; kFlipGrid: столбцы, строки, кадров, доля «свечения» (0 — дым, 1 — чистое сложение).
+            static const float4 kFlipRect[7] = {
+                float4(0.00, 0.50, 0.25, 0.50),    // 0 взрыв попадания 8x8
+                float4(0.25, 0.50, 0.25, 0.50),    // 1 большой взрыв 8x8
+                float4(0.50, 0.50, 0.25, 0.50),    // 2 пороховой дым 8x8
+                float4(0.75, 0.50, 0.25, 0.50),    // 3 всплеск облака 8x8
+                float4(0.00, 0.00, 0.25, 0.50),    // 4 вспышка у дула 4x4 (направлена вправо)
+                float4(0.25, 0.25, 0.25, 0.25),    // 5 огонь, петля 8x4
+                float4(0.50, 0.00, 0.25, 0.50) };  // 6 клубы дыма 4x4 (неподвижные варианты)
+            static const float4 kFlipGrid[7] = {
+                float4(8, 8, 64, 0.35), float4(8, 8, 64, 0.35), float4(8, 8, 64, 0.0), float4(8, 8, 64, 0.0),
+                float4(4, 4, 16, 0.8), float4(8, 4, 32, 0.55), float4(4, 4, 16, 0.0) };
             float4 _FxRight, _FxUp;
             float4x4 _FxVP;       // проекция на цель (GPU), только для внешней отрисовки
             float4x4 _FxCamVP;    // проекция камеры (OpenGL) — координаты экрана
@@ -69,7 +82,8 @@ Shader "Hidden/SkyTide/Fx"
                 float3 offset = _FxRight.xyz * q.x + _FxUp.xyz * q.y;
                 float kind = v.data.z;
                 float headOn = 0.0;
-                if ((kind > 2.5 && kind < 4.5) || kind > 6.5)
+                bool flipMuzzle = kind > 9.5 && floor(v.data.w) > 3.5 && floor(v.data.w) < 4.5;
+                if ((kind > 2.5 && kind < 4.5) || (kind > 6.5 && kind < 9.5) || flipMuzzle)
                 {
                     // Факел и искры вытянуты вдоль ствола/скорости в плоскости экрана.
                     float2 along = float2(dot(v.axis.xyz, _FxRight.xyz), dot(v.axis.xyz, _FxUp.xyz));
@@ -91,7 +105,7 @@ Shader "Hidden/SkyTide/Fx"
                 }
                 else if (kind > 5.5 && kind < 6.5)
                     offset = float3(q.x, 0, q.y);   // волна лежит на поверхности, не поворачивается за камерой
-                if (kind > 8.5)
+                if (kind > 8.5 && kind < 9.5)
                 {
                     int e = (int)(v.data.w + 0.5);
                     if (e == 2) offset = float3(q.x, 0, q.y);          // кольцо — плашмя на облаках
@@ -112,6 +126,42 @@ Shader "Hidden/SkyTide/Fx"
             {
                 float r = length(i.uv) * 2.0;
                 float kind = i.data.z;
+                if (kind > 9.5)
+                {
+                    int sheet = clamp((int)floor(i.data.w), 0, 6);
+                    float variant = frac(i.data.w);
+                    float4 rc = kFlipRect[sheet];
+                    float4 gd = kFlipGrid[sheet];
+                    float f;
+                    if (sheet == 5) f = i.anim.x * 24.0 + variant * gd.z;            // огонь — петля по возрасту
+                    else if (sheet == 6) f = floor(variant * gd.z);                   // клуб — выбранный вариант
+                    else f = saturate(i.anim.y) * (gd.z - 1.0);                       // остальное — от начала до конца жизни
+                    float f0 = floor(f), blend = f - f0;
+                    float f1 = sheet == 5 ? f0 + 1.0 : min(f0 + 1.0, gd.z - 1.0);
+                    f0 = fmod(f0, gd.z); f1 = fmod(f1, gd.z);
+                    float2 cell = rc.zw / gd.xy;
+                    float inset = sheet == 1 ? 0.045 : 0.02;                         // поля кадра: без соседей и линий сетки
+                    float2 inner = clamp(i.uv + 0.5, 0.0, 1.0) * (1.0 - 2.0 * inset) + inset;
+                    float2 uv0 = rc.xy + float2(fmod(f0, gd.x), gd.y - 1.0 - floor(f0 / gd.x)) * cell + inner * cell;
+                    float2 uv1 = rc.xy + float2(fmod(f1, gd.x), gd.y - 1.0 - floor(f1 / gd.x)) * cell + inner * cell;
+                    float4 t = lerp(tex2D(_FxFlipTex, uv0), tex2D(_FxFlipTex, uv1), sheet == 6 ? 0.0 : blend);
+                    float fm = smoothstep(_FxParams.z - 20.0, _FxParams.z + 5.0, i.wpos.y);
+                    if (sheet == 3) fm = smoothstep(i.anim.z - 3.0, i.anim.z + 1.5, i.wpos.y);   // всплеск выходит из облаков
+                    if (_FxExternal > 0.5)
+                    {
+                        float4 cpf = mul(_FxCamVP, float4(i.wpos, 1.0));
+                        float2 sf = cpf.xy / cpf.w * 0.5 + 0.5;
+                        float eyeF = -mul(_FxCamV, float4(i.wpos, 1.0)).z;
+                        float rawF = SAMPLE_DEPTH_TEXTURE(_CameraDepthTexture, sf);
+                        if (Linear01Depth(rawF) < 0.999) fm *= saturate((LinearEyeDepth(rawF) - eyeF) / 1.5);
+                    }
+                    float a = t.a * i.color.a * fm;
+                    float glow = gd.w;
+                    float3 col = t.rgb * i.color.rgb;
+                    if (glow > 0.01) col *= _FxParams.x;                               // огонь — на яркости свечения
+                    else col = col * _FxParams.y + SkyTideFlashLight(i.wpos) * 0.25 * t.a;   // дым — освещён и подсвечен взрывами
+                    return half4(col * a, a * (1.0 - glow));
+                }
                 if (kind > 8.5)
                 {
                     float4 rc = kAimRect[clamp((int)(i.data.w + 0.5), 0, 4)];
