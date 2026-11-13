@@ -463,9 +463,7 @@ namespace SkyTide
                 try
                 {
                     if(Application.isPlaying||CaptureBanner!=0)DamageVignette(width,height);   // под всеми плашками
-                    Panel(l.clouds,l.unit,false,input.Pressed(l.clouds));
-                    PlateText(l.clouds,0f,0.4f,"ОБЛАКА",l.unit*0.024f,muted);
-                    PlateText(l.clouds,0.4f,0.6f,input.game.volumetricClouds?"ОБЪЁМ":"РИСОВАННЫЕ",l.unit*0.034f,cream);
+                    // Плашки «облака» справа сверху нет — переключатель в панели FPS.
                     if(input.game.ships!=null&&input.game.ships.Length>1) {Panel(l.ship,l.unit);PlateText(l.ship,0f,1f,input.game.CurrentShipName,l.unit*0.03f,cream);}
                     Panel(l.course,l.unit); PlateText(l.course,0f,1f,"КУРС "+(Mathf.RoundToInt(input.ship.transform.eulerAngles.y)%360).ToString("000")+"°",l.unit*0.034f,cream);
                     Panel(l.speed,l.unit);PlateText(l.speed,0f,1f,"ХОД "+input.ship.Speed.ToString("F1")+" м/с",l.unit*0.034f,cream);

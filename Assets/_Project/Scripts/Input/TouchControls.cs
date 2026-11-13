@@ -114,13 +114,7 @@ namespace SkyTide
                     PerfPanel.Toggle();
                     return;
                 }
-                if (game != null && CloudButtonRect().Contains(p))
-                {
-                    owners[id] = Owner.Button;
-                    lastPos[id] = p;
-                    game.SetVolumetric(!game.volumetricClouds);
-                    return;
-                }
+                // Кнопки «облака» на экране нет (просьба владельца): переключатель — в панели FPS.
                 Broadside bs = Guns();
                 if (bs != null && VolleyModeRect().Contains(p)) { owners[id] = Owner.Button; lastPos[id] = p; bs.ripple = !bs.ripple; return; }
                 if (bs != null && VolleyRect(-1).Contains(p)) { owners[id] = Owner.Button; lastPos[id] = p; bs.Fire(-1); return; }
