@@ -18,7 +18,7 @@ namespace SkyTide
         public float safeRadius = 1400f;
         public float hostileTime = 45f;
         // Пушки достают всю безопасную зону с башен: быстрые ядра (220 м/с) и долгий полёт (до 12 с).
-        public float gunRange = 2400f, gunCooldown = 3.2f, spreadDeg = 1.2f, muzzleSpeed = 220f, gravity = 9.81f, shellLife = 12f;
+        public float gunRange = 2400f, shotInterval = 0.9f, spreadDeg = 1.2f, muzzleSpeed = 220f, gravity = 9.81f, shellLife = 12f;
         [Tooltip("Калибр орудий башен относительно корабельной пушки: размер ядра, вспышки, дыма и урон.")]
         public float shellCaliber = 3f;
         public float berthRadius = 100f, berthMaxSpeed = 5f, repairPerSecond = 6f;
@@ -27,6 +27,7 @@ namespace SkyTide
         class Data
         {
             public float[] guns;        // x,y,z на дуло (модель)
+            public float[] gunDirs;     // x,y,z — куда смотрит ствол (модель); пусто — стволы не размечены
             public float[] berth;       // x,y,z точки причала (модель)
             public float[] pierDir;     // x,z направления пирса от центра (модель)
             public float[] gridOrigin;  // x,z угла карты высот (модель)
@@ -38,6 +39,7 @@ namespace SkyTide
 
         Transform model;
         Vector3[] guns = new Vector3[0];
+        Vector3[] gunDirs;   // направление каждого ствола (модель) или null
         Vector3 berthLocal;
         bool hasBerth;
         Data grid;
@@ -86,6 +88,11 @@ namespace SkyTide
                 {
                     guns = new Vector3[grid.guns.Length / 3];
                     for (int i = 0; i < guns.Length; i++) guns[i] = new Vector3(grid.guns[i * 3], grid.guns[i * 3 + 1], grid.guns[i * 3 + 2]);
+                    if (grid.gunDirs != null && grid.gunDirs.Length == grid.guns.Length)
+                    {
+                        gunDirs = new Vector3[guns.Length];
+                        for (int i = 0; i < guns.Length; i++) gunDirs[i] = new Vector3(grid.gunDirs[i * 3], grid.gunDirs[i * 3 + 1], grid.gunDirs[i * 3 + 2]);
+                    }
                 }
                 if (grid.berth != null && grid.berth.Length >= 3) { berthLocal = new Vector3(grid.berth[0], grid.berth[1], grid.berth[2]); hasBerth = true; }
                 if (grid.heights == null || grid.heights.Length != grid.gw * grid.gh) grid.heights = null;
@@ -187,9 +194,18 @@ namespace SkyTide
 
             if (!Hostile || !hull.Alive || guns.Length == 0 || Time.time < nextShot) return;
             // Залп по одному орудию, по очереди башен: плотный, но не мгновенный огонь.
-            Vector3 muzzle = model.TransformPoint(guns[gunCursor % guns.Length]);
-            gunCursor++;
-            nextShot = Time.time + gunCooldown / Mathf.Max(1, guns.Length) + UnityEngine.Random.Range(0f, 0.25f);
+            // Стреляет следующее по очереди орудие, чей ствол смотрит в сторону цели (стволы закреплены веером вокруг башен).
+            int pick = gunCursor % guns.Length;
+            if (gunDirs != null)
+                for (int k = 0; k < guns.Length; k++)
+                {
+                    int g = (gunCursor + k) % guns.Length;
+                    Vector3 toTarget = pp - model.TransformPoint(guns[g]);
+                    if (Vector3.Dot(model.TransformDirection(gunDirs[g]), toTarget.normalized) > 0.25f) { pick = g; break; }
+                }
+            gunCursor = pick + 1;
+            Vector3 muzzle = model.TransformPoint(guns[pick]);
+            nextShot = Time.time + shotInterval + UnityEngine.Random.Range(0f, 0.4f);
             if ((pp - muzzle).sqrMagnitude > gunRange * gunRange) return;
             Vector3 dir;
             if (!Solve(muzzle, pp, out dir)) return;

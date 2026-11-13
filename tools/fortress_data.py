@@ -6,8 +6,8 @@
 Что считается:
   heights — карта высот верха модели (клетка --cell м): растеризация треугольников сверху, дыры внутри
             контура крепости (дворы, проёмы) закрыты высотой окружения, чтобы корабль не влезал внутрь;
-  guns    — дула на кольцах пушек башен: две самые высокие колонны модели, кольцо — самый широкий ярус
-            в верхней половине башни, по 4 дула на диагоналях;
+  guns    — дула настоящих пушек башен (отдельные вытянутые куски модели на ярусе орудий) и gunDirs — куда
+            смотрит каждый ствол; если стволы не найдены — по 4 точки на кольце яруса;
   berth   — точка причала: край пирса (самая низкая широкая площадка вне центра), в 16 м за его концом;
   pierDir — направление пирса от центра (x,z) — по нему выбирается поворот крепости в сцене.
 """
@@ -109,6 +109,38 @@ def main():
             a = math.radians(45 + 90 * k)
             guns += [cx + math.cos(a) * best, by + 2, cz + math.sin(a) * best]
 
+    # Настоящие пушки башен: отдельные куски модели в 100–220 треугольников на ярусе орудий, вытянутые от оси
+    # башни. Дуло — дальний от оси конец ствола, направление — главная ось куска наружу. Если стволы найдены,
+    # они заменяют условные точки на кольце (и ядра вылетают из самих пушек).
+    key = np.round(P / 1e-3).astype(np.int64)
+    _, wfirst, winv = np.unique(key, axis=0, return_index=True, return_inverse=True); winv = winv.ravel()
+    WT = winv[T]; parent = np.arange(len(wfirst))
+    def find(x):
+        while parent[x] != x:
+            parent[x] = parent[parent[x]]; x = parent[x]
+        return x
+    for t in WT:
+        a_, b_, c_ = find(t[0]), find(t[1]), find(t[2]); parent[b_] = a_; parent[c_] = a_
+    wroot = np.array([find(i) for i in range(len(wfirst))]); troot = wroot[WT[:, 0]]; Wp = P[wfirst]
+    barrels, dirs = [], []
+    for rid, cnt in zip(*np.unique(troot, return_counts=True)):
+        if cnt < 100 or cnt > 220: continue
+        Q = Wp[wroot == rid]; c = Q.mean(0)
+        cx, cz, ytop, by, best = min(towers, key=lambda t: np.hypot(c[0] - t[0], c[2] - t[1]))
+        if Q[:, 1].min() < ytop - 95 or Q[:, 1].max() > ytop - 45: continue
+        r = np.hypot(Q[:, 0] - cx, Q[:, 2] - cz)
+        if r.max() - r.min() < 25 or r.max() > 120: continue
+        X = Q - c; w, V = np.linalg.eigh(X.T @ X); ax = V[:, 2]
+        far = Q[r > r.max() - 4].mean(0)
+        outv = np.array([far[0] - cx, 0.0, far[2] - cz]); outv /= np.linalg.norm(outv)
+        if ax @ outv < 0: ax = -ax
+        barrels.append(far + ax * 1.5); dirs.append(ax)
+    gun_dirs = []
+    if len(barrels) >= 4:
+        guns = [float(v) for q in barrels for v in q]
+        gun_dirs = [float(v) for q in dirs for v in q]
+    print('пушек-стволов найдено: %d' % len(barrels))
+
     # Пирс: широкая площадка ниже палубы, дальняя от центра.
     lo_x, lo_z = lo[0], lo[2]
     gh, gw = H.shape
@@ -138,7 +170,7 @@ def main():
     print('pier centre', pc.round(1), 'length %.0f width %.0f' % (along.max() - along.min(), across.max() - across.min()))
 
     hs = np.where(np.isnan(H), -1e4, H)
-    out = dict(guns=[round(float(v), 2) for v in guns],
+    out = dict(guns=[round(float(v), 2) for v in guns], gunDirs=[round(float(v), 3) for v in gun_dirs],
                berth=[round(float(bpos[0]), 2), round(pyh, 2), round(float(bpos[1]), 2)],
                pierDir=[round(float(pdir[0]), 4), round(float(pdir[1]), 4)],
                gridOrigin=[round(float(lo_x), 3), round(float(lo_z), 3)],

@@ -1113,6 +1113,19 @@ namespace SkyTide.EditorTools
                 if (fort.TopAt(fort.Center) < sh.position.y) throw new System.InvalidOperationException("Карта высот крепости пуста в центре — корабль пройдёт насквозь");
                 if (SkyFortress.InSafeZone(sh.position)) throw new System.InvalidOperationException("Точка появления внутри безопасной зоны");
                 {
+                    // Модель крепости: ни одной вырожденной нормали (normalize(0) в шейдере — NaN: на телефоне это были
+                    // чёрные треугольники с белым ореолом свечения, на программном GPU CI — лишь чёрные точки).
+                    byte[] fb = boot.fortressMesh.bytes;   // сетка в игре не читается (UploadMeshData), проверяем исходные байты
+                    int fvc = System.BitConverter.ToInt32(fb, 4), fno = 12 + fvc * 12, badNormals = 0;
+                    for (int fi = 0; fi < fvc; fi++)
+                    {
+                        float fnx = System.BitConverter.ToSingle(fb, fno + fi * 12), fny = System.BitConverter.ToSingle(fb, fno + fi * 12 + 4), fnz = System.BitConverter.ToSingle(fb, fno + fi * 12 + 8);
+                        float fLen2 = fnx * fnx + fny * fny + fnz * fnz;
+                        if (!(fLen2 > 0.25f)) badNormals++;   // и ноль, и NaN
+                    }
+                    if (fvc <= 0 || badNormals > 0) throw new System.InvalidOperationException("Модель крепости: вырожденных нормалей " + badNormals + " из " + fvc + " — прогнать tools/fix_normals.py");
+                }
+                {
                     Vector3 to = fort.Center - sh.position; to.y = 0f; to.Normalize();
                     Vector3 eye = sh.position - to * 75f + Vector3.up * 22f;
                     cam.transform.SetPositionAndRotation(eye, Quaternion.LookRotation(fort.Center + Vector3.up * 300f - eye, Vector3.up));

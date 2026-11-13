@@ -280,7 +280,8 @@ namespace SkyTide
 
         void BenchTable(Rect r, float u)
         {
-            GUI.color = new Color(0f, 0f, 0f, 0.85f); GUI.DrawTexture(r, Texture2D.whiteTexture); GUI.color = Color.white;
+            // Почти непрозрачная подложка: под таблицей не должны читаться плашки HUD.
+            GUI.color = new Color(0f, 0f, 0f, 0.95f); GUI.DrawTexture(r, Texture2D.whiteTexture); GUI.DrawTexture(r, Texture2D.whiteTexture); GUI.color = Color.white;
             if (small == null) small = new GUIStyle(label) { fontSize = Mathf.RoundToInt(label.fontSize * 0.8f) };
             float x = r.x + u * 0.03f, w = r.width - u * 0.06f, y = r.y + u * 0.012f, lh = u * 0.046f;
             string dev = SystemInfo.graphicsDeviceName + "  " + nativeW + "×" + nativeH + "  сборка " + Application.version;
