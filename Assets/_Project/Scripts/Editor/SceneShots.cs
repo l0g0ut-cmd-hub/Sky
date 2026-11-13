@@ -1104,17 +1104,16 @@ namespace SkyTide.EditorTools
                 for (int k = 0; k < 3; k++) boot.Fx.Simulate(0.04f);
                 OverviewFrame(oc, cam, boot, rt, tex, dir, volleyShot);
                 boot.Fx.Clear();
-                Shot splashShot = new Shot("205_overview_splash", 0f, 10f, 70f);
-                Vector3 splashAt = Ahead(oc, cam, splashShot, 160f, -30f); splashAt.y = boot.Fx.deckTop;
-                boot.Fx.CloudSplash(splashAt, 1f);
-                for (int k = 0; k < 8; k++) boot.Fx.Simulate(0.05f);
-                OverviewFrame(oc, cam, boot, rt, tex, dir, splashShot);
-                boot.Fx.Clear();
+                // Баннеры — проверка текста и раскладки HUD: объёмные облака выключены (на программном GPU CI кадр
+                // с башнями стоит ~3 мин, а для баннера сцена за ним не важна).
+                bool volWas = boot.Volumetric != null && boot.Volumetric.enabled;
+                if (boot.Volumetric != null) boot.Volumetric.enabled = false;
                 ShipHud.CaptureBanner = 1;
                 OverviewFrame(oc, cam, boot, rt, tex, dir, new Shot("206_banner_victory", 20f, 12f, 70f));
                 ShipHud.CaptureBanner = 2;
                 OverviewFrame(oc, cam, boot, rt, tex, dir, new Shot("207_banner_defeat", 20f, 12f, 70f));
                 ShipHud.CaptureBanner = 0;
+                if (boot.Volumetric != null) boot.Volumetric.enabled = volWas;
                 Debug.Log("SkyTide: обзор и проверки кадров — успешно, секунд=" + (Time.realtimeSinceStartup - start).ToString("F1"));
             }
             finally

@@ -401,7 +401,9 @@ Shader "Hidden/SkyTide/VolumetricClouds"
                 // Шаги растут с расстоянием: у камеры мелкие (без зерна внутри облака), вдали крупнее.
                 float stepGrow = 1.3 / steps;
                 float stepLen = stepBase * 0.35;
-                float t = tA;   // сдвиг — внутри каждого шага (см. Deck), иначе дальние шаги стоят на месте
+                // Башни: сдвиг только первого шага. Сдвиг внутри каждого шага (как у моря) давал россыпь точек
+                // по краю башен — редкие попадания в тонкие клочья поля (сборка 75).
+                float t = tA + stepLen * jit;
 
                 float3 sunDir = normalize(_SkyTideSunDir.xyz);
                 float cosT = dot(rd, sunDir);
@@ -413,7 +415,7 @@ Shader "Hidden/SkyTide/VolumetricClouds"
                 [loop]
                 for (int s = 0; s < steps; s++)
                 {
-                    float ts = min(t + stepLen * jit, tB);
+                    float ts = t;
                     float3 p = ro + rd * ts;
                     float tau, sky, fld;
                     float d = Density(p, ts < 1800.0, tau, sky, fld) * (bake ? 1.0 : ClearFactor(p, ro));
