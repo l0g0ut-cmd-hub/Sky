@@ -50,7 +50,8 @@ namespace SkyTide
         public Shader impostorShader;
         [Header("Импосторы (дальние облака — снимки объёмных)")]
         public bool impostors = true;
-        [System.NonSerialized] public bool debugTowers = true, debugDeck = true;   // отладочная панель (3 пальца)
+        [System.NonSerialized] public bool debugTowers = true, debugDeck = true;
+        [System.NonSerialized] public bool deckStepJitter = true;   // сдвиг выборки внутри каждого шага моря (против ряби полосами)   // отладочная панель (3 пальца)
         [Range(32, 200)] public int impostorBakeSteps = 112;
         readonly CloudImpostors imp = new CloudImpostors();
         public Light sun;
@@ -493,6 +494,7 @@ namespace SkyTide
             mat.SetTexture("_TowerField", field);
             mat.SetVector("_FieldBox", new Vector4(FieldHalf, FieldBottom, FieldHeight, Templates));
             mat.SetVector("_Haze", new Vector4(hazeDensity, hazeTop, hazeDistance, hazeSteps));
+            mat.SetFloat("_DeckStepJitter", deckStepJitter ? 1f : 0f);
             mat.SetVector("_Deck", new Vector4(deckBase, deckTop, deckDensity, debugDeck ? deckSteps : 0));
             mat.SetVector("_Deck2", new Vector4(deckWeatherScale, deckCoverage, deckLobeScale, deckDetailScale));
             mat.SetVector("_Deck3", new Vector4(deckDistance, 1600f, deckAbsorption, deckSunScale));

@@ -72,6 +72,7 @@ Shader "Hidden/SkyTide/VolumetricClouds"
     }
     float4 _Deck;                 // x низ слоя, y верх (м), z плотность (1/м), w шагов
     float4 _Deck2;                // x масштаб «погоды», y порог покрытия, z масштаб клубов, w масштаб детали (м)
+    float _DeckStepJitter;        // 1 — сдвиг внутри каждого шага моря, 0 — прежний (только первый шаг); для сравнения в CI
     float4 _Deck3;                // x дальность (м), y макс. длина пути в слое (м), z поглощение к солнцу
     float _Bake;
     float4 _Temporal;             // x номер кадра, y вес истории (0 — нет истории), z верх моря облаков
@@ -301,7 +302,7 @@ Shader "Hidden/SkyTide/VolumetricClouds"
         float stepLen = min(10.0, (t1 - t0) / sumK);
         // Сдвиг выборки — внутри КАЖДОГО шага (доля его длины). Прежде сдвигался только первый шаг (≤10 м),
         // и дальние выборки стояли на месте из кадра в кадр: накопление не могло стереть «рябь полосами».
-        float t = t0;
+        float t = t0 + (1.0 - _DeckStepJitter) * stepLen * jitter;
         float3 L = normalize(_SkyTideSunDir.xyz);
         float3 light = 0;
         float trans = 1;
@@ -310,7 +311,7 @@ Shader "Hidden/SkyTide/VolumetricClouds"
         for (int k = 0; k < n; k++)
         {
             if (t > t1) break;
-            float ts = min(t + stepLen * jitter, t1);
+            float ts = min(t + _DeckStepJitter * stepLen * jitter, t1);
             float3 p = ro + rd * ts;
             float cov = DeckCoverage(p);
             float d = DeckShape(p, cov, 1.0 - smoothstep(1000.0, 1600.0, ts)) * ClearFactor(p, ro);
