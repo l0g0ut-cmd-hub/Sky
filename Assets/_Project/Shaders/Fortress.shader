@@ -1,8 +1,9 @@
 // Небесная крепость: Standard BRDF + растворение низа в море облаков и воздушная дымка на расстоянии.
 // Двусторонний (Cull Off): модель Meshy — не замкнутое тело, а ~100 незамкнутых пересекающихся оболочек
 // (1066 открытых рёбер), и с отсечением задних граней изнанка каждой стенки была «дырой» насквозь.
-// Низ модели не обрывается ровной кромкой: ниже _DissolveTop цвет уходит в дымку горизонта этого азимута
-// (та же SkyTideAerialColor, что у дальних облаков), объёмные облака дорисовывают остальное по глубине сцены.
+// Низ модели (на −205 м при масштабе ×3) не обрывается кромкой в просветах облаков: глубоко под морем облаков,
+// ниже _DissolveTop, цвет уходит в дымку горизонта. У поверхности облаков растворения нет — там опоры и скалу
+// закрывают сами объёмные облака по глубине сцены (цветное растворение у поверхности красило опоры в розовый).
 Shader "SkyTide/Fortress"
 {
     Properties
@@ -25,7 +26,8 @@ Shader "SkyTide/Fortress"
         [HDR] _EmissionColor ("Emission color", Color) = (0,0,0,1)
         _DissolveTop ("Dissolve top (world Y)", Float) = 45
         _DissolveRange ("Dissolve range (m)", Float) = 45
-        _AerialStrength ("Aerial strength", Range(0,1)) = 0.7
+        _AerialStrength ("Aerial strength", Range(0,1)) = 0.45
+        _AerialRange ("Aerial start, end (m)", Vector) = (900, 5000, 0, 0)
     }
     SubShader
     {
@@ -42,6 +44,7 @@ Shader "SkyTide/Fortress"
         half4 _Color, _EmissionColor;
         half _Glossiness, _Metallic;
         float4 _TileSize;
+        float4 _AerialRange;
         float _DissolveTop, _DissolveRange, _AerialStrength, _DetailStrength, _DetailFar, _RockTop, _RockBlend, _BumpHeight;
 
         struct Input
@@ -124,7 +127,9 @@ Shader "SkyTide/Fortress"
             float dist = length(rd);
             float sink = saturate((_DissolveTop - IN.worldPos.y) / max(_DissolveRange, 1.0));
             sink = sink * sink * (3.0 - 2.0 * sink);
-            float haze = max(sink, SkyTideAerialAmount(_AerialStrength, dist));
+            // Своя дымка, а не облачная (та начинается у самой камеры и на 2 км превращала крепость в плоский
+            // оранжевый силуэт): до 900 м её нет, к 5 км — не больше _AerialStrength. Крепость стоит тёмной громадой.
+            float haze = max(sink, _AerialStrength * smoothstep(_AerialRange.x, _AerialRange.y, dist));
             #ifdef UNITY_PASS_FORWARDADD
                 color.rgb *= 1.0 - haze;
             #else

@@ -94,8 +94,8 @@ namespace SkyTide.EditorTools
                 Texture2D fd = Tex(Models + "SkyFortress_Deck.png", false, false, TextureWrapMode.Repeat, TextureWrapMode.Repeat, 1024, true);
                 Texture2D fr = Tex(Models + "SkyFortress_Rock.png", false, false, TextureWrapMode.Repeat, TextureWrapMode.Repeat, 1024, true);
                 if (fw == null || fd == null || fr == null) throw new System.InvalidOperationException("Нет плиток материалов крепости (Models/SkyFortress_Wall|Deck|Rock.png)");
-                // низ растворяется от 10 м над верхом моря облаков (20 м) и за 36 м уходит в дымку целиком
-                if (fa != null) b.fortressMaterials = new[] { MaterialFactory.Fortress(fa, fe, fw, fd, fr, 30f, 36f) };
+                // низ растворяется только глубоко под морем облаков (−60…20 м): от −40 м и за 100 м уходит в дымку целиком
+                if (fa != null) b.fortressMaterials = new[] { MaterialFactory.Fortress(fa, fe, fw, fd, fr, -40f, 100f) };
             }
             b.hudShader = AssetDatabase.LoadAssetAtPath<Shader>("Assets/_Project/Shaders/Hud.shader");
             b.hudFont = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
