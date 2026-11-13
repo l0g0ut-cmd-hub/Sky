@@ -1079,13 +1079,6 @@ namespace SkyTide.EditorTools
                 OverviewFrame(oc, cam, boot, rt, tex, dir, new Shot("200_overview_chase", 0f, 14f, 62f));
                 if (guns != null) guns.AimPreview();
                 OverviewFrame(oc, cam, boot, rt, tex, dir, new Shot("201_overview_sun", 35f, 8f, 75f));
-                // Диагностика россыпи точек у башен (78: дают импосторы, не море): тот же кадр без маски башен у импосторов.
-                if (boot.Volumetric != null)
-                {
-                    boot.Volumetric.ImpostorTowerMask = false;
-                    OverviewFrame(oc, cam, boot, rt, tex, dir, new Shot("201b_sun_imp_no_mask", 35f, 8f, 75f));
-                    boot.Volumetric.ImpostorTowerMask = true;
-                }
                 if (guns != null) guns.AimPreview();
                 OverviewFrame(oc, cam, boot, rt, tex, dir, new Shot("202_overview_down", 140f, 45f, 110f));
                 // Взрыв — точно в кадре (перед камерой, сбоку от корабля), на 0.2 с: видно нарисованный огненный шар.

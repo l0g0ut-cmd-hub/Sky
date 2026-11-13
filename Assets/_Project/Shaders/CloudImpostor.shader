@@ -101,6 +101,9 @@ Shader "Hidden/SkyTide/CloudImpostor"
             float HeroInFront(float3 ro, float3 rd, float dist, float mask)
             {
                 float cover = 0.0;
+                // Маска приходит через интерполятор: постоянное по квадрату значение после интерполяции бывает 2.9999998
+                // вместо 3 — floor() рвал биты в отдельных пикселях, и облако «проходило» сквозь башню точками (сборки 75–78).
+                mask = floor(mask + 0.5);
                 if (_ImpUseMask < 0.5) mask = 255.0;
                 if (mask < 0.5) return 0.0;
                 for (int i = 0; i < MAX_TOWERS; i++)
