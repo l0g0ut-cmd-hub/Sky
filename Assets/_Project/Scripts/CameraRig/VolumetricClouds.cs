@@ -60,7 +60,7 @@ namespace SkyTide
 
         [Header("Качество")]
         [Range(1, 8)] public int resolutionDivider = 4;   // 4 — быстрее, но море облаков на весь экран выглядит мыльным
-        [Range(16, 128)] public int steps = 32;   // 40 → 32: сдвиг внутри каждого шага + накопление дают то же качество (башни — главная цена кадра)
+        [Range(16, 128)] public int steps = 40;   // 32 давало россыпь точек по краю башен (сборки 75–76) — вернул 40
         public float marchDistance = 2600f;
         [Range(0f, 0.65f)] public float contourDetail = 0.4f;
 
