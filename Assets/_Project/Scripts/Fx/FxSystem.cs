@@ -192,9 +192,9 @@ namespace SkyTide
             // Нарисованный огонь (лист 5, петля): каждый раз новый язык — разной высоты, со сдвигом вдоль борта и наклоном по ветру;
             // живут внахлёст (~7 на пробоину), поэтому пламя густое и не повторяется.
             Vector3 along=Vector3.Cross(outward,Vector3.up); if(along.sqrMagnitude<1e-4f)along=Vector3.right; along.Normalize();
-            float tongue=height*Random.Range(1.5f,2.4f);
+            float tongue=height*Random.Range(1.2f,2f);
             Vector2 lean=new Vector2(Vector3.Dot(wind,along),0f);
-            Add(new P{kind=Kind.Flip,pos=at+outward*.3f+along*Random.Range(-.35f,.35f)*height+Vector3.up*tongue*.4f,
+            Add(new P{kind=Kind.Flip,pos=at+outward*.45f+along*Random.Range(-.2f,.2f)*height+Vector3.up*tongue*.42f,
                 vel=inheritedVelocity+Vector3.up*.6f,life=Random.Range(1f,1.5f),size0=tongue*.85f,size1=tongue,
                 rot=Mathf.Clamp(-lean.x*.04f,-.3f,.3f)+Random.Range(-.08f,.08f),color=Color.white,alpha=.9f,seed=5f+Random.value*.999f});
             Vector3 velocity=inheritedVelocity+Vector3.up*Random.Range(2f,4f)+wind*.18f+outward*.6f;

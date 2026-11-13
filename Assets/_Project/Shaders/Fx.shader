@@ -111,6 +111,8 @@ Shader "Hidden/SkyTide/Fx"
                     if (e == 2) offset = float3(q.x, 0, q.y);          // кольцо — плашмя на облаках
                     else if (e == 3) offset = _FxRight.xyz * q.x + _FxUp.xyz * q.y;   // прицел — к камере
                 }
+                if (kind > 9.5 && floor(v.data.w) > 4.5 && floor(v.data.w) < 5.5)
+                    offset = _FxRight.xyz * q.x * 0.62 + _FxUp.xyz * q.y;   // огонь из пробоины: узкий высокий язык, не костёр
                 float3 wpos = v.vertex.xyz + offset * v.data.x;
                 o.pos = _FxExternal > 0.5 ? mul(_FxVP, float4(wpos, 1.0)) : mul(UNITY_MATRIX_VP, float4(wpos, 1.0));
                 o.uv = v.uv;
@@ -156,8 +158,12 @@ Shader "Hidden/SkyTide/Fx"
                         if (Linear01Depth(rawF) < 0.999) fm *= saturate((LinearEyeDepth(rawF) - eyeF) / 1.5);
                     }
                     float a = t.a * i.color.a * fm;
-                    if (sheet == 5)   // огонь: без плоского светящегося основания кадра и без резких боков — языки растут из пробоины
-                        a *= smoothstep(-0.5, -0.16, i.uv.y) * (1.0 - smoothstep(0.36, 0.5, abs(i.uv.x)));
+                    if (sheet == 5)
+                    {
+                        // Огонь вырывается из пробоины: внизу узко (точка выхода), кверху раскрывается; без плоского основания костра.
+                        float halfW = lerp(0.03, 0.5, smoothstep(-0.45, 0.2, i.uv.y));
+                        a *= smoothstep(-0.5, -0.08, i.uv.y) * (1.0 - smoothstep(halfW * 0.55, halfW, abs(i.uv.x)));
+                    }
                     float glow = gd.w;
                     float3 col = t.rgb * i.color.rgb;
                     // Листы уже нарисованы в нужной яркости: лишь лёгкий подъём под свечение (не _FxParams.x = 7 — это выжигало в белое).
