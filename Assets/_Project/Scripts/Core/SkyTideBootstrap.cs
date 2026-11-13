@@ -27,6 +27,7 @@ namespace SkyTide
         public Shader volumetricShader;
         public Shader impostorShader;
         public Shader fxShader;
+        public Shader decalShader;   // Hidden/SkyTide/HullDecal — reference keeps it in the build
         public Shader hudShader;
         public Font hudFont;
         [Tooltip("3D-шум облаков (Art/CloudNoise3D.bytes, tools/gen_cloud_noise3d.py).")]

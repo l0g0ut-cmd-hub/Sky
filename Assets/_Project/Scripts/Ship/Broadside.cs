@@ -181,18 +181,6 @@ namespace SkyTide
             if (Application.isPlaying) { AimPreview(); ReloadSound(); }
         }
 
-        /// <summary>Квадрат вдоль направления along (длина len), поперёк — перпендикулярно взгляду (ширина wid).</summary>
-        static void Billboard(FxSystem fx, Vector3 center, Vector3 along, float len, float wid, Rect px, Color col, Vector3 cam)
-        {
-            Vector3 view = (center - cam).normalized;
-            Vector3 side = Vector3.Cross(along, view);
-            if (side.sqrMagnitude < 1e-6f) side = Vector3.up;
-            side = side.normalized * (wid * 0.5f);
-            Vector3 ax = along.normalized * (len * 0.5f);
-            // левый край картинки — хвост (позади), правый — голова (вперёд по ходу)
-            fx.AimQuad(center - ax + side, center + ax + side, center + ax - side, center - ax - side, px, col);
-        }
-
         bool[] wasReady = { true, true };
         void ReloadSound()
         {
@@ -268,8 +256,6 @@ namespace SkyTide
                     segStart = p;
                 }
             }
-        }
-        }
         }
 
         /// <summary>Выпустить ядра, чьё время пришло; CI тоже может прокручивать волну по времени.</summary>

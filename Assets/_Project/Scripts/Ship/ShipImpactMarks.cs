@@ -3,18 +3,24 @@ using UnityEngine;
 
 namespace SkyTide
 {
-    /// <summary>Bounded, surface-projected char and jagged raised wood, attached to the damaged model.</summary>
+    /// <summary>
+    /// Painted battle scars on the hull: for every hit a soot stain and a torn-through hole
+    /// (Resources/FX/hull_decals: top row 4 holes, bottom row 4 soot stains), each a small grid
+    /// projected onto the real hull surface so it bends with the planks. One mesh, one draw call.
+    /// </summary>
     public sealed class ShipImpactMarks
     {
         struct Mark { public Vector3 point,normal; public float radius; public int seed; }
+        const int Grid=6;                       // 7x7 vertices per layer
         readonly List<Mark> marks=new List<Mark>();
         readonly List<Vector3> vertices=new List<Vector3>(),normals=new List<Vector3>();
         readonly List<Vector2> uv=new List<Vector2>();
-        readonly List<int> black=new List<int>(),wood=new List<int>();
+        readonly List<Color32> colors=new List<Color32>();
+        readonly List<int> soot=new List<int>(),holes=new List<int>();
         readonly Transform parent;
         readonly ShipHitSurface surface;
         readonly Mesh mesh;
-        readonly Material charred,raw;
+        readonly Material material;
         public int Count {get {return marks.Count;}}
         public int VertexCount {get {return mesh.vertexCount;}}
         public ShipImpactMarks(Transform parent,ShipHitSurface surface)
@@ -22,19 +28,46 @@ namespace SkyTide
             this.parent=parent;this.surface=surface;
             GameObject go=new GameObject("Surface impact scars");go.transform.SetParent(parent,false);
             mesh=new Mesh{name="Projected battle scars"};mesh.MarkDynamic();go.AddComponent<MeshFilter>().sharedMesh=mesh;
-            charred=MaterialFactory.Opaque("Charred impact cavities",new Color(.018f,.011f,.008f),.025f);
-            raw=MaterialFactory.Opaque("Torn burnt plank edges",new Color(.13f,.055f,.018f),.06f);
-            go.AddComponent<MeshRenderer>().sharedMaterials=new[]{charred,raw};
+            Shader shader=Shader.Find("Hidden/SkyTide/HullDecal");
+            Texture2D atlas=Resources.Load<Texture2D>("FX/hull_decals");
+            if(shader!=null&&shader.isSupported&&atlas!=null){material=new Material(shader){name="Hull battle decals"};material.mainTexture=atlas;}
+            else material=MaterialFactory.Opaque("Charred impact cavities",new Color(.018f,.011f,.008f),.025f);
+            MeshRenderer r=go.AddComponent<MeshRenderer>();r.sharedMaterial=material;
+            r.shadowCastingMode=UnityEngine.Rendering.ShadowCastingMode.Off;
         }
-        static float Noise(int seed,int point){return Mathf.Repeat(Mathf.Sin(seed*3.17f+point*12.91f)*43758.54f,1f);}
+        static float Noise(int seed,int k){return Mathf.Repeat(Mathf.Sin(seed*3.17f+k*12.91f)*43758.54f,1f);}
         public void Add(Vector3 world,Vector3 worldNormal,float severity,int seed)
         {
             Vector3 point=parent.InverseTransformPoint(world),normal=parent.InverseTransformDirection(worldNormal).normalized;
             foreach(Mark m in marks)if((m.point-point).sqrMagnitude<.25f)return;
             if(marks.Count==16)marks.RemoveAt(0);
-            marks.Add(new Mark{point=point,normal=normal,radius=Mathf.Lerp(.75f,1.35f,severity),seed=seed});Rebuild();
+            marks.Add(new Mark{point=point,normal=normal,radius=Mathf.Lerp(.95f,1.55f,Mathf.Clamp01(severity)),seed=seed});Rebuild();
         }
-        int Vertex(Vector3 p,Vector3 n){int i=vertices.Count;vertices.Add(p);normals.Add(n);uv.Add(new Vector2(p.x,p.y));return i;}
+        /// <summary>One projected grid; cell = atlas cell (0..3 holes, 4..7 soot).</summary>
+        void Layer(List<int> tris,Mark m,float half,float angle,int cell,float lift)
+        {
+            Vector3 n=m.normal;
+            Vector3 side=Vector3.Cross(n,Mathf.Abs(n.y)>.85f?Vector3.right:Vector3.up).normalized,up=Vector3.Cross(n,side);
+            float c=Mathf.Cos(angle),s=Mathf.Sin(angle);
+            Vector3 ax=(side*c+up*s)*half,ay=(-side*s+up*c)*half;
+            Vector2 cellMin=new Vector2((cell%4)*.25f,cell<4?.5f:0f);   // texture v=0 is the bottom row (soot)
+            int start=vertices.Count;
+            for(int y=0;y<=Grid;y++)for(int x=0;x<=Grid;x++)
+            {
+                float u=(float)x/Grid,v=(float)y/Grid;
+                Vector3 p=m.point+ax*(u*2-1)+ay*(v*2-1),pn=n;ShipHitSurface.Contact hit;byte a=255;
+                if(surface.Trace(p+n*2.5f,p-n*4f,out hit)&&(hit.point-p).sqrMagnitude<4f){p=hit.point;}
+                else a=0;                                                   // off the hull: fade this corner out
+                vertices.Add(p+pn*lift);normals.Add(pn);colors.Add(new Color32(255,255,255,a));
+                uv.Add(cellMin+new Vector2(.004f+u*.242f,.004f+v*.492f));
+            }
+            int row=Grid+1;
+            for(int y=0;y<Grid;y++)for(int x=0;x<Grid;x++)
+            {
+                int i=start+y*row+x;
+                Face(tris,i,i+row,i+1);Face(tris,i+1,i+row,i+row+1);
+            }
+        }
         void Face(List<int> list,int a,int b,int c)
         {
             if(Vector3.Dot(Vector3.Cross(vertices[b]-vertices[a],vertices[c]-vertices[a]),normals[a])<0){int swap=b;b=c;c=swap;}
@@ -42,39 +75,21 @@ namespace SkyTide
         }
         void Rebuild()
         {
-            vertices.Clear();normals.Clear();uv.Clear();black.Clear();wood.Clear();
+            vertices.Clear();normals.Clear();uv.Clear();colors.Clear();soot.Clear();holes.Clear();
             foreach(Mark m in marks)
             {
-                Vector3 side=Vector3.Cross(m.normal,Mathf.Abs(m.normal.y)>.85f?Vector3.right:Vector3.up).normalized,up=Vector3.Cross(m.normal,side);
-                const int sides=14;Vector3[] ring=new Vector3[sides];bool valid=true;
-                for(int i=0;i<sides;i++)
-                {
-                    float angle=i*Mathf.PI*2/sides,radius=m.radius*Mathf.Lerp(.75f,1.15f,Noise(m.seed,i));
-                    Vector3 p=m.point+(side*Mathf.Cos(angle)+up*Mathf.Sin(angle)*.6f)*radius;ShipHitSurface.Contact hit;
-                    if(!surface.Trace(p+m.normal*2.5f,p-m.normal*4f,out hit)||(hit.point-p).sqrMagnitude>2.25f){valid=false;break;}
-                    ring[i]=hit.point;
-                }
-                if(!valid)continue;
-                float lift=.025f+(m.seed%16)*.0015f;
-                int center=Vertex(m.point+m.normal*lift,m.normal),inner=vertices.Count;
-                for(int i=0;i<sides;i++)
-                {
-                    Vector3 p=Vector3.Lerp(m.point,ring[i],.62f);ShipHitSurface.Contact projected;
-                    if(surface.Trace(p+m.normal*2.5f,p-m.normal*4f,out projected))p=projected.point;
-                    Vertex(p+m.normal*(lift+.01f),m.normal);
-                }
-                int outer=vertices.Count;
-                for(int i=0;i<sides;i++)Vertex(ring[i]+m.normal*(.015f+Noise(m.seed,i+20)*.11f),m.normal);
-                for(int i=0;i<sides;i++)
-                {
-                    int next=(i+1)%sides;Face(black,center,inner+i,inner+next);
-                    Face(i%3==0?wood:black,inner+i,outer+i,outer+next);Face(i%3==0?wood:black,inner+i,outer+next,inner+next);
-                }
+                ShipHitSurface.Contact probe;
+                if(!surface.Trace(m.point+m.normal*2.5f,m.point-m.normal*4f,out probe))continue;
+                float lift=.02f+(m.seed%16)*.001f;
+                int hole=m.radius>1.25f?(m.seed&1):2+(m.seed&1);
+                Layer(soot,m,m.radius*2f,Noise(m.seed,3)*Mathf.PI*2,4+(m.seed>>1&3),lift);
+                Layer(holes,m,m.radius,(Noise(m.seed,7)-.5f)*.9f,hole,lift+.006f);
             }
-            mesh.Clear();mesh.SetVertices(vertices);mesh.SetNormals(normals);mesh.SetUVs(0,uv);mesh.subMeshCount=2;
-            mesh.SetTriangles(black,0);mesh.SetTriangles(wood,1);mesh.RecalculateBounds();
+            List<int> all=new List<int>(soot.Count+holes.Count);all.AddRange(soot);all.AddRange(holes);   // soot under every hole
+            mesh.Clear();mesh.SetVertices(vertices);mesh.SetNormals(normals);mesh.SetUVs(0,uv);mesh.SetColors(colors);
+            mesh.SetTriangles(all,0);mesh.RecalculateBounds();
         }
         public void Clear(){marks.Clear();mesh.Clear();}
-        public void Dispose(){SkyTideBootstrap.SafeDestroy(mesh);SkyTideBootstrap.SafeDestroy(charred);SkyTideBootstrap.SafeDestroy(raw);}
+        public void Dispose(){SkyTideBootstrap.SafeDestroy(mesh);SkyTideBootstrap.SafeDestroy(material);}
     }
 }

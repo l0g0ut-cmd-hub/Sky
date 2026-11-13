@@ -78,6 +78,7 @@ namespace SkyTide.EditorTools
             b.volumetricShader = AssetDatabase.LoadAssetAtPath<Shader>("Assets/_Project/Shaders/VolumetricClouds.shader");
             b.impostorShader = AssetDatabase.LoadAssetAtPath<Shader>("Assets/_Project/Shaders/CloudImpostor.shader");
             b.fxShader = AssetDatabase.LoadAssetAtPath<Shader>("Assets/_Project/Shaders/Fx.shader");
+            b.decalShader = AssetDatabase.LoadAssetAtPath<Shader>("Assets/_Project/Shaders/HullDecal.shader");
             b.hudShader = AssetDatabase.LoadAssetAtPath<Shader>("Assets/_Project/Shaders/Hud.shader");
             b.hudFont = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
             b.cloudNoise3D = AssetDatabase.LoadAssetAtPath<TextAsset>(Art + "CloudNoise3D.bytes");
@@ -169,6 +170,9 @@ namespace SkyTide.EditorTools
             Tex("Assets/_Project/Resources/UI/main_menu.jpg", false, false, TextureWrapMode.Clamp, TextureWrapMode.Clamp, 2048, false, true);
             Tex("Assets/_Project/Resources/UI/menu_bg.jpg", false, false, TextureWrapMode.Clamp, TextureWrapMode.Clamp, 2048, false, true);
             Tex("Assets/_Project/Resources/UI/splash_studio.jpg", false, false, TextureWrapMode.Clamp, TextureWrapMode.Clamp, 2048, false, true);
+            // Эффекты: флипбуки (взрывы, вспышка, дым, всплеск, огонь, клубы) и наклейки урона корпуса — сжатые, с мипами.
+            Tex("Assets/_Project/Resources/FX/fx_flipbooks.png", false, true, TextureWrapMode.Clamp, TextureWrapMode.Clamp, 4096, true);
+            Tex("Assets/_Project/Resources/FX/hull_decals.png", false, true, TextureWrapMode.Clamp, TextureWrapMode.Clamp, 2048, true);
             if (sprites != null) mats.cloudSprite = MaterialFactory.CloudSprites(sprites);
 
             Texture2D albedo = Tex(Models + "Corsair_Albedo.jpg", false, false, TextureWrapMode.Clamp, TextureWrapMode.Clamp, 4096, true);
