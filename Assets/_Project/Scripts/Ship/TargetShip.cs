@@ -14,7 +14,12 @@ namespace SkyTide
         public static readonly List<TargetShip> All = new List<TargetShip>();
 
         public Transform player;
-        public float minRange = 160f, maxRange = 420f;
+        public float minRange = 140f, maxRange = 320f;
+        /// <summary>Дальше этого мишень бросает свою точку и идёт обратно к игроку — не убегает.</summary>
+        public float leash = 450f;
+        // «Затупы»: время от времени капитан мишени теряется — сбрасывает ход, дрейфует, крутит руль не туда.
+        float dazeUntil = -1f, nextDaze, dazeTurn;
+        public bool Dazed { get { return Time.time < dazeUntil; } }
         public int hitsToSink = 30;   // ~4 удачных бортовых залпа
         public float respawnDelay = 6f;
 
@@ -61,7 +66,7 @@ namespace SkyTide
             float a = Random.Range(0f, Mathf.PI * 2f);
             float d = Random.Range(minRange, maxRange);
             waypoint = new Vector3(c.x + Mathf.Cos(a) * d, transform.position.y, c.z + Mathf.Sin(a) * d);
-            nextPick = Time.time + Random.Range(12f, 22f);
+            nextPick = Time.time + Random.Range(10f, 18f);
         }
 
         void Update(){long __pt=PerfTimers.Start();UpdateTimed();PerfTimers.Stop("Мишень",__pt);}
@@ -73,6 +78,17 @@ namespace SkyTide
                 if (Time.time >= deadUntil) Respawn();
                 return;
             }
+            if (nextDaze <= 0f) nextDaze = Time.time + Random.Range(10f, 20f);
+            if (Time.time >= nextDaze && !Dazed)
+            {
+                dazeUntil = Time.time + Random.Range(2.5f, 6f);
+                dazeTurn = Random.value < 0.5f ? 0f : Random.Range(-0.8f, 0.8f);
+                nextDaze = dazeUntil + Random.Range(10f, 22f);
+            }
+            if (Dazed) { ctrl.turn = dazeTurn; ctrl.throttle = 0.08f; return; }
+            Vector3 toPlayer = player != null ? player.position - transform.position : Vector3.zero;
+            toPlayer.y = 0f;
+            if (player != null && toPlayer.magnitude > leash) { waypoint = player.position; nextPick = Time.time + 8f; }
             Vector3 to = waypoint - transform.position;
             to.y = 0f;
             if (to.magnitude < 40f || Time.time > nextPick) Pick();

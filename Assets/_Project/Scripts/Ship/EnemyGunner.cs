@@ -59,18 +59,22 @@ namespace SkyTide
                 return;
             }
             if (Time.time < ready) return;
+            if (target.Dazed) return;   // капитан растерялся — и пушки молчат
             Vector3 rel = pp - transform.position; rel.y = 0f;
             float dist = rel.magnitude;
             if (dist < minRange || dist > maxRange) return;
             Vector3 local = transform.InverseTransformDirection(rel);
             float bearing = Mathf.Atan2(Mathf.Abs(local.x), local.z) * Mathf.Rad2Deg;
             if (bearing < 55f || bearing > 125f) return;
+            // Затупы расчёта: иногда залп запаздывает (замешкались с фитилями), иногда — «на авось» с двойной ошибкой.
+            if (Random.value < 0.2f) { ready = Time.time + Random.Range(1f, 3f); return; }
             pendingSide = local.x > 0f ? 1 : -1;
             Vector3 dv = playerVel - lastVolleyVel;
             if (!engaged || dv.magnitude > 5f) errScale = 1f; else errScale = Mathf.Max(0.2f, errScale * 0.6f);
             engaged = true; lastVolleyVel = playerVel;
             Vector3 fwd = rel / Mathf.Max(dist, 1f), sideDir = Vector3.Cross(Vector3.up, fwd);
-            aimErr = (fwd * Gauss() * rangeError * dist + sideDir * Gauss() * sideError * dist + Vector3.up * Gauss() * 0.012f * dist) * errScale;
+            float wild = Random.value < 0.2f ? 2.2f : 1f;
+            aimErr = (fwd * Gauss() * rangeError * dist + sideDir * Gauss() * sideError * dist + Vector3.up * Gauss() * 0.012f * dist) * errScale * wild;
             pendingLeft = gunsPerSide;
             pendingAt = Time.time;
             LastVolleyTime = Time.time;
