@@ -30,6 +30,7 @@ namespace SkyTide
             public float[] berth;       // x,y,z точки причала (модель)
             public float[] pierDir;     // x,z направления пирса от центра (модель)
             public float[] gridOrigin;  // x,z угла карты высот (модель)
+            public float deck;          // высота главной площадки (модель): ниже неё — скала основания
             public float cell = 10f;
             public int gw, gh;
             public float[] heights;     // верх модели в клетке (модель, м); ниже −1e3 — пусто
@@ -112,6 +113,12 @@ namespace SkyTide
             r.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.On;
             model.localScale = Vector3.one * scale;
             if (hasBerth) model.localPosition = Vector3.up * (pierHeight - position.y - berthLocal.y * scale);
+            // Шейдеру: ниже главной площадки серый камень — скала основания, выше — кладка.
+            if (grid != null && materials != null)
+            {
+                float rockTop = model.TransformPoint(new Vector3(0f, grid.deck - 4f, 0f)).y;
+                foreach (Material m in materials) if (m != null && m.HasProperty("_RockTop")) m.SetFloat("_RockTop", rockTop);
+            }
         }
 
         public Vector3 BerthWorld { get { return model != null ? model.TransformPoint(berthLocal) : transform.position; } }

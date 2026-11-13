@@ -1137,6 +1137,12 @@ namespace SkyTide.EditorTools
                     SaveFrame(cam, boot, rt, tex, dir, "209_fortress_berth");
                     CheckFrame(tex, "209_fortress_berth");
                     boot.Fx.Clear();   // крошка и дым от попадания не должны попасть на кадры баннеров
+                    // Материалы вблизи: доски пирса и кладка/скала за ним с ~50–150 м (плитки tools/fortress_tiles.py).
+                    eye = berth - inward * 10f + side * 25f + Vector3.up * 18f;
+                    cam.transform.SetPositionAndRotation(eye, Quaternion.LookRotation(berth + inward * 120f + Vector3.up * 10f - eye, Vector3.up));
+                    boot.World.Step(eye, 0f);
+                    SaveFrame(cam, boot, rt, tex, dir, "210_fortress_close");
+                    CheckFrame(tex, "210_fortress_close");
                     Debug.Log("SkyTide: крепость — центр " + fort.Center + ", причал " + berth + ", верх в центре " + fort.TopAt(fort.Center).ToString("F0"));
                 }
                 // Баннеры — проверка текста и раскладки HUD: объёмные облака выключены (на программном GPU CI кадр
