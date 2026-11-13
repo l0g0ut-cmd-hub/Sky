@@ -212,16 +212,16 @@ namespace SkyTide
             ShadowQuality sq = QualitySettings.shadows; bool lodOn = ShipLod.Enabled; int si = scaleIndex;
             System.Action<bool> all = on =>
             {
-                if (v != null) { if (v.enabled != on) game.SetVolumetric(on); v.debugTowers = on; v.debugDeck = on; v.impostors = on; v.interleave = false; }
+                if (v != null) { if (v.enabled != on) game.SetVolumetric(on); v.debugTowers = on; v.debugDeck = on; v.impostors = on; v.interleave = on; }
                 if (crew != null && crew.Visible != on) crew.SetVisible(on);
                 if (post != null) post.enabled = on;
                 if (game.Fx != null) game.Fx.debugHidden = !on;
                 QualitySettings.shadows = on ? ShadowQuality.All : ShadowQuality.Disable;
                 ShipLod.Enabled = true;
-                SetScale(0);
+                SetScale(DefaultScaleIndex);   // база — как в игре по умолчанию: сцена 70%, облака ¼ лучей за кадр
             };
             var steps = new List<KeyValuePair<string, System.Action>>();
-            steps.Add(new KeyValuePair<string, System.Action>("Всё включено (база)", () => all(true)));
+            steps.Add(new KeyValuePair<string, System.Action>("Как в игре (база)", () => all(true)));
             if (v != null)
             {
                 steps.Add(new KeyValuePair<string, System.Action>("без объёмных облаков", () => { all(true); game.SetVolumetric(false); }));
@@ -229,14 +229,14 @@ namespace SkyTide
                 steps.Add(new KeyValuePair<string, System.Action>("без моря облаков", () => { all(true); v.debugDeck = false; }));
                 steps.Add(new KeyValuePair<string, System.Action>("без импосторов", () => { all(true); v.impostors = false; }));
             }
-            if (v != null) steps.Add(new KeyValuePair<string, System.Action>("облака: ¼ пикселей за кадр", () => { all(true); v.interleave = true; }));
+            if (v != null) steps.Add(new KeyValuePair<string, System.Action>("облака: все лучи каждый кадр", () => { all(true); v.interleave = false; }));
             if (crew != null) steps.Add(new KeyValuePair<string, System.Action>("без экипажа", () => { all(true); crew.SetVisible(false); }));
             if (post != null) steps.Add(new KeyValuePair<string, System.Action>("без пост-обработки", () => { all(true); post.enabled = false; }));
             if (game.Fx != null) steps.Add(new KeyValuePair<string, System.Action>("без дыма и вспышек", () => { all(true); game.Fx.debugHidden = true; }));
             steps.Add(new KeyValuePair<string, System.Action>("без теней", () => { all(true); QualitySettings.shadows = ShadowQuality.Disable; }));
             steps.Add(new KeyValuePair<string, System.Action>("полные модели (без лёгких)", () => { all(true); ShipLod.Enabled = false; }));
-            steps.Add(new KeyValuePair<string, System.Action>("сцена 85% (HUD родной)", () => { all(true); SetScale(1); }));
-            steps.Add(new KeyValuePair<string, System.Action>("сцена 70% (HUD родной)", () => { all(true); SetScale(2); }));
+            steps.Add(new KeyValuePair<string, System.Action>("сцена 85% вместо 70%", () => { all(true); SetScale(1); }));
+            steps.Add(new KeyValuePair<string, System.Action>("сцена 100% вместо 70%", () => { all(true); SetScale(0); }));
             steps.Add(new KeyValuePair<string, System.Action>("всё выключено", () => all(false)));
             benchTotal = steps.Count;
             for (int k = 0; k < steps.Count; k++)

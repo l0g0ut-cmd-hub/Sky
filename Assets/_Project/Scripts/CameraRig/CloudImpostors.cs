@@ -245,7 +245,7 @@ namespace SkyTide
                 Cloud c = new Cloud();
                 c.variant = r.Next(3);
                 c.r = U(r, 110f, 230f);
-                c.pos = RandomPoint(r, center, 700f, fieldRadius, U(r, -40f, -25f));
+                c.pos = VolumetricClouds.AroundFortress(RandomPoint(r, center, 700f, fieldRadius, U(r, -40f, -25f)));
                 c.drift = U(r, 0.8f, 1.1f);
                 clouds.Add(c);
             }
@@ -255,7 +255,7 @@ namespace SkyTide
                 // Небольшие кучевые, растущие из моря облаков (низ тонет в объёмном слое).
                 c.variant = r.Next(3);
                 c.r = U(r, 45f, 95f);
-                c.pos = RandomPoint(r, center, 350f, fieldRadius, deckTop - U(r, 30f, 55f));
+                c.pos = VolumetricClouds.AroundFortress(RandomPoint(r, center, 350f, fieldRadius, deckTop - U(r, 30f, 55f)));
                 c.drift = U(r, 0.9f, 1.3f);
                 clouds.Add(c);
             }
@@ -288,7 +288,8 @@ namespace SkyTide
                     p.x = cam.x + back.x;
                     p.z = cam.z + back.z;
                 }
-                c.pos = p;
+                // Нарисованные облака не встают внутрь небесной крепости (иначе их плоскость режет стены прямой линией).
+                c.pos = VolumetricClouds.AroundFortress(p);
             }
         }
 

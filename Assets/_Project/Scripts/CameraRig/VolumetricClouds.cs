@@ -62,7 +62,7 @@ namespace SkyTide
 
         [Header("Качество")]
         [Tooltip("Марш четверти пикселей за кадр (сдвиг 2×2 по кадрам), остальное — из истории: приём Horizon Zero Dawn. Только при накоплении.")]
-        public bool interleave;
+        public bool interleave = true;   // по автозамеру сборки 92: −12 мс видеокарты из 18, которые стоят облака
         static readonly Vector2[] interleaveOffsets = { new Vector2(0, 0), new Vector2(1, 1), new Vector2(1, 0), new Vector2(0, 1) };
         [Range(1, 8)] public int resolutionDivider = 4;   // 4 — быстрее, но море облаков на весь экран выглядит мыльным
         [Range(16, 128)] public int steps = 40;   // 32 давало россыпь точек по краю башен (сборки 75–76) — вернул 40
@@ -429,7 +429,7 @@ namespace SkyTide
         /// Башни облаков не встают внутрь небесной крепости и не закрывают её: точка внутри круга крепости
         /// (описанный радиус + радиус башни) выносится на его край. При дрейфе башня обтекает крепость по краю.
         /// </summary>
-        static Vector3 AroundFortress(Vector3 p)
+        public static Vector3 AroundFortress(Vector3 p)
         {
             SkyFortress fort = SkyFortress.Instance;
             if (fort == null) return p;

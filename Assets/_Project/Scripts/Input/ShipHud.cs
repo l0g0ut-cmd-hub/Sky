@@ -398,6 +398,7 @@ namespace SkyTide
             // Плашка оповещения сверху по центру, ниже полосы корпуса: «враг даёт залп», а при гибели — отсчёт возврата.
             float note = dead ? Mathf.Clamp01(deadFor / 0.35f) : capV ? 1f : Envelope(Time.time - EnemyGunner.LastVolleyTime, 2.4f, 0.15f, 0.5f);
             string noteText = "ВРАГ ДАЁТ ЗАЛП"; int noteIcon = 1;
+            bool corner = false;   // постоянные подсказки (до причала, ремонт) — малой плашкой в правом верхнем углу, не по центру
             if (dead) { noteText = "ВОЗВРАТ ЧЕРЕЗ " + Mathf.CeilToInt(Mathf.Max(0f, delay - deadFor)) + " с"; noteIcon = 11; }
             else
             {
@@ -408,7 +409,7 @@ namespace SkyTide
                     float alarm = Envelope(Time.time - SkyFortress.FortressAlarmAt, 3.5f, 0.15f, 0.5f);
                     float zone = Envelope(Time.time - fort.EnteredAt, 3f, 0.2f, 0.6f);
                     if (alarm > 0f) { noteText = "КРЕПОСТЬ ОТКРЫЛА ОГОНЬ"; noteIcon = 1; note = alarm; }
-                    else if (fort.PlayerDocked && hull != null) { noteText = "ПРИЧАЛ · РЕМОНТ " + Mathf.RoundToInt(hull.Health01 * 100f) + "%"; noteIcon = 0; note = 1f; }
+                    else if (fort.PlayerDocked && hull != null) { noteText = "РЕМОНТ · " + Mathf.RoundToInt(hull.Health01 * 100f) + "%"; noteIcon = 0; note = 1f; corner = true; }
                     else if (zone > 0f && fort.PlayerInside) { noteText = "БЕЗОПАСНАЯ ЗОНА"; noteIcon = 0; note = zone; }
                     else if (fort.PlayerInside && !fort.Hostile && note <= 0f && hull != null)
                     {
@@ -416,8 +417,8 @@ namespace SkyTide
                         // Положение корабля — по PlayerHull (он висит на корабле игрока): в Banners нет ссылки на ввод.
                         Vector3 toBerth = fort.BerthWorld - hull.transform.position; toBerth.y = 0f;
                         float bd = toBerth.magnitude;
-                        noteText = bd < fort.berthRadius ? "ПРИЧАЛ · СБАВЬ ХОД" : "ПРИЧАЛ · " + Mathf.RoundToInt(bd / 10f) * 10 + " м";
-                        noteIcon = 9; note = 0.85f;
+                        noteText = bd < fort.berthRadius ? "СБАВЬ ХОД" : "ПРИЧАЛ · " + Mathf.RoundToInt(bd / 10f) * 10 + " м";
+                        noteIcon = 9; note = 0.85f; corner = true;
                     }
                 }
             }
@@ -425,6 +426,11 @@ namespace SkyTide
             {
                 float pw = Mathf.Min(l.safe.width * 0.32f, l.safe.height * 1.3f), ph = pw * 192f / 1024f;
                 Rect r = new Rect(l.safe.center.x - pw * 0.5f, l.safe.y + l.safe.height * 0.2f, pw, ph);
+                if (corner)
+                {
+                    pw = Mathf.Min(l.safe.width * 0.2f, l.safe.height * 0.8f); ph = pw * 192f / 1024f;
+                    r = new Rect(l.safe.xMax - pw - l.unit * 0.02f, l.safe.y + l.unit * 0.02f, pw, ph);
+                }
                 ImageRect(bPlate, r, Whole, new Color(1f, 1f, 1f, note));
                 Rect inner = Inner(r, 1024f, 192f, 150f, 48f, 874f, 144f);
                 float ic = inner.height * 1.05f;
