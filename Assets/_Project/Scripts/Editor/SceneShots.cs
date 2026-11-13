@@ -1136,6 +1136,7 @@ namespace SkyTide.EditorTools
                     boot.World.Step(eye, 0f);
                     SaveFrame(cam, boot, rt, tex, dir, "209_fortress_berth");
                     CheckFrame(tex, "209_fortress_berth");
+                    boot.Fx.Clear();   // крошка и дым от попадания не должны попасть на кадры баннеров
                     Debug.Log("SkyTide: крепость — центр " + fort.Center + ", причал " + berth + ", верх в центре " + fort.TopAt(fort.Center).ToString("F0"));
                 }
                 // Баннеры — проверка текста и раскладки HUD: объёмные облака выключены (на программном GPU CI кадр

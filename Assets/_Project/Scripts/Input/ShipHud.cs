@@ -410,10 +410,11 @@ namespace SkyTide
                     if (alarm > 0f) { noteText = "КРЕПОСТЬ ОТКРЫЛА ОГОНЬ"; noteIcon = 1; note = alarm; }
                     else if (fort.PlayerDocked && hull != null) { noteText = "ПРИЧАЛ · РЕМОНТ " + Mathf.RoundToInt(hull.Health01 * 100f) + "%"; noteIcon = 0; note = 1f; }
                     else if (zone > 0f && fort.PlayerInside) { noteText = "БЕЗОПАСНАЯ ЗОНА"; noteIcon = 0; note = zone; }
-                    else if (fort.PlayerInside && !fort.Hostile && note <= 0f)
+                    else if (fort.PlayerInside && !fort.Hostile && note <= 0f && hull != null)
                     {
                         // В зоне — постоянная подсказка: сколько до причала, а у причала на ходу — сбавить ход.
-                        Vector3 toBerth = fort.BerthWorld - input.ship.transform.position; toBerth.y = 0f;
+                        // Положение корабля — по PlayerHull (он висит на корабле игрока): в Banners нет ссылки на ввод.
+                        Vector3 toBerth = fort.BerthWorld - hull.transform.position; toBerth.y = 0f;
                         float bd = toBerth.magnitude;
                         noteText = bd < fort.berthRadius ? "ПРИЧАЛ · СБАВЬ ХОД" : "ПРИЧАЛ · " + Mathf.RoundToInt(bd / 10f) * 10 + " м";
                         noteIcon = 9; note = 0.85f;
