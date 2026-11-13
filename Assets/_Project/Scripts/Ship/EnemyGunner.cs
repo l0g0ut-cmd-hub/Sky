@@ -11,6 +11,8 @@ namespace SkyTide
     {
         public float muzzleSpeed = 85f, gravity = 9.81f;
         public float cooldown = 4.5f, minRange = 90f, maxRange = 650f;
+        /// <summary>Время последнего вражеского залпа — HUD показывает оповещение.</summary>
+        public static float LastVolleyTime = -100f;
         public float spreadDeg = 1.4f;
         public int gunsPerSide = 4;
 
@@ -60,6 +62,7 @@ namespace SkyTide
             pendingSide = local.x > 0f ? 1 : -1;
             pendingLeft = gunsPerSide;
             pendingAt = Time.time;
+            LastVolleyTime = Time.time;
             ready = Time.time + cooldown + Random.Range(0f, 1.5f);
         }
 

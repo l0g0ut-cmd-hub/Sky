@@ -170,6 +170,9 @@ namespace SkyTide.EditorTools
             Tex("Assets/_Project/Resources/UI/main_menu.jpg", false, false, TextureWrapMode.Clamp, TextureWrapMode.Clamp, 2048, false, true);
             Tex("Assets/_Project/Resources/UI/menu_bg.jpg", false, false, TextureWrapMode.Clamp, TextureWrapMode.Clamp, 2048, false, true);
             Tex("Assets/_Project/Resources/UI/splash_studio.jpg", false, false, TextureWrapMode.Clamp, TextureWrapMode.Clamp, 2048, false, true);
+            // Баннеры победы/поражения, плашка оповещения, виньетка урона, иконки 4×4 — с альфой, без сжатия.
+            foreach (string bp in new[] { "banner_victory", "banner_defeat", "plate_notice", "vignette_damage", "icons" })
+                Tex("Assets/_Project/Resources/UI/" + bp + ".png", false, true, TextureWrapMode.Clamp, TextureWrapMode.Clamp, 2048, bp == "icons", true);
             // Эффекты: флипбуки (взрывы, вспышка, дым, всплеск, огонь, клубы) и наклейки урона корпуса — сжатые, с мипами.
             Tex("Assets/_Project/Resources/FX/fx_flipbooks.png", false, true, TextureWrapMode.Clamp, TextureWrapMode.Clamp, 4096, true);
             Tex("Assets/_Project/Resources/FX/hull_decals.png", false, true, TextureWrapMode.Clamp, TextureWrapMode.Clamp, 2048, true);
