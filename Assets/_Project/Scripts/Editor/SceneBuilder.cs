@@ -88,9 +88,9 @@ namespace SkyTide.EditorTools
             if (b.fortressMesh != null)
             {
                 Texture2D fa = Tex(Models + "SkyFortress_Albedo.jpg", false, false, TextureWrapMode.Clamp, TextureWrapMode.Clamp, 2048, true);
-                Texture2D fn = Tex(Models + "SkyFortress_Normal.png", true, false, TextureWrapMode.Clamp, TextureWrapMode.Clamp, 2048, true);
                 Texture2D fe = Tex(Models + "SkyFortress_Emission.png", false, false, TextureWrapMode.Clamp, TextureWrapMode.Clamp, 2048, true);
-                if (fa != null) b.fortressMaterials = new[] { MaterialFactory.ShipBody(fa, fn, fe) };
+                // низ растворяется от 15 м над верхом моря облаков (20 м) и за 40 м уходит в дымку целиком
+                if (fa != null) b.fortressMaterials = new[] { MaterialFactory.Fortress(fa, fe, 35f, 40f) };
             }
             b.hudShader = AssetDatabase.LoadAssetAtPath<Shader>("Assets/_Project/Shaders/Hud.shader");
             b.hudFont = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");

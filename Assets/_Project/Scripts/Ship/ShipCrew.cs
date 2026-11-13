@@ -111,7 +111,33 @@ namespace SkyTide
         {
             for(int i=0;i<4;i++)if(object.ReferenceEquals(mount,upperMounts[i]))firedAt[i]=now;
         }
-        void LateUpdate(){if(Application.isPlaying&&Visible){long __pt=PerfTimers.Start();Pose(Time.time);PerfTimers.Stop("Экипаж: позы",__pt);}}
+        void LateUpdate(){if(Application.isPlaying&&Visible){long __pt=PerfTimers.Start();Pose(Time.time);PropShadows();PerfTimers.Stop("Экипаж: позы",__pt);}}
+
+        // Тени мелкого реквизита (шляпы, банники, ящики, утки — меньше 1.2 м) рисуются только при камере ближе 45 м:
+        // дальше они занимают единицы пикселей, а в замере экипаж давал 114 отбрасывающих тень вместо 31.
+        // Матросы и крупные предметы (верхние пушки, рундук) тень отбрасывают всегда.
+        MeshRenderer[] smallProps; Transform propsFor; bool propShadowsOn=true;
+        void PropShadows()
+        {
+            if(group==null)return;
+            if(smallProps==null||propsFor!=group)
+            {
+                List<MeshRenderer> found=new List<MeshRenderer>();
+                foreach(MeshRenderer r in group.GetComponentsInChildren<MeshRenderer>(true))
+                {
+                    MeshFilter mf=r.GetComponent<MeshFilter>();
+                    if(mf!=null&&mf.sharedMesh!=null&&mf.sharedMesh.bounds.size.magnitude<1.2f)found.Add(r);
+                }
+                smallProps=found.ToArray();propsFor=group;propShadowsOn=true;
+            }
+            Camera cam=Camera.main;if(cam==null)return;
+            float d=(cam.transform.position-group.position).magnitude;
+            bool want=!ShipLod.Enabled||(propShadowsOn?d<50f:d<45f);
+            if(want==propShadowsOn)return;
+            propShadowsOn=want;
+            UnityEngine.Rendering.ShadowCastingMode mode=want?UnityEngine.Rendering.ShadowCastingMode.On:UnityEngine.Rendering.ShadowCastingMode.Off;
+            for(int i=0;i<smallProps.Length;i++)if(smallProps[i]!=null)smallProps[i].shadowCastingMode=mode;
+        }
         public void Pose(float time)
         {
             if(wheel==null)return;

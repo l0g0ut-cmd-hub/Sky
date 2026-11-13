@@ -29,7 +29,14 @@ Shader "Hidden/SkyTide/HullDecal"
             v2f vert(a2v v)
             {
                 v2f o;
-                o.pos = UnityObjectToClipPos(v.vertex);
+                // Дальше 110 м корпус мишени — облегчённая копия (ShipLod), её поверхность отходит от полной на сантиметры,
+                // а наклейка спроецирована на полную. Сдвиг к камере растёт с расстоянием (ближе 67 м — нет, на 110 м — 13 см, вдали до 0.5 м):
+                // наклейка не тонет в копии и не видна «парящей» — сдвиг вдоль луча зрения не меняет её места на экране.
+                float3 wp = mul(unity_ObjectToWorld, v.vertex).xyz;
+                float3 toCam = _WorldSpaceCameraPos - wp;
+                float camDist = length(toCam);
+                wp += toCam / max(camDist, 1e-3) * clamp(camDist * 0.003 - 0.2, 0.0, 0.5);
+                o.pos = UnityWorldToClipPos(wp);
                 o.uv = v.uv;
                 half3 n = UnityObjectToWorldNormal(v.normal);
                 half ndl = saturate(dot(n, _WorldSpaceLightPos0.xyz));

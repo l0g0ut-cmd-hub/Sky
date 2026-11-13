@@ -61,6 +61,9 @@ namespace SkyTide
         public Texture3D bakedField;
 
         [Header("Качество")]
+        [Tooltip("Марш четверти пикселей за кадр (сдвиг 2×2 по кадрам), остальное — из истории: приём Horizon Zero Dawn. Только при накоплении.")]
+        public bool interleave;
+        static readonly Vector2[] interleaveOffsets = { new Vector2(0, 0), new Vector2(1, 1), new Vector2(1, 0), new Vector2(0, 1) };
         [Range(1, 8)] public int resolutionDivider = 4;   // 4 — быстрее, но море облаков на весь экран выглядит мыльным
         [Range(16, 128)] public int steps = 40;   // 32 давало россыпь точек по краю башен (сборки 75–76) — вернул 40
         public float marchDistance = 2600f;
@@ -576,6 +579,7 @@ namespace SkyTide
             if (!placed) Place(cam.transform.position);
 
             SetupMaterial(n);
+            mat.SetVector("_Interleave", Vector4.zero);   // запекание импосторов и статичные кадры — без сдвига луча
             if (impostors && debugView == 0 && imp.NeedsBake)
             {
                 if (impostorShader == null) impostorShader = Shader.Find("Hidden/SkyTide/CloudImpostor");
@@ -592,6 +596,7 @@ namespace SkyTide
 
             int w = Mathf.Max(16, src.width / resolutionDivider);
             int h = Mathf.Max(16, src.height / resolutionDivider);
+            if (interleave) { w &= ~1; h &= ~1; }
             mat.SetVector("_LowRes", new Vector4(w, h, 1f / w, 1f / h));
             mat.SetFloat("_CloudPx", 2f * Mathf.Tan(cam.fieldOfView * 0.5f * Mathf.Deg2Rad) / h);
             bool allowTemporal = temporal && Application.isPlaying;
@@ -600,10 +605,18 @@ namespace SkyTide
 #endif
             // Статическому кадру глубина накопления не нужна. Цвет в обоих проходах считает один March.
             bool withDistance = allowTemporal && SystemInfo.supportedRenderTargetCount >= 2;
-            RenderTexture clouds = RenderTexture.GetTemporary(w, h, 0, RenderTextureFormat.ARGBHalf);
+            bool cameraCut = historyValid && CameraCut();
+            // Четверть пикселей за кадр: марш в буфер w/2×h/2 со сдвигом луча внутри блока 2×2, проход накопления
+            // собирает полный буфер из истории. Первый кадр и смена ракурса маршируются целиком (история пуста).
+            bool inter = interleave && allowTemporal && historyValid && !cameraCut && history != null && history.width == w && history.height == h;
+            int mw = inter ? w / 2 : w, mh = inter ? h / 2 : h;
+            Vector2 io = interleaveOffsets[frameIdx & 3];
+            mat.SetVector("_Interleave", inter ? new Vector4((io.x - 0.5f) / w, (io.y - 0.5f) / h, 1f, 0f) : Vector4.zero);
+            mat.SetVector("_InterleaveCell", new Vector4(io.x, io.y, 0f, 0f));
+            RenderTexture clouds = RenderTexture.GetTemporary(mw, mh, 0, RenderTextureFormat.ARGBHalf);
             RenderTextureFormat depthFmt = SystemInfo.SupportsRenderTextureFormat(RenderTextureFormat.RHalf) ? RenderTextureFormat.RHalf : RenderTextureFormat.ARGBHalf;
             RenderTexture lowDepth = RenderTexture.GetTemporary(w, h, 0, depthFmt);
-            RenderTexture cloudDistance = withDistance ? RenderTexture.GetTemporary(w, h, 0, depthFmt) : null;
+            RenderTexture cloudDistance = withDistance ? RenderTexture.GetTemporary(mw, mh, 0, depthFmt) : null;
             if (cloudDistance != null) cloudDistance.filterMode = FilterMode.Point;
             lowDepth.filterMode = FilterMode.Point;
             RenderTexture blurred = RenderTexture.GetTemporary(w, h, 0, RenderTextureFormat.ARGBHalf);
@@ -613,7 +626,6 @@ namespace SkyTide
             // и последующее сведение по глубине не может убрать этот ореол.
             Graphics.Blit(src, lowDepth, mat, 2);
             mat.SetTexture("_LowDepthTex", lowDepth);
-            bool cameraCut = historyValid && CameraCut();
             if (cameraCut) frameIdx = 0;
             mat.SetVector("_Temporal", new Vector4(frameIdx++ % 64, 0f, deckTop, 0f));
             if (withDistance) MarchWithDistance(clouds, cloudDistance);

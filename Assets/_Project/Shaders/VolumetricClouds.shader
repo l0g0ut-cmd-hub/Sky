@@ -81,6 +81,8 @@ Shader "Hidden/SkyTide/VolumetricClouds"
     float4 _Deck3;                // x дальность (м), y макс. длина пути в слое (м), z поглощение к солнцу
     float _Bake;
     float4 _Temporal;             // x номер кадра, y вес истории (0 — нет истории), z верх моря облаков
+    float4 _Interleave;           // xy сдвиг луча в UV (четверть пикселей за кадр), z 1 — режим включён
+    float4 _InterleaveCell;       // xy — какая клетка блока 2×2 маршируется в этом кадре
     float4x4 _PrevVP;             // прошлый кадр: projection * view (OpenGL)
     sampler2D _History;
     sampler2D _CloudDistanceTex, _HistoryDistanceTex;
@@ -476,6 +478,7 @@ Shader "Hidden/SkyTide/VolumetricClouds"
     float4 fragMarch(v2f i) : SV_Target
     {
         float distance;
+        i.uv += _Interleave.xy;   // четверть пикселей за кадр: луч — через свою клетку блока 2×2
         return March(i, distance);
     }
 
@@ -489,6 +492,7 @@ Shader "Hidden/SkyTide/VolumetricClouds"
     MarchOutput fragMarchDistance(v2f i)
     {
         MarchOutput o;
+        i.uv += _Interleave.xy;
         o.color = March(i, o.distance);
         return o;
     }
@@ -533,13 +537,16 @@ Shader "Hidden/SkyTide/VolumetricClouds"
     // Перепроецирование по глубине облака, отсечение открывшихся областей и быстрых изменений света.
     float4 fragTemporal (v2f i) : SV_Target
     {
-        float4 cur = tex2D(_MainTex, i.uv);
+        // При марше четверти пикселей _MainTex вдвое меньше и сдвинут на клетку кадра: выборка со встречным сдвигом
+        // попадает точно в центр текселя для «своих» пикселей и интерполирует соседей для остальных.
+        float2 cuv = i.uv - _Interleave.xy;
+        float4 cur = tex2D(_MainTex, cuv);
         if (_Temporal.y <= 0.0) return cur;
         float4 view = mul(_InvProj, float4(i.uv * 2.0 - 1.0, 1.0, 1.0));
         view.xyz /= view.w;
         float3 rd = normalize(mul((float3x3)_CamToWorld, view.xyz));
         float3 ro = _WorldSpaceCameraPos;
-        float dist = _Temporal.w > 0.5 ? tex2D(_CloudDistanceTex, i.uv).r
+        float dist = _Temporal.w > 0.5 ? tex2D(_CloudDistanceTex, cuv).r
             : (rd.y < -0.02 ? clamp((_Temporal.z - ro.y) / rd.y, 40.0, 6000.0) : 1500.0);
         if (cur.a > 0.999 || dist > 59000.0) return cur;
         float3 worldPoint = ro + rd * dist;
@@ -556,11 +563,11 @@ Shader "Hidden/SkyTide/VolumetricClouds"
         }
         // Окрестность 3×3: min/max и дисперсия; история зажимается в пересечение (mean ± 1.25σ) ∩ [min, max].
         float4 mn = cur, mx = cur, m1 = 0, m2 = 0;
-        float2 px = _LowRes.zw;
+        float2 px = abs(_MainTex_TexelSize.xy);   // тексель маршевого буфера (при четверти пикселей — вдвое крупнее)
         [unroll] for (int y = -1; y <= 1; y++)
         [unroll] for (int x = -1; x <= 1; x++)
         {
-            float4 c = tex2D(_MainTex, i.uv + float2(x, y) * px);
+            float4 c = tex2D(_MainTex, cuv + float2(x, y) * px);
             mn = min(mn, c); mx = max(mx, c);
             m1 += c; m2 += c * c;
         }
@@ -569,13 +576,26 @@ Shader "Hidden/SkyTide/VolumetricClouds"
         mn = max(mn, m1 - sigma * 1.25);
         mx = min(mx, m1 + sigma * 1.25);
         float4 old = HistoryCR(puv);
-        confidence *= 1.0 - saturate(abs(old.a - cur.a) * 4.0);
+        float own = 1.0;
+        float keep = _Temporal.y;
+        if (_Interleave.z > 0.5)
+        {
+            // «Свой» пиксель (его луч маршировался в этом кадре) берёт свежее значение смелее, остальные почти целиком
+            // держат историю: за цикл из 4 кадров свежее даёт ~3/4 вклада, интерполяция соседей — ~1/4.
+            float2 cell = fmod(floor(i.uv * _LowRes.xy), 2.0);
+            own = (abs(cell.x - _InterleaveCell.x) < 0.5 && abs(cell.y - _InterleaveCell.y) < 0.5) ? 1.0 : 0.0;
+            keep = lerp(0.97, 0.7, own);
+        }
+        // У «чужого» пикселя cur — интерполяция соседей (мягче истории), поэтому сверка с ним вполсилы:
+        // иначе края облаков каждые три кадра из четырёх откатывались бы к размытому значению.
+        float check = lerp(0.5, 1.0, own);
+        confidence *= 1.0 - check * saturate(abs(old.a - cur.a) * 4.0);
         float lightChange = abs(Luminance(old.rgb) - Luminance(cur.rgb));
-        confidence *= 1.0 - saturate(lightChange / max(0.15, Luminance(cur.rgb) * 0.6));
+        confidence *= 1.0 - check * saturate(lightChange / max(0.15, Luminance(cur.rgb) * 0.6));
         float motion = length((puv - i.uv) * _LowRes.xy);
         confidence *= lerp(1.0, 0.3, saturate(motion / 20.0));
         float4 h = clamp(old, mn, mx);
-        return lerp(cur, h, _Temporal.y * confidence);
+        return lerp(cur, h, keep * confidence);
     }
 
     // Снимок для импостора: свет (уже умножен на покрытие) в кодировке sqrt(свет/6), альфа — покрытие.

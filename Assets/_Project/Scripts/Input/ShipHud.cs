@@ -176,7 +176,7 @@ namespace SkyTide
             if (fort != null)
             {
                 LoadBanners();
-                Vector3 local = input.ship.transform.InverseTransformPoint(fort.Center);
+                Vector3 local = input.ship.transform.InverseTransformPoint(fort.BerthWorld);   // значок — на причале: туда и идти
                 Vector2 v = new Vector2(local.x, -local.z); float dist = v.magnitude;
                 Vector2 dir = dist > 1e-3f ? v / dist : Vector2.up;
                 Vector2 p = c + dir * Mathf.Min(dist / range, 1f) * face * 0.9f;
@@ -410,6 +410,14 @@ namespace SkyTide
                     if (alarm > 0f) { noteText = "КРЕПОСТЬ ОТКРЫЛА ОГОНЬ"; noteIcon = 1; note = alarm; }
                     else if (fort.PlayerDocked && hull != null) { noteText = "ПРИЧАЛ · РЕМОНТ " + Mathf.RoundToInt(hull.Health01 * 100f) + "%"; noteIcon = 0; note = 1f; }
                     else if (zone > 0f && fort.PlayerInside) { noteText = "БЕЗОПАСНАЯ ЗОНА"; noteIcon = 0; note = zone; }
+                    else if (fort.PlayerInside && !fort.Hostile && note <= 0f)
+                    {
+                        // В зоне — постоянная подсказка: сколько до причала, а у причала на ходу — сбавить ход.
+                        Vector3 toBerth = fort.BerthWorld - input.ship.transform.position; toBerth.y = 0f;
+                        float bd = toBerth.magnitude;
+                        noteText = bd < fort.berthRadius ? "ПРИЧАЛ · СБАВЬ ХОД" : "ПРИЧАЛ · " + Mathf.RoundToInt(bd / 10f) * 10 + " м";
+                        noteIcon = 9; note = 0.85f;
+                    }
                 }
             }
             if (note > 0f && bPlate != null)

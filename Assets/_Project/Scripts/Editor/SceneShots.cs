@@ -1120,6 +1120,17 @@ namespace SkyTide.EditorTools
                     SaveFrame(cam, boot, rt, tex, dir, "208_fortress_view");
                     CheckFrame(tex, "208_fortress_view");
                     Vector3 side = Vector3.Cross(Vector3.up, to);
+                    // Ядро не проходит сквозь крепость: отрезок сверху вниз через пирс обязан дать попадание, выше башен — нет.
+                    Vector3 inward = fort.Center - berth; inward.y = 0f; inward.Normalize();
+                    Vector3 onPier = berth + inward * 70f, hitAt;
+                    if (!fort.TryHit(onPier + Vector3.up * 300f, onPier - Vector3.up * 60f, out hitAt)) throw new System.InvalidOperationException("Ядро проходит сквозь пирс крепости");
+                    if (fort.TryHit(fort.Center + Vector3.up * 900f, fort.Center + Vector3.up * 700f + to * 50f, out hitAt)) throw new System.InvalidOperationException("Попадание в крепость в пустом небе");
+                    Shader fortShader = Shader.Find("SkyTide/Fortress");
+                    if (fortShader == null || !fortShader.isSupported) throw new System.InvalidOperationException("Шейдер крепости Fortress не собран");
+                    hitAt = new Vector3(onPier.x, fort.TopAt(onPier), onPier.z);
+                    boot.Fx.ClearPreview();
+                    boot.Fx.StoneImpact(hitAt + Vector3.up * 0.5f, Vector3.up);
+                    for (int k = 0; k < 5; k++) boot.Fx.Simulate(0.05f);
                     eye = berth - to * 150f + side * 110f + Vector3.up * 35f;
                     cam.transform.SetPositionAndRotation(eye, Quaternion.LookRotation(berth + to * 120f + Vector3.up * 40f - eye, Vector3.up));
                     boot.World.Step(eye, 0f);

@@ -91,6 +91,21 @@ namespace SkyTide
             return m;
         }
 
+        /// <summary>Небесная крепость: Standard + растворение низа в облаках и воздушная дымка (SkyTide/Fortress).</summary>
+        public static Material Fortress(Texture albedo, Texture emission, float dissolveTop, float dissolveRange)
+        {
+            Shader sh = Shader.Find("SkyTide/Fortress");
+            if (sh == null) throw new System.InvalidOperationException("Fortress shader is missing");
+            Material m = new Material(sh);
+            m.name = "Fortress";
+            m.mainTexture = albedo;
+            m.SetFloat("_Glossiness", 0.18f);
+            if (emission != null) { m.SetTexture("_EmissionMap", emission); m.SetColor("_EmissionColor", new Color(1.6f, 1.6f, 1.6f)); }
+            m.SetFloat("_DissolveTop", dissolveTop);
+            m.SetFloat("_DissolveRange", dissolveRange);
+            return m;
+        }
+
         /// <summary>Облака-спрайты на своём шейдере (клубление краёв, свет от солнца, растворение вдали и вблизи).</summary>
         public static Material CloudSprites(Texture atlas)
         {

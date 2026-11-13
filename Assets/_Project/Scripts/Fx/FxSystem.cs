@@ -184,6 +184,24 @@ namespace SkyTide
             }
         }
 
+        /// <summary>Ядро в стену крепости: вспышка, каменная крошка по баллистике, пыль.</summary>
+        public void StoneImpact(Vector3 at, Vector3 outward)
+        {
+            Explosion(at + outward * 1.6f, 0.8f);
+            for (int i = 0; i < 10; i++)
+            {
+                Vector3 direction = (outward + Random.insideUnitSphere * 0.7f).normalized;
+                Add(new P { kind = Kind.Splinter, pos = at + outward * 0.3f, vel = direction * Random.Range(7f, 20f), axis = Random.onUnitSphere,
+                    aspect = Random.Range(0.45f, 0.9f), life = Random.Range(1.4f, 2.6f), size0 = Random.Range(0.35f, 0.9f),
+                    color = new Color(0.33f, 0.31f, 0.3f), alpha = 1f, spin = Random.Range(-6f, 6f), seed = Random.value * 10f });
+            }
+            for (int i = 0; i < 5; i++)
+                Add(new P { kind = Kind.Smoke, pos = at + outward * 0.8f + Random.insideUnitSphere, vel = outward * Random.Range(2f, 6f) + Random.insideUnitSphere * 2f,
+                    age = -i * 0.03f, life = Random.Range(2.4f, 3.8f), size0 = Random.Range(1.2f, 2f), size1 = Random.Range(6f, 9f),
+                    rot = Random.Range(0f, 6.28f), spin = Random.Range(-0.4f, 0.4f), drag = 1.6f, rise = 0.6f,
+                    color = new Color(0.55f, 0.52f, 0.5f), alpha = Random.Range(0.45f, 0.65f), seed = Random.value * 10f });
+        }
+
         public void DamageFire(Vector3 at,Vector3 outward,float severity,Vector3 inheritedVelocity)
         {
             float height=Mathf.Lerp(2.2f,3.8f,severity)*Random.Range(.8f,1.1f);
@@ -224,6 +242,8 @@ namespace SkyTide
 
         struct Splash { public Vector3 pos; public float scale; }
         readonly List<Splash> splashes = new List<Splash>(32);
+        readonly List<Vector4> pendingStone = new List<Vector4>(8);
+        readonly List<Vector3> pendingStoneOut = new List<Vector3>(8);
         readonly Vector4[] flashes = new Vector4[MaxFlashes];
         readonly Vector4[] flashColors = new Vector4[MaxFlashes];  // rgb цвет, w радиус
         readonly Light[] lights = new Light[MaxLights];
@@ -359,6 +379,15 @@ namespace SkyTide
                             }
                         }
                         if (target != null) { end = hitPoint; hit = true; target.OnHit(hitPoint); }
+                        // Крепость: ядро не пролетает сквозь стены. Своё ядро крепости первую секунду не проверяется (дуло на башне).
+                        SkyFortress fort = SkyFortress.Instance;
+                        Vector3 fp;
+                        if (!hit && fort != null && (!p.hostile || p.age > 1f) && fort.TryHit(prev, end, out fp))
+                        {
+                            end = fp; hit = true;
+                            Vector3 outward = fp - fort.Center; outward.y = Mathf.Abs(outward.y) * 0.3f + 20f;
+                            pendingStone.Add(new Vector4(fp.x, fp.y, fp.z, 0f)); pendingStoneOut.Add(outward.normalized);
+                        }
                     }
                     p.pos = end;
                     if (entered || hit)
@@ -399,6 +428,8 @@ namespace SkyTide
                 if (ps[i].age >= ps[i].life) ps.RemoveAt(i);
             for (int i = 0; i < splashes.Count; i++) CloudSplash(splashes[i].pos, splashes[i].scale);
             splashes.Clear();
+            for (int i = 0; i < pendingStone.Count; i++) StoneImpact(pendingStone[i], pendingStoneOut[i]);
+            pendingStone.Clear(); pendingStoneOut.Clear();
             PublishFlashes();
         }
 

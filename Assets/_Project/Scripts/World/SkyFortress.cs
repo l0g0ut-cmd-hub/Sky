@@ -60,7 +60,7 @@ namespace SkyTide
         {
             SkyFortress f = Instance;
             if (f == null || !InSafeZone(at)) return;
-            if (!f.Hostile) f.nextShot = Time.time + 1.2f;   // расчёты встают к орудиям
+            if (!f.Hostile) f.nextShot = Time.time + 2.5f;   // предупреждение на HUD, расчёты встают к орудиям — 2.5 с до первого выстрела
             f.hostileUntil = Time.time + f.hostileTime;
             FortressAlarmAt = Time.time;
         }
@@ -81,6 +81,12 @@ namespace SkyTide
                 }
                 if (grid.berth != null && grid.berth.Length >= 3) { berthLocal = new Vector3(grid.berth[0], grid.berth[1], grid.berth[2]); hasBerth = true; }
                 if (grid.heights == null || grid.heights.Length != grid.gw * grid.gh) grid.heights = null;
+                if (grid.gridOrigin != null && grid.gridOrigin.Length >= 2)
+                {
+                    float ex = Mathf.Max(Mathf.Abs(grid.gridOrigin[0]), Mathf.Abs(grid.gridOrigin[0] + grid.gw * grid.cell));
+                    float ez = Mathf.Max(Mathf.Abs(grid.gridOrigin[1]), Mathf.Abs(grid.gridOrigin[1] + grid.gh * grid.cell));
+                    boundRadius = Mathf.Sqrt(ex * ex + ez * ez);
+                }
             }
             float yaw = yawOffset;
             Vector3 want = faceTowards - position; want.y = 0f;
@@ -113,6 +119,26 @@ namespace SkyTide
             if (h < -999f) return float.NegativeInfinity;
             return model.TransformPoint(new Vector3(l.x, h, l.z)).y;
         }
+
+        /// <summary>Ядро на отрезке a→b входит в крепость (по карте высот)? Точка входа — с шагом ~3 м.</summary>
+        public bool TryHit(Vector3 a, Vector3 b, out Vector3 hit)
+        {
+            hit = b;
+            if (grid == null || grid.heights == null) return false;
+            // дешёвый отсев: далеко от крепости или выше башен
+            Vector3 c = transform.position; float r = boundRadius + 10f;
+            float dx = b.x - c.x, dz = b.z - c.z;
+            if (dx * dx + dz * dz > r * r) return false;
+            float len = (b - a).magnitude;
+            int n = Mathf.Clamp(Mathf.CeilToInt(len / 3f), 1, 24);
+            for (int i = 1; i <= n; i++)
+            {
+                Vector3 q = Vector3.Lerp(a, b, i / (float)n);
+                if (q.y < TopAt(q)) { hit = q; return true; }
+            }
+            return false;
+        }
+        float boundRadius = 400f;
 
         void Update()
         {

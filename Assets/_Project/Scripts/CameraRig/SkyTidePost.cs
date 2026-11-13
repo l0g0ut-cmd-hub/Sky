@@ -68,7 +68,8 @@ namespace SkyTide
         void OnRenderImageTimed(RenderTexture src, RenderTexture dst)
         {
             RenderScene(src, dst);
-            if (controls != null) controls.DrawHud(dst, src.width, src.height);
+            // При пониженном разрешении сцены HUD рисует SceneScaler — в родном разрешении экрана.
+            if (controls != null && !SceneScaler.Active) controls.DrawHud(dst, src.width, src.height);
         }
 
         void RenderScene(RenderTexture src, RenderTexture dst)

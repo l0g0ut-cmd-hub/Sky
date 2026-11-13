@@ -164,6 +164,7 @@ namespace SkyTide
                 if (Cell(x, ref y, cw, h, ref col, "Башни", v.debugTowers)) v.debugTowers = !v.debugTowers;
                 if (Cell(x, ref y, cw, h, ref col, "Море облаков", v.debugDeck)) v.debugDeck = !v.debugDeck;
                 if (Cell(x, ref y, cw, h, ref col, "Импосторы", v.impostors)) v.impostors = !v.impostors;
+                if (Cell(x, ref y, cw, h, ref col, "Облака ¼ за кадр", v.interleave)) v.interleave = !v.interleave;
             }
             ShipCrew crew = game.Ship != null ? game.Ship.GetComponent<ShipCrew>() : null;
             if (crew != null && Cell(x, ref y, cw, h, ref col, "Экипаж", crew.Visible)) crew.SetVisible(!crew.Visible);
@@ -174,7 +175,7 @@ namespace SkyTide
             if (Cell(x, ref y, cw, h, ref col, "Тени", shadows)) QualitySettings.shadows = shadows ? ShadowQuality.Disable : ShadowQuality.All;
             if (Cell(x, ref y, cw, h, ref col, "Лёгкие тени/LOD", ShipLod.Enabled)) ShipLod.Enabled = !ShipLod.Enabled;
             if (nativeW == 0) { nativeW = Screen.width; nativeH = Screen.height; }
-            if (GUI.Button(new Rect(x + col * (cw + u * 0.02f), y, cw, h * 0.9f), "Разрешение " + Mathf.RoundToInt(scales[scaleIndex] * 100f) + "%", button))
+            if (GUI.Button(new Rect(x + col * (cw + u * 0.02f), y, cw, h * 0.9f), "Сцена " + Mathf.RoundToInt(scales[scaleIndex] * 100f) + "%", button))
             {
                 SetScale((scaleIndex + 1) % scales.Length);
             }
@@ -196,11 +197,12 @@ namespace SkyTide
             if (nativeW == 0) { nativeW = Screen.width; nativeH = Screen.height; }
             // как было
             bool vOn = v != null && v.enabled, tOn = v != null && v.debugTowers, dOn = v != null && v.debugDeck, iOn = v != null && v.impostors;
+            bool ilOn = v != null && v.interleave;
             bool cOn = crew != null && crew.Visible, pOn = post != null && post.enabled, fOn = game.Fx != null && !game.Fx.debugHidden;
             ShadowQuality sq = QualitySettings.shadows; bool lodOn = ShipLod.Enabled; int si = scaleIndex;
             System.Action<bool> all = on =>
             {
-                if (v != null) { if (v.enabled != on) game.SetVolumetric(on); v.debugTowers = on; v.debugDeck = on; v.impostors = on; }
+                if (v != null) { if (v.enabled != on) game.SetVolumetric(on); v.debugTowers = on; v.debugDeck = on; v.impostors = on; v.interleave = false; }
                 if (crew != null && crew.Visible != on) crew.SetVisible(on);
                 if (post != null) post.enabled = on;
                 if (game.Fx != null) game.Fx.debugHidden = !on;
@@ -217,13 +219,14 @@ namespace SkyTide
                 steps.Add(new KeyValuePair<string, System.Action>("без моря облаков", () => { all(true); v.debugDeck = false; }));
                 steps.Add(new KeyValuePair<string, System.Action>("без импосторов", () => { all(true); v.impostors = false; }));
             }
+            if (v != null) steps.Add(new KeyValuePair<string, System.Action>("облака: ¼ пикселей за кадр", () => { all(true); v.interleave = true; }));
             if (crew != null) steps.Add(new KeyValuePair<string, System.Action>("без экипажа", () => { all(true); crew.SetVisible(false); }));
             if (post != null) steps.Add(new KeyValuePair<string, System.Action>("без пост-обработки", () => { all(true); post.enabled = false; }));
             if (game.Fx != null) steps.Add(new KeyValuePair<string, System.Action>("без дыма и вспышек", () => { all(true); game.Fx.debugHidden = true; }));
             steps.Add(new KeyValuePair<string, System.Action>("без теней", () => { all(true); QualitySettings.shadows = ShadowQuality.Disable; }));
             steps.Add(new KeyValuePair<string, System.Action>("полные модели (без лёгких)", () => { all(true); ShipLod.Enabled = false; }));
-            steps.Add(new KeyValuePair<string, System.Action>("разрешение 85%", () => { all(true); SetScale(1); }));
-            steps.Add(new KeyValuePair<string, System.Action>("разрешение 70%", () => { all(true); SetScale(2); }));
+            steps.Add(new KeyValuePair<string, System.Action>("сцена 85% (HUD родной)", () => { all(true); SetScale(1); }));
+            steps.Add(new KeyValuePair<string, System.Action>("сцена 70% (HUD родной)", () => { all(true); SetScale(2); }));
             steps.Add(new KeyValuePair<string, System.Action>("всё выключено", () => all(false)));
             benchTotal = steps.Count;
             for (int k = 0; k < steps.Count; k++)
@@ -247,7 +250,7 @@ namespace SkyTide
                     gpu = ng > 0 ? sumGpu / ng : 0f, frame = ng > 0 ? sumFrame / ng : sumDt * 1000f / n, main = ng > 0 ? sumMain / ng : 0f });
             }
             // вернуть как было
-            if (v != null) { if (v.enabled != vOn) game.SetVolumetric(vOn); v.debugTowers = tOn; v.debugDeck = dOn; v.impostors = iOn; }
+            if (v != null) { if (v.enabled != vOn) game.SetVolumetric(vOn); v.debugTowers = tOn; v.debugDeck = dOn; v.impostors = iOn; v.interleave = ilOn; }
             if (crew != null && crew.Visible != cOn) crew.SetVisible(cOn);
             if (post != null) post.enabled = pOn;
             if (game.Fx != null) game.Fx.debugHidden = !fOn;
@@ -260,22 +263,21 @@ namespace SkyTide
 
         void SetScale(int i)
         {
-            if (nativeW == 0) { nativeW = Screen.width; nativeH = Screen.height; }
             if (i == scaleIndex) return;
             scaleIndex = i;
-            Screen.SetResolution(Mathf.RoundToInt(nativeW * scales[i]), Mathf.RoundToInt(nativeH * scales[i]), true);
+            SceneScaler.SetScale(scales[i]);   // сцена в доле разрешения, HUD — в родном
         }
 
         void BenchTable(Rect r, float u)
         {
             GUI.color = new Color(0f, 0f, 0f, 0.85f); GUI.DrawTexture(r, Texture2D.whiteTexture); GUI.color = Color.white;
             if (small == null) small = new GUIStyle(label) { fontSize = Mathf.RoundToInt(label.fontSize * 0.8f) };
-            float x = r.x + u * 0.03f, w = r.width - u * 0.06f, y = r.y + u * 0.015f, lh = u * 0.047f;
+            float x = r.x + u * 0.03f, w = r.width - u * 0.06f, y = r.y + u * 0.012f, lh = u * 0.046f;
             string dev = SystemInfo.graphicsDeviceName + "  " + nativeW + "×" + nativeH + "  сборка " + Application.version;
             GUI.Label(new Rect(x, y, w, lh), "Автозамер · " + dev, small); y += lh;
             float c0 = w * 0.44f, cwid = (w - c0) / 5f;
             string[] head = { "FPS", "ВК мс", "кадр", "игра", "ΔВК" };
-            GUI.Label(new Rect(x, y, c0, lh), "что выключено (остальное вкл.)", small);
+            GUI.Label(new Rect(x, y, c0, lh), "что изменено (остальное как в базе)", small);
             for (int i = 0; i < 5; i++) GUI.Label(new Rect(x + c0 + cwid * i, y, cwid, lh), head[i], small);
             y += lh;
             float baseGpu = bench.Count > 0 ? bench[0].gpu : 0f;
