@@ -1088,10 +1088,33 @@ namespace SkyTide.EditorTools
                     for (int k = 0; k < 4; k++) boot.Fx.Simulate(0.05f);
                 }
                 OverviewFrame(oc, cam, boot, rt, tex, dir, new Shot("203_overview_hit", 80f, 8f, 90f));
+                // Мои изменения отдельными кадрами: залп (вспышка у дула, пороховой клуб), всплеск облака, баннеры и виньетка.
+                foreach (string res in new[] { "FX/fx_flipbooks", "FX/hull_decals", "UI/banner_victory", "UI/banner_defeat", "UI/plate_notice", "UI/vignette_damage", "UI/icons" })
+                    if (Resources.Load<Texture2D>(res) == null) throw new System.InvalidOperationException("Нет картинки Resources/" + res);
+                Shader decal = Shader.Find("Hidden/SkyTide/HullDecal");
+                if (decal == null || !decal.isSupported) throw new System.InvalidOperationException("Шейдер пробоин HullDecal не собран");
+                boot.Fx.Clear();
+                Transform sh = boot.Ship.transform;
+                for (int k = 0; k < 4; k++)
+                    boot.Fx.Fire(sh.position + sh.right * 6.5f + sh.up * 4f + sh.forward * (k * 4f - 6f), sh.right, Vector3.zero, 160f);
+                for (int k = 0; k < 3; k++) boot.Fx.Simulate(0.04f);
+                OverviewFrame(oc, cam, boot, rt, tex, dir, new Shot("204_overview_volley", 70f, 6f, 45f));
+                boot.Fx.Clear();
+                Vector3 splashAt = sh.position + sh.forward * 120f; splashAt.y = boot.Fx.deckTop;
+                boot.Fx.CloudSplash(splashAt, 1f);
+                for (int k = 0; k < 8; k++) boot.Fx.Simulate(0.05f);
+                OverviewFrame(oc, cam, boot, rt, tex, dir, new Shot("205_overview_splash", 0f, 10f, 70f));
+                boot.Fx.Clear();
+                ShipHud.CaptureBanner = 1;
+                OverviewFrame(oc, cam, boot, rt, tex, dir, new Shot("206_banner_victory", 20f, 12f, 70f));
+                ShipHud.CaptureBanner = 2;
+                OverviewFrame(oc, cam, boot, rt, tex, dir, new Shot("207_banner_defeat", 20f, 12f, 70f));
+                ShipHud.CaptureBanner = 0;
                 Debug.Log("SkyTide: обзор и проверки кадров — успешно, секунд=" + (Time.realtimeSinceStartup - start).ToString("F1"));
             }
             finally
             {
+                ShipHud.CaptureBanner = 0;
                 if (controls != null) controls.SetHudCapture(false);
                 if (target != null) target.transform.SetPositionAndRotation(oldTarget, oldRot);
                 boot.Fx.ClearPreview(); boot.Fx.Clear();
@@ -1145,7 +1168,7 @@ namespace SkyTide.EditorTools
                     }
                     finally{reviewGuns.ripple=ripple;reviewGuns.SetReadinessCapture(1,1);boot.Fx.Clear();Random.state=random;}
                     CaptureOverview(oc,cam,boot,dir);
-                    Debug.Log("SkyTide: быстрая проверка battle-life (3x800x380 + 5x960x456 + обзор 4x960x456), кадров="+Directory.GetFiles(dir,"*.jpg").Length+", секунд="+(Time.realtimeSinceStartup-start).ToString("F1"));
+                    Debug.Log("SkyTide: быстрая проверка battle-life (3x800x380 + 5x960x456 + обзор 8x960x456), кадров="+Directory.GetFiles(dir,"*.jpg").Length+", секунд="+(Time.realtimeSinceStartup-start).ToString("F1"));
                     return;
                 }
                 if(profile=="deck-motion")

@@ -274,6 +274,8 @@ namespace SkyTide
         Texture2D bVictory, bDefeat, bPlate, bVignette, bIcons; bool bannersTried;
         readonly HashSet<TargetShip> sunkSeen = new HashSet<TargetShip>();
         float victoryAt = -100f;
+        /// <summary>Кадры проверки в редакторе: 1 — баннер победы и оповещение, 2 — поражение с виньеткой.</summary>
+        public static int CaptureBanner;
         void LoadBanners()
         {
             if (bannersTried) return; bannersTried = true;
@@ -314,6 +316,7 @@ namespace SkyTide
         {
             LoadBanners();
             PlayerHull hull = PlayerHull.Instance;
+            if (bVignette != null && !Application.isPlaying && CaptureBanner == 2) { ImageRect(bVignette, new Rect(0f, 0f, width, height), Whole, new Color(1f, 1f, 1f, 0.55f)); return; }
             if (bVignette == null || hull == null) return;
             float hit = Mathf.Clamp01(1f - (Time.time - hull.LastHitTime) / 0.9f);
             float low = hull.Alive && hull.Health01 < 0.3f ? (0.18f + 0.1f * Mathf.Sin(Time.time * 4f)) * (1f - hull.Health01 / 0.3f) : 0f;
@@ -327,7 +330,8 @@ namespace SkyTide
         void Banners(HudLayout l)
         {
             LoadBanners();
-            foreach (TargetShip t in TargetShip.All)
+            bool capV = !Application.isPlaying && CaptureBanner == 1, capD = !Application.isPlaying && CaptureBanner == 2;
+            if (Application.isPlaying) foreach (TargetShip t in TargetShip.All)
             {
                 if (t == null) continue;
                 if (!t.Alive && sunkSeen.Add(t)) victoryAt = Time.time;
@@ -335,11 +339,12 @@ namespace SkyTide
             }
             PlayerHull hull = PlayerHull.Instance;
             float bw = Mathf.Min(l.safe.width * 0.62f, l.safe.height * 2.6f), bh = bw * 0.25f;
-            float vic = Envelope(Time.time - victoryAt, 3.6f, 0.25f, 0.7f);
-            bool dead = hull != null && !hull.Alive;
+            float vic = capV ? 1f : Envelope(Time.time - victoryAt, 3.6f, 0.25f, 0.7f);
+            bool dead = capD || (hull != null && !hull.Alive);
+            float deadFor = capD ? 1f : hull != null ? hull.DeadFor : 0f, delay = hull != null ? hull.respawnDelay : 4f;
             if (dead)
             {
-                float a = Mathf.Clamp01(hull.DeadFor / 0.35f);
+                float a = Mathf.Clamp01(deadFor / 0.35f);
                 float pop = 1f + 0.06f * (1f - a);
                 Rect r = new Rect(l.safe.center.x - bw * pop * 0.5f, l.safe.y + l.safe.height * 0.3f - bh * pop * 0.5f, bw * pop, bh * pop);
                 if (bDefeat != null)
@@ -348,12 +353,12 @@ namespace SkyTide
                     Text(Inner(r, 2048f, 512f, 430f, 180f, 1618f, 330f), "КОРАБЛЬ ПОДБИТ", bh * 0.42f, new Color(1f, 0.62f, 0.48f, a));
                 }
                 else Text(new Rect(l.safe.x, l.safe.center.y - l.unit * 0.06f, l.safe.width, l.unit * 0.12f), "КОРАБЛЬ ПОДБИТ", l.unit * 0.06f, new Color(1f, 0.5f, 0.35f, a));
-                int left = Mathf.CeilToInt(Mathf.Max(0f, hull.respawnDelay - hull.DeadFor));
+                int left = Mathf.CeilToInt(Mathf.Max(0f, delay - deadFor));
                 Text(new Rect(r.x, r.yMax, r.width, bh * 0.3f), "ВОЗВРАТ ЧЕРЕЗ " + left + " с", bh * 0.2f, new Color(cream.r, cream.g, cream.b, a * 0.9f));
             }
             else if (vic > 0f)
             {
-                float pop = 1f + 0.06f * (1f - Mathf.Clamp01((Time.time - victoryAt) / 0.25f));
+                float pop = capV ? 1f : 1f + 0.06f * (1f - Mathf.Clamp01((Time.time - victoryAt) / 0.25f));
                 Rect r = new Rect(l.safe.center.x - bw * pop * 0.5f, l.safe.y + l.safe.height * 0.3f - bh * pop * 0.5f, bw * pop, bh * pop);
                 if (bVictory != null)
                 {
@@ -366,7 +371,7 @@ namespace SkyTide
                 else Text(new Rect(l.safe.x, l.safe.center.y - l.unit * 0.06f, l.safe.width, l.unit * 0.12f), "ЦЕЛЬ УНИЧТОЖЕНА", l.unit * 0.06f, new Color(1f, 0.86f, 0.55f, vic));
             }
             // Оповещение о вражеском залпе — плашка сверху по центру (не в бою на экране гибели).
-            float note = dead ? 0f : Envelope(Time.time - EnemyGunner.LastVolleyTime, 2.4f, 0.15f, 0.5f);
+            float note = dead ? 0f : capV ? 1f : Envelope(Time.time - EnemyGunner.LastVolleyTime, 2.4f, 0.15f, 0.5f);
             if (note > 0f && bPlate != null)
             {
                 float pw = Mathf.Min(l.safe.width * 0.36f, l.safe.height * 1.5f), ph = pw * 192f / 1024f;
@@ -441,7 +446,7 @@ namespace SkyTide
                 GL.Begin(GL.TRIANGLES);
                 try
                 {
-                    if(Application.isPlaying)DamageVignette(width,height);   // под всеми плашками
+                    if(Application.isPlaying||CaptureBanner!=0)DamageVignette(width,height);   // под всеми плашками
                     Panel(l.clouds,l.unit,false,input.Pressed(l.clouds));
                     Text(new Rect(l.clouds.x,l.clouds.y,l.clouds.width,l.clouds.height*0.42f),"ОБЛАКА",l.unit*0.021f,muted);
                     Text(new Rect(l.clouds.x,l.clouds.y+l.clouds.height*0.36f,l.clouds.width,l.clouds.height*0.55f),input.game.volumetricClouds?"ОБЪЁМ":"РИСОВАННЫЕ",l.unit*0.031f,cream);
@@ -486,7 +491,7 @@ namespace SkyTide
                     Vector2 knob=home+input.StickOffset(l.radius);
                     Disc(knob,r*0.31f,new Color(0.2f,0.17f,0.12f,a));Ring(knob,r*0.31f,Mathf.Max(1f,l.unit*0.004f),new Color(gold.r,gold.g,gold.b,a));
                     }
-                    if(Application.isPlaying)Banners(l);
+                    if(Application.isPlaying||CaptureBanner!=0)Banners(l);
                     if(input.HintAlpha>0f)
                     {
                         Color hint=new Color(cream.r,cream.g,cream.b,input.HintAlpha*0.85f);
