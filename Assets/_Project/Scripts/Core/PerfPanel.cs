@@ -24,6 +24,10 @@ namespace SkyTide
         // Разрешение отрисовки: доля от родного экрана (Screen.SetResolution) — проверка, упирается ли ВК в пиксели.
         static readonly float[] scales = { 1f, 0.85f, 0.7f };
         int scaleIndex; int nativeW, nativeH, styleFor;
+        // Автозамер: по очереди выключает каждую часть (остальное включено), меряет и показывает таблицу на одном экране.
+        struct BenchRow { public string name; public float fps, gpu, frame, main; }
+        readonly List<BenchRow> bench = new List<BenchRow>();
+        bool benchRunning, benchShow; string benchStep = ""; int benchIndex, benchTotal;
         // Замер за последние 10 с: средний FPS, худший 1% кадров (99-й процентиль времени кадра), самый долгий кадр.
         readonly float[] window = new float[1200]; int wHead, wCount; float wSum;
         float avgFps, lowFps, worstMs, statClock;
@@ -129,15 +133,26 @@ namespace SkyTide
                 label.normal.textColor = new Color(0.96f, 0.9f, 0.77f);
                 button = new GUIStyle(GUI.skin.button) { fontSize = Mathf.RoundToInt(u * 0.032f) };
             }
+            if (benchRunning)
+            {
+                Rect pr = new Rect(Screen.width * 0.3f, u * 0.02f, Screen.width * 0.4f, u * 0.07f);
+                Area = pr;
+                GUI.color = new Color(0f, 0f, 0f, 0.6f); GUI.DrawTexture(pr, Texture2D.whiteTexture); GUI.color = Color.white;
+                GUI.Label(new Rect(pr.x + u * 0.02f, pr.y, pr.width, pr.height), string.Format("Автозамер {0}/{1}: {2}", benchIndex, benchTotal, benchStep), label);
+                return;
+            }
             Rect r = new Rect(Screen.width * 0.27f, u * 0.05f, Screen.width * 0.46f, u * 0.86f);
             Area = r;
+            if (benchShow) { BenchTable(r, u); return; }
             GUI.color = new Color(0f, 0f, 0f, 0.8f); GUI.DrawTexture(r, Texture2D.whiteTexture); GUI.color = Color.white;
             float y = r.y + u * 0.02f, h = u * 0.075f, x = r.x + u * 0.03f, w = r.width - u * 0.06f;
             GUI.Label(new Rect(x, y, w, h), string.Format("FPS {0:F0}   ЦП {1:F1} мс   ВК {2}", fps, cpu, gpu > 0.01f ? gpu.ToString("F1") + " мс" : "нет данных"), label); y += h;
             GUI.Label(new Rect(x, y, w, h), string.Format("10 с: средний {0:F0}   худший 1% {1:F0}   макс. кадр {2:F0} мс", avgFps, lowFps, worstMs), label); y += h;
             if (small == null) { small = new GUIStyle(label) { fontSize = Mathf.RoundToInt(label.fontSize * 0.8f) }; }
             GUI.Label(new Rect(x, y, w, h * 0.62f), string.Format("работа: игра {0:F1} · отрисовка {1:F1} · ВК {2:F1} мс   → {3}", mainWork, renderWork, gpu, Bottleneck()), small); y += h * 0.7f;
-            if (GUI.Button(new Rect(x, y, w, h * 0.9f), details ? "← Переключатели" : "Замер по частям →", button)) { details = !details; PerfTimers.Reset(); camMs = 0f; }
+            float hw = (w - u * 0.02f) * 0.5f;
+            if (GUI.Button(new Rect(x, y, hw, h * 0.9f), details ? "← Переключатели" : "Замер по частям →", button)) { details = !details; PerfTimers.Reset(); camMs = 0f; }
+            if (GUI.Button(new Rect(x + hw + u * 0.02f, y, hw, h * 0.9f), "АВТОЗАМЕР ▶", button) && game != null) StartCoroutine(Bench());
             y += h;
             if (details) { Details(x, y, w, h); return; }
             if (game == null) return;
@@ -161,11 +176,119 @@ namespace SkyTide
             if (nativeW == 0) { nativeW = Screen.width; nativeH = Screen.height; }
             if (GUI.Button(new Rect(x + col * (cw + u * 0.02f), y, cw, h * 0.9f), "Разрешение " + Mathf.RoundToInt(scales[scaleIndex] * 100f) + "%", button))
             {
-                scaleIndex = (scaleIndex + 1) % scales.Length;
-                Screen.SetResolution(Mathf.RoundToInt(nativeW * scales[scaleIndex]), Mathf.RoundToInt(nativeH * scales[scaleIndex]), true);
+                SetScale((scaleIndex + 1) % scales.Length);
             }
             y += h; col = 0;
             if (GUI.Button(new Rect(x, y + h * 0.2f, w, h), "Закрыть", button)) Open = false;
+        }
+
+        /// <summary>
+        /// Автозамер (~70 с): база — всё включено; затем по одной части выключается (остальное включено), 2 с на
+        /// успокоение, 3 с замер (FPS, ВК, полный кадр, работа потока игры). В конце всё как было и таблица — один снимок.
+        /// </summary>
+        System.Collections.IEnumerator Bench()
+        {
+            if (benchRunning || game == null) yield break;
+            benchRunning = true; benchShow = false; bench.Clear();
+            VolumetricClouds v = game.Volumetric;
+            ShipCrew crew = game.Ship != null ? game.Ship.GetComponent<ShipCrew>() : null;
+            SkyTidePost post = Camera.main != null ? Camera.main.GetComponent<SkyTidePost>() : null;
+            if (nativeW == 0) { nativeW = Screen.width; nativeH = Screen.height; }
+            // как было
+            bool vOn = v != null && v.enabled, tOn = v != null && v.debugTowers, dOn = v != null && v.debugDeck, iOn = v != null && v.impostors;
+            bool cOn = crew != null && crew.Visible, pOn = post != null && post.enabled, fOn = game.Fx != null && !game.Fx.debugHidden;
+            ShadowQuality sq = QualitySettings.shadows; bool lodOn = ShipLod.Enabled; int si = scaleIndex;
+            System.Action<bool> all = on =>
+            {
+                if (v != null) { if (v.enabled != on) game.SetVolumetric(on); v.debugTowers = on; v.debugDeck = on; v.impostors = on; }
+                if (crew != null && crew.Visible != on) crew.SetVisible(on);
+                if (post != null) post.enabled = on;
+                if (game.Fx != null) game.Fx.debugHidden = !on;
+                QualitySettings.shadows = on ? ShadowQuality.All : ShadowQuality.Disable;
+                ShipLod.Enabled = true;
+                SetScale(0);
+            };
+            var steps = new List<KeyValuePair<string, System.Action>>();
+            steps.Add(new KeyValuePair<string, System.Action>("Всё включено (база)", () => all(true)));
+            if (v != null)
+            {
+                steps.Add(new KeyValuePair<string, System.Action>("без объёмных облаков", () => { all(true); game.SetVolumetric(false); }));
+                steps.Add(new KeyValuePair<string, System.Action>("без башен", () => { all(true); v.debugTowers = false; }));
+                steps.Add(new KeyValuePair<string, System.Action>("без моря облаков", () => { all(true); v.debugDeck = false; }));
+                steps.Add(new KeyValuePair<string, System.Action>("без импосторов", () => { all(true); v.impostors = false; }));
+            }
+            if (crew != null) steps.Add(new KeyValuePair<string, System.Action>("без экипажа", () => { all(true); crew.SetVisible(false); }));
+            if (post != null) steps.Add(new KeyValuePair<string, System.Action>("без пост-обработки", () => { all(true); post.enabled = false; }));
+            if (game.Fx != null) steps.Add(new KeyValuePair<string, System.Action>("без дыма и вспышек", () => { all(true); game.Fx.debugHidden = true; }));
+            steps.Add(new KeyValuePair<string, System.Action>("без теней", () => { all(true); QualitySettings.shadows = ShadowQuality.Disable; }));
+            steps.Add(new KeyValuePair<string, System.Action>("полные модели (без лёгких)", () => { all(true); ShipLod.Enabled = false; }));
+            steps.Add(new KeyValuePair<string, System.Action>("разрешение 85%", () => { all(true); SetScale(1); }));
+            steps.Add(new KeyValuePair<string, System.Action>("разрешение 70%", () => { all(true); SetScale(2); }));
+            steps.Add(new KeyValuePair<string, System.Action>("всё выключено", () => all(false)));
+            benchTotal = steps.Count;
+            for (int k = 0; k < steps.Count; k++)
+            {
+                benchIndex = k + 1; benchStep = steps[k].Key;
+                steps[k].Value();
+                float t = 0f;
+                while (t < 2f) { t += Time.unscaledDeltaTime; yield return null; }
+                float sumDt = 0f, sumGpu = 0f, sumFrame = 0f, sumMain = 0f; int n = 0, ng = 0;
+                while (sumDt < 3f)
+                {
+                    yield return null;
+                    sumDt += Time.unscaledDeltaTime; n++;
+                    if (FrameTimingManager.GetLatestTimings(1, timings) > 0)
+                    {
+                        sumFrame += (float)timings[0].cpuFrameTime; sumMain += (float)timings[0].cpuMainThreadFrameTime;
+                        sumGpu += (float)timings[0].gpuFrameTime; ng++;
+                    }
+                }
+                bench.Add(new BenchRow { name = steps[k].Key, fps = n / Mathf.Max(sumDt, 1e-3f),
+                    gpu = ng > 0 ? sumGpu / ng : 0f, frame = ng > 0 ? sumFrame / ng : sumDt * 1000f / n, main = ng > 0 ? sumMain / ng : 0f });
+            }
+            // вернуть как было
+            if (v != null) { if (v.enabled != vOn) game.SetVolumetric(vOn); v.debugTowers = tOn; v.debugDeck = dOn; v.impostors = iOn; }
+            if (crew != null && crew.Visible != cOn) crew.SetVisible(cOn);
+            if (post != null) post.enabled = pOn;
+            if (game.Fx != null) game.Fx.debugHidden = !fOn;
+            QualitySettings.shadows = sq; ShipLod.Enabled = lodOn; SetScale(si);
+            System.Text.StringBuilder log = new System.Text.StringBuilder("SkyTide: автозамер\n");
+            foreach (BenchRow b in bench) log.AppendFormat("{0}: FPS {1:F1}, ВК {2:F1} мс, кадр {3:F1} мс, игра {4:F1} мс\n", b.name, b.fps, b.gpu, b.frame, b.main);
+            Debug.Log(log.ToString());
+            benchRunning = false; benchShow = true; Open = true;
+        }
+
+        void SetScale(int i)
+        {
+            if (nativeW == 0) { nativeW = Screen.width; nativeH = Screen.height; }
+            if (i == scaleIndex) return;
+            scaleIndex = i;
+            Screen.SetResolution(Mathf.RoundToInt(nativeW * scales[i]), Mathf.RoundToInt(nativeH * scales[i]), true);
+        }
+
+        void BenchTable(Rect r, float u)
+        {
+            GUI.color = new Color(0f, 0f, 0f, 0.85f); GUI.DrawTexture(r, Texture2D.whiteTexture); GUI.color = Color.white;
+            if (small == null) small = new GUIStyle(label) { fontSize = Mathf.RoundToInt(label.fontSize * 0.8f) };
+            float x = r.x + u * 0.03f, w = r.width - u * 0.06f, y = r.y + u * 0.015f, lh = u * 0.047f;
+            string dev = SystemInfo.graphicsDeviceName + "  " + nativeW + "×" + nativeH + "  сборка " + Application.version;
+            GUI.Label(new Rect(x, y, w, lh), "Автозамер · " + dev, small); y += lh;
+            float c0 = w * 0.44f, cwid = (w - c0) / 5f;
+            string[] head = { "FPS", "ВК мс", "кадр", "игра", "ΔВК" };
+            GUI.Label(new Rect(x, y, c0, lh), "что выключено (остальное вкл.)", small);
+            for (int i = 0; i < 5; i++) GUI.Label(new Rect(x + c0 + cwid * i, y, cwid, lh), head[i], small);
+            y += lh;
+            float baseGpu = bench.Count > 0 ? bench[0].gpu : 0f;
+            foreach (BenchRow b in bench)
+            {
+                float d = b.gpu - baseGpu;
+                string[] cells = { b.fps.ToString("F1"), b.gpu.ToString("F1"), b.frame.ToString("F1"), b.main.ToString("F1"), (d >= 0f ? "+" : "") + d.ToString("F1") };
+                GUI.Label(new Rect(x, y, c0, lh), b.name, small);
+                for (int i = 0; i < 5; i++) GUI.Label(new Rect(x + c0 + cwid * i, y, cwid, lh), cells[i], small);
+                y += lh;
+            }
+            if (GUI.Button(new Rect(x, r.yMax - u * 0.08f, w * 0.48f, u * 0.065f), "Ещё раз", button) && !benchRunning) StartCoroutine(Bench());
+            if (GUI.Button(new Rect(x + w * 0.52f, r.yMax - u * 0.08f, w * 0.48f, u * 0.065f), "Закрыть", button)) { benchShow = false; Open = false; }
         }
 
         /// <summary>Во что упирается кадр — по образцу DetermineBottleneck из документации Unity FrameTiming.</summary>
