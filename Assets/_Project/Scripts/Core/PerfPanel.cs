@@ -17,6 +17,10 @@ namespace SkyTide
         SkyTideBootstrap game;
         readonly FrameTiming[] timings = new FrameTiming[1];
         float cpu, gpu, fps, acc; int frames;
+        // Замер за последние 10 с: средний FPS, худший 1% кадров (99-й процентиль времени кадра), самый долгий кадр.
+        readonly float[] window = new float[1200]; int wHead, wCount; float wSum;
+        float avgFps, lowFps, worstMs, statClock;
+        readonly float[] sorted = new float[1200];
         GUIStyle label, button;
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
@@ -37,7 +41,22 @@ namespace SkyTide
                 cpu = Mathf.Lerp(cpu, (float)timings[0].cpuFrameTime, 0.1f);
                 gpu = Mathf.Lerp(gpu, (float)timings[0].gpuFrameTime, 0.1f);
             }
-            acc += Time.unscaledDeltaTime; frames++;
+            float dt = Time.unscaledDeltaTime;
+            if (wCount == window.Length) { wSum -= window[wHead]; } else wCount++;
+            window[wHead] = dt; wSum += dt; wHead = (wHead + 1) % window.Length;
+            while (wCount > 1 && wSum - window[(wHead - wCount + window.Length) % window.Length] > 10f)
+            { wSum -= window[(wHead - wCount + window.Length) % window.Length]; wCount--; }
+            statClock += dt;
+            if (Open && statClock >= 0.5f && wCount > 10)
+            {
+                statClock = 0f;
+                for (int i = 0; i < wCount; i++) sorted[i] = window[(wHead - wCount + i + window.Length) % window.Length];
+                System.Array.Sort(sorted, 0, wCount);
+                avgFps = wCount / Mathf.Max(wSum, 1e-4f);
+                lowFps = 1f / Mathf.Max(sorted[Mathf.Min(wCount - 1, Mathf.FloorToInt(wCount * 0.99f))], 1e-4f);
+                worstMs = sorted[wCount - 1] * 1000f;
+            }
+            acc += dt; frames++;
             if (acc >= 0.5f) { fps = frames / acc; acc = 0f; frames = 0; }
         }
 
@@ -58,6 +77,7 @@ namespace SkyTide
             GUI.color = new Color(0f, 0f, 0f, 0.8f); GUI.DrawTexture(r, Texture2D.whiteTexture); GUI.color = Color.white;
             float y = r.y + u * 0.02f, h = u * 0.075f, x = r.x + u * 0.03f, w = r.width - u * 0.06f;
             GUI.Label(new Rect(x, y, w, h), string.Format("FPS {0:F0}   ЦП {1:F1} мс   ВК {2}", fps, cpu, gpu > 0.01f ? gpu.ToString("F1") + " мс" : "нет данных"), label); y += h;
+            GUI.Label(new Rect(x, y, w, h), string.Format("10 с: средний {0:F0}   худший 1% {1:F0}   макс. кадр {2:F0} мс", avgFps, lowFps, worstMs), label); y += h;
             if (game == null) return;
             VolumetricClouds v = game.Volumetric;
             if (v != null)

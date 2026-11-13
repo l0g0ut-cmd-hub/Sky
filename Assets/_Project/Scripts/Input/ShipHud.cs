@@ -17,6 +17,22 @@ namespace SkyTide
         public int GlyphsDrawn { get; private set; }
         public int DrawCount { get; private set; }
         public int MissingCharacter { get; private set; }
+        /// <summary>Проверка текста (CI): надписи мельче читаемого или за пределами экрана; первая — с текстом.</summary>
+        public int TextIssues { get; private set; }
+        public string FirstTextIssue { get; private set; }
+        float minGlyph; Rect screenRect;
+        /// <summary>Внутреннее поле плашки набора: без рамки и углового орнамента (рамка ~11/103, орнамент ~38/103 по ширине).</summary>
+        static Rect Content(Rect r)
+        {
+            float h = r.height;
+            return new Rect(r.x + h * 0.39f, r.y + h * 0.15f, Mathf.Max(0f, r.width - h * 0.78f), h * 0.7f);
+        }
+        /// <summary>Надпись в плашке: строка (доли внутреннего поля по высоте) — всегда внутри поля.</summary>
+        void PlateText(Rect plate, float top, float height, string text, float size, Color color)
+        {
+            Rect c = Content(plate);
+            Text(new Rect(c.x, c.y + c.height * top, c.width, c.height * height), text, size, color);
+        }
 
         void Tint(Color c) { GL.Color(QualitySettings.activeColorSpace == ColorSpace.Linear ? c.linear : c); }
         static void Vertex(Vector2 p, Vector2 uv) { GL.TexCoord2(uv.x, uv.y); GL.Vertex3(p.x, p.y, 0f); }
@@ -38,7 +54,7 @@ namespace SkyTide
         static readonly Rect[] PanelN = { new Rect(21,80,575,104), new Rect(619,80,345,102), new Rect(986,80,248,102) };
         static readonly Rect[] PanelL = { new Rect(12,218,594,123), new Rect(607,218,365,123), new Rect(975,218,268,124) };
         static readonly Rect[] PanelP = { new Rect(21,370,575,105), new Rect(620,370,343,105), new Rect(986,370,248,105) };
-        static readonly Rect KWheel = new Rect(24,503,422,442), KRadar = new Rect(447,498,407,437), KArrow = new Rect(872,606,72,81),
+        static readonly Rect KWheel = new Rect(24,503,422,422), KRadar = new Rect(447,498,407,437), KArrow = new Rect(872,606,72,81),
             KGem = new Rect(870,722,73,84), KCannonL = new Rect(960,546,271,174), KCannonR = new Rect(966,740,270,175),
             KKnob = new Rect(61,930,159,163), KGroove = new Rect(280,977,442,67), KFill = new Rect(758,977,439,67);
         bool HasKit { get { if (!kitTried) { kitTried = true; kit = Resources.Load<Texture2D>("UI/hud_kit"); } return kit != null; } }
@@ -199,36 +215,37 @@ namespace SkyTide
             if(r.width<=0f||string.IsNullOrEmpty(text)) return;
             labels.Add(new Label {rect=r,text=text,size=Mathf.Max(9,Mathf.RoundToInt(size)),color=color});
         }
+        /// <summary>Кнопка борта: сверху во всю ширину поля — название; ниже — пушка (наружу) и состояние; внизу — полоса заряда.
+        /// Всё внутри поля плашки, мимо рамки и угловых орнаментов.</summary>
         void Volley(TouchControls input,HudLayout l,Rect r,int side,float readiness,float cooldown)
         {
             bool ready=readiness>=0.9999f;
             Panel(r,l.unit,ready,input.Pressed(r));
-            float icon=HasKit?r.height*0.62f:0f;
+            Rect c=Content(r);
+            Rect title=new Rect(c.x,c.y,c.width,c.height*0.38f);
+            Text(title,side<0?"ЛЕВЫЙ БОРТ":"ПРАВЫЙ БОРТ",l.unit*0.03f,cream);
+            Rect row=new Rect(c.x,c.y+c.height*0.4f,c.width,c.height*0.42f);
             if(HasKit)
             {
-                Rect src=side<0?KCannonL:KCannonR; float iw=icon*src.width/src.height;
-                Rect ir=side<0?new Rect(r.x+l.unit*0.014f,r.y+(r.height-icon)*0.45f,iw,icon):new Rect(r.xMax-l.unit*0.014f-iw,r.y+(r.height-icon)*0.45f,iw,icon);
+                Rect src=side<0?KCannonL:KCannonR; float ih=row.height, iw=ih*src.width/src.height;
+                Rect ir=side<0?new Rect(row.x,row.y,iw,ih):new Rect(row.xMax-iw,row.y,iw,ih);
                 Sprite(ir,src,new Color(1f,1f,1f,ready?1f:0.6f));
-                icon=iw+l.unit*0.01f;
-                r=side<0?new Rect(r.x+icon,r.y,r.width-icon-l.unit*0.02f,r.height):new Rect(r.x+l.unit*0.02f,r.y,r.width-icon-l.unit*0.02f,r.height);
+                float gapX=ih*0.15f;
+                row=side<0?new Rect(row.x+iw+gapX,row.y,row.width-iw-gapX,row.height):new Rect(row.x,row.y,row.width-iw-gapX,row.height);
             }
-            Rect title=new Rect(r.x,r.y+l.unit*0.012f,r.width,r.height*0.44f);
-            Text(title,side<0?"ЛЕВЫЙ БОРТ":"ПРАВЫЙ БОРТ",l.unit*0.028f,cream);
-            Rect state=new Rect(r.x,r.y+r.height*0.5f,r.width,r.height*0.24f);
-            Text(state,ready?"ГОТОВ":"ПЕРЕЗАРЯДКА "+((1f-readiness)*cooldown).ToString("F1")+" с",l.unit*0.022f,ready?gold:muted);
-            float inset=l.unit*0.022f, h=Mathf.Max(2f,l.unit*0.006f);
-            Rect track=new Rect(r.x+inset,r.yMax-l.unit*0.023f,r.width-inset*2f,h);
+            Text(row,ready?"ГОТОВ":((1f-readiness)*cooldown).ToString("F1")+" с",l.unit*0.03f,ready?gold:muted);
+            float bh=Mathf.Max(2f,c.height*0.1f);
+            Rect bar=new Rect(c.x,c.yMax-bh,c.width,bh);
             if(HasKit)
             {
-                float bh=Mathf.Max(h*3f,l.unit*0.016f); Rect bar=new Rect(track.x,track.center.y-bh*0.5f,track.width,bh);
                 Sprite(bar,KGroove,Color.white);
                 float f=Mathf.Clamp01(readiness);
                 if(f>0.001f) Sprite(new Rect(bar.x,bar.y,bar.width*f,bar.height),new Rect(KFill.x,KFill.y,KFill.width*f,KFill.height),ready?Color.white:new Color(0.75f,0.8f,0.85f,0.8f));
             }
             else
             {
-                Box(track,new Color(0.015f,0.02f,0.026f,1f));
-                Box(new Rect(track.x,track.y,track.width*Mathf.Clamp01(readiness),track.height),ready?gold:new Color(0.51f,0.56f,0.6f));
+                Box(bar,new Color(0.015f,0.02f,0.026f,1f));
+                Box(new Rect(bar.x,bar.y,bar.width*Mathf.Clamp01(readiness),bar.height),ready?gold:new Color(0.51f,0.56f,0.6f));
             }
         }
 
@@ -404,7 +421,7 @@ namespace SkyTide
                 Box(bar, new Color(0.015f, 0.02f, 0.026f, 0.9f));
                 Box(new Rect(bar.x, bar.y, bar.width * f, bar.height), fill * gold);
             }
-            Text(new Rect(bar.x, bar.yMax, bar.width, l.unit * 0.032f), "КОРПУС " + Mathf.RoundToInt(f * 100f) + "%", l.unit * 0.02f, f < 0.3f ? new Color(1f, 0.55f, 0.45f) : muted);
+            Text(new Rect(bar.x, bar.yMax, bar.width, l.unit * 0.032f), "КОРПУС " + Mathf.RoundToInt(f * 100f) + "%", l.unit * 0.024f, f < 0.3f ? new Color(1f, 0.55f, 0.45f) : muted);
         }
 
         void RadarKit(TouchControls input,HudLayout l,Vector2 c,float R,float range)
@@ -433,7 +450,8 @@ namespace SkyTide
             if(material==null) {material=new Material(shader);material.hideFlags=HideFlags.HideAndDontSave;}
             font=typeface;
             HudLayout l=input.Layout(width,height);
-            labels.Clear(); MissingGlyphs=GlyphsDrawn=MissingCharacter=0;
+            labels.Clear(); MissingGlyphs=GlyphsDrawn=MissingCharacter=TextIssues=0; FirstTextIssue=null;
+            minGlyph=l.unit*0.012f; screenRect=new Rect(0f,0f,width,height);
             RenderTexture previous=RenderTexture.active;
             bool srgb=GL.sRGBWrite;
             RenderTexture.active=target;
@@ -448,14 +466,14 @@ namespace SkyTide
                 {
                     if(Application.isPlaying||CaptureBanner!=0)DamageVignette(width,height);   // под всеми плашками
                     Panel(l.clouds,l.unit,false,input.Pressed(l.clouds));
-                    Text(new Rect(l.clouds.x,l.clouds.y,l.clouds.width,l.clouds.height*0.42f),"ОБЛАКА",l.unit*0.021f,muted);
-                    Text(new Rect(l.clouds.x,l.clouds.y+l.clouds.height*0.36f,l.clouds.width,l.clouds.height*0.55f),input.game.volumetricClouds?"ОБЪЁМ":"РИСОВАННЫЕ",l.unit*0.031f,cream);
-                    if(input.game.ships!=null&&input.game.ships.Length>1) {Panel(l.ship,l.unit);Text(l.ship,input.game.CurrentShipName,l.unit*0.025f,cream);}
-                    Panel(l.course,l.unit); Text(l.course,"КУРС "+(Mathf.RoundToInt(input.ship.transform.eulerAngles.y)%360).ToString("000")+"°",l.unit*0.028f,cream);
-                    Panel(l.speed,l.unit);Text(l.speed,"ХОД "+input.ship.Speed.ToString("F1")+" м/с",l.unit*0.027f,cream);
+                    PlateText(l.clouds,0f,0.4f,"ОБЛАКА",l.unit*0.024f,muted);
+                    PlateText(l.clouds,0.4f,0.6f,input.game.volumetricClouds?"ОБЪЁМ":"РИСОВАННЫЕ",l.unit*0.034f,cream);
+                    if(input.game.ships!=null&&input.game.ships.Length>1) {Panel(l.ship,l.unit);PlateText(l.ship,0f,1f,input.game.CurrentShipName,l.unit*0.03f,cream);}
+                    Panel(l.course,l.unit); PlateText(l.course,0f,1f,"КУРС "+(Mathf.RoundToInt(input.ship.transform.eulerAngles.y)%360).ToString("000")+"°",l.unit*0.034f,cream);
+                    Panel(l.speed,l.unit);PlateText(l.speed,0f,1f,"ХОД "+input.ship.Speed.ToString("F1")+" м/с",l.unit*0.034f,cream);
                     Radar(input,l);
                     Hull(l);
-                    Panel(l.fps,l.unit);Text(l.fps,Application.isPlaying?Mathf.RoundToInt(input.Fps)+" FPS":"FPS —",l.unit*0.024f,muted);
+                    Panel(l.fps,l.unit);PlateText(l.fps,0f,1f,Application.isPlaying?Mathf.RoundToInt(input.Fps)+" FPS":"FPS —",l.unit*0.03f,muted);
                     Text(l.version,input.BuildText,l.unit*0.023f,cream);
                     Broadside guns=input.Guns();
                     if(guns!=null)
@@ -463,7 +481,7 @@ namespace SkyTide
                         Volley(input,l,l.port,-1,guns.Readiness(-1),guns.cooldown);
                         Volley(input,l,l.starboard,1,guns.Readiness(1),guns.cooldown);
                         Panel(l.mode,l.unit,false,input.Pressed(l.mode));
-                        Text(l.mode,guns.ripple?"ЗАЛП ВОЛНОЙ":"ВЕСЬ БОРТ",l.unit*0.026f,cream);
+                        PlateText(l.mode,0f,1f,guns.ripple?"ЗАЛП ВОЛНОЙ":"ВЕСЬ БОРТ",l.unit*0.034f,cream);
                     }
                     Vector2 home=input.StickActive?l.ClampWheel(input.StickOrigin):l.wheel;
                     float r=l.radius, a=input.StickActive?0.85f:0.45f;
@@ -527,6 +545,14 @@ namespace SkyTide
             float side=Mathf.Max(6f,label.rect.height*0.3f);
             float scale=Mathf.Clamp01((label.rect.width-side*2f)/width);
             scale=Mathf.Min(scale,label.rect.height*0.8f/Mathf.Max(1f,maxY-minY));
+            float glyphH=(maxY-minY)*scale, textW=width*scale;
+            bool small=glyphH<minGlyph&&label.text.Length>1;
+            bool off=label.rect.x<screenRect.x-1f||label.rect.y<screenRect.y-1f||label.rect.xMax>screenRect.xMax+1f||label.rect.yMax>screenRect.yMax+1f;
+            if((small||off)&&label.color.a>0.05f)
+            {
+                TextIssues++;
+                if(FirstTextIssue==null)FirstTextIssue="«"+label.text+"» "+(small?"мелко: высота букв "+glyphH.ToString("F1")+" px < "+minGlyph.ToString("F1"):"за краем экрана")+", поле "+label.rect.width.ToString("F0")+"x"+label.rect.height.ToString("F0")+", текст "+textW.ToString("F0");
+            }
             float x=label.rect.center.x-width*scale*0.5f;
             float baseline=label.rect.center.y+(minY+maxY)*0.5f*scale;
             for(int i=0;i<label.text.Length;i++)

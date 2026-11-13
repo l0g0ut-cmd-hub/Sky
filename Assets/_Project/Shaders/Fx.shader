@@ -156,9 +156,12 @@ Shader "Hidden/SkyTide/Fx"
                         if (Linear01Depth(rawF) < 0.999) fm *= saturate((LinearEyeDepth(rawF) - eyeF) / 1.5);
                     }
                     float a = t.a * i.color.a * fm;
+                    if (sheet == 5)   // огонь: без плоского светящегося основания кадра и без резких боков — языки растут из пробоины
+                        a *= smoothstep(-0.5, -0.16, i.uv.y) * (1.0 - smoothstep(0.36, 0.5, abs(i.uv.x)));
                     float glow = gd.w;
                     float3 col = t.rgb * i.color.rgb;
-                    if (glow > 0.01) col *= _FxParams.x;                               // огонь — на яркости свечения
+                    // Листы уже нарисованы в нужной яркости: лишь лёгкий подъём под свечение (не _FxParams.x = 7 — это выжигало в белое).
+                    if (glow > 0.01) col *= 1.0 + 0.5 * glow;
                     else col = col * _FxParams.y + SkyTideFlashLight(i.wpos) * 0.25 * t.a;   // дым — освещён и подсвечен взрывами
                     return half4(col * a, a * (1.0 - glow));
                 }

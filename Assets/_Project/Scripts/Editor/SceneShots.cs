@@ -1140,6 +1140,10 @@ namespace SkyTide.EditorTools
         static void OverviewFrame(OrbitCamera oc, Camera cam, SkyTideBootstrap boot, RenderTexture rt, Texture2D tex, string dir, Shot s)
         {
             Render(oc, cam, boot, rt, tex, dir, s);
+            // Текст HUD: ни одной надписи мельче читаемого или за краем экрана (в плашках — только во внутреннем поле).
+            TouchControls hudOwner = Object.FindFirstObjectByType<TouchControls>();
+            if (hudOwner != null && hudOwner.HudTextIssues > 0)
+                throw new System.InvalidOperationException("Кадр " + s.name + ": текст HUD — " + hudOwner.HudTextIssues + " нарушений, первое: " + hudOwner.HudFirstTextIssue);
             Color32[] px = tex.GetPixels32();
             int magenta = 0; double lum = 0; int white = 0;
             for (int i = 0; i < px.Length; i += 3)

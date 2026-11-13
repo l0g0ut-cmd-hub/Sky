@@ -267,6 +267,8 @@ namespace SkyTide
         public int HudDrawCount {get {return hud.DrawCount;} }
         public int HudMissingGlyphs {get {return hud.MissingGlyphs;} }
         public int HudGlyphsDrawn {get {return hud.GlyphsDrawn;} }
+        public int HudTextIssues {get {return hud.TextIssues;} }
+        public string HudFirstTextIssue {get {return hud.FirstTextIssue;} }
         public int HudMissingCharacter {get {return hud.MissingCharacter;} }
         public Vector2 StickOffset(float radius)
         {

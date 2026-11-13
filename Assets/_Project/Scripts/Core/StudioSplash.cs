@@ -10,7 +10,7 @@ namespace SkyTide
     /// </summary>
     public class StudioSplash : MonoBehaviour
     {
-        const float FadeIn = 0.8f, Hold = 4.6f, FadeOut = 1.2f;
+        const float FadeIn = 0.25f, Hold = 4.6f, FadeOut = 0.3f;   // быстрые проявление и затухание (по просьбе владельца)
         static bool shown;
         Texture2D art;
         float start = -1f, fadeAt = -1f;
