@@ -34,6 +34,8 @@ namespace SkyTide
             Mesh mesh = variant != null && variant.IsValid ? variant.Mesh : null;
             Transform model = null;
             if (mesh != null) model = BuildFromMesh(visual, mesh, variant.materials);
+            if (model != null && variant.lite != null)
+                ShipLod.Attach(model.GetComponent<MeshRenderer>(), mesh, variant.LiteMesh, ShipLod.ReadSrc(variant.liteSrc), variant.materials, variant.lodDistance);
             else BuildPrimitive(visual, m);
             ShipSteeringSail steering=ctrl.GetComponent<ShipSteeringSail>();
             if(steering==null)steering=ctrl.gameObject.AddComponent<ShipSteeringSail>();

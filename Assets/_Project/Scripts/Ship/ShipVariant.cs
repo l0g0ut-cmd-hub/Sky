@@ -16,6 +16,11 @@ namespace SkyTide
         public CrewModelData crew;
         public TextAsset upperGun;
         public TextAsset steering;
+        // Облегчённая копия (tools/decimate_ship.py): тень-заместитель, а дальше lodDistance — и сама модель.
+        public TextAsset lite, liteSrc;
+        public float lodDistance;   // 0 — только тень
+        [NonSerialized] Mesh cachedLite;
+        public Mesh LiteMesh { get { if (cachedLite == null && lite != null) cachedLite = ShipMeshLoader.Load(lite); return cachedLite; } }
 
         [NonSerialized] Mesh cached,cachedSteering;
         public Mesh SteeringMesh {get {if(cached==null){Mesh unused=Mesh;}return cachedSteering;}}

@@ -19,6 +19,11 @@ namespace SkyTide
         SkyTideBootstrap game;
         readonly FrameTiming[] timings = new FrameTiming[1];
         float cpu, gpu, fps, acc; int frames;
+        // Работа потоков без ожиданий (FrameTiming): main — PlayerLoop минус ожидание отрисовки/Present/целевого FPS.
+        float mainWork, renderWork, presentWait;
+        // Разрешение отрисовки: доля от родного экрана (Screen.SetResolution) — проверка, упирается ли ВК в пиксели.
+        static readonly float[] scales = { 1f, 0.85f, 0.7f };
+        int scaleIndex; int nativeW, nativeH, styleFor;
         // Замер за последние 10 с: средний FPS, худший 1% кадров (99-й процентиль времени кадра), самый долгий кадр.
         readonly float[] window = new float[1200]; int wHead, wCount; float wSum;
         float avgFps, lowFps, worstMs, statClock;
@@ -88,6 +93,9 @@ namespace SkyTide
             {
                 cpu = Mathf.Lerp(cpu, (float)timings[0].cpuFrameTime, 0.1f);
                 gpu = Mathf.Lerp(gpu, (float)timings[0].gpuFrameTime, 0.1f);
+                mainWork = Mathf.Lerp(mainWork, (float)timings[0].cpuMainThreadFrameTime, 0.1f);
+                renderWork = Mathf.Lerp(renderWork, (float)timings[0].cpuRenderThreadFrameTime, 0.1f);
+                presentWait = Mathf.Lerp(presentWait, (float)timings[0].cpuMainThreadPresentWaitTime, 0.1f);
             }
             float dt = Time.unscaledDeltaTime;
             if (wCount == window.Length) { wSum -= window[wHead]; } else wCount++;
@@ -114,6 +122,7 @@ namespace SkyTide
             GUI.depth = -800;
             if (game == null) game = FindFirstObjectByType<SkyTideBootstrap>();
             float u = Mathf.Min(Screen.width, Screen.height);
+            if (styleFor != Screen.height) { label = null; small = null; styleFor = Screen.height; }
             if (label == null)
             {
                 label = new GUIStyle(GUI.skin.label) { fontSize = Mathf.RoundToInt(u * 0.032f), alignment = TextAnchor.MiddleLeft };
@@ -126,40 +135,73 @@ namespace SkyTide
             float y = r.y + u * 0.02f, h = u * 0.075f, x = r.x + u * 0.03f, w = r.width - u * 0.06f;
             GUI.Label(new Rect(x, y, w, h), string.Format("FPS {0:F0}   ЦП {1:F1} мс   ВК {2}", fps, cpu, gpu > 0.01f ? gpu.ToString("F1") + " мс" : "нет данных"), label); y += h;
             GUI.Label(new Rect(x, y, w, h), string.Format("10 с: средний {0:F0}   худший 1% {1:F0}   макс. кадр {2:F0} мс", avgFps, lowFps, worstMs), label); y += h;
+            if (small == null) { small = new GUIStyle(label) { fontSize = Mathf.RoundToInt(label.fontSize * 0.8f) }; }
+            GUI.Label(new Rect(x, y, w, h * 0.62f), string.Format("работа: игра {0:F1} · отрисовка {1:F1} · ВК {2:F1} мс   → {3}", mainWork, renderWork, gpu, Bottleneck()), small); y += h * 0.7f;
             if (GUI.Button(new Rect(x, y, w, h * 0.9f), details ? "← Переключатели" : "Замер по частям →", button)) { details = !details; PerfTimers.Reset(); camMs = 0f; }
             y += h;
             if (details) { Details(x, y, w, h); return; }
             if (game == null) return;
             VolumetricClouds v = game.Volumetric;
+            float cw = (w - u * 0.02f) * 0.5f; int col = 0;
             if (v != null)
             {
-                if (Toggle(x, ref y, w, h, "Объёмные облака целиком", v.enabled)) game.SetVolumetric(!v.enabled);
-                if (Toggle(x, ref y, w, h, "Башни", v.debugTowers)) v.debugTowers = !v.debugTowers;
-                if (Toggle(x, ref y, w, h, "Море облаков", v.debugDeck)) v.debugDeck = !v.debugDeck;
-                if (Toggle(x, ref y, w, h, "Импосторы (дальние облака)", v.impostors)) v.impostors = !v.impostors;
+                if (Cell(x, ref y, cw, h, ref col, "Объёмные облака", v.enabled)) game.SetVolumetric(!v.enabled);
+                if (Cell(x, ref y, cw, h, ref col, "Башни", v.debugTowers)) v.debugTowers = !v.debugTowers;
+                if (Cell(x, ref y, cw, h, ref col, "Море облаков", v.debugDeck)) v.debugDeck = !v.debugDeck;
+                if (Cell(x, ref y, cw, h, ref col, "Импосторы", v.impostors)) v.impostors = !v.impostors;
             }
             ShipCrew crew = game.Ship != null ? game.Ship.GetComponent<ShipCrew>() : null;
-            if (crew != null && Toggle(x, ref y, w, h, "Экипаж", crew.Visible)) crew.SetVisible(!crew.Visible);
+            if (crew != null && Cell(x, ref y, cw, h, ref col, "Экипаж", crew.Visible)) crew.SetVisible(!crew.Visible);
             SkyTidePost post = Camera.main != null ? Camera.main.GetComponent<SkyTidePost>() : null;
-            if (post != null && Toggle(x, ref y, w, h, "Пост-обработка", post.enabled)) post.enabled = !post.enabled;
-            if (game.Fx != null && Toggle(x, ref y, w, h, "Дым, вспышки, всплески", !game.Fx.debugHidden)) game.Fx.debugHidden = !game.Fx.debugHidden;
+            if (post != null && Cell(x, ref y, cw, h, ref col, "Пост-обработка", post.enabled)) post.enabled = !post.enabled;
+            if (game.Fx != null && Cell(x, ref y, cw, h, ref col, "Дым и вспышки", !game.Fx.debugHidden)) game.Fx.debugHidden = !game.Fx.debugHidden;
+            bool shadows = QualitySettings.shadows != ShadowQuality.Disable;
+            if (Cell(x, ref y, cw, h, ref col, "Тени", shadows)) QualitySettings.shadows = shadows ? ShadowQuality.Disable : ShadowQuality.All;
+            if (Cell(x, ref y, cw, h, ref col, "Лёгкие тени/LOD", ShipLod.Enabled)) ShipLod.Enabled = !ShipLod.Enabled;
+            if (nativeW == 0) { nativeW = Screen.width; nativeH = Screen.height; }
+            if (GUI.Button(new Rect(x + col * (cw + u * 0.02f), y, cw, h * 0.9f), "Разрешение " + Mathf.RoundToInt(scales[scaleIndex] * 100f) + "%", button))
+            {
+                scaleIndex = (scaleIndex + 1) % scales.Length;
+                Screen.SetResolution(Mathf.RoundToInt(nativeW * scales[scaleIndex]), Mathf.RoundToInt(nativeH * scales[scaleIndex]), true);
+            }
+            y += h; col = 0;
             if (GUI.Button(new Rect(x, y + h * 0.2f, w, h), "Закрыть", button)) Open = false;
+        }
+
+        /// <summary>Во что упирается кадр — по образцу DetermineBottleneck из документации Unity FrameTiming.</summary>
+        string Bottleneck()
+        {
+            if (gpu <= 0.01f) return "ВК не измеряется";
+            float full = 0.8f * cpu;
+            if (presentWait > 0.5f && gpu < full && mainWork < full && renderWork < full) return "упор: ограничение FPS";
+            bool g = gpu > full, c = mainWork > full || renderWork > full;
+            if (g && c) return "упор: и ЦП, и ВК";
+            if (g) return "упор: ВИДЕОКАРТА";
+            if (c) return "упор: ПРОЦЕССОР";
+            return "упор: не ясно";
+        }
+
+        bool Cell(float x, ref float y, float cw, float h, ref int col, string name, bool on)
+        {
+            float u = Mathf.Min(Screen.width, Screen.height);
+            bool hit = GUI.Button(new Rect(x + col * (cw + u * 0.02f), y, cw, h * 0.9f), (on ? "ВКЛ  " : "выкл  ") + name, button);
+            if (col == 1) { col = 0; y += h; } else col = 1;
+            return hit;
         }
 
         void Details(float x, float y, float w, float h)
         {
-            if (small == null) { small = new GUIStyle(label) { fontSize = Mathf.RoundToInt(label.fontSize * 0.8f) }; }
             float lh = h * 0.62f;
             GUI.Label(new Rect(x, y, w, lh), string.Format("{0} {1}   {2}×{3}   тени {4} {5}м ×{6}   MSAA {7}",
                 SystemInfo.graphicsDeviceType, SystemInfo.graphicsDeviceName, Screen.width, Screen.height,
                 QualitySettings.shadows, QualitySettings.shadowDistance, QualitySettings.shadowCascades, QualitySettings.antiAliasing), small); y += lh;
             GUI.Label(new Rect(x, y, w, lh), string.Format("Поток игры {0} мс   поток отрисовки {1} мс   камера на ЦП {2:F1} мс", RecMs(mainThread), RecMs(renderThread), camMs), small); y += lh;
-            GUI.Label(new Rect(x, y, w, lh), string.Format("Вызовов {0}   смен шейдера {1}   пакетов {2}   треуг. {3}   тени {4}   мусор {5} Б",
-                Rec(drawCalls), Rec(setPass), Rec(batches), Rec(tris), Rec(shadowCasters), Rec(gcAlloc)), small); y += lh;
+            GUI.Label(new Rect(x, y, w, lh), string.Format("Вызовов {0}   смен шейдера {1}   пакетов {2}", Rec(drawCalls), Rec(setPass), Rec(batches)), small); y += lh;
+            GUI.Label(new Rect(x, y, w, lh), string.Format("Треугольников {0}   отбрасывают тень {1}   мусор {2} Б", Rec(tris), Rec(shadowCasters), Rec(gcAlloc)), small); y += lh;
             PerfTimers.Sorted(top);
             float total = 0f; foreach (KeyValuePair<string, float> kv in top) total += kv.Value;
             GUI.Label(new Rect(x, y, w, lh), string.Format("Наши скрипты всего: {0:F1} мс", total), small); y += lh;
-            for (int i = 0; i < top.Count && i < 9; i++)
+            for (int i = 0; i < top.Count && i < 7; i++)
             {
                 GUI.Label(new Rect(x, y, w, lh), string.Format("{0,6:F2} мс   {1}", top[i].Value, top[i].Key), small); y += lh;
             }

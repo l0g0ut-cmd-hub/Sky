@@ -73,7 +73,10 @@ namespace SkyTide.EditorTools
             b.materials = mats;
             b.ships = BuildShipVariants(mats);
             TextAsset meshyT = AssetDatabase.LoadAssetAtPath<TextAsset>(Models + "Corsair.bytes");
-            b.targetShip = meshyT != null && mats.shipBody != null ? new ShipVariant { name = "Мишень", mesh = meshyT, materials = new[] { mats.shipBody } } : null;
+            b.targetShip = meshyT != null && mats.shipBody != null ? new ShipVariant { name = "Мишень", mesh = meshyT, materials = new[] { mats.shipBody },
+                // Мишень держится в 140–320 м: дальше 110 м рисуется копия 60k треугольников вместо 207k, тень — всегда копия.
+                lite = AssetDatabase.LoadAssetAtPath<TextAsset>(Models + "Corsair_lod.bytes"),
+                liteSrc = AssetDatabase.LoadAssetAtPath<TextAsset>(Models + "Corsair_lod_src.bytes"), lodDistance = 110f } : null;
             b.postShader = AssetDatabase.LoadAssetAtPath<Shader>("Assets/_Project/Shaders/PostFX.shader");
             b.volumetricShader = AssetDatabase.LoadAssetAtPath<Shader>("Assets/_Project/Shaders/VolumetricClouds.shader");
             b.impostorShader = AssetDatabase.LoadAssetAtPath<Shader>("Assets/_Project/Shaders/CloudImpostor.shader");
@@ -232,6 +235,10 @@ namespace SkyTide.EditorTools
                 if(repaired.steering==null)throw new System.InvalidOperationException("Steering sail map is missing");
                 repaired.upperGun=AssetDatabase.LoadAssetAtPath<TextAsset>(Models+"Crew/UpperGunBarrel.bytes");
                 if(repaired.upperGun==null)throw new System.InvalidOperationException("Upper gun geometry is missing");
+                // Тень-заместитель 70k треугольников вместо 438k (tools/decimate_ship.py --shadow).
+                repaired.lite=AssetDatabase.LoadAssetAtPath<TextAsset>(Models+"CorsairRepaired_shadow.bytes");
+                repaired.liteSrc=AssetDatabase.LoadAssetAtPath<TextAsset>(Models+"CorsairRepaired_shadow_src.bytes");
+                repaired.lodDistance=0f;
                 list.Add(repaired);
             }
             TextAsset meshy = AssetDatabase.LoadAssetAtPath<TextAsset>(Models + "Corsair.bytes");
