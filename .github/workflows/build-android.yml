@@ -116,6 +116,9 @@ jobs:
           D="$RUNNER_TEMP/apkdrop"; rm -rf "$D"; mkdir -p "$D"; cd "$D"
           git init -q; git checkout -q -b apk-latest
           sudo cp "$GITHUB_WORKSPACE"/build/Android/*.apk ./SkyTide.apk; sudo chown "$(id -u)" SkyTide.apk
+          # Git не принимает файлы больше 100 МБ (это ограничение только этой ветки для ассистента, не APK):
+          # большой APK кладём частями по 90 МБ, собрать обратно: cat SkyTide.apk.part-* > SkyTide.apk
+          if [ "$(stat -c %s SkyTide.apk)" -gt 95000000 ]; then split -b 90m -d SkyTide.apk SkyTide.apk.part-; rm SkyTide.apk; fi
           if ls "$GITHUB_WORKSPACE"/build/shots/*.jpg >/dev/null 2>&1; then mkdir -p shots; sudo cp "$GITHUB_WORKSPACE"/build/shots/*.jpg shots/; sudo chown -R "$(id -u)" shots; fi
           # Настоящие настройки импорта Unity: сохраняем GUID и HQ-параметры для следующей сборки.
           mkdir -p import-meta

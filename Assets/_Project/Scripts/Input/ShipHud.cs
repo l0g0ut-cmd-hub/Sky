@@ -367,7 +367,7 @@ namespace SkyTide
                 if (bDefeat != null)
                 {
                     ImageRect(bDefeat, r, Whole, new Color(1f, 1f, 1f, a));
-                    Text(Inner(r, 2048f, 512f, 430f, 180f, 1618f, 330f), "КОРАБЛЬ ПОДБИТ", bh * 0.42f, new Color(1f, 0.62f, 0.48f, a));
+                    Text(Inner(r, 2048f, 512f, 530f, 185f, 1518f, 325f), "КОРАБЛЬ ПОДБИТ", bh * 0.42f, new Color(1f, 0.62f, 0.48f, a));
                 }
                 else Text(new Rect(l.safe.x, l.safe.center.y - l.unit * 0.06f, l.safe.width, l.unit * 0.12f), "КОРАБЛЬ ПОДБИТ", l.unit * 0.06f, new Color(1f, 0.5f, 0.35f, a));
             }
@@ -378,10 +378,8 @@ namespace SkyTide
                 if (bVictory != null)
                 {
                     ImageRect(bVictory, r, Whole, new Color(1f, 1f, 1f, vic));
-                    Rect inner = Inner(r, 2048f, 512f, 430f, 175f, 1618f, 312f);
-                    float ic = inner.height * 0.95f;
-                    Icon(3, new Rect(inner.x, inner.center.y - ic * 0.5f, ic, ic), new Color(1f, 1f, 1f, vic));
-                    Text(new Rect(inner.x + ic * 1.1f, inner.y, inner.width - ic * 2.2f, inner.height), "ЦЕЛЬ УНИЧТОЖЕНА", bh * 0.42f, new Color(1f, 0.86f, 0.55f, vic));
+                    // Надпись строго по центру поля, с запасом от угловых орнаментов (они заходят внутрь до ~x 500 из 2048).
+                    Text(Inner(r, 2048f, 512f, 530f, 180f, 1518f, 310f), "ЦЕЛЬ УНИЧТОЖЕНА", bh * 0.42f, new Color(1f, 0.86f, 0.55f, vic));
                 }
                 else Text(new Rect(l.safe.x, l.safe.center.y - l.unit * 0.06f, l.safe.width, l.unit * 0.12f), "ЦЕЛЬ УНИЧТОЖЕНА", l.unit * 0.06f, new Color(1f, 0.86f, 0.55f, vic));
             }
@@ -421,7 +419,7 @@ namespace SkyTide
                 Box(bar, new Color(0.015f, 0.02f, 0.026f, 0.9f));
                 Box(new Rect(bar.x, bar.y, bar.width * f, bar.height), fill * gold);
             }
-            Text(new Rect(bar.x, bar.yMax, bar.width, l.unit * 0.032f), "КОРПУС " + Mathf.RoundToInt(f * 100f) + "%", l.unit * 0.024f, f < 0.3f ? new Color(1f, 0.55f, 0.45f) : muted);
+            Text(new Rect(bar.x, bar.yMax, bar.width, l.unit * 0.032f), "КОРПУС " + Mathf.RoundToInt(f * 100f) + "%", l.unit * 0.026f, f < 0.3f ? new Color(1f, 0.55f, 0.45f) : cream);
         }
 
         void RadarKit(TouchControls input,HudLayout l,Vector2 c,float R,float range)
@@ -512,9 +510,14 @@ namespace SkyTide
                     if(Application.isPlaying||CaptureBanner!=0)Banners(l);
                     if(input.HintAlpha>0f)
                     {
-                        Color hint=new Color(cream.r,cream.g,cream.b,input.HintAlpha*0.85f);
-                        Text(new Rect(l.hint.x,l.hint.y,l.hint.width,l.hint.height*0.5f),"СПРАВА — ОБЗОР",l.unit*0.021f,hint);
-                        Text(new Rect(l.hint.x,l.hint.center.y,l.hint.width,l.hint.height*0.5f),"2 ПАЛЬЦА — МАСШТАБ",l.unit*0.021f,hint);
+                        // Подсказка на плашке: на светлых облаках голый текст не читается.
+                        float ha=input.HintAlpha, pw=Mathf.Min(l.hint.width,l.unit*0.5f), ph=l.unit*0.095f;
+                        Rect plate=new Rect(l.hint.center.x-pw*0.5f,l.hint.yMax-ph,pw,ph);
+                        if(HasKit) {float hs=ph/PanelN[0].height; Slice9(plate,PanelN[0],30f,30f*hs,new Color(1f,1f,1f,ha));}
+                        else Box(plate,new Color(0.055f,0.062f,0.073f,0.86f*ha));
+                        Color hint=new Color(cream.r,cream.g,cream.b,ha);
+                        PlateText(plate,0f,0.5f,"СПРАВА — ОБЗОР",l.unit*0.026f,hint);
+                        PlateText(plate,0.5f,0.5f,"2 ПАЛЬЦА — МАСШТАБ",l.unit*0.026f,hint);
                     }
                 }
                 finally {GL.End();}

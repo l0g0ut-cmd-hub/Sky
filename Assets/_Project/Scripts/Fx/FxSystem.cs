@@ -295,9 +295,7 @@ namespace SkyTide
             if (scale >= 0.7f) { CloudSplashCount++; LastCloudSplash = at; SkySound.CloudMiss(at); }
             Color tint = volumetric != null ? Color.Lerp(volumetric.ambientTop, volumetric.sunGold, 0.35f) : new Color(0.62f, 0.5f, 0.55f);
             tint = Color.Lerp(tint, new Color(0.7f, 0.65f, 0.68f), 0.4f);
-            if (scale >= 0.7f)   // нарисованный всплеск облака (лист 3): низ кадра — у поверхности
-                Add(new P { kind = Kind.Flip, pos = at + Vector3.up * 9f * scale, surfaceY = at.y, vel = Vector3.up * 1.2f, life = 1.8f,
-                            size0 = 22f * scale, size1 = 26f * scale, color = Color.Lerp(tint, Color.white, 0.45f), alpha = 0.9f, seed = 3f + Random.value * 0.999f });
+            // Лист 3 (нарисованный всплеск) не используется: на облаках читался как розовый кристалл. Всплеск — процедурный.
             if (scale >= 0.7f)
                 Add(new P { kind = Kind.Wave, pos = at + Vector3.up * 1.3f, surfaceY = at.y, life = 1.35f,
                             size0 = 3f, size1 = 48f * scale, color = tint, alpha = 0.38f, seed = Random.value * 10f });
