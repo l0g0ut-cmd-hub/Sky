@@ -24,6 +24,8 @@ namespace SkyTide
         // Разрешение отрисовки: доля от родного экрана (Screen.SetResolution) — проверка, упирается ли ВК в пиксели.
         static readonly float[] scales = { 1f, 0.85f, 0.7f };
         int scaleIndex; int nativeW, nativeH, styleFor;
+        const int DefaultScaleIndex = 2;
+        bool defaultScaleApplied;
         // Автозамер: по очереди выключает каждую часть (остальное включено), меряет и показывает таблицу на одном экране.
         struct BenchRow { public string name; public float fps, gpu, frame, main; }
         readonly List<BenchRow> bench = new List<BenchRow>();
@@ -90,6 +92,14 @@ namespace SkyTide
         void Update()
         {
             if (Input.GetKeyDown(KeyCode.F1)) Open = !Open;
+            // Сцена по умолчанию — в 70% разрешения, HUD в родном: по автозамеру сборки 89 это −6.5 мс видеокарты
+            // (85% почти ничего не даёт). Кнопка «Сцена N%» в панели возвращает 100%.
+            if (!defaultScaleApplied && Application.isPlaying && !benchRunning && game != null && Camera.main != null && Time.timeSinceLevelLoad > 0.5f)
+            {
+                SetScale(DefaultScaleIndex);
+                defaultScaleApplied = SceneScaler.Active;
+                if (!defaultScaleApplied) scaleIndex = 0;
+            }
             PerfTimers.Enabled = Open && details;
             if (PerfTimers.Enabled) { StartRecorders(); PerfTimers.Collect(); }
             FrameTimingManager.CaptureFrameTimings();

@@ -63,13 +63,17 @@ Shader "SkyTide/Fortress"
         {
             half4 albedo = tex2D(_MainTex, IN.uv_MainTex) * _Color;
             half3 glowTex = tex2D(_EmissionMap, IN.uv_MainTex).rgb;
-            float3 n0 = normalize(WorldNormalVector(IN, float3(0, 0, 1)));
+            float3 nraw = WorldNormalVector(IN, float3(0, 0, 1));
+            float nlen = length(nraw);
             // Изнанка: настоящая нормаль грани (по производным позиции), развёрнутая к камере; если нормаль вершин
             // смотрит от неё — это задняя сторона, свет считаем по перевёрнутой нормали.
             float3 dpx = ddx(IN.worldPos), dpy = ddy(IN.worldPos);
             float3 fn = cross(dpx, dpy);
             float3 toEye = _WorldSpaceCameraPos - IN.worldPos;
             if (dot(fn, toEye) < 0.0) fn = -fn;
+            // Нормаль вершин может выродиться (встречные листы модели): normalize(0) — это NaN, на телефоне
+            // чёрное пятно с белым ореолом свечения. Тогда берём нормаль грани.
+            float3 n0 = nlen > 0.3 ? nraw / nlen : normalize(fn + float3(0, 1e-12, 0));
             float3 gn = dot(n0, fn) < 0.0 ? -n0 : n0;
 
             // Материалы вблизи. Цвет несёт текстура модели (~75 см на тексель), резкость и рельеф — плитки в мировых
@@ -104,7 +108,7 @@ Shader "SkyTide/Fortress"
             float dhy = clamp(ddy(h), -slopeMax * length(dpy), slopeMax * length(dpy));
             float3 r1 = cross(dpy, gn), r2 = cross(gn, dpx);
             float det = dot(dpx, r1);
-            float3 wn = normalize(abs(det) * gn - sign(det) * (dhx * r1 + dhy * r2) + gn * 1e-9);
+            float3 wn = normalize(abs(det) * gn - sign(det) * (dhx * r1 + dhy * r2) + gn * 1e-7);
             float3 tanW = WorldNormalVector(IN, float3(1, 0, 0)), bitW = WorldNormalVector(IN, float3(0, 1, 0));
             o.Albedo = albedo.rgb;
             o.Normal = normalize(float3(dot(wn, tanW), dot(wn, bitW), dot(wn, n0)));
