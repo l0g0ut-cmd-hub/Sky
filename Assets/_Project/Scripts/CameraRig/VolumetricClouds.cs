@@ -591,6 +591,7 @@ namespace SkyTide
             int w = Mathf.Max(16, src.width / resolutionDivider);
             int h = Mathf.Max(16, src.height / resolutionDivider);
             mat.SetVector("_LowRes", new Vector4(w, h, 1f / w, 1f / h));
+            mat.SetFloat("_CloudPx", 2f * Mathf.Tan(cam.fieldOfView * 0.5f * Mathf.Deg2Rad) / h);
             bool allowTemporal = temporal && Application.isPlaying;
 #if UNITY_EDITOR
             allowTemporal = temporal && (Application.isPlaying || captureTemporal);

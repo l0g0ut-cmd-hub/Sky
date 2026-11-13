@@ -72,7 +72,12 @@ Shader "Hidden/SkyTide/VolumetricClouds"
     }
     float4 _Deck;                 // x низ слоя, y верх (м), z плотность (1/м), w шагов
     float4 _Deck2;                // x масштаб «погоды», y порог покрытия, z масштаб клубов, w масштаб детали (м)
-    float _DeckStepJitter;        // 1 — сдвиг внутри каждого шага моря, 0 — прежний (только первый шаг); для сравнения в CI
+    float _DeckStepJitter;
+    float _CloudPx;               // угол одного пикселя буфера облаков (рад): след пикселя на расстоянии t = t·_CloudPx
+    // Мип по следу пикселя: вдали выборки шума берутся из уменьшенных уровней, как выбрало бы само железо.
+    // Картинка та же (дальше уровня 0 детали всё равно меньше пикселя), но выборки попадают в кэш текстур —
+    // на мобильных GPU это главный выигрыш у объёмных облаков (80.lv, облака для мобильных, Adreno 540).
+    float NoiseLod(float t, float worldPerTexel) { return clamp(log2(max(t * _CloudPx / worldPerTexel, 1.0)), 0.0, 5.0); }        // 1 — сдвиг внутри каждого шага моря, 0 — прежний (только первый шаг); для сравнения в CI
     float4 _Deck3;                // x дальность (м), y макс. длина пути в слое (м), z поглощение к солнцу
     float _Bake;
     float4 _Temporal;             // x номер кадра, y вес истории (0 — нет истории), z верх моря облаков
@@ -144,7 +149,7 @@ Shader "Hidden/SkyTide/VolumetricClouds"
     }
 
     // Плотность (1/м); попутно — запечённая толщина к солнцу и видимость неба.
-    float Density(float3 p, bool detail, out float tau, out float sky, out float fld)
+    float Density(float3 p, bool detail, float t, out float tau, out float sky, out float fld)
     {
         float4 tf = TowerField(p);
         fld = tf.x;
@@ -153,16 +158,16 @@ Shader "Hidden/SkyTide/VolumetricClouds"
         float f = tf.x;
         if (f < -0.35) return 0.0;
         float3 wp = p + float3(0, _Wind.w * 0.6, 0);   // поверхность медленно «кипит» вверх
-        float n = tex3Dlod(_Noise3D, float4(wp / _Shape.x, 0)).r;
-        float bump = tex3Dlod(_Noise3D, float4(wp / (_Shape.x * 0.32), 0)).r;
+        float n = tex3Dlod(_Noise3D, float4(wp / _Shape.x, NoiseLod(t, _Shape.x / 64.0))).r;
+        float bump = tex3Dlod(_Noise3D, float4(wp / (_Shape.x * 0.32), NoiseLod(t, _Shape.x * 0.32 / 64.0))).r;
         float m = saturate((f + (n - 0.5) * _Shape.z + (bump - 0.5) * 0.2) * 4.0);
         m *= saturate(tf.w / 0.06);                   // плоское основание
         if (m <= 0.0) return 0.0;
         float edgeW = 1.0 - saturate((m - 0.4) / 0.45);
         if (detail && edgeW > 0.0)
         {
-            float dn = tex3Dlod(_Noise3D, float4(wp / _Shape.y, 0)).g * 0.7
-                     + tex3Dlod(_Noise3D, float4(wp / (_Shape.y * 0.45), 0)).b * 0.3;
+            float dn = tex3Dlod(_Noise3D, float4(wp / _Shape.y, NoiseLod(t, _Shape.y / 64.0))).g * 0.7
+                     + tex3Dlod(_Noise3D, float4(wp / (_Shape.y * 0.45), NoiseLod(t, _Shape.y * 0.45 / 64.0))).b * 0.3;
             m = saturate(m - dn * _Shape.w * edgeW);
         }
         m = m * m * (3.0 - 2.0 * m);
@@ -236,43 +241,44 @@ Shader "Hidden/SkyTide/VolumetricClouds"
     // верх ярче низа, фиолетовое заполнение в глубине — та же палитра, что у башен.
     // Покрытие (2D-«погода») меняется на сотнях метров — для шагов к солнцу (18 и 55 м) берётся то же, что в точке:
     // 1 выборка 3D-шума вместо 6 выборок на шаг к солнцу, картинка та же.
-    float DeckCoverage(float3 p)
+    float DeckCoverage(float3 p, float t)
     {
+        float lw = NoiseLod(t, _Deck2.x * 0.19 / 256.0);   // по самой мелкой октаве; погода 256²
         float2 drift = _Wind.xz * _Wind.w;
         // «Погода» без рядов: текстура шума мала (256², повтор каждые ~1.4 км), а в канале G есть тёмная полоса
         // на шве — в перспективе это давало ровные ряды клубов. Теперь три октавы канала R с поворотом на
         // «нерациональные» углы, некратными масштабами и искажением координат — повтор не складывается в сетку.
         float2 q = p.xz + drift;
-        float2 warp = float2(tex2Dlod(_SkyTideNoise, float4(q / (_Deck2.x * 2.3) + 0.13, 0, 0)).r,
-                             tex2Dlod(_SkyTideNoise, float4(q.yx / (_Deck2.x * 2.9) + 0.57, 0, 0)).r) - 0.5;
+        float2 warp = float2(tex2Dlod(_SkyTideNoise, float4(q / (_Deck2.x * 2.3) + 0.13, 0, max(lw - 3.6, 0.0))).r,
+                             tex2Dlod(_SkyTideNoise, float4(q.yx / (_Deck2.x * 2.9) + 0.57, 0, max(lw - 3.9, 0.0))).r) - 0.5;
         float2 qa = float2(q.x * 0.819 - q.y * 0.574, q.x * 0.574 + q.y * 0.819) / _Deck2.x + warp * 0.55;
         float2 qb = float2(q.x * -0.666 - q.y * 0.746, q.x * 0.746 + q.y * -0.666) / (_Deck2.x * 0.43) + 0.31;
         float2 qc = float2(q.x * 0.122 - q.y * 0.993, q.x * 0.993 + q.y * 0.122) / (_Deck2.x * 0.19) + 0.71;
-        float w = tex2Dlod(_SkyTideNoise, float4(qa, 0, 0)).r * 0.55
-                + tex2Dlod(_SkyTideNoise, float4(qb, 0, 0)).r * 0.3
-                + tex2Dlod(_SkyTideNoise, float4(qc, 0, 0)).r * 0.15;
+        float w = tex2Dlod(_SkyTideNoise, float4(qa, 0, max(lw - 2.4, 0.0))).r * 0.55
+                + tex2Dlod(_SkyTideNoise, float4(qb, 0, max(lw - 1.2, 0.0))).r * 0.3
+                + tex2Dlod(_SkyTideNoise, float4(qc, 0, lw)).r * 0.15;
         return saturate((w - _Deck2.y) / 0.35);
     }
 
     // detail — вес мелкой эрозии (0..1): плавно гаснет вдали; жёсткий порог давал прямую линию поперёк моря.
-    float DeckShape(float3 p, float cov, float detail)
+    float DeckShape(float3 p, float cov, float detail, float t)
     {
         float h = saturate((p.y - _Deck.x) / (_Deck.y - _Deck.x));
         if (cov * 1.0 + 0.12 <= h) return 0.0;            // выше любого клуба в этой точке — шум не нужен
         float2 drift = _Wind.xz * _Wind.w;
         float3 wp = p + float3(drift.x, _Wind.w * 0.4, drift.y);
-        float n = tex3Dlod(_Noise3D, float4(wp / _Deck2.z, 0)).r;
+        float n = tex3Dlod(_Noise3D, float4(wp / _Deck2.z, NoiseLod(t, _Deck2.z / 64.0))).r;
         float topH = cov * (0.45 + 0.55 * n) + 0.12;
         float m = saturate((topH - h) * 6.0) * saturate(h * 5.0 + 0.2);
         if (detail > 0.001 && m > 0.0 && m < 0.9)
         {
-            float dn = tex3Dlod(_Noise3D, float4(wp / _Deck2.w, 0)).g;
+            float dn = tex3Dlod(_Noise3D, float4(wp / _Deck2.w, NoiseLod(t, _Deck2.w / 64.0))).g;
             m = saturate(m - dn * 0.45 * (1.0 - m) * detail);
         }
         return m * _Deck.z;
     }
 
-    float DeckDensity(float3 p, bool detail) { return DeckShape(p, DeckCoverage(p), detail ? 1.0 : 0.0); }
+    float DeckDensity(float3 p, bool detail) { return DeckShape(p, DeckCoverage(p, 0.0), detail ? 1.0 : 0.0, 0.0); }
 
     // front — часть моря перед башней; обе части считаются за один прежний марш.
     float4 Deck(float3 ro, float3 rd, float tEnd, float jitter, float phase, float split,
@@ -313,12 +319,12 @@ Shader "Hidden/SkyTide/VolumetricClouds"
             if (t > t1) break;
             float ts = min(t + _DeckStepJitter * stepLen * jitter, t1);
             float3 p = ro + rd * ts;
-            float cov = DeckCoverage(p);
-            float d = DeckShape(p, cov, 1.0 - smoothstep(1000.0, 1600.0, ts)) * ClearFactor(p, ro);
+            float cov = DeckCoverage(p, ts);
+            float d = DeckShape(p, cov, 1.0 - smoothstep(1000.0, 1600.0, ts), ts) * ClearFactor(p, ro);
             if (d > 1e-5)
             {
-                float d1 = DeckShape(p + L * 18.0, cov, 0.0);
-                float d2 = DeckShape(p + L * 55.0, cov, 0.0);
+                float d1 = DeckShape(p + L * 18.0, cov, 0.0, ts);
+                float d2 = DeckShape(p + L * 55.0, cov, 0.0, ts * 2.0);   // свет — грубее
                 float tau = (d1 * 18.0 + d2 * 37.0) * _Deck3.z;
                 float sunT = exp(-tau);
                 float ms = exp(-tau * 0.25) * _MultiScatter.a;
@@ -419,7 +425,7 @@ Shader "Hidden/SkyTide/VolumetricClouds"
                     float ts = t;
                     float3 p = ro + rd * ts;
                     float tau, sky, fld;
-                    float d = Density(p, ts < 1800.0, tau, sky, fld) * (bake ? 1.0 : ClearFactor(p, ro));
+                    float d = Density(p, ts < 1800.0, bake ? 0.0 : ts, tau, sky, fld) * (bake ? 1.0 : ClearFactor(p, ro));
                     if (d > 1e-5)
                     {
                         // Свет из запечённого поля: никаких шагов к солнцу.
