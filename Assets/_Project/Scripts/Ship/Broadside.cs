@@ -208,18 +208,17 @@ namespace SkyTide
             if (fx == null) return;
             fx.ClearPreview();
             if (!showAim || model == null || mounts.Length == 0) return;
-            TargetShip best = null; float bestD = 1200f;
+            TargetShip best = null; float bestD = float.MaxValue;
             foreach (TargetShip t in TargetShip.All)
             {
                 if (t == null || !t.Alive) continue;
                 float d = Vector3.Distance(t.transform.position, transform.position);
                 if (d < bestD) { bestD = d; best = t; }
             }
-            if (best == null) return;
-            Vector3 local = transform.InverseTransformPoint(best.transform.position);
-            float bearing = Mathf.Atan2(Mathf.Abs(local.x), local.z) * Mathf.Rad2Deg;
-            if (bearing < 35f || bearing > 145f) return;
-            float side = local.x > 0f ? 1f : -1f;
+            // Дуга видна всегда — у борта, обращённого к ближайшей цели (нет цели — правый борт):
+            // игрок видит, куда лягут ядра, и доворачивает. Раньше дуга пряталась, если цель не на траверзе 35–145°.
+            float side = 1f;
+            if (best != null) side = transform.InverseTransformPoint(best.transform.position).x >= 0f ? 1f : -1f;
             // Средняя по длине пушка этого борта.
             CannonMount mid = null; float midZ = 0f; int count = 0;
             foreach (CannonMount m in mounts) if (Mathf.Sign(m.side) == side) { midZ += m.Muzzle.z; count++; }
@@ -238,7 +237,7 @@ namespace SkyTide
                 Vector3 prev = p;
                 v.y -= g * step; p += v * step;
                 Vector3 hp;
-                if ((p - best.transform.position).sqrMagnitude < 45f * 45f && best.TryHit(prev, p, out hp))
+                if (best != null && (p - best.transform.position).sqrMagnitude < 45f * 45f && best.TryHit(prev, p, out hp))
                 {
                     fx.AddAim(hp, Vector3.up, 9f, 3, 1f, ready ? 1f : 0.6f);   // прицел на корпусе цели
                     return;

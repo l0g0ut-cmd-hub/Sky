@@ -10,10 +10,15 @@ namespace SkyTide
     public class EnemyGunner : MonoBehaviour
     {
         public float muzzleSpeed = 85f, gravity = 9.81f;
-        public float cooldown = 4.5f, minRange = 90f, maxRange = 650f;
+        public float cooldown = 6f, minRange = 90f, maxRange = 650f;
         /// <summary>Время последнего вражеского залпа — HUD показывает оповещение.</summary>
         public static float LastVolleyTime = -100f;
-        public float spreadDeg = 1.4f;
+        public float spreadDeg = 2.4f;
+        // Пристрелка, как у морской артиллерии: первый залп по новой цели ложится с большой ошибкой по дальности
+        // и направлению, каждый следующий — точнее (×0.6), пока игрок держит курс и скорость. Резкий манёвр
+        // (смена скорости или курса) сбивает пристрелку — враг снова мажет.
+        public float rangeError = 0.08f, sideError = 0.03f;
+        float errScale = 1f; Vector3 aimErr, lastVolleyVel; bool engaged;
         public int gunsPerSide = 4;
 
         TargetShip target;
@@ -44,11 +49,11 @@ namespace SkyTide
             Vector3 pp = player.Center;
             playerVel = Vector3.Lerp(playerVel, (pp - lastPlayerPos) / dt, 0.2f); lastPlayerPos = pp;
             selfVel = Vector3.Lerp(selfVel, (transform.position - lastPos) / dt, 0.2f); lastPos = transform.position;
-            if (!target.Alive || !player.Alive) { pendingLeft = 0; return; }
+            if (!target.Alive || !player.Alive) { pendingLeft = 0; engaged = false; return; }
 
             if (pendingLeft > 0 && Time.time >= pendingAt)
             {
-                Shoot(pendingSide, gunsPerSide - pendingLeft, pp);
+                Shoot(pendingSide, gunsPerSide - pendingLeft, pp + aimErr);
                 pendingLeft--;
                 pendingAt = Time.time + Random.Range(0.12f, 0.2f);
                 return;
@@ -61,6 +66,11 @@ namespace SkyTide
             float bearing = Mathf.Atan2(Mathf.Abs(local.x), local.z) * Mathf.Rad2Deg;
             if (bearing < 55f || bearing > 125f) return;
             pendingSide = local.x > 0f ? 1 : -1;
+            Vector3 dv = playerVel - lastVolleyVel;
+            if (!engaged || dv.magnitude > 5f) errScale = 1f; else errScale = Mathf.Max(0.2f, errScale * 0.6f);
+            engaged = true; lastVolleyVel = playerVel;
+            Vector3 fwd = rel / Mathf.Max(dist, 1f), sideDir = Vector3.Cross(Vector3.up, fwd);
+            aimErr = (fwd * Gauss() * rangeError * dist + sideDir * Gauss() * sideError * dist + Vector3.up * Gauss() * 0.012f * dist) * errScale;
             pendingLeft = gunsPerSide;
             pendingAt = Time.time;
             LastVolleyTime = Time.time;
@@ -80,6 +90,12 @@ namespace SkyTide
             fx.Fire(muzzle, dir, selfVel, muzzleSpeed, true);
         }
 
+        static float Gauss()
+        {
+            float u1 = Mathf.Max(1e-4f, Random.value), u2 = Random.value;
+            return Mathf.Sqrt(-2f * Mathf.Log(u1)) * Mathf.Cos(2f * Mathf.PI * u2);
+        }
+
         /// <summary>Низкая баллистическая траектория с упреждением (ядро несёт и скорость стреляющего корабля).</summary>
         bool Solve(Vector3 from, Vector3 to, out Vector3 dir)
         {
@@ -95,7 +111,7 @@ namespace SkyTide
                 float tFlight = x / (v * Mathf.Cos(theta));
                 Vector3 h = new Vector3(d.x, 0f, d.z).normalized;
                 dir = h * Mathf.Cos(theta) + Vector3.up * Mathf.Sin(theta);
-                aim = to + (playerVel - selfVel) * tFlight;
+                aim = to + (playerVel - selfVel) * (tFlight * 0.8f);   // упреждение неполное — наводчик не идеален
             }
             return true;
         }
