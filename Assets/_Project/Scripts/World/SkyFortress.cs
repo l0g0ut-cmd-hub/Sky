@@ -19,6 +19,8 @@ namespace SkyTide
         public float hostileTime = 45f;
         // Пушки достают всю безопасную зону с башен: быстрые ядра (220 м/с) и долгий полёт (до 12 с).
         public float gunRange = 2400f, gunCooldown = 3.2f, spreadDeg = 1.2f, muzzleSpeed = 220f, gravity = 9.81f, shellLife = 12f;
+        [Tooltip("Калибр орудий башен относительно корабельной пушки: размер ядра, вспышки, дыма и урон.")]
+        public float shellCaliber = 3f;
         public float berthRadius = 100f, berthMaxSpeed = 5f, repairPerSecond = 6f;
 
         [Serializable]
@@ -185,7 +187,7 @@ namespace SkyTide
             Vector3 dir;
             if (!Solve(muzzle, pp, out dir)) return;
             dir = Quaternion.Euler(UnityEngine.Random.Range(-spreadDeg, spreadDeg), UnityEngine.Random.Range(-spreadDeg, spreadDeg), 0f) * dir;
-            if (FxSystem.Instance != null) FxSystem.Instance.Fire(muzzle, dir, Vector3.zero, muzzleSpeed, true, shellLife);
+            if (FxSystem.Instance != null) FxSystem.Instance.Fire(muzzle, dir, Vector3.zero, muzzleSpeed, true, shellLife, shellCaliber);
         }
 
         /// <summary>Сквозь крепость не пройти: нос, центр и корма корабля проверяются по карте высот.</summary>

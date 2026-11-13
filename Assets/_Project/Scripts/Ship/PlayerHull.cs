@@ -58,10 +58,11 @@ namespace SkyTide
             return false;
         }
 
-        public void OnHit(Vector3 point)
+        /// <summary>Попадание ядра; power — калибр (ядро крепости втрое тяжелее корабельного).</summary>
+        public void OnHit(Vector3 point, float power = 1f)
         {
             if (!Alive) return;
-            Health -= damagePerHit;
+            Health -= damagePerHit * Mathf.Max(1f, power);
             LastHitTime = Time.time;
             FxSystem fx = FxSystem.Instance;
             SkySound.HullHit(point, Health <= damagePerHit * 2f);

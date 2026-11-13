@@ -34,6 +34,7 @@ namespace SkyTide
             public Vector3 axis;
             public float aspect, surfaceY;
             public bool hostile;   // ядро врага: бьёт по кораблю игрока, а не по мишеням
+            public float caliber;  // ядро: во сколько раз крупнее корабельного (0 и 1 — обычное); множитель урона
         }
 
         readonly List<P> ps = new List<P>(MaxParticles);
@@ -72,17 +73,21 @@ namespace SkyTide
         // ---------- выстрел ----------
 
         /// <summary>Выстрел из ствола: точка дула и направление ствола — в мире; скорость корабля добавляется к ядру и дыму.</summary>
-        public void Fire(Vector3 muzzle, Vector3 dir, Vector3 shipVel, float muzzleSpeed, bool hostile = false, float shellLife = 7f)
+        /// <summary>Выстрел. caliber — калибр относительно корабельной пушки: во столько раз крупнее ядро, вспышка
+        /// и дым, и во столько же раз сильнее попадание (орудия крепости — 3).</summary>
+        public void Fire(Vector3 muzzle, Vector3 dir, Vector3 shipVel, float muzzleSpeed, bool hostile = false, float shellLife = 7f, float caliber = 1f)
         {
             dir.Normalize();
+            caliber = Mathf.Max(1f, caliber);
+            int firstParticle = ps.Count;
             float s = Random.value * 10f;
             // Ядро
             Add(new P
             {
-                kind = Kind.Ball, pos = muzzle, vel = dir * muzzleSpeed + shipVel, life = shellLife, hostile = hostile,
+                kind = Kind.Ball, pos = muzzle, vel = dir * muzzleSpeed + shipVel, life = shellLife, hostile = hostile, caliber = caliber,
                 size0 = 0.85f, size1 = 0.7f, color = new Color(0.2f, 0.15f, 0.12f), alpha = 1f, seed = s
             });
-            Flash(muzzle, 2.5f, 32f);
+            Flash(muzzle, 2.5f * caliber, 32f * caliber);
             SkySound.CannonFired(muzzle, hostile);
             // Короткий направленный факел с горячей сердцевиной, затем остаётся только дым.
             Add(new P { kind = Kind.Glow, pos = muzzle + dir * 0.6f, vel = shipVel, life = 0.07f,
@@ -120,6 +125,14 @@ namespace SkyTide
                     color = new Color(0.48f, 0.44f, 0.42f), alpha = Random.Range(0.5f, 0.72f), seed = Random.value * 10f
                 });
             }
+            // Крупный калибр: всё, что добавил этот выстрел (ядро, факел, клубы), — во столько же раз крупнее.
+            if (caliber > 1.001f)
+                for (int i = firstParticle; i < ps.Count; i++)
+                {
+                    P q = ps[i];
+                    q.size0 *= caliber; q.size1 *= caliber;
+                    ps[i] = q;
+                }
         }
 
         /// <summary>Взрыв: вспышка, огненный шар, искры-обломки по баллистике, тёмный дым. scale 1 — попадание, 3 — гибель.</summary>
@@ -366,7 +379,7 @@ namespace SkyTide
                         if (p.hostile)
                         {
                             Vector3 hp; PlayerHull ph = PlayerHull.Instance;
-                            if (ph != null && ph.TryHit(prev, end, out hp)) { end = hp; hit = true; ph.OnHit(hp); }
+                            if (ph != null && ph.TryHit(prev, end, out hp)) { end = hp; hit = true; ph.OnHit(hp, Mathf.Max(1f, p.caliber)); }
                         }
                         else for (int j = 0; j < TargetShip.All.Count; j++)
                         {
@@ -393,7 +406,7 @@ namespace SkyTide
                     if (entered || hit)
                     {
                         p.life = 0f;
-                        if (!hit && p.kind != Kind.Spark) splashes.Add(new Splash { pos = p.pos, scale = p.kind == Kind.Ball ? 1f : 0.32f });
+                        if (!hit && p.kind != Kind.Spark) splashes.Add(new Splash { pos = p.pos, scale = p.kind == Kind.Ball ? Mathf.Max(1f, p.caliber) : 0.32f });
                     }
                     if (volumetric != null && p.pos.y < volumetric.deckBase) p.life = 0f;
                 }
