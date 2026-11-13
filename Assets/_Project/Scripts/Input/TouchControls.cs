@@ -44,7 +44,8 @@ namespace SkyTide
             Input.simulateMouseWithTouches = false;
         }
 
-        void Update()
+        void Update(){long __pt=PerfTimers.Start();UpdateTimed();PerfTimers.Stop("Ввод",__pt);}
+        void UpdateTimed()
         {
             if (!legacyInputOk) return;
             // Заставка студии и главное меню закрывают экран — касания им, а не кораблю.

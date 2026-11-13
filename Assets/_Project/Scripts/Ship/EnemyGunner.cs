@@ -35,7 +35,8 @@ namespace SkyTide
             ready = Time.time + 6f;   // дать игроку осмотреться
         }
 
-        void Update()
+        void Update(){long __pt=PerfTimers.Start();UpdateTimed();PerfTimers.Stop("Огонь врага",__pt);}
+        void UpdateTimed()
         {
             float dt = Time.deltaTime;
             PlayerHull player = PlayerHull.Instance;

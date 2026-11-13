@@ -169,7 +169,8 @@ namespace SkyTide
             return true;
         }
 
-        void Update()
+        void Update(){long __pt=PerfTimers.Start();UpdateTimed();PerfTimers.Stop("Пушки",__pt);}
+        void UpdateTimed()
         {
             float dt = Time.deltaTime;
             if (dt > 0f)

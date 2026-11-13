@@ -128,7 +128,8 @@ namespace SkyTide
             SetClothWind(Application.isPlaying ? Time.time : 0f, Application.isPlaying ? 1f : 0f);
         }
 
-        void Update()
+        void Update(){long __pt=PerfTimers.Start();UpdateTimed();PerfTimers.Stop("Мир",__pt);}
+        void UpdateTimed()
         {
             if (Application.isPlaying) SetClothWind(Time.time, 1f);
         }

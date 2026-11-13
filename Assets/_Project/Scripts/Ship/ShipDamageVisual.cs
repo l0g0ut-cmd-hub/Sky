@@ -82,7 +82,8 @@ namespace SkyTide
             if (debris != null) debris.Emit(model.TransformPoint(hullCenter), Vector3.up, shipVelocity, 20, true);
         }
 
-        void Update()
+        void Update(){long __pt=PerfTimers.Start();UpdateTimed();PerfTimers.Stop("Повреждения мишени",__pt);}
+        void UpdateTimed()
         {
             if (Application.isPlaying) Simulate(Time.deltaTime, FxSystem.Instance);
         }

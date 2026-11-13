@@ -128,6 +128,12 @@ namespace SkyTide.EditorTools
 
             ForceLegacyInputManager();
             EnableHdrOnAllTiers();
+            // Факты о настройках сборки — в лог, чтобы решения по производительности опирались на них, а не на догадки.
+            Debug.Log("SkyTide: настройки Android — API " + string.Join(",", PlayerSettings.GetGraphicsAPIs(BuildTarget.Android))
+                + ", авто API " + PlayerSettings.GetUseDefaultGraphicsAPIs(BuildTarget.Android)
+                + ", многопоточная отрисовка " + PlayerSettings.GetMobileMTRendering(NamedBuildTarget.Android)
+                + ", graphics jobs " + PlayerSettings.graphicsJobs
+                + ", цветовое пространство " + PlayerSettings.colorSpace);
         }
 
         /// <summary>HDR-камера нужна постобработке (блум, тонмаппинг) — включаем на всех уровнях графики Android.</summary>

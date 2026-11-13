@@ -64,7 +64,8 @@ namespace SkyTide
             mat = null;
         }
 
-        void OnRenderImage(RenderTexture src, RenderTexture dst)
+        void OnRenderImage(RenderTexture src, RenderTexture dst){long __pt=PerfTimers.Start();OnRenderImageTimed(src,dst);PerfTimers.Stop("Пост-обработка и HUD: команды",__pt);}
+        void OnRenderImageTimed(RenderTexture src, RenderTexture dst)
         {
             RenderScene(src, dst);
             if (controls != null) controls.DrawHud(dst, src.width, src.height);

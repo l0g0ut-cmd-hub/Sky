@@ -74,7 +74,8 @@ namespace SkyTide
             else if (fx != null) fx.Explosion(point, 0.8f);
         }
 
-        void Update()
+        void Update(){long __pt=PerfTimers.Start();UpdateTimed();PerfTimers.Stop("Корпус игрока",__pt);}
+        void UpdateTimed()
         {
             if (!Alive && Time.time >= deadUntil)
             {

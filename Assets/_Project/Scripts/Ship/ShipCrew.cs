@@ -111,7 +111,7 @@ namespace SkyTide
         {
             for(int i=0;i<4;i++)if(object.ReferenceEquals(mount,upperMounts[i]))firedAt[i]=now;
         }
-        void LateUpdate(){if(Application.isPlaying&&Visible)Pose(Time.time);}
+        void LateUpdate(){if(Application.isPlaying&&Visible){long __pt=PerfTimers.Start();Pose(Time.time);PerfTimers.Stop("Экипаж: позы",__pt);}}
         public void Pose(float time)
         {
             if(wheel==null)return;

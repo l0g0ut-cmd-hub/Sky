@@ -467,7 +467,8 @@ namespace SkyTide
             imp.Place(center, TemplateHeight);
         }
 
-        void LateUpdate()
+        void LateUpdate(){long __pt=PerfTimers.Start();LateUpdateTimed();PerfTimers.Stop("Облака: подготовка",__pt);}
+        void LateUpdateTimed()
         {
             if (Application.isPlaying && cam != null)
             {
@@ -556,7 +557,8 @@ namespace SkyTide
             }
         }
 
-        void OnRenderImage(RenderTexture src, RenderTexture dst)
+        void OnRenderImage(RenderTexture src, RenderTexture dst){long __pt=PerfTimers.Start();OnRenderImageTimed(src,dst);PerfTimers.Stop("Облака: команды кадра",__pt);}
+        void OnRenderImageTimed(RenderTexture src, RenderTexture dst)
         {
             Texture3D n = Noise();
             if (shader == null) shader = Shader.Find("Hidden/SkyTide/VolumetricClouds");

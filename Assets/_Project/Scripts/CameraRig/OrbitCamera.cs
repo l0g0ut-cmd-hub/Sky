@@ -42,7 +42,8 @@ namespace SkyTide
             snapped = false;
         }
 
-        void LateUpdate()
+        void LateUpdate(){long __pt=PerfTimers.Start();LateUpdateTimed();PerfTimers.Stop("Камера",__pt);}
+        void LateUpdateTimed()
         {
             Apply(Time.deltaTime);
         }

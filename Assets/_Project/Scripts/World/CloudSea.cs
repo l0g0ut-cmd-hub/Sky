@@ -224,7 +224,8 @@ namespace SkyTide
 
         // ---------- анимация ----------
 
-        void Update()
+        void Update(){long __pt=PerfTimers.Start();UpdateTimed();PerfTimers.Stop("Рисованные облака",__pt);}
+        void UpdateTimed()
         {
             time += Time.deltaTime;
             if (!shaderSea)
@@ -234,7 +235,8 @@ namespace SkyTide
             }
         }
 
-        void LateUpdate()
+        void LateUpdate(){long __pt=PerfTimers.Start();LateUpdateTimed();PerfTimers.Stop("Рисованные облака",__pt);}
+        void LateUpdateTimed()
         {
             Camera cam = Camera.main;
             if (cam != null) Step(cam.transform.position, Time.deltaTime, cam.transform.forward);

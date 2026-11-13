@@ -64,7 +64,8 @@ namespace SkyTide
             nextPick = Time.time + Random.Range(12f, 22f);
         }
 
-        void Update()
+        void Update(){long __pt=PerfTimers.Start();UpdateTimed();PerfTimers.Stop("Мишень",__pt);}
+        void UpdateTimed()
         {
             if (ctrl == null) return;
             if (!Alive)

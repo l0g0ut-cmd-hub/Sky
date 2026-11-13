@@ -26,7 +26,8 @@ namespace SkyTide
             sail.gameObject.AddComponent<MeshRenderer>().sharedMaterials=variant.materials;
             Apply(0f);
         }
-        void LateUpdate()
+        void LateUpdate(){long __pt=PerfTimers.Start();LateUpdateTimed();PerfTimers.Stop("Паруса",__pt);}
+        void LateUpdateTimed()
         {
             if(Application.isPlaying&&sail!=null)Apply(Mathf.MoveTowards(Angle,-Mathf.Clamp(ship.turn,-1f,1f)*MaxAngle,36f*Time.deltaTime));
         }

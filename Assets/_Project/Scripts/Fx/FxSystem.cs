@@ -216,7 +216,8 @@ namespace SkyTide
 
         // ---------- симуляция ----------
 
-        void Update()
+        void Update(){long __pt=PerfTimers.Start();UpdateTimed();PerfTimers.Stop("Эффекты: расчёт",__pt);}
+        void UpdateTimed()
         {
             if (Application.isPlaying) Simulate(Time.deltaTime);
         }
@@ -424,7 +425,8 @@ namespace SkyTide
 
         bool External { get { return volumetric != null && volumetric.isActiveAndEnabled; } }
 
-        void LateUpdate()
+        void LateUpdate(){long __pt=PerfTimers.Start();LateUpdateTimed();PerfTimers.Stop("Эффекты: сетка",__pt);}
+        void LateUpdateTimed()
         {
             Camera cam = Camera.main;
             if (cam != null) PrepareForRender(cam);

@@ -99,7 +99,8 @@ namespace SkyTide
         public static void MetalHit(Vector3 at) { if (Instance != null) Instance.At(Instance.metal, at, 0.7f, 0.08f, 20f, 900f); }
         public static void Reloaded(Vector3 at) { if (Instance != null) Instance.At(Instance.clank, at, 0.35f, 0.05f, 8f, 150f); }
 
-        void Update()
+        void Update(){long __pt=PerfTimers.Start();UpdateTimed();PerfTimers.Stop("Звук",__pt);}
+        void UpdateTimed()
         {
             for (int i = pending.Count - 1; i >= 0; i--)
                 if (Time.time >= pending[i].at) { Play(pending[i]); pending.RemoveAt(i); }

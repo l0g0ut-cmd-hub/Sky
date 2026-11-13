@@ -47,7 +47,8 @@ namespace SkyTide
             bobPhase = Random.value * 10f;
         }
 
-        void Update()
+        void Update(){long __pt=PerfTimers.Start();UpdateTimed();PerfTimers.Stop("Управление кораблём",__pt);}
+        void UpdateTimed()
         {
             float dt = Time.deltaTime;
             if (dt <= 0f) return;
