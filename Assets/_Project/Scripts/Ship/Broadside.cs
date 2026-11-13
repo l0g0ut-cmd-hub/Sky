@@ -154,6 +154,7 @@ namespace SkyTide
             float now = Application.isPlaying ? Time.time : 0f;
             if (now < ready[k]) return false;
             ready[k] = now + cooldown;
+            if (Application.isPlaying) SkyFortress.NotifyPlayerFired(transform.position);   // залп в безопасной зоне — крепость откроет огонь
             if(Application.isPlaying&&Camera.main!=null)
             {
                 OrbitCamera view=Camera.main.GetComponent<OrbitCamera>();

@@ -42,6 +42,13 @@ namespace SkyTide
             kickVel += side * 3.2f;
         }
 
+        /// <summary>Упёрлись в препятствие (крепость): сдвиг и потеря хода.</summary>
+        public void Block(Vector3 push, float keepSpeed)
+        {
+            transform.position += push;
+            Speed *= keepSpeed;
+        }
+
         void Start()
         {
             bobPhase = Random.value * 10f;

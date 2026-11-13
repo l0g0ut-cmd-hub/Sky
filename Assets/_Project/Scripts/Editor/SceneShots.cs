@@ -1104,6 +1104,29 @@ namespace SkyTide.EditorTools
                 for (int k = 0; k < 3; k++) boot.Fx.Simulate(0.04f);
                 OverviewFrame(oc, cam, boot, rt, tex, dir, volleyShot);
                 boot.Fx.Clear();
+                // Небесная крепость: вид с корабля (пирс к нам, башни в три четверти) и вид на причал; проверки данных.
+                SkyFortress fort = boot.Fortress;
+                if (fort == null) throw new System.InvalidOperationException("Крепость не появилась (нет Models/SkyFortress.bytes или материала)");
+                Vector3 berth = fort.BerthWorld;
+                if (!SkyFortress.InSafeZone(berth)) throw new System.InvalidOperationException("Причал вне безопасной зоны");
+                if (Mathf.Abs(berth.y - (boot.spawnPosition.y + 1.5f)) > 0.5f) throw new System.InvalidOperationException("Причал не на высоте корабля: " + berth.y);
+                if (fort.TopAt(fort.Center) < sh.position.y) throw new System.InvalidOperationException("Карта высот крепости пуста в центре — корабль пройдёт насквозь");
+                if (SkyFortress.InSafeZone(sh.position)) throw new System.InvalidOperationException("Точка появления внутри безопасной зоны");
+                {
+                    Vector3 to = fort.Center - sh.position; to.y = 0f; to.Normalize();
+                    Vector3 eye = sh.position - to * 75f + Vector3.up * 22f;
+                    cam.transform.SetPositionAndRotation(eye, Quaternion.LookRotation(fort.Center + Vector3.up * 90f - eye, Vector3.up));
+                    boot.World.Step(eye, 0f);
+                    SaveFrame(cam, boot, rt, tex, dir, "208_fortress_view");
+                    CheckFrame(tex, "208_fortress_view");
+                    Vector3 side = Vector3.Cross(Vector3.up, to);
+                    eye = berth - to * 150f + side * 110f + Vector3.up * 35f;
+                    cam.transform.SetPositionAndRotation(eye, Quaternion.LookRotation(berth + to * 120f + Vector3.up * 40f - eye, Vector3.up));
+                    boot.World.Step(eye, 0f);
+                    SaveFrame(cam, boot, rt, tex, dir, "209_fortress_berth");
+                    CheckFrame(tex, "209_fortress_berth");
+                    Debug.Log("SkyTide: крепость — центр " + fort.Center + ", причал " + berth + ", верх в центре " + fort.TopAt(fort.Center).ToString("F0"));
+                }
                 // Баннеры — проверка текста и раскладки HUD: объёмные облака выключены (на программном GPU CI кадр
                 // с башнями стоит ~3 мин, а для баннера сцена за ним не важна).
                 bool volWas = boot.Volumetric != null && boot.Volumetric.enabled;
@@ -1139,6 +1162,12 @@ namespace SkyTide.EditorTools
         static void OverviewFrame(OrbitCamera oc, Camera cam, SkyTideBootstrap boot, RenderTexture rt, Texture2D tex, string dir, Shot s)
         {
             Render(oc, cam, boot, rt, tex, dir, s);
+            CheckFrame(tex, s.name);
+        }
+
+        static void CheckFrame(Texture2D tex, string name)
+        {
+            Shot s = new Shot(name, 0f, 0f, 0f);
             // Текст HUD: ни одной надписи мельче читаемого или за краем экрана (в плашках — только во внутреннем поле).
             TouchControls hudOwner = Object.FindFirstObjectByType<TouchControls>();
             if (hudOwner != null && hudOwner.HudTextIssues > 0)

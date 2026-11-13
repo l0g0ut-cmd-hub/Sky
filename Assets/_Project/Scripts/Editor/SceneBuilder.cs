@@ -79,6 +79,16 @@ namespace SkyTide.EditorTools
             b.impostorShader = AssetDatabase.LoadAssetAtPath<Shader>("Assets/_Project/Shaders/CloudImpostor.shader");
             b.fxShader = AssetDatabase.LoadAssetAtPath<Shader>("Assets/_Project/Shaders/Fx.shader");
             b.decalShader = AssetDatabase.LoadAssetAtPath<Shader>("Assets/_Project/Shaders/HullDecal.shader");
+            // Небесная крепость-причал: появится в сцене, как только в Models лежат SkyFortress.bytes и текстуры.
+            b.fortressMesh = AssetDatabase.LoadAssetAtPath<TextAsset>(Models + "SkyFortress.bytes");
+            b.fortressData = AssetDatabase.LoadAssetAtPath<TextAsset>(Models + "SkyFortress_data.json");
+            if (b.fortressMesh != null)
+            {
+                Texture2D fa = Tex(Models + "SkyFortress_Albedo.jpg", false, false, TextureWrapMode.Clamp, TextureWrapMode.Clamp, 2048, true);
+                Texture2D fn = Tex(Models + "SkyFortress_Normal.png", true, false, TextureWrapMode.Clamp, TextureWrapMode.Clamp, 2048, true);
+                Texture2D fe = Tex(Models + "SkyFortress_Emission.png", false, false, TextureWrapMode.Clamp, TextureWrapMode.Clamp, 2048, true);
+                if (fa != null) b.fortressMaterials = new[] { MaterialFactory.ShipBody(fa, fn, fe) };
+            }
             b.hudShader = AssetDatabase.LoadAssetAtPath<Shader>("Assets/_Project/Shaders/Hud.shader");
             b.hudFont = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
             b.cloudNoise3D = AssetDatabase.LoadAssetAtPath<TextAsset>(Art + "CloudNoise3D.bytes");

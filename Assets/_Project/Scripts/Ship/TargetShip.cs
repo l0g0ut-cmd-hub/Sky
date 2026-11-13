@@ -36,6 +36,7 @@ namespace SkyTide
         bool hasContact;
 
         public bool Alive { get { return deadUntil < 0f; } }
+        public ShipController Controller { get { return ctrl; } }
         public ShipDamageVisual DamageVisual { get { return damageVisual; } }
         public int HitCount { get { return hits; } }
         public ShipHitSurface Surface {get {return surface;}}
@@ -66,6 +67,14 @@ namespace SkyTide
             float a = Random.Range(0f, Mathf.PI * 2f);
             float d = Random.Range(minRange, maxRange);
             waypoint = new Vector3(c.x + Mathf.Cos(a) * d, transform.position.y, c.z + Mathf.Sin(a) * d);
+            // В безопасную зону крепости враг не заходит — точку выносим за её край.
+            SkyFortress f = SkyFortress.Instance;
+            if (f != null)
+            {
+                Vector3 off = waypoint - f.Center; off.y = 0f;
+                float r = f.safeRadius + 120f;
+                if (off.sqrMagnitude < r * r) { if (off.sqrMagnitude < 1f) off = Vector3.forward; waypoint = f.Center + off.normalized * r; waypoint.y = transform.position.y; }
+            }
             nextPick = Time.time + Random.Range(10f, 18f);
         }
 
@@ -88,7 +97,7 @@ namespace SkyTide
             if (Dazed) { ctrl.turn = dazeTurn; ctrl.throttle = 0.08f; return; }
             Vector3 toPlayer = player != null ? player.position - transform.position : Vector3.zero;
             toPlayer.y = 0f;
-            if (player != null && toPlayer.magnitude > leash) { waypoint = player.position; nextPick = Time.time + 8f; }
+            if (player != null && toPlayer.magnitude > leash && !SkyFortress.InSafeZone(player.position)) { waypoint = player.position; nextPick = Time.time + 8f; }
             Vector3 to = waypoint - transform.position;
             to.y = 0f;
             if (to.magnitude < 40f || Time.time > nextPick) Pick();

@@ -15,6 +15,13 @@ namespace SkyTide
         [Tooltip("Варианты модели: меш из tools/convert_glb*.py и материалы. Пусто — заглушка из примитивов.")]
         public ShipVariant[] ships;
         public ShipVariant targetShip;   // корабль-мишень (модель Meshy)
+        [Header("Небесная крепость-причал (Models/SkyFortress*, tools/convert_glb.py + tools/fortress_data.py)")]
+        public TextAsset fortressMesh, fortressData;
+        public Material[] fortressMaterials;
+        public Vector3 fortressOffset = new Vector3(560f, 0f, 950f);   // от точки появления: ~30° левее носа, 1.1 км
+        [Tooltip("Доворот крепости (°) от положения «пирс прямо на точку появления»: башни видны в три четверти.")]
+        public float fortressYaw = 20f;
+        public SkyFortress Fortress { get; private set; }
         public int shipIndex;
 
         [Tooltip("Бесшовный шум RG для анимации облаков (Art/Noise.png). Пусто — генерируется.")]
@@ -113,6 +120,16 @@ namespace SkyTide
                 Target = t.gameObject.AddComponent<TargetShip>();
                 Target.Setup(t, Ship.transform, materials.darkWood,targetShip.mesh);
                 if (Application.isPlaying) t.gameObject.AddComponent<EnemyGunner>().Setup(Target, t);
+            }
+
+            if (fortressMesh != null && fortressMaterials != null && fortressMaterials.Length > 0)
+            {
+                Mesh fm = ShipMeshLoader.Load(fortressMesh);
+                if (fm != null)
+                {
+                    Fortress = new GameObject("Sky Fortress").AddComponent<SkyFortress>();
+                    Fortress.Setup(fm, fortressMaterials, fortressData, spawnPosition + fortressOffset, spawnPosition, fortressYaw, spawnPosition.y + 1.5f);
+                }
             }
 
             cam.target = Ship.transform;

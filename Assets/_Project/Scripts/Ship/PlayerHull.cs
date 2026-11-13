@@ -40,6 +40,8 @@ namespace SkyTide
             box = mf != null && mf.sharedMesh != null ? mf.sharedMesh.bounds : new Bounds(Vector3.up * 8f, new Vector3(10f, 14f, 36f));
         }
 
+        /// <summary>Ремонт у причала.</summary>
+        public void Repair(float amount) { if (Alive) Health = Mathf.Min(maxHealth, Health + amount); }
         public Vector3 Center { get { return model != null ? model.TransformPoint(box.center) : transform.position; } }
 
         public bool TryHit(Vector3 a, Vector3 b, out Vector3 point)

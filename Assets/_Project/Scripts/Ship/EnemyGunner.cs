@@ -60,6 +60,7 @@ namespace SkyTide
             }
             if (Time.time < ready) return;
             if (target.Dazed) return;   // капитан растерялся — и пушки молчат
+            if (SkyFortress.InSafeZone(pp)) return;   // под пушками крепости враг не стреляет
             Vector3 rel = pp - transform.position; rel.y = 0f;
             float dist = rel.magnitude;
             if (dist < minRange || dist > maxRange) return;

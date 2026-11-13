@@ -171,6 +171,18 @@ namespace SkyTide
                 float fs = l.unit * 0.022f, tw = l.unit * 0.16f; bool left = p.x > c.x + R * 0.2f;
                 Text(new Rect(left ? p.x - tw - g * 0.45f : p.x + g * 0.45f, p.y - fs * 0.75f, tw, fs * 1.5f), txt, fs, new Color(1f, 0.8f, 0.62f, 1f));
             }
+            // Крепость-причал: значок «ангар» (лист иконок), за краем радара — прижат к ободу.
+            SkyFortress fort = SkyFortress.Instance;
+            if (fort != null)
+            {
+                LoadBanners();
+                Vector3 local = input.ship.transform.InverseTransformPoint(fort.Center);
+                Vector2 v = new Vector2(local.x, -local.z); float dist = v.magnitude;
+                Vector2 dir = dist > 1e-3f ? v / dist : Vector2.up;
+                Vector2 p = c + dir * Mathf.Min(dist / range, 1f) * face * 0.9f;
+                float g = R * 0.3f;
+                Icon(9, new Rect(p.x - g * 0.5f, p.y - g * 0.5f, g, g), fort.Hostile ? new Color(1f, 0.45f, 0.35f, 1f) : Color.white);
+            }
             Image(rFrame, c, size, 0f, Color.white);
             if (rShip != null) Image(rShip, c, R * 0.3f, 0f, Color.white);
         }
@@ -387,6 +399,19 @@ namespace SkyTide
             float note = dead ? Mathf.Clamp01(deadFor / 0.35f) : capV ? 1f : Envelope(Time.time - EnemyGunner.LastVolleyTime, 2.4f, 0.15f, 0.5f);
             string noteText = "ВРАГ ДАЁТ ЗАЛП"; int noteIcon = 1;
             if (dead) { noteText = "ВОЗВРАТ ЧЕРЕЗ " + Mathf.CeilToInt(Mathf.Max(0f, delay - deadFor)) + " с"; noteIcon = 11; }
+            else
+            {
+                // Крепость: тревога важнее всего, затем ремонт у причала, затем вход в безопасную зону.
+                SkyFortress fort = SkyFortress.Instance;
+                if (fort != null && Application.isPlaying)
+                {
+                    float alarm = Envelope(Time.time - SkyFortress.FortressAlarmAt, 3.5f, 0.15f, 0.5f);
+                    float zone = Envelope(Time.time - fort.EnteredAt, 3f, 0.2f, 0.6f);
+                    if (alarm > 0f) { noteText = "КРЕПОСТЬ ОТКРЫЛА ОГОНЬ"; noteIcon = 1; note = alarm; }
+                    else if (fort.PlayerDocked && hull != null) { noteText = "ПРИЧАЛ · РЕМОНТ " + Mathf.RoundToInt(hull.Health01 * 100f) + "%"; noteIcon = 0; note = 1f; }
+                    else if (zone > 0f && fort.PlayerInside) { noteText = "БЕЗОПАСНАЯ ЗОНА"; noteIcon = 0; note = zone; }
+                }
+            }
             if (note > 0f && bPlate != null)
             {
                 float pw = Mathf.Min(l.safe.width * 0.32f, l.safe.height * 1.3f), ph = pw * 192f / 1024f;
