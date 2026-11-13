@@ -253,7 +253,8 @@ Shader "Hidden/SkyTide/VolumetricClouds"
         return saturate((w - _Deck2.y) / 0.35);
     }
 
-    float DeckShape(float3 p, float cov, bool detail)
+    // detail — вес мелкой эрозии (0..1): плавно гаснет вдали; жёсткий порог давал прямую линию поперёк моря.
+    float DeckShape(float3 p, float cov, float detail)
     {
         float h = saturate((p.y - _Deck.x) / (_Deck.y - _Deck.x));
         if (cov * 1.0 + 0.12 <= h) return 0.0;            // выше любого клуба в этой точке — шум не нужен
@@ -262,15 +263,15 @@ Shader "Hidden/SkyTide/VolumetricClouds"
         float n = tex3Dlod(_Noise3D, float4(wp / _Deck2.z, 0)).r;
         float topH = cov * (0.45 + 0.55 * n) + 0.12;
         float m = saturate((topH - h) * 6.0) * saturate(h * 5.0 + 0.2);
-        if (detail && m > 0.0 && m < 0.9)
+        if (detail > 0.001 && m > 0.0 && m < 0.9)
         {
             float dn = tex3Dlod(_Noise3D, float4(wp / _Deck2.w, 0)).g;
-            m = saturate(m - dn * 0.45 * (1.0 - m));
+            m = saturate(m - dn * 0.45 * (1.0 - m) * detail);
         }
         return m * _Deck.z;
     }
 
-    float DeckDensity(float3 p, bool detail) { return DeckShape(p, DeckCoverage(p), detail); }
+    float DeckDensity(float3 p, bool detail) { return DeckShape(p, DeckCoverage(p), detail ? 1.0 : 0.0); }
 
     // front — часть моря перед башней; обе части считаются за один прежний марш.
     float4 Deck(float3 ro, float3 rd, float tEnd, float jitter, float phase, float split,
@@ -298,7 +299,9 @@ Shader "Hidden/SkyTide/VolumetricClouds"
         const float ratio = 1.22;
         float sumK = (pow(ratio, n) - 1.0) / (ratio - 1.0);
         float stepLen = min(10.0, (t1 - t0) / sumK);
-        float t = t0 + stepLen * jitter;
+        // Сдвиг выборки — внутри КАЖДОГО шага (доля его длины). Прежде сдвигался только первый шаг (≤10 м),
+        // и дальние выборки стояли на месте из кадра в кадр: накопление не могло стереть «рябь полосами».
+        float t = t0;
         float3 L = normalize(_SkyTideSunDir.xyz);
         float3 light = 0;
         float trans = 1;
@@ -307,13 +310,14 @@ Shader "Hidden/SkyTide/VolumetricClouds"
         for (int k = 0; k < n; k++)
         {
             if (t > t1) break;
-            float3 p = ro + rd * t;
+            float ts = min(t + stepLen * jitter, t1);
+            float3 p = ro + rd * ts;
             float cov = DeckCoverage(p);
-            float d = DeckShape(p, cov, t < 1500.0) * ClearFactor(p, ro);
+            float d = DeckShape(p, cov, 1.0 - smoothstep(1000.0, 1600.0, ts)) * ClearFactor(p, ro);
             if (d > 1e-5)
             {
-                float d1 = DeckShape(p + L * 18.0, cov, false);
-                float d2 = DeckShape(p + L * 55.0, cov, false);
+                float d1 = DeckShape(p + L * 18.0, cov, 0.0);
+                float d2 = DeckShape(p + L * 55.0, cov, 0.0);
                 float tau = (d1 * 18.0 + d2 * 37.0) * _Deck3.z;
                 float sunT = exp(-tau);
                 float ms = exp(-tau * 0.25) * _MultiScatter.a;
@@ -324,14 +328,14 @@ Shader "Hidden/SkyTide/VolumetricClouds"
                 float3 src = (sunCol * sunT * min(phase, 1.6) + _MultiScatter.rgb * ms * h) * _Deck3.w + amb + SkyTideFlashLight(p);
                 float st = exp(-d * stepLen);
                 float wgt = trans * (1.0 - st);
-                float frontFraction = saturate((split - t) / max(stepLen, 1e-4) + 0.5);
+                float frontFraction = saturate((split - ts) / max(stepLen, 1e-4) + 0.5);
                 float frontSt = exp(-d * stepLen * frontFraction);
                 float frontWeight = trans * (1.0 - frontSt);
                 front.rgb += src * 0.86 * frontWeight;
                 front.a *= frontSt;
-                moments.y += t * frontWeight;
+                moments.y += ts * frontWeight;
                 light += src * 0.86 * wgt;
-                distAcc += t * wgt;
+                distAcc += ts * wgt;
                 wAcc += wgt;
                 trans *= st;
                 if (trans < 0.03) { trans = 0; if (frontFraction >= 1.0) front.a = 0; break; }
@@ -397,7 +401,7 @@ Shader "Hidden/SkyTide/VolumetricClouds"
                 // Шаги растут с расстоянием: у камеры мелкие (без зерна внутри облака), вдали крупнее.
                 float stepGrow = 1.3 / steps;
                 float stepLen = stepBase * 0.35;
-                float t = tA + stepLen * jit;
+                float t = tA;   // сдвиг — внутри каждого шага (см. Deck), иначе дальние шаги стоят на месте
 
                 float3 sunDir = normalize(_SkyTideSunDir.xyz);
                 float cosT = dot(rd, sunDir);
@@ -409,9 +413,10 @@ Shader "Hidden/SkyTide/VolumetricClouds"
                 [loop]
                 for (int s = 0; s < steps; s++)
                 {
-                    float3 p = ro + rd * t;
+                    float ts = min(t + stepLen * jit, tB);
+                    float3 p = ro + rd * ts;
                     float tau, sky, fld;
-                    float d = Density(p, t < 1800.0, tau, sky, fld) * (bake ? 1.0 : ClearFactor(p, ro));
+                    float d = Density(p, ts < 1800.0, tau, sky, fld) * (bake ? 1.0 : ClearFactor(p, ro));
                     if (d > 1e-5)
                     {
                         // Свет из запечённого поля: никаких шагов к солнцу.
@@ -429,9 +434,9 @@ Shader "Hidden/SkyTide/VolumetricClouds"
                         float st = exp(-d * stepLen);
                         light += trans * src * 0.86 * (1.0 - st);
                         float w = trans * (1.0 - st);
-                        distAcc += t * w;
+                        distAcc += ts * w;
                         wAcc += w;
-                        if (firstHit > 1e6 && w > 1e-4) firstHit = t;
+                        if (firstHit > 1e6 && w > 1e-4) firstHit = ts;
                         trans *= st;
                         if (trans < 0.02) { trans = 0; break; }
                     }
@@ -490,6 +495,32 @@ Shader "Hidden/SkyTide/VolumetricClouds"
         return o;
     }
 
+    // История — фильтром Catmull-Rom (5 выборок): билинейная выборка каждый кадр чуть размывает историю,
+    // и при полёте вперёд размытие копилось вдоль движения — прямые «лучи» по морю облаков к горизонту.
+    float4 HistoryCR(float2 uv)
+    {
+        float2 size = _LowRes.xy;
+        float2 pos = uv * size - 0.5;
+        float2 c = floor(pos) + 0.5;
+        float2 f = pos - floor(pos);
+        float2 w0 = f * (-0.5 + f * (1.0 - 0.5 * f));
+        float2 w1 = 1.0 + f * f * (-2.5 + 1.5 * f);
+        float2 w2 = f * (0.5 + f * (2.0 - 1.5 * f));
+        float2 w3 = f * f * (-0.5 + 0.5 * f);
+        float2 w12 = w1 + w2;
+        float2 off12 = w2 / max(w12, 1e-5);
+        float2 tc0 = (c - 1.0) * _LowRes.zw;
+        float2 tc3 = (c + 2.0) * _LowRes.zw;
+        float2 tc12 = (c + off12) * _LowRes.zw;
+        float4 r = tex2D(_History, float2(tc12.x, tc0.y)) * (w12.x * w0.y)
+                 + tex2D(_History, float2(tc0.x, tc12.y)) * (w0.x * w12.y)
+                 + tex2D(_History, tc12) * (w12.x * w12.y)
+                 + tex2D(_History, float2(tc3.x, tc12.y)) * (w3.x * w12.y)
+                 + tex2D(_History, float2(tc12.x, tc3.y)) * (w12.x * w3.y);
+        float wsum = w12.x * w0.y + w0.x * w12.y + w12.x * w12.y + w3.x * w12.y + w12.x * w3.y;
+        return max(r / max(wsum, 1e-4), 0.0);
+    }
+
     // Перепроецирование по глубине облака, отсечение открывшихся областей и быстрых изменений света.
     float4 fragTemporal (v2f i) : SV_Target
     {
@@ -514,15 +545,21 @@ Shader "Hidden/SkyTide/VolumetricClouds"
             float tolerance = max(12.0, expectedDistance * 0.08);
             confidence *= 1.0 - smoothstep(tolerance, tolerance * 2.0, abs(oldDistance - expectedDistance));
         }
-        float4 mn = cur, mx = cur;
+        // Окрестность 3×3: min/max и дисперсия; история зажимается в пересечение (mean ± 1.25σ) ∩ [min, max].
+        float4 mn = cur, mx = cur, m1 = 0, m2 = 0;
         float2 px = _LowRes.zw;
         [unroll] for (int y = -1; y <= 1; y++)
         [unroll] for (int x = -1; x <= 1; x++)
         {
             float4 c = tex2D(_MainTex, i.uv + float2(x, y) * px);
             mn = min(mn, c); mx = max(mx, c);
+            m1 += c; m2 += c * c;
         }
-        float4 old = tex2D(_History, puv);
+        m1 /= 9.0;
+        float4 sigma = sqrt(max(m2 / 9.0 - m1 * m1, 0.0));
+        mn = max(mn, m1 - sigma * 1.25);
+        mx = min(mx, m1 + sigma * 1.25);
+        float4 old = HistoryCR(puv);
         confidence *= 1.0 - saturate(abs(old.a - cur.a) * 4.0);
         float lightChange = abs(Luminance(old.rgb) - Luminance(cur.rgb));
         confidence *= 1.0 - saturate(lightChange / max(0.15, Luminance(cur.rgb) * 0.6));

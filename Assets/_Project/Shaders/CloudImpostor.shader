@@ -50,6 +50,7 @@ Shader "Hidden/SkyTide/CloudImpostor"
                 float2 uv : TEXCOORD0;
                 float4 slices : TEXCOORD1;   // x, y — слои массива, z — смесь, w — затухание
                 float3 wpos : TEXCOORD2;
+                float4 aerial : TEXCOORD3;   // rgb — цвет дымки (по вершинам: 3 выборки панорамы на вершину, а не на пиксель), a — маска башен
             };
 
             v2f vert (appdata v)
@@ -91,15 +92,19 @@ Shader "Hidden/SkyTide/CloudImpostor"
                 // Близко к камере облако гаснет целиком (по центру, а не по пикселям — иначе в нём «дыра»).
                 float near = smoothstep(_ImpParams.z + 0.4 * R, _ImpParams.z + 1.6 * R, length(cc - _ImpCam.xyz));
                 o.slices.w = fadeIn * steep * near;
+                o.aerial.rgb = SkyTideAerialColor(normalize(wpos - _ImpCam.xyz));
+                o.aerial.a = v.data.w;   // какие героические башни могут оказаться перед этим облаком (биты, считает CPU)
                 return o;
             }
 
-            float HeroInFront(float3 ro, float3 rd, float dist)
+            float HeroInFront(float3 ro, float3 rd, float dist, float mask)
             {
                 float cover = 0.0;
+                if (mask < 0.5) return 0.0;
                 for (int i = 0; i < MAX_TOWERS; i++)
                 {
                     if (i >= (int)_TowerCount) break;
+                    if (fmod(floor(mask / exp2((float)i)), 2.0) < 0.5) continue;
                     float4 T = _Towers[i];
                     float hh = _TowerRot[i].w;
                     float3 cc = T.xyz + float3(0, T.w * hh * 0.5, 0);
@@ -138,7 +143,7 @@ Shader "Hidden/SkyTide/CloudImpostor"
                 float3 rd = d / max(dist, 1e-3);
 
                 // Воздушная перспектива — как у объёмных башен.
-                light = lerp(light, SkyTideAerialColor(rd) * a, SkyTideAerialAmount(_ImpParams.x, dist));
+                light = lerp(light, i.aerial.rgb * a, SkyTideAerialAmount(_ImpParams.x, dist));
 
                 float m = i.slices.w;
                 // Низ облака тонет в объёмном море облаков.
@@ -155,7 +160,7 @@ Shader "Hidden/SkyTide/CloudImpostor"
                     m *= saturate((LinearEyeDepth(raw) - eye) / 25.0 + 0.5);
 
                 // Героическая объёмная башня перед облаком — закрывает его по своему пропусканию.
-                float heroCover = HeroInFront(ro, rd, dist);
+                float heroCover = HeroInFront(ro, rd, dist, i.aerial.a);
                 m *= lerp(1.0, tex2D(_CloudTex, suv).a, heroCover);
 
                 return half4(light * m, a * m);

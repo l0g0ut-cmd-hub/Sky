@@ -305,7 +305,7 @@ namespace SkyTide
             }
             Vector3 cp = cam.transform.position;
             if (!placed) Place(cp, templateHeight);
-            BuildMesh(cp, templateHeight);
+            BuildMesh(cp, templateHeight, heroTowers, heroRot, heroCount);
 
             Matrix4x4 view = cam.worldToCameraMatrix;
             mat.SetMatrix("_ImpVP", GL.GetGPUProjectionMatrix(cam.projectionMatrix, target != null) * view);
@@ -324,7 +324,30 @@ namespace SkyTide
             if (mat.SetPass(0)) Graphics.DrawMeshNow(mesh, Matrix4x4.identity);
         }
 
-        void BuildMesh(Vector3 cam, float templateHeight)
+        /// <summary>Биты башен, которые могут закрыть облако: башня ближе облака и пересекается с ним по направлению.
+        /// В шейдере остальные башни не проверяются — у большинства облаков маска 0 и цикл не выполняется.</summary>
+        static float TowerMask(Vector3 cam, Vector3 center, float halfSize, Vector4[] towers, Vector4[] rot, int count)
+        {
+            if (towers == null || rot == null) return 0f;
+            Vector3 dc = center - cam; float distC = dc.magnitude; if (distC < 1e-3f) return 0f;
+            Vector3 dirC = dc / distC;
+            int mask = 0;
+            for (int i = 0; i < count && i < 8 && i < towers.Length && i < rot.Length; i++)
+            {
+                Vector4 T = towers[i]; float hh = rot[i].w;
+                Vector3 tc = new Vector3(T.x, T.y + T.w * hh * 0.5f, T.z);
+                float r = T.w * Mathf.Max(1.5f, hh * 0.62f);
+                Vector3 dt = tc - cam; float distT = dt.magnitude;
+                if (distT - r > distC + halfSize) continue;                  // башня целиком за облаком
+                if (distT <= r) { mask |= 1 << i; continue; }               // камера внутри сферы башни
+                float angT = Mathf.Asin(Mathf.Clamp01(r / distT)), angC = Mathf.Atan2(halfSize, distC);
+                float ang = Mathf.Acos(Mathf.Clamp(Vector3.Dot(dt / distT, dirC), -1f, 1f));
+                if (ang <= angT + angC + 0.05f) mask |= 1 << i;
+            }
+            return mask;
+        }
+
+        void BuildMesh(Vector3 cam, float templateHeight, Vector4[] heroTowers, Vector4[] heroRot, int heroCount)
         {
             int n = clouds.Count;
             if (mesh == null || verts == null || verts.Length != n * 4)
@@ -362,7 +385,8 @@ namespace SkyTide
                 Cloud c = clouds[order[j]];
                 float W = WidthPerR * c.r;
                 float H = HeightPerR(c.variant, templateHeight) * c.r;
-                Vector4 data = new Vector4(W, H, c.variant, 0f);
+                float half = 0.5f * Mathf.Sqrt(W * W + H * H * (1f + 2f * Pad) * (1f + 2f * Pad));
+                Vector4 data = new Vector4(W, H, c.variant, TowerMask(cam, c.pos + Vector3.up * (0.5f * H), half, heroTowers, heroRot, heroCount));
                 for (int q = 0; q < 4; q++)
                 {
                     verts[j * 4 + q] = c.pos;
