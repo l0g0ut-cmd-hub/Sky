@@ -168,7 +168,6 @@ namespace SkyTide.EditorTools
             foreach (string rp in new[] { "radar_frame", "radar_face", "radar_sweep", "radar_ship", "radar_enemy", "radar_enemy_far" })
                 Tex("Assets/_Project/Resources/UI/" + rp + ".png", false, true, TextureWrapMode.Clamp, TextureWrapMode.Clamp, 1024, true, true);
             Tex("Assets/_Project/Resources/UI/main_menu.jpg", false, false, TextureWrapMode.Clamp, TextureWrapMode.Clamp, 2048, false, true);
-            Tex("Assets/_Project/Resources/UI/menu_bg.jpg", false, false, TextureWrapMode.Clamp, TextureWrapMode.Clamp, 2048, false, true);
             Tex("Assets/_Project/Resources/UI/splash_studio.jpg", false, false, TextureWrapMode.Clamp, TextureWrapMode.Clamp, 2048, false, true);
             // Баннеры победы/поражения, плашка оповещения, виньетка урона, иконки 4×4 — с альфой, без сжатия.
             foreach (string bp in new[] { "banner_victory", "banner_defeat", "plate_notice", "vignette_damage", "icons" })
@@ -330,6 +329,18 @@ namespace SkyTide.EditorTools
                 textureReimports++;
             }
             else textureReuses++;
+            // Интерфейс: в редакторе без сжатия, на Android — ASTC 4×4 (8 бит/пиксель, на глаз без потерь; APK < 100 МБ).
+            if (path.Contains("/Resources/UI/"))
+            {
+                TextureImporterPlatformSettings android = ti.GetPlatformTextureSettings("Android");
+                if (!android.overridden || android.format != TextureImporterFormat.ASTC_4x4 || android.maxTextureSize != maxSize)
+                {
+                    android.overridden = true; android.format = TextureImporterFormat.ASTC_4x4; android.maxTextureSize = maxSize;
+                    android.compressionQuality = 100;
+                    ti.SetPlatformTextureSettings(android);
+                    ti.SaveAndReimport();
+                }
+            }
             return AssetDatabase.LoadAssetAtPath<Texture2D>(path);
         }
 
