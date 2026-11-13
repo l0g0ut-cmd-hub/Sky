@@ -25,7 +25,7 @@ Shader "Hidden/SkyTide/HullDecal"
             #include "Lighting.cginc"
             sampler2D _MainTex;
             struct a2v { float4 vertex:POSITION; float3 normal:NORMAL; float2 uv:TEXCOORD0; float4 color:COLOR; };
-            struct v2f { float4 pos:SV_POSITION; float2 uv:TEXCOORD0; half3 light:TEXCOORD1; half alpha:TEXCOORD2 };
+            struct v2f { float4 pos:SV_POSITION; float2 uv:TEXCOORD0; half3 light:TEXCOORD1; half alpha:TEXCOORD2; };
             v2f vert(a2v v)
             {
                 v2f o;
