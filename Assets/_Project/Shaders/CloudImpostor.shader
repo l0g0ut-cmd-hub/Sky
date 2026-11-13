@@ -36,6 +36,7 @@ Shader "Hidden/SkyTide/CloudImpostor"
             float4 _TowerRot[MAX_TOWERS];
             float _TowerCount;
             float _ImpDeckTop;
+            float _ImpUseMask;    // 1 — проверять только башни из маски облака, 0 — все (диагностика CI)
 
             struct appdata
             {
@@ -100,6 +101,7 @@ Shader "Hidden/SkyTide/CloudImpostor"
             float HeroInFront(float3 ro, float3 rd, float dist, float mask)
             {
                 float cover = 0.0;
+                if (_ImpUseMask < 0.5) mask = 255.0;
                 if (mask < 0.5) return 0.0;
                 for (int i = 0; i < MAX_TOWERS; i++)
                 {

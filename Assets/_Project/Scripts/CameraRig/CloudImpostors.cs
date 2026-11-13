@@ -107,6 +107,7 @@ namespace SkyTide
         readonly System.Random wrapRnd = new System.Random(4242);
 
         public float fieldRadius = 3200f;
+        public bool useTowerMask = true;   // маска башен на облако (ускорение); выключается для диагностики
         public int tallCount = 12;
         public int lowCount = 26;
         public float deckTop = 35f;
@@ -314,6 +315,7 @@ namespace SkyTide
             mat.SetVector("_ImpCam", cp);
             mat.SetVector("_ImpParams", new Vector4(aerial, nearClear.x, nearClear.y, Pad));
             mat.SetFloat("_ImpDeckTop", deckTop);
+            mat.SetFloat("_ImpUseMask", useTowerMask ? 1f : 0f);
             mat.SetTexture("_ImpTex", Current);
             mat.SetTexture("_CloudTex", heroClouds);
             mat.SetVectorArray("_Towers", heroTowers);

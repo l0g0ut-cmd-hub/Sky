@@ -54,6 +54,7 @@ namespace SkyTide
         [System.NonSerialized] public bool deckStepJitter = true;   // сдвиг выборки внутри каждого шага моря (против ряби полосами)   // отладочная панель (3 пальца)
         [Range(32, 200)] public int impostorBakeSteps = 112;
         readonly CloudImpostors imp = new CloudImpostors();
+        public bool ImpostorTowerMask { get { return imp.useTowerMask; } set { imp.useTowerMask = value; } }
         public Light sun;
         public byte[] noiseBytes;   // CloudNoise3D.bytes (64³ RGBA8)
         [Tooltip("Запечённые шаблоны башен (SceneBuilder → Art/TowerField.asset). Пусто — запекаются при старте.")]
