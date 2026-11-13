@@ -1,4 +1,6 @@
 // Небесная крепость: Standard BRDF + растворение низа в море облаков и воздушная дымка на расстоянии.
+// Двусторонний (Cull Off): модель Meshy — не замкнутое тело, а ~100 незамкнутых пересекающихся оболочек
+// (1066 открытых рёбер), и с отсечением задних граней изнанка каждой стенки была «дырой» насквозь.
 // Низ модели не обрывается ровной кромкой: ниже _DissolveTop цвет уходит в дымку горизонта этого азимута
 // (та же SkyTideAerialColor, что у дальних облаков), объёмные облака дорисовывают остальное по глубине сцены.
 Shader "SkyTide/Fortress"
@@ -21,6 +23,7 @@ Shader "SkyTide/Fortress"
     SubShader
     {
         Tags { "RenderType"="Opaque" "Queue"="Geometry" }
+        Cull Off
         CGPROGRAM
         #pragma target 3.0
         #pragma surface surf Standard fullforwardshadows addshadow vertex:vert finalcolor:Haze exclude_path:deferred
@@ -53,7 +56,13 @@ Shader "SkyTide/Fortress"
             half4 albedo = tex2D(_MainTex, IN.uv_MainTex) * _Color;
             // Фактура вблизи: у модели ~25 см на тексель и нет карты нормалей (из плоского альбедо Meshy рельеф не
             // извлечь — проверено), поэтому мелкая неровность камня/дерева — шум в мировых координатах по трём осям.
-            float3 gn = normalize(WorldNormalVector(IN, float3(0, 0, 1)));
+            float3 n0 = normalize(WorldNormalVector(IN, float3(0, 0, 1)));
+            // Изнанка: настоящая нормаль грани (по производным позиции), развёрнутая к камере; если нормаль вершин
+            // смотрит от неё — это задняя сторона, свет считаем по перевёрнутой нормали.
+            float3 fn = cross(ddx(IN.worldPos), ddy(IN.worldPos));
+            float3 toEye = _WorldSpaceCameraPos - IN.worldPos;
+            if (dot(fn, toEye) < 0.0) fn = -fn;
+            float3 gn = dot(n0, fn) < 0.0 ? -n0 : n0;
             float fade = saturate((_DetailFar - distance(IN.worldPos, _WorldSpaceCameraPos)) / (_DetailFar * 0.6)) * _DetailStrength;
             float3 tw = gn * gn; tw /= (tw.x + tw.y + tw.z);
             float3 dp = IN.worldPos * _DetailScale;
@@ -64,7 +73,7 @@ Shader "SkyTide/Fortress"
             float3 wn = normalize(gn + bump * (fade * 0.9));
             float3 tanW = WorldNormalVector(IN, float3(1, 0, 0)), bitW = WorldNormalVector(IN, float3(0, 1, 0));
             o.Albedo = albedo.rgb;
-            o.Normal = normalize(float3(dot(wn, tanW), dot(wn, bitW), dot(wn, gn)));
+            o.Normal = normalize(float3(dot(wn, tanW), dot(wn, bitW), dot(wn, n0)));
             o.Metallic = _Metallic;
             o.Smoothness = _Glossiness;
             o.Emission = tex2D(_EmissionMap, IN.uv_MainTex).rgb * _EmissionColor.rgb;

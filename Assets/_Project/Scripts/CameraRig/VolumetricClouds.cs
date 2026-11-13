@@ -417,12 +417,29 @@ namespace SkyTide
             {
                 float a = i / (float)MaxTowers * Mathf.PI * 2f + U(r, -0.35f, 0.35f);
                 float d = U(r, minDistance, fieldRadius);
-                SetTower(i, center + new Vector3(Mathf.Cos(a) * d, 0f, Mathf.Sin(a) * d), r);
+                SetTower(i, AroundFortress(center + new Vector3(Mathf.Cos(a) * d, 0f, Mathf.Sin(a) * d)), r);
             }
             // Две «витринные» башни на старте: впереди между курсом и солнцем и справа по борту.
-            SetTower(0, center + Dir(70f) * 950f, r);
-            SetTower(1, center + Dir(150f) * 820f, r);
+            SetTower(0, AroundFortress(center + Dir(70f) * 950f), r);
+            SetTower(1, AroundFortress(center + Dir(150f) * 820f), r);
             placed = true;
+        }
+
+        /// <summary>
+        /// Башни облаков не встают внутрь небесной крепости и не закрывают её: точка внутри круга крепости
+        /// (описанный радиус + радиус башни) выносится на его край. При дрейфе башня обтекает крепость по краю.
+        /// </summary>
+        static Vector3 AroundFortress(Vector3 p)
+        {
+            SkyFortress fort = SkyFortress.Instance;
+            if (fort == null) return p;
+            Vector3 c = fort.Center;
+            float keep = fort.BoundRadius + 220f;
+            float dx = p.x - c.x, dz = p.z - c.z, d2 = dx * dx + dz * dz;
+            if (d2 >= keep * keep) return p;
+            float d = Mathf.Sqrt(d2);
+            if (d < 1f) { dx = 1f; dz = 0f; d = 1f; }
+            return new Vector3(c.x + dx / d * keep, p.y, c.z + dz / d * keep);
         }
 
         static Vector3 Dir(float yaw)
@@ -453,10 +470,11 @@ namespace SkyTide
                 {
                     // ушла далеко — переносим на противоположную сторону (в дымке горизонта)
                     Vector3 back = -d.normalized * fieldRadius;
-                    SetTower(i, new Vector3(camPos.x, 0f, camPos.z) + back, wrapRnd);
+                    SetTower(i, AroundFortress(new Vector3(camPos.x, 0f, camPos.z) + back), wrapRnd);
                 }
                 else
                 {
+                    p = AroundFortress(p);
                     towers[i].x = p.x;
                     towers[i].z = p.z;
                 }

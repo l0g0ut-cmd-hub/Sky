@@ -14,10 +14,12 @@ namespace SkyTide
     {
         public static SkyFortress Instance { get; private set; }
 
-        public float safeRadius = 650f;
+        // Размеры — под крепость втрое крупнее исходной модели (1490×1000×1380 м): причал в ~880 м от центра.
+        public float safeRadius = 1400f;
         public float hostileTime = 45f;
-        public float gunRange = 1100f, gunCooldown = 3.2f, spreadDeg = 1.2f, muzzleSpeed = 95f, gravity = 9.81f;
-        public float berthRadius = 55f, berthMaxSpeed = 5f, repairPerSecond = 6f;
+        // Пушки достают всю безопасную зону с башен: быстрые ядра (220 м/с) и долгий полёт (до 12 с).
+        public float gunRange = 2400f, gunCooldown = 3.2f, spreadDeg = 1.2f, muzzleSpeed = 220f, gravity = 9.81f, shellLife = 12f;
+        public float berthRadius = 100f, berthMaxSpeed = 5f, repairPerSecond = 6f;
 
         [Serializable]
         class Data
@@ -68,9 +70,12 @@ namespace SkyTide
 
         /// <summary>Ставит крепость в <paramref name="position"/> пирсом к <paramref name="faceTowards"/> (+ yawOffset°),
         /// причал — на высоте pierHeight (модель поднимается/опускается целиком; низ уходит в облака).</summary>
-        public void Setup(Mesh mesh, Material[] materials, TextAsset data, Vector3 position, Vector3 faceTowards, float yawOffset, float pierHeight)
+        /// Данные (дула, причал, карта высот) остаются в метрах исходной модели: масштаб применяется к узлу модели,
+        /// все переводы идут через его Transform.
+        public void Setup(Mesh mesh, Material[] materials, TextAsset data, Vector3 position, Vector3 faceTowards, float yawOffset, float pierHeight, float scale)
         {
             Instance = this;
+            scale = Mathf.Max(0.1f, scale);
             if (data != null)
             {
                 grid = JsonUtility.FromJson<Data>(data.text);
@@ -85,7 +90,7 @@ namespace SkyTide
                 {
                     float ex = Mathf.Max(Mathf.Abs(grid.gridOrigin[0]), Mathf.Abs(grid.gridOrigin[0] + grid.gw * grid.cell));
                     float ez = Mathf.Max(Mathf.Abs(grid.gridOrigin[1]), Mathf.Abs(grid.gridOrigin[1] + grid.gh * grid.cell));
-                    boundRadius = Mathf.Sqrt(ex * ex + ez * ez);
+                    boundRadius = Mathf.Sqrt(ex * ex + ez * ez) * scale;
                 }
             }
             float yaw = yawOffset;
@@ -103,7 +108,8 @@ namespace SkyTide
             MeshRenderer r = go.AddComponent<MeshRenderer>();
             r.sharedMaterials = materials;
             r.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.On;
-            if (hasBerth) model.localPosition = Vector3.up * (pierHeight - position.y - berthLocal.y);
+            model.localScale = Vector3.one * scale;
+            if (hasBerth) model.localPosition = Vector3.up * (pierHeight - position.y - berthLocal.y * scale);
         }
 
         public Vector3 BerthWorld { get { return model != null ? model.TransformPoint(berthLocal) : transform.position; } }
@@ -139,6 +145,8 @@ namespace SkyTide
             return false;
         }
         float boundRadius = 400f;
+        /// <summary>Радиус описанного круга крепости в плане (м, с учётом масштаба).</summary>
+        public float BoundRadius { get { return boundRadius; } }
 
         void Update()
         {
@@ -177,7 +185,7 @@ namespace SkyTide
             Vector3 dir;
             if (!Solve(muzzle, pp, out dir)) return;
             dir = Quaternion.Euler(UnityEngine.Random.Range(-spreadDeg, spreadDeg), UnityEngine.Random.Range(-spreadDeg, spreadDeg), 0f) * dir;
-            if (FxSystem.Instance != null) FxSystem.Instance.Fire(muzzle, dir, Vector3.zero, muzzleSpeed, true);
+            if (FxSystem.Instance != null) FxSystem.Instance.Fire(muzzle, dir, Vector3.zero, muzzleSpeed, true, shellLife);
         }
 
         /// <summary>Сквозь крепость не пройти: нос, центр и корма корабля проверяются по карте высот.</summary>

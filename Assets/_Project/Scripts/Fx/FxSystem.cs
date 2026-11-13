@@ -72,14 +72,14 @@ namespace SkyTide
         // ---------- выстрел ----------
 
         /// <summary>Выстрел из ствола: точка дула и направление ствола — в мире; скорость корабля добавляется к ядру и дыму.</summary>
-        public void Fire(Vector3 muzzle, Vector3 dir, Vector3 shipVel, float muzzleSpeed, bool hostile = false)
+        public void Fire(Vector3 muzzle, Vector3 dir, Vector3 shipVel, float muzzleSpeed, bool hostile = false, float shellLife = 7f)
         {
             dir.Normalize();
             float s = Random.value * 10f;
             // Ядро
             Add(new P
             {
-                kind = Kind.Ball, pos = muzzle, vel = dir * muzzleSpeed + shipVel, life = 7f, hostile = hostile,
+                kind = Kind.Ball, pos = muzzle, vel = dir * muzzleSpeed + shipVel, life = shellLife, hostile = hostile,
                 size0 = 0.85f, size1 = 0.7f, color = new Color(0.2f, 0.15f, 0.12f), alpha = 1f, seed = s
             });
             Flash(muzzle, 2.5f, 32f);

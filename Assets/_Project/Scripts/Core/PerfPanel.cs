@@ -277,7 +277,7 @@ namespace SkyTide
             GUI.Label(new Rect(x, y, w, lh), "Автозамер · " + dev, small); y += lh;
             float c0 = w * 0.44f, cwid = (w - c0) / 5f;
             string[] head = { "FPS", "ВК мс", "кадр", "игра", "ΔВК" };
-            GUI.Label(new Rect(x, y, c0, lh), "что изменено (остальное как в базе)", small);
+            GUI.Label(new Rect(x, y, c0, lh), "что изменено", small);
             for (int i = 0; i < 5; i++) GUI.Label(new Rect(x + c0 + cwid * i, y, cwid, lh), head[i], small);
             y += lh;
             float baseGpu = bench.Count > 0 ? bench[0].gpu : 0f;

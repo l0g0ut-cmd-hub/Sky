@@ -19,7 +19,7 @@ namespace SkyTide
         public float turnResponse = 4.5f;
 
         [Header("Граница мира")]
-        public float arenaRadius = 1800f;
+        public float arenaRadius = 3600f;   // крепость (центр в 2 км, радиус до ~1 км) можно обойти кругом
 
         [Header("Ввод (-1..1)")]
         public float throttle;

@@ -18,7 +18,9 @@ namespace SkyTide
         [Header("Небесная крепость-причал (Models/SkyFortress*, tools/convert_glb.py + tools/fortress_data.py)")]
         public TextAsset fortressMesh, fortressData;
         public Material[] fortressMaterials;
-        public Vector3 fortressOffset = new Vector3(560f, 0f, 950f);   // от точки появления: ~30° левее носа, 1.1 км
+        public Vector3 fortressOffset = new Vector3(1000f, 0f, 1732f);   // от точки появления: ~30° левее носа, 2 км (вне зоны 1400 м)
+        [Tooltip("Во сколько раз крепость крупнее исходной модели (496×333×460 м). 3 → 1490×1000×1380 м, башни на 730 м выше причала.")]
+        public float fortressScale = 3f;
         [Tooltip("Доворот крепости (°) от положения «пирс прямо на точку появления»: башни видны в три четверти.")]
         public float fortressYaw = 20f;
         public SkyFortress Fortress { get; private set; }
@@ -128,7 +130,7 @@ namespace SkyTide
                 if (fm != null)
                 {
                     Fortress = new GameObject("Sky Fortress").AddComponent<SkyFortress>();
-                    Fortress.Setup(fm, fortressMaterials, fortressData, spawnPosition + fortressOffset, spawnPosition, fortressYaw, spawnPosition.y + 1.5f);
+                    Fortress.Setup(fm, fortressMaterials, fortressData, spawnPosition + fortressOffset, spawnPosition, fortressYaw, spawnPosition.y + 1.5f, fortressScale);
                 }
             }
 
@@ -300,7 +302,7 @@ namespace SkyTide
         {
             c.clearFlags = CameraClearFlags.Skybox;
             c.nearClipPlane = 0.5f;
-            c.farClipPlane = 4000f;
+            c.farClipPlane = 6500f;   // крепость (до 3 км от старта, поле 3.6 км) не должна обрезаться дальней плоскостью
             c.fieldOfView = 55f;
         }
     }
