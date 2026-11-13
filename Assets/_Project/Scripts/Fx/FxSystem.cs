@@ -132,12 +132,13 @@ namespace SkyTide
             Add(new P { kind = Kind.Flip, pos = at + Vector3.up * 2f * scale, vel = Vector3.up * 2.5f, age = -0.35f * Mathf.Sqrt(scale),
                         life = 4.5f * Mathf.Sqrt(scale), size0 = 8f * scale, size1 = 17f * scale, rot = Random.Range(0f, 6.28f), spin = Random.Range(-0.15f, 0.15f),
                         drag = 1f, rise = 1.2f, color = new Color(0.5f, 0.45f, 0.43f), alpha = 0.9f, seed = 2f + Random.value * 0.999f });
-            Add(new P { kind = Kind.Glow, pos = at, life = 0.14f * Mathf.Sqrt(scale), size0 = 4f * scale, size1 = 9f * scale, color = new Color(1f, 0.76f, 0.4f), alpha = 1f });
+            // Процедурное свечение — только короткая вспышка под нарисованным шаром (раньше белый пузырь поверх него).
+            Add(new P { kind = Kind.Glow, pos = at, life = 0.1f * Mathf.Sqrt(scale), size0 = 3f * scale, size1 = 6f * scale, color = new Color(1f, 0.6f, 0.28f), alpha = 0.55f });
             for (int k = 0; k < 6 * scale; k++)
             {
                 Vector3 r = Random.insideUnitSphere;
                 Add(new P { kind = Kind.Glow, pos = at + r * 1.5f * scale, vel = r * 8f * scale, life = Random.Range(0.2f, 0.45f) * Mathf.Sqrt(scale),
-                            size0 = 2f * scale, size1 = 5f * scale, color = new Color(1f, 0.36f, 0.08f), alpha = 0.6f });
+                            size0 = 1.5f * scale, size1 = 3.5f * scale, color = new Color(1f, 0.36f, 0.08f), alpha = 0.3f });
             }
             for (int k = 0; k < 14 * scale; k++)
             {
@@ -171,7 +172,8 @@ namespace SkyTide
 
         public void HullImpact(Vector3 at,Vector3 outward,Vector3 inheritedVelocity)
         {
-            Explosion(at,1f);
+            // Огненный шар — снаружи борта: из точки на корпусе половина листа уходила внутрь модели.
+            Explosion(at+outward*1.6f,1f);
             // Splinters leave the struck face instead of scattering equally into the hull.
             for(int i=0;i<9;i++)
             {

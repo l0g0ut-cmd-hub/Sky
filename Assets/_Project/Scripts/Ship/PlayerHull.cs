@@ -9,7 +9,7 @@ namespace SkyTide
     public class PlayerHull : MonoBehaviour
     {
         public static PlayerHull Instance { get; private set; }
-        public float maxHealth = 100f;
+        public float maxHealth = 300f;   // втрое прочнее (просьба владельца): ~50 попаданий до гибели
         public float damagePerHit = 6f;
         public float respawnDelay = 4f;
         public float Health { get; private set; }

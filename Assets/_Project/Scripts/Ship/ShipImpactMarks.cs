@@ -41,10 +41,10 @@ namespace SkyTide
             Vector3 point=parent.InverseTransformPoint(world),normal=parent.InverseTransformDirection(worldNormal).normalized;
             foreach(Mark m in marks)if((m.point-point).sqrMagnitude<.25f)return;
             if(marks.Count==16)marks.RemoveAt(0);
-            marks.Add(new Mark{point=point,normal=normal,radius=Mathf.Lerp(.95f,1.55f,Mathf.Clamp01(severity)),seed=seed});Rebuild();
+            marks.Add(new Mark{point=point,normal=normal,radius=Mathf.Lerp(1.3f,2f,Mathf.Clamp01(severity)),seed=seed});Rebuild();
         }
         /// <summary>One projected grid; cell = atlas cell (0..3 holes, 4..7 soot).</summary>
-        void Layer(List<int> tris,Mark m,float half,float angle,int cell,float lift)
+        void Layer(List<int> tris,Mark m,float half,float angle,int cell,float lift,byte tone)
         {
             Vector3 n=m.normal;
             Vector3 side=Vector3.Cross(n,Mathf.Abs(n.y)>.85f?Vector3.right:Vector3.up).normalized,up=Vector3.Cross(n,side);
@@ -58,7 +58,7 @@ namespace SkyTide
                 Vector3 p=m.point+ax*(u*2-1)+ay*(v*2-1),pn=n;ShipHitSurface.Contact hit;byte a=255;
                 if(surface.Trace(p+n*2.5f,p-n*4f,out hit)&&(hit.point-p).sqrMagnitude<4f){p=hit.point;}
                 else a=0;                                                   // off the hull: fade this corner out
-                vertices.Add(p+pn*lift);normals.Add(pn);colors.Add(new Color32(255,255,255,a));
+                vertices.Add(p+pn*lift);normals.Add(pn);colors.Add(new Color32(tone,tone,tone,a));
                 uv.Add(cellMin+new Vector2(.004f+u*.242f,.004f+v*.492f));
             }
             int row=Grid+1;
@@ -81,9 +81,9 @@ namespace SkyTide
                 ShipHitSurface.Contact probe;
                 if(!surface.Trace(m.point+m.normal*2.5f,m.point-m.normal*4f,out probe))continue;
                 float lift=.02f+(m.seed%16)*.001f;
-                int hole=m.radius>1.25f?(m.seed&1):2+(m.seed&1);
-                Layer(soot,m,m.radius*2f,Noise(m.seed,3)*Mathf.PI*2,4+(m.seed>>1&3),lift);
-                Layer(holes,m,m.radius,(Noise(m.seed,7)-.5f)*.9f,hole,lift+.006f);
+                int hole=m.radius>1.65f?(m.seed&1):2+(m.seed&1);
+                Layer(soot,m,m.radius*2.4f,Noise(m.seed,3)*Mathf.PI*2,4+(m.seed>>1&3),lift,255);
+                Layer(holes,m,m.radius,(Noise(m.seed,7)-.5f)*.9f,hole,lift+.006f,190);   // щепа чуть темнее — не светлая кайма на тёмном борту
             }
             List<int> all=new List<int>(soot.Count+holes.Count);all.AddRange(soot);all.AddRange(holes);   // soot under every hole
             mesh.Clear();mesh.SetVertices(vertices);mesh.SetNormals(normals);mesh.SetUVs(0,uv);mesh.SetColors(colors);

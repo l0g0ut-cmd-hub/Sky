@@ -145,7 +145,8 @@ namespace SkyTide
                     {
                         Vector3 at=model.TransformPoint(vents[i]),normal=model.TransformDirection(ventNormals[i]);
                         fx.DamageSmoke(at+normal*.25f,damage);
-                        if(Burning)fx.DamageFire(at+normal*.4f,normal,damage,controller!=null?controller.transform.forward*controller.Speed:Vector3.zero);
+                        // При падении языки огня не догоняют разгоняющийся корпус и висят в воздухе — горит только до гибели, падает с дымом.
+                        if(Burning&&!Sinking)fx.DamageFire(at+normal*.4f,normal,damage,controller!=null?controller.transform.forward*controller.Speed:Vector3.zero);
                     }
                 }
             }

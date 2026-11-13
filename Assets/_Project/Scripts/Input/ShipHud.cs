@@ -222,9 +222,9 @@ namespace SkyTide
             bool ready=readiness>=0.9999f;
             Panel(r,l.unit,ready,input.Pressed(r));
             Rect c=Content(r);
-            Rect title=new Rect(c.x,c.y,c.width,c.height*0.38f);
+            Rect title=new Rect(c.x,c.y,c.width,c.height*0.36f);
             Text(title,side<0?"ЛЕВЫЙ БОРТ":"ПРАВЫЙ БОРТ",l.unit*0.03f,cream);
-            Rect row=new Rect(c.x,c.y+c.height*0.4f,c.width,c.height*0.42f);
+            Rect row=new Rect(c.x,c.y+c.height*0.38f,c.width,c.height*0.5f);
             if(HasKit)
             {
                 Rect src=side<0?KCannonL:KCannonR; float ih=row.height, iw=ih*src.width/src.height;

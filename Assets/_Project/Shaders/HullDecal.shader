@@ -35,6 +35,7 @@ Shader "Hidden/SkyTide/HullDecal"
                 half ndl = saturate(dot(n, _WorldSpaceLightPos0.xyz));
                 o.light = _LightColor0.rgb * ndl + ShadeSH9(half4(n, 1));
                 o.alpha = v.color.a;
+                o.light *= v.color.rgb;   // тон слоя (щепа темнее)
                 return o;
             }
             half4 frag(v2f i) : SV_Target
