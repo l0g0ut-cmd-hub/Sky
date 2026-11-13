@@ -338,7 +338,7 @@ namespace SkyTide
                 else if (t.Alive) sunkSeen.Remove(t);
             }
             PlayerHull hull = PlayerHull.Instance;
-            float bw = Mathf.Min(l.safe.width * 0.62f, l.safe.height * 2.6f), bh = bw * 0.25f;
+            float bw = Mathf.Min(l.safe.width * 0.5f, l.safe.height * 2.1f), bh = bw * 0.25f;
             float vic = capV ? 1f : Envelope(Time.time - victoryAt, 3.6f, 0.25f, 0.7f);
             bool dead = capD || (hull != null && !hull.Alive);
             float deadFor = capD ? 1f : hull != null ? hull.DeadFor : 0f, delay = hull != null ? hull.respawnDelay : 4f;
@@ -346,20 +346,18 @@ namespace SkyTide
             {
                 float a = Mathf.Clamp01(deadFor / 0.35f);
                 float pop = 1f + 0.06f * (1f - a);
-                Rect r = new Rect(l.safe.center.x - bw * pop * 0.5f, l.safe.y + l.safe.height * 0.3f - bh * pop * 0.5f, bw * pop, bh * pop);
+                Rect r = new Rect(l.safe.center.x - bw * pop * 0.5f, l.safe.y + l.safe.height * 0.5f - bh * pop * 0.5f, bw * pop, bh * pop);
                 if (bDefeat != null)
                 {
                     ImageRect(bDefeat, r, Whole, new Color(1f, 1f, 1f, a));
                     Text(Inner(r, 2048f, 512f, 430f, 180f, 1618f, 330f), "КОРАБЛЬ ПОДБИТ", bh * 0.42f, new Color(1f, 0.62f, 0.48f, a));
                 }
                 else Text(new Rect(l.safe.x, l.safe.center.y - l.unit * 0.06f, l.safe.width, l.unit * 0.12f), "КОРАБЛЬ ПОДБИТ", l.unit * 0.06f, new Color(1f, 0.5f, 0.35f, a));
-                int left = Mathf.CeilToInt(Mathf.Max(0f, delay - deadFor));
-                Text(new Rect(r.x, r.yMax, r.width, bh * 0.3f), "ВОЗВРАТ ЧЕРЕЗ " + left + " с", bh * 0.2f, new Color(cream.r, cream.g, cream.b, a * 0.9f));
             }
             else if (vic > 0f)
             {
                 float pop = capV ? 1f : 1f + 0.06f * (1f - Mathf.Clamp01((Time.time - victoryAt) / 0.25f));
-                Rect r = new Rect(l.safe.center.x - bw * pop * 0.5f, l.safe.y + l.safe.height * 0.3f - bh * pop * 0.5f, bw * pop, bh * pop);
+                Rect r = new Rect(l.safe.center.x - bw * pop * 0.5f, l.safe.y + l.safe.height * 0.5f - bh * pop * 0.5f, bw * pop, bh * pop);
                 if (bVictory != null)
                 {
                     ImageRect(bVictory, r, Whole, new Color(1f, 1f, 1f, vic));
@@ -370,17 +368,19 @@ namespace SkyTide
                 }
                 else Text(new Rect(l.safe.x, l.safe.center.y - l.unit * 0.06f, l.safe.width, l.unit * 0.12f), "ЦЕЛЬ УНИЧТОЖЕНА", l.unit * 0.06f, new Color(1f, 0.86f, 0.55f, vic));
             }
-            // Оповещение о вражеском залпе — плашка сверху по центру (не в бою на экране гибели).
-            float note = dead ? 0f : capV ? 1f : Envelope(Time.time - EnemyGunner.LastVolleyTime, 2.4f, 0.15f, 0.5f);
+            // Плашка оповещения сверху по центру, ниже полосы корпуса: «враг даёт залп», а при гибели — отсчёт возврата.
+            float note = dead ? Mathf.Clamp01(deadFor / 0.35f) : capV ? 1f : Envelope(Time.time - EnemyGunner.LastVolleyTime, 2.4f, 0.15f, 0.5f);
+            string noteText = "ВРАГ ДАЁТ ЗАЛП"; int noteIcon = 1;
+            if (dead) { noteText = "ВОЗВРАТ ЧЕРЕЗ " + Mathf.CeilToInt(Mathf.Max(0f, delay - deadFor)) + " с"; noteIcon = 11; }
             if (note > 0f && bPlate != null)
             {
-                float pw = Mathf.Min(l.safe.width * 0.36f, l.safe.height * 1.5f), ph = pw * 192f / 1024f;
-                Rect r = new Rect(l.safe.center.x - pw * 0.5f, l.safe.y + l.safe.height * 0.13f, pw, ph);
+                float pw = Mathf.Min(l.safe.width * 0.32f, l.safe.height * 1.3f), ph = pw * 192f / 1024f;
+                Rect r = new Rect(l.safe.center.x - pw * 0.5f, l.safe.y + l.safe.height * 0.2f, pw, ph);
                 ImageRect(bPlate, r, Whole, new Color(1f, 1f, 1f, note));
                 Rect inner = Inner(r, 1024f, 192f, 150f, 48f, 874f, 144f);
                 float ic = inner.height * 1.05f;
-                Icon(1, new Rect(inner.x, inner.center.y - ic * 0.5f, ic, ic), new Color(1f, 1f, 1f, note));
-                Text(new Rect(inner.x + ic * 1.1f, inner.y, inner.width - ic * 1.1f, inner.height), "ВРАГ ДАЁТ ЗАЛП", ph * 0.4f, new Color(1f, 0.72f, 0.5f, note));
+                Icon(noteIcon, new Rect(inner.x, inner.center.y - ic * 0.5f, ic, ic), new Color(1f, 1f, 1f, note));
+                Text(new Rect(inner.x + ic * 1.1f, inner.y, inner.width - ic * 1.1f, inner.height), noteText, ph * 0.4f, dead ? new Color(cream.r, cream.g, cream.b, note) : new Color(1f, 0.72f, 0.5f, note));
             }
         }
 

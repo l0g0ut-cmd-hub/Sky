@@ -1081,13 +1081,12 @@ namespace SkyTide.EditorTools
                 OverviewFrame(oc, cam, boot, rt, tex, dir, new Shot("201_overview_sun", 35f, 8f, 75f));
                 if (guns != null) guns.AimPreview();
                 OverviewFrame(oc, cam, boot, rt, tex, dir, new Shot("202_overview_down", 140f, 45f, 110f));
-                if (target != null)
-                {
-                    boot.Fx.ClearPreview();
-                    boot.Fx.Explosion(target.transform.position + Vector3.up * 8f, 1f);
-                    for (int k = 0; k < 4; k++) boot.Fx.Simulate(0.05f);
-                }
-                OverviewFrame(oc, cam, boot, rt, tex, dir, new Shot("203_overview_hit", 80f, 8f, 90f));
+                // Взрыв — точно в кадре (перед камерой, сбоку от корабля), на 0.2 с: видно нарисованный огненный шар.
+                Shot hitShot = new Shot("203_overview_hit", 80f, 8f, 90f);
+                boot.Fx.ClearPreview();
+                boot.Fx.Explosion(Ahead(oc, cam, hitShot, 60f, 18f), 1f);
+                for (int k = 0; k < 4; k++) boot.Fx.Simulate(0.05f);
+                OverviewFrame(oc, cam, boot, rt, tex, dir, hitShot);
                 // Мои изменения отдельными кадрами: залп (вспышка у дула, пороховой клуб), всплеск облака, баннеры и виньетка.
                 foreach (string res in new[] { "FX/fx_flipbooks", "FX/hull_decals", "UI/banner_victory", "UI/banner_defeat", "UI/plate_notice", "UI/vignette_damage", "UI/icons" })
                     if (Resources.Load<Texture2D>(res) == null) throw new System.InvalidOperationException("Нет картинки Resources/" + res);
@@ -1095,15 +1094,21 @@ namespace SkyTide.EditorTools
                 if (decal == null || !decal.isSupported) throw new System.InvalidOperationException("Шейдер пробоин HullDecal не собран");
                 boot.Fx.Clear();
                 Transform sh = boot.Ship.transform;
+                // Залп бортом, обращённым к камере (иначе вспышки за корпусом).
+                Shot volleyShot = new Shot("204_overview_volley", 70f, 6f, 55f);
+                Ahead(oc, cam, volleyShot, 0f, 0f);
+                Vector3 toCam = cam.transform.position - sh.position;
+                Vector3 broadside = Vector3.Dot(toCam, sh.right) > 0f ? sh.right : -sh.right;
                 for (int k = 0; k < 4; k++)
-                    boot.Fx.Fire(sh.position + sh.right * 6.5f + sh.up * 4f + sh.forward * (k * 4f - 6f), sh.right, Vector3.zero, 160f);
+                    boot.Fx.Fire(sh.position + broadside * 9f + sh.up * 4f + sh.forward * (k * 5f - 7.5f), broadside, Vector3.zero, 160f);
                 for (int k = 0; k < 3; k++) boot.Fx.Simulate(0.04f);
-                OverviewFrame(oc, cam, boot, rt, tex, dir, new Shot("204_overview_volley", 70f, 6f, 45f));
+                OverviewFrame(oc, cam, boot, rt, tex, dir, volleyShot);
                 boot.Fx.Clear();
-                Vector3 splashAt = sh.position + sh.forward * 120f; splashAt.y = boot.Fx.deckTop;
+                Shot splashShot = new Shot("205_overview_splash", 0f, 10f, 70f);
+                Vector3 splashAt = Ahead(oc, cam, splashShot, 160f, -30f); splashAt.y = boot.Fx.deckTop;
                 boot.Fx.CloudSplash(splashAt, 1f);
                 for (int k = 0; k < 8; k++) boot.Fx.Simulate(0.05f);
-                OverviewFrame(oc, cam, boot, rt, tex, dir, new Shot("205_overview_splash", 0f, 10f, 70f));
+                OverviewFrame(oc, cam, boot, rt, tex, dir, splashShot);
                 boot.Fx.Clear();
                 ShipHud.CaptureBanner = 1;
                 OverviewFrame(oc, cam, boot, rt, tex, dir, new Shot("206_banner_victory", 20f, 12f, 70f));
@@ -1120,6 +1125,16 @@ namespace SkyTide.EditorTools
                 boot.Fx.ClearPreview(); boot.Fx.Clear();
                 cam.targetTexture = null; RenderTexture.active = null; rt.Release(); Object.DestroyImmediate(rt); Object.DestroyImmediate(tex);
             }
+        }
+
+        /// <summary>Поставить камеру обзора как в кадре s и вернуть точку перед ней (дальше на ahead, правее на right).</summary>
+        static Vector3 Ahead(OrbitCamera oc, Camera cam, Shot s, float ahead, float right)
+        {
+            oc.yaw = s.yaw; oc.pitch = s.pitch; oc.distance = s.dist;
+            oc.Snap(); oc.Apply(0f);
+            Vector3 f = cam.transform.forward; f.y = 0f; f.Normalize();
+            Vector3 r = Vector3.Cross(Vector3.up, f);
+            return cam.transform.position + f * ahead + r * right;
         }
 
         static void OverviewFrame(OrbitCamera oc, Camera cam, SkyTideBootstrap boot, RenderTexture rt, Texture2D tex, string dir, Shot s)

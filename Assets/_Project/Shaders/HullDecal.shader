@@ -13,6 +13,7 @@ Shader "Hidden/SkyTide/HullDecal"
         {
             Tags { "LightMode"="ForwardBase" }
             Blend SrcAlpha OneMinusSrcAlpha
+            ColorMask RGB          // альфа кадра — маска для облаков/пост-обработки, наклейка её не трогает
             ZWrite Off
             Offset -2, -2
             Cull Back
