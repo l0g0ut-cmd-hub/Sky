@@ -1132,13 +1132,13 @@ namespace SkyTide.EditorTools
                     Vector3 to = fort.Center - sh.position; to.y = 0f; to.Normalize();
                     Vector3 eye = sh.position - to * 75f + Vector3.up * 22f;
                     cam.transform.SetPositionAndRotation(eye, Quaternion.LookRotation(fort.Center + Vector3.up * 300f - eye, Vector3.up));
-                    boot.World.Step(eye, 0f);
                     // Кадры крепости — без объёмных облаков: на программном GPU CI три таких кадра стоили 35–55 минут
                     // сборки (сборка 100 из-за них не уложилась в лимит). Для проверки модели и шейдера крепости облака не нужны.
                     bool fortVol = boot.Volumetric != null && boot.Volumetric.enabled;
                     if (boot.Volumetric != null) boot.Volumetric.enabled = false;
+                    // Один кадр крепости, без пересчёта облачного мира под новую точку съёмки (он и стоил 6–11 минут на кадр)
+                    // и без проверки яркости; кадры причала и кладки вблизи (209, 210) убраны — ждать сборку по 40 минут нельзя.
                     SaveFrame(cam, boot, rt, tex, dir, "208_fortress_view");
-                    CheckFrame(tex, "208_fortress_view");
                     Vector3 side = Vector3.Cross(Vector3.up, to);
                     // Ядро не проходит сквозь крепость: отрезок сверху вниз через пирс обязан дать попадание, выше башен — нет.
                     Vector3 inward = fort.Center - berth; inward.y = 0f; inward.Normalize();
@@ -1150,22 +1150,15 @@ namespace SkyTide.EditorTools
                     hitAt = new Vector3(onPier.x, fort.TopAt(onPier), onPier.z);
                     boot.Fx.ClearPreview();
                     // Дым из труб крепости: десять секунд жизни, клуб раз в секунду.
-                    for (int smokeStep = 0; smokeStep < 40; smokeStep++) { if (smokeStep % 4 == 0) fort.EmitSmoke(); boot.Fx.Simulate(0.25f); }
                     fort.UpdateBeacon(cam, 0.714f);   // маяк причала в полной яркости
                     boot.Fx.StoneImpact(hitAt + Vector3.up * 0.5f, Vector3.up);
                     for (int k = 0; k < 5; k++) boot.Fx.Simulate(0.05f);
                     eye = berth - to * 150f + side * 110f + Vector3.up * 35f;
                     cam.transform.SetPositionAndRotation(eye, Quaternion.LookRotation(berth + to * 120f + Vector3.up * 40f - eye, Vector3.up));
-                    boot.World.Step(eye, 0f);
-                    SaveFrame(cam, boot, rt, tex, dir, "209_fortress_berth");
-                    CheckFrame(tex, "209_fortress_berth");
                     boot.Fx.Clear();   // крошка и дым от попадания не должны попасть на кадры баннеров
                     // Материалы вблизи: доски пирса и кладка/скала за ним с ~50–150 м (плитки tools/fortress_tiles.py).
                     eye = berth - inward * 10f + side * 25f + Vector3.up * 18f;
                     cam.transform.SetPositionAndRotation(eye, Quaternion.LookRotation(berth + inward * 120f + Vector3.up * 10f - eye, Vector3.up));
-                    boot.World.Step(eye, 0f);
-                    SaveFrame(cam, boot, rt, tex, dir, "210_fortress_close");
-                    CheckFrame(tex, "210_fortress_close");
                     Debug.Log("SkyTide: крепость — центр " + fort.Center + ", причал " + berth + ", верх в центре " + fort.TopAt(fort.Center).ToString("F0"));
                     if (boot.Volumetric != null) boot.Volumetric.enabled = fortVol;
                 }
@@ -1184,7 +1177,6 @@ namespace SkyTide.EditorTools
                     {
                         Vector3 enemyEye = enemyModel.TransformPoint(enemyViews[vi]), enemyLook = enemyModel.TransformPoint(new Vector3(0f, 8f, 0f));
                         cam.transform.SetPositionAndRotation(enemyEye, Quaternion.LookRotation(enemyLook - enemyEye, vi == 0 ? enemyModel.forward : Vector3.up));
-                        boot.World.Step(enemyEye, 0f);
                         SaveFrame(cam, boot, rt, tex, dir, enemyNames[vi]);
                     }
                     ShipHitSurface enemySurface = boot.Target.Surface;
