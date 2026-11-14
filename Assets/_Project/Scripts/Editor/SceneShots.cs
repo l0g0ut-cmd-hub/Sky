@@ -1077,6 +1077,9 @@ namespace SkyTide.EditorTools
                 }
                 if (guns != null) { guns.SetReadinessCapture(1, 1); guns.AimPreview(); }
                 OverviewFrame(oc, cam, boot, rt, tex, dir, new Shot("200_overview_chase", 0f, 14f, 62f));
+                // Дальше обзор — без объёмных облаков (каждый такой кадр на CI стоит 3–7 минут); возвращаются в конце.
+                bool overviewClouds = boot.Volumetric != null && boot.Volumetric.enabled;
+                if (boot.Volumetric != null) boot.Volumetric.enabled = false;
                 if (guns != null) guns.AimPreview();
                 OverviewFrame(oc, cam, boot, rt, tex, dir, new Shot("201_overview_sun", 35f, 8f, 75f));
                 if (guns != null) guns.AimPreview();
@@ -1212,7 +1215,7 @@ namespace SkyTide.EditorTools
                 ShipHud.CaptureBanner = 2;
                 OverviewFrame(oc, cam, boot, rt, tex, dir, new Shot("207_banner_defeat", 20f, 12f, 70f));
                 ShipHud.CaptureBanner = 0;
-                if (boot.Volumetric != null) boot.Volumetric.enabled = volWas;
+                if (boot.Volumetric != null) boot.Volumetric.enabled = volWas || overviewClouds;
                 Debug.Log("SkyTide: обзор и проверки кадров — успешно, секунд=" + (Time.realtimeSinceStartup - start).ToString("F1"));
             }
             finally
@@ -1280,14 +1283,16 @@ namespace SkyTide.EditorTools
                 if(profile=="battle-life")
                 {
                     CaptureLife(oc,cam,boot,dir,true,false);boot.Fx.Clear();
-                    Render(oc,cam,boot,rt,tex,dir,new Shot("30_vol_toward_sun",35,8,75));
+                    // Владелец: «Уменьши количество проверок чтобы сборка не была по два часа». Кадры с объёмными облаками на
+                    // программном GPU CI — главная трата времени: убраны 30_vol_toward_sun (2–3 мин) и 45_vol_muzzle_flash
+                    // (11–24 мин); в обзоре облака остаются только на первом кадре.
                     Render(oc,cam,boot,rt,tex,dir,new Shot("32_vol_side",90,8,70));
                     CaptureBattleLife(cam,boot,dir);
                     Broadside reviewGuns=boot.Ship.GetComponent<Broadside>();bool ripple=reviewGuns.ripple;Random.State random=Random.state;
                     try
                     {
                         reviewGuns.ripple=true;reviewGuns.SetReadinessCapture(1,1);Random.InitState(74131);reviewGuns.Fire(-1);reviewGuns.Fire(1);float time=0;
-                        StepSalvo(reviewGuns,boot.Fx,ref time,.06f);Render(oc,cam,boot,rt,tex,dir,new Shot("45_vol_muzzle_flash",90,6,58));
+                        StepSalvo(reviewGuns,boot.Fx,ref time,.06f);
                     }
                     finally{reviewGuns.ripple=ripple;reviewGuns.SetReadinessCapture(1,1);boot.Fx.Clear();Random.state=random;}
                     CaptureOverview(oc,cam,boot,dir);
