@@ -40,13 +40,6 @@ namespace SkyTide
             box = mf != null && mf.sharedMesh != null ? mf.sharedMesh.bounds : new Bounds(Vector3.up * 8f, new Vector3(10f, 14f, 36f));
         }
 
-        /// <summary>Усиление у причала за трофеи: +20 прочности за каждый, не больше 600; корпус сразу цел.</summary>
-        public void Upgrade(int trophies)
-        {
-            maxHealth = Mathf.Min(600f, maxHealth + 20f * Mathf.Max(0, trophies));
-            if (Alive) Health = maxHealth;
-        }
-
         /// <summary>Ремонт у причала.</summary>
         public void Repair(float amount) { if (Alive) Health = Mathf.Min(maxHealth, Health + amount); }
         public Vector3 Center { get { return model != null ? model.TransformPoint(box.center) : transform.position; } }
@@ -80,7 +73,6 @@ namespace SkyTide
             {
                 Health = 0f;
                 SkySound.ShipDestroyed(Center);
-                SkyCampaign.PlayerLost();
                 if (fx != null) fx.Explosion(Center, 3f);
                 deadUntil = Time.time + respawnDelay;
                 if (ctrl != null && ctrl.visual != null) ctrl.visual.gameObject.SetActive(false);

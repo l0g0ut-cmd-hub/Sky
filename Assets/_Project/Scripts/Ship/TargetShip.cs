@@ -152,7 +152,6 @@ namespace SkyTide
             if (hits >= hitsToSink)
             {
                 SkySound.ShipDestroyed(point);
-                SkyCampaign.EnemySunk();
                 if (fx != null) fx.Explosion(model.TransformPoint(box.center), 3f);
                 deadUntil = Time.time + respawnDelay;
                 if (damageVisual != null) damageVisual.BeginSink(point, velocity);

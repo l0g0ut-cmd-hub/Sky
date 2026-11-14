@@ -303,8 +303,6 @@ namespace SkyTide
         Texture2D bVictory, bDefeat, bPlate, bVignette, bIcons; bool bannersTried;
         readonly HashSet<TargetShip> sunkSeen = new HashSet<TargetShip>();
         float victoryAt = -100f;
-        /// <summary>Рисовать ли в кадрах CI то, что в игре рисуется всегда (метка врага): включают мои обзорные кадры.</summary>
-        public static bool CaptureExtras;
         float cornerTop;   // верх свободного места в правом верхнем углу — для малых подсказок
         /// <summary>Кадры проверки в редакторе: 1 — баннер победы и оповещение, 2 — поражение с виньеткой.</summary>
         public static int CaptureBanner;
@@ -411,10 +409,8 @@ namespace SkyTide
                 {
                     float alarm = Envelope(Time.time - SkyFortress.FortressAlarmAt, 3.5f, 0.15f, 0.5f);
                     float zone = Envelope(Time.time - fort.EnteredAt, 3f, 0.2f, 0.6f);
-                    float upg = Envelope(Time.time - SkyFortress.UpgradeAt, 4f, 0.2f, 0.7f);
                     if (alarm > 0f) { noteText = "КРЕПОСТЬ ОТКРЫЛА ОГОНЬ"; noteIcon = 1; note = alarm; }
                     else if (fort.Hostile) { noteText = "ТРЕВОГА · " + Mathf.CeilToInt(fort.HostileLeft) + " с"; noteIcon = 1; note = 1f; corner = true; }
-                    else if (upg > 0f) { noteText = SkyFortress.UpgradeText; noteIcon = 0; note = upg; }
                     else if (fort.PlayerDocked && hull != null) { noteText = "РЕМОНТ · " + Mathf.RoundToInt(hull.Health01 * 100f) + "%"; noteIcon = 0; note = 1f; corner = true; }
                     else if (zone > 0f && fort.PlayerInside) { noteText = "БЕЗОПАСНАЯ ЗОНА"; noteIcon = 0; note = zone; }
                     else if (fort.PlayerInside && !fort.Hostile && note <= 0f && hull != null)
@@ -423,7 +419,7 @@ namespace SkyTide
                         // Положение корабля — по PlayerHull (он висит на корабле игрока): в Banners нет ссылки на ввод.
                         Vector3 toBerth = fort.BerthWorld - hull.transform.position; toBerth.y = 0f;
                         float bd = toBerth.magnitude;
-                        noteText = bd < fort.berthRadius ? "СБАВЬ ХОД" : "ПРИЧАЛ · " + Mathf.RoundToInt(bd / 10f) * 10 + " м" + (SkyCampaign.Trophies > 0 ? " · ТРОФЕИ " + SkyCampaign.Trophies : "");
+                        noteText = bd < fort.berthRadius ? "СБАВЬ ХОД" : "ПРИЧАЛ · " + Mathf.RoundToInt(bd / 10f) * 10 + " м";
                         noteIcon = 9; note = 0.85f; corner = true;
                     }
                 }
@@ -442,53 +438,6 @@ namespace SkyTide
                 float ic = inner.height * 1.05f;
                 Icon(noteIcon, new Rect(inner.x, inner.center.y - ic * 0.5f, ic, ic), new Color(1f, 1f, 1f, note));
                 Text(new Rect(inner.x + ic * 1.1f, inner.y, inner.width - ic * 1.1f, inner.height), noteText, ph * 0.4f, dead ? new Color(cream.r, cream.g, cream.b, note) : new Color(1f, 0.72f, 0.5f, note));
-            }
-        }
-
-        /// <summary>
-        /// Метка врага: полоска его прочности и расстояние — над кораблём; если он вне кадра — у края экрана
-        /// в его стороне. Всегда внутри безопасной области экрана.
-        /// </summary>
-        void EnemyMarkers(HudLayout l)
-        {
-            Camera cam = Camera.main;
-            PlayerHull me = PlayerHull.Instance;
-            if (cam == null || me == null) return;
-            foreach (TargetShip t in TargetShip.All)
-            {
-                if (t == null || !t.Alive) continue;
-                Vector3 world = t.Center + Vector3.up * 24f;
-                Vector3 vp = cam.WorldToViewportPoint(world);
-                float dist = (t.Center - me.Center).magnitude;
-                bool behind = vp.z <= 0f;
-                if (behind) { vp.x = 1f - vp.x; vp.y = 1f - vp.y; }
-                bool inside = !behind && vp.x > 0.04f && vp.x < 0.96f && vp.y > 0.06f && vp.y < 0.94f;
-                float bw = l.unit * 0.11f, bh = l.unit * 0.011f, th = l.unit * 0.034f, tw = l.unit * 0.24f;
-                float x, y;
-                if (inside) { x = l.safe.x + vp.x * l.safe.width; y = l.safe.y + (1f - vp.y) * l.safe.height; }
-                else
-                {
-                    // Вне кадра: точка на рамке экрана по направлению от центра к врагу.
-                    Vector2 d = new Vector2(vp.x - 0.5f, 0.5f - vp.y);
-                    if (behind && Mathf.Abs(d.x) < 0.05f) d.x = d.x >= 0f ? 0.05f : -0.05f;
-                    if (d.sqrMagnitude < 1e-6f) d = Vector2.up;
-                    float k = 0.5f / Mathf.Max(Mathf.Abs(d.x), Mathf.Abs(d.y));
-                    x = l.safe.center.x + d.x * k * l.safe.width; y = l.safe.center.y + d.y * k * l.safe.height;
-                }
-                x = Mathf.Clamp(x, l.safe.x + tw * 0.5f + l.unit * 0.01f, l.safe.xMax - tw * 0.5f - l.unit * 0.01f);
-                y = Mathf.Clamp(y, l.safe.y + th + bh + l.unit * 0.02f, l.safe.yMax - l.unit * 0.02f);
-                if (!inside)
-                {
-                    // Метка у края не ложится на радар, плашку хода и штурвал слева и на кнопки залпа справа.
-                    x = Mathf.Max(x, l.radar.xMax + tw * 0.5f + l.unit * 0.02f);
-                    y = Mathf.Min(y, l.mode.y - l.unit * 0.03f);
-                }
-                Color red = new Color(1f, 0.42f, 0.28f, 0.95f);
-                Rect bar = new Rect(x - bw * 0.5f, y - bh, bw, bh);
-                Box(new Rect(bar.x - 1f, bar.y - 1f, bar.width + 2f, bar.height + 2f), new Color(0.02f, 0.02f, 0.03f, 0.8f));
-                Box(new Rect(bar.x, bar.y, bar.width * t.Health01, bar.height), red);
-                string label = (inside ? "" : "ВРАГ ") + (dist >= 1000f ? (dist / 1000f).ToString("F1") + " км" : Mathf.RoundToInt(dist / 10f) * 10 + " м");
-                Text(new Rect(x - tw * 0.5f, bar.y - th, tw, th), label, l.unit * 0.026f, red);
             }
         }
 
@@ -559,11 +508,6 @@ namespace SkyTide
                     // Плашки «облака» справа сверху нет — переключатель в панели FPS.
                     if(input.game.ships!=null&&input.game.ships.Length>1) {Panel(l.ship,l.unit);PlateText(l.ship,0f,1f,input.game.CurrentShipName,l.unit*0.03f,cream);}
                     cornerTop=l.safe.y+l.unit*0.02f;
-                    if(Application.isPlaying||CaptureExtras)
-                    {
-                        // Метка врага — над его кораблём (или у края экрана, если он вне кадра).
-                        EnemyMarkers(l);
-                    }
                     Panel(l.course,l.unit); PlateText(l.course,0f,1f,"КУРС "+(Mathf.RoundToInt(input.ship.transform.eulerAngles.y)%360).ToString("000")+"°",l.unit*0.034f,cream);
                     Panel(l.speed,l.unit);PlateText(l.speed,0f,1f,"ХОД "+input.ship.Speed.ToString("F1")+" м/с",l.unit*0.034f,cream);
                     Radar(input,l);

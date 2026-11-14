@@ -1066,7 +1066,6 @@ namespace SkyTide.EditorTools
             Quaternion oldRot = target != null ? target.transform.rotation : Quaternion.identity;
             try
             {
-                ShipHud.CaptureExtras = true;   // плашка волны и метка врага — как в игре
                 boot.SetVolumetric(true);
                 boot.Fx.Clear();
                 if (controls != null) controls.SetHudCapture(true, rt.width, rt.height);
@@ -1176,7 +1175,6 @@ namespace SkyTide.EditorTools
             finally
             {
                 ShipHud.CaptureBanner = 0;
-                ShipHud.CaptureExtras = false;
                 if (controls != null) controls.SetHudCapture(false);
                 if (target != null) target.transform.SetPositionAndRotation(oldTarget, oldRot);
                 boot.Fx.ClearPreview(); boot.Fx.Clear();

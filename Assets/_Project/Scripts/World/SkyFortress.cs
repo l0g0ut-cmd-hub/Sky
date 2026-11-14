@@ -23,9 +23,6 @@ namespace SkyTide
         public float shellCaliber = 3f;
         public float berthRadius = 100f, berthMaxSpeed = 5f, repairPerSecond = 14f;
         /// <summary>Когда и чем крепость усилила корабль у причала (для оповещения HUD).</summary>
-        public static float UpgradeAt = -100f;
-        public static string UpgradeText = "";
-        float baseReload = -1f;
         /// <summary>Сколько секунд ещё длится тревога.</summary>
         public float HostileLeft { get { return Mathf.Max(0f, hostileUntil - Time.time); } }
 
@@ -217,20 +214,6 @@ namespace SkyTide
             if (PlayerDocked)
             {
                 hull.Repair(repairPerSecond * dt);
-                // Трофеи с потопленных врагов крепость меняет на усиление: прочнее корпус, быстрее перезарядка (до −40%).
-                int trophies = SkyCampaign.TakeTrophies();
-                if (trophies > 0)
-                {
-                    hull.Upgrade(trophies);
-                    Broadside broadside = ship.GetComponent<Broadside>();
-                    if (broadside != null)
-                    {
-                        if (baseReload < 0f) baseReload = broadside.cooldown;
-                        broadside.cooldown = Mathf.Max(baseReload * 0.6f, broadside.cooldown * Mathf.Pow(0.95f, trophies));
-                    }
-                    UpgradeAt = Time.time;
-                    UpgradeText = "УСИЛЕНИЕ · КОРПУС " + Mathf.RoundToInt(hull.maxHealth);
-                }
             }
 
             // Жизнь крепости: дым из труб, пока камера не слишком далеко.
