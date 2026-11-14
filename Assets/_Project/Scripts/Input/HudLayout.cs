@@ -9,13 +9,16 @@ namespace SkyTide
         public Vector2 wheel;
         public float unit, radius;
 
+        /// <summary>Размер кнопок бортов (настройка в паузе): 1 — обычные, 1.2 — крупные.</summary>
+        public static float ButtonScale = 1f;
+
         public static HudLayout Build(int width, int height, Rect safeArea, float stickRadius)
         {
             HudLayout l = new HudLayout();
             l.safe = safeArea;
             l.unit = Mathf.Min(safeArea.height, safeArea.width);
             float u = l.unit, m = u * 0.03f, gap = u * 0.025f;
-            float w = Mathf.Max(u * 0.33f, Mathf.Min(u * 0.39f, safeArea.width * 0.18f)), h = u * 0.15f;   // кнопки бортов: поле внутри рамки вмещает название, пушку и состояние крупно
+            float w = Mathf.Max(u * 0.33f, Mathf.Min(u * 0.39f, safeArea.width * 0.18f)) * ButtonScale, h = u * 0.15f * ButtonScale;   // кнопки бортов: поле внутри рамки вмещает название, пушку и состояние крупно
             l.starboard = new Rect(safeArea.xMax - m - w, safeArea.yMax - u * 0.09f - h, w, h);
             l.port = new Rect(l.starboard.x - gap - w, l.starboard.y, w, h);
             l.mode = new Rect(l.port.x, l.port.y - gap - u * 0.072f, w * 2f + gap, u * 0.072f);
@@ -40,12 +43,12 @@ namespace SkyTide
         }
 
         /// <summary>Меню паузы: панель по центру и её строки (одна геометрия для рисования и касаний).</summary>
-        public const int PauseRows = 4;
+        public const int PauseRows = 5;
         public Rect PausePanel
         {
             get
             {
-                float w = Mathf.Min(safe.width * 0.42f, unit * 0.86f), h = unit * 0.66f;
+                float w = Mathf.Min(safe.width * 0.42f, unit * 0.86f), h = unit * 0.78f;
                 return new Rect(safe.center.x - w * 0.5f, safe.center.y - h * 0.5f, w, h);
             }
         }

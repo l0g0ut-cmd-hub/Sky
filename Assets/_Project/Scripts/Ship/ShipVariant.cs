@@ -18,6 +18,7 @@ namespace SkyTide
         public TextAsset steering;
         // Облегчённая копия (tools/decimate_ship.py): тень-заместитель, а дальше lodDistance — и сама модель.
         public TextAsset lite, liteSrc;
+        public TextAsset lights;    // <модель>_lights.json — фонари и окна в координатах модели (ореолы издалека)
         public float lodDistance;   // 0 — только тень
         [NonSerialized] Mesh cachedLite;
         public Mesh LiteMesh { get { if (cachedLite == null && lite != null) cachedLite = ShipMeshLoader.Load(lite); return cachedLite; } }

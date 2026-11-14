@@ -349,14 +349,32 @@ namespace SkyTide
             else if (game.Fortress != null) Flash(game.Fortress.BerthWorld + Vector3.up * 10f, 0.03f, 120f);
         }
 
-        // Маяк причала: одно свечение, обновляется каждый кадр крепостью, не симулируется.
-        bool beaconOn; P beacon;
-        public void SetBeacon(Vector3 pos, float size, Color c)
+        // Постоянные огни (маяк причала, ореолы фонарей крепости и врага): свечения в закреплённых гнёздах,
+        // владелец обновляет своё гнездо каждый кадр; не симулируются. Гнёзда: 0 — маяк, 1–28 — крепость, 30–39 — враг.
+        public const int MaxLamps = 40;
+        readonly P[] lamps = new P[MaxLamps];
+        readonly bool[] lampOn = new bool[MaxLamps];
+        public void SetLamp(int slot, Vector3 pos, float size, Color c)
         {
-            beaconOn = c.a > 0.001f;
-            beacon = new P { kind = Kind.Glow, pos = pos, life = 1f, size0 = size, size1 = size, color = c, alpha = c.a };
+            if (slot < 0 || slot >= MaxLamps) return;
+            lampOn[slot] = c.a > 0.001f;
+            lamps[slot] = new P { kind = Kind.Glow, pos = pos, life = 1f, size0 = size, size1 = size, color = c, alpha = c.a };
         }
-        public void ClearBeacon() { beaconOn = false; }
+        public void ClearLamp(int slot) { if (slot >= 0 && slot < MaxLamps) lampOn[slot] = false; }
+        public void SetBeacon(Vector3 pos, float size, Color c) { SetLamp(0, pos, size, c); }
+        public void ClearBeacon() { ClearLamp(0); }
+
+        /// <summary>Ремонт у причала: сноп искр от обшивки.</summary>
+        public void RepairSparks(Vector3 at, Vector3 normal)
+        {
+            for (int k = 0; k < 6; k++)
+            {
+                Vector3 velocity = (normal + Random.insideUnitSphere * 0.8f).normalized * Random.Range(4f, 10f) + Vector3.up * 2f;
+                Add(new P { kind = Kind.Spark, pos = at + normal * 0.2f, vel = velocity, axis = velocity.normalized, aspect = 0.16f, life = Random.Range(0.35f, 0.8f),
+                    size0 = 0.5f, size1 = 0.08f, color = new Color(1f, 0.75f, 0.35f), alpha = 0.8f });
+            }
+            Add(new P { kind = Kind.Glow, pos = at + normal * 0.4f, life = 0.12f, size0 = 1.6f, size1 = 2.4f, color = new Color(1f, 0.8f, 0.45f), alpha = 0.25f });
+        }
 
         float wakeClock, wispClock;
         /// <summary>Ощущение скорости: за кормой корабля игрока остаётся тающий след у киля, а по сторонам от курса
@@ -460,7 +478,7 @@ namespace SkyTide
         {
             ps.Clear();
             splashes.Clear();
-            beaconOn = false;
+            for (int k = 0; k < MaxLamps; k++) lampOn[k] = false;
             drawn = 0;
             CloudSplashCount = 0;
             for (int i = 0; i < MaxFlashes; i++) flashes[i] = Vector4.zero;
@@ -700,7 +718,7 @@ namespace SkyTide
         {
             int baseCount = ps.Count;
             ps.AddRange(preview);
-            if (beaconOn) ps.Add(beacon);
+            for (int k = 0; k < MaxLamps; k++) if (lampOn[k]) ps.Add(lamps[k]);
             try { BuildMeshCore(cam); }
             finally { ps.RemoveRange(baseCount, ps.Count - baseCount); }
         }

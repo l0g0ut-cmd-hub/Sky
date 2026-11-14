@@ -47,6 +47,7 @@ namespace SkyTide
         public bool Paused { get; private set; }
         public bool SoundOn { get; private set; } = true;
         public int CameraSpeed { get; private set; } = 1;
+        public bool BigButtons { get; private set; }
         static readonly float[] OrbitSpeeds = { 150f, 220f, 300f };
         public static readonly string[] CameraSpeedNames = { "МЕДЛЕННАЯ", "СРЕДНЯЯ", "БЫСТРАЯ" };
         // Радар: касание меняет масштаб 1.5 км ↔ 600 м.
@@ -83,7 +84,8 @@ namespace SkyTide
             if (row == 0) SetPaused(false);
             else if (row == 1) { SoundOn = !SoundOn; AudioListener.volume = SoundOn ? 1f : 0f; PlayerPrefs.SetInt("SkyTide.Sound", SoundOn ? 1 : 0); }
             else if (row == 2) { CameraSpeed = (CameraSpeed + 1) % OrbitSpeeds.Length; orbitDegreesPerScreen = OrbitSpeeds[CameraSpeed]; PlayerPrefs.SetInt("SkyTide.Camera", CameraSpeed); }
-            else if (row == 3) { SetPaused(false); ResetInteraction(); MainMenu.Open(); }
+            else if (row == 3) { BigButtons = !BigButtons; HudLayout.ButtonScale = BigButtons ? 1.2f : 1f; PlayerPrefs.SetInt("SkyTide.Buttons", BigButtons ? 1 : 0); }
+            else if (row == 4) { SetPaused(false); ResetInteraction(); MainMenu.Open(); }
         }
 
         /// <summary>Пауза: время и звук стоят, касания принимает только меню паузы.</summary>
@@ -113,6 +115,8 @@ namespace SkyTide
                 CameraSpeed = Mathf.Clamp(PlayerPrefs.GetInt("SkyTide.Camera", 1), 0, OrbitSpeeds.Length - 1);
                 AudioListener.volume = SoundOn ? 1f : 0f;
                 orbitDegreesPerScreen = OrbitSpeeds[CameraSpeed];
+                BigButtons = PlayerPrefs.GetInt("SkyTide.Buttons", 0) == 1;
+                HudLayout.ButtonScale = BigButtons ? 1.2f : 1f;
             }
         }
 

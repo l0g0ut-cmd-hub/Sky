@@ -24,6 +24,10 @@ namespace SkyTide
         [Tooltip("На каком расстоянии от игрока появляется новый враг — за дальними облаками, а не в кадре")]
         public float spawnRange = 1200f;
         float fightSide, nextScrape;
+        // Уклонение: когда борт игрока заряжен и наведён, враг на пару секунд резко отворачивает полным ходом.
+        float evadeUntil = -1f, nextEvade, evadeTurn;
+        [System.Serializable] class LightList { public float[] lights; }
+        Vector3[] lamps = new Vector3[0];
         // «Затупы»: время от времени капитан мишени теряется — сбрасывает ход, дрейфует, крутит руль не туда.
         float dazeUntil = -1f, nextDaze, dazeTurn;
         public bool Dazed { get { return Time.time < dazeUntil; } }
@@ -53,8 +57,17 @@ namespace SkyTide
         public ShipHitSurface Surface {get {return surface;}}
         public Vector3 ImpactNormal {get {return model.TransformDirection(lastContact.normal).normalized;}}
 
-        public void Setup(ShipController c, Transform player, Material debrisWood = null,TextAsset geometry=null)
+        public void Setup(ShipController c, Transform player, Material debrisWood = null,TextAsset geometry=null,TextAsset lights=null)
         {
+            if (lights != null)
+            {
+                LightList list = JsonUtility.FromJson<LightList>(lights.text);
+                if (list != null && list.lights != null)
+                {
+                    lamps = new Vector3[Mathf.Min(10, list.lights.Length / 3)];
+                    for (int i = 0; i < lamps.Length; i++) lamps[i] = new Vector3(list.lights[i * 3], list.lights[i * 3 + 1], list.lights[i * 3 + 2]);
+                }
+            }
             // OnEnable в редакторе (кадры CI) не вызывается — регистрируемся сами, иначе попадания и доклад впередсмотрящего не видят мишень.
             if (!All.Contains(this)) All.Add(this);
             ctrl = c;
@@ -93,6 +106,7 @@ namespace SkyTide
         void UpdateTimed()
         {
             if (ctrl == null) return;
+            Lamps();
             if (!Alive)
             {
                 if (Time.time >= deadUntil) Respawn();
@@ -120,6 +134,22 @@ namespace SkyTide
             float ang = Vector3.SignedAngle(transform.forward, to, Vector3.up);
             ctrl.turn = Mathf.Clamp(ang / 35f, -1f, 1f);
             ctrl.throttle = Mathf.Abs(ang) > 100f ? 0.25f : 0.55f;
+        }
+
+        /// <summary>Ореолы фонарей и окон: издалека корабль читается по огням (вблизи их даёт само свечение).</summary>
+        void Lamps()
+        {
+            FxSystem fx = FxSystem.Instance; Camera cam = Camera.main;
+            if (fx == null || cam == null || model == null) return;
+            bool lit = Alive || (damageVisual != null && damageVisual.Sinking && !damageVisual.Hidden);
+            Vector3 eye = cam.transform.position;
+            for (int i = 0; i < lamps.Length; i++)
+            {
+                if (!lit) { fx.ClearLamp(30 + i); continue; }
+                Vector3 p = model.TransformPoint(lamps[i]);
+                float d = Vector3.Distance(eye, p);
+                fx.SetLamp(30 + i, p, Mathf.Clamp(d * 0.014f, 1.5f, 16f), new Color(1f, 0.72f, 0.38f, 0.08f * Mathf.Clamp01((d - 90f) / 220f)));
+            }
         }
 
         /// <summary>Бой бортом: курс такой, чтобы игрок был на нужном курсовом угле с выбранного борта.</summary>
@@ -152,6 +182,16 @@ namespace SkyTide
                 }
             }
             float ang = Vector3.SignedAngle(transform.forward, heading, Vector3.up);
+            // Уклонение: борт игрока заряжен и его ядра ложатся в наш корпус — на 2.2 с руль на борт и полный ход,
+            // чтобы уйти из-под залпа; не чаще раза в 7–11 с (иначе в него было бы не попасть).
+            Broadside threat = player != null ? player.GetComponent<Broadside>() : null;
+            if (threat != null && threat.AimOnTarget && threat.Readiness(threat.AimSide) >= 0.999f && Time.time >= nextEvade)
+            {
+                evadeUntil = Time.time + 2.2f;
+                nextEvade = Time.time + Random.Range(7f, 11f);
+                evadeTurn = Mathf.Abs(ang) > 8f ? Mathf.Sign(ang) : (Random.value < 0.5f ? -1f : 1f);
+            }
+            if (Time.time < evadeUntil) { ctrl.turn = evadeTurn; ctrl.throttle = 1f; return; }
             ctrl.turn = Mathf.Clamp(ang / 35f, -1f, 1f);
             ctrl.throttle = Mathf.Abs(ang) > 100f ? 0.3f : far ? 0.85f : hurt ? 0.7f : 0.6f;
         }

@@ -38,6 +38,7 @@ namespace SkyTide
             public float deck;          // высота главной площадки (модель): ниже неё — скала основания
             public float cell = 10f;
             public int gw, gh;
+            public float[] lights;      // x,y,z окон и фонарей (модель) — tools: по карте свечения через треугольники меша
             public float[] heights;     // верх модели в клетке (модель, м); ниже −1e3 — пусто
         }
 
@@ -111,8 +112,24 @@ namespace SkyTide
                     if (top > -1e8f) { beaconPos = new Vector3(q.x, top + 9f, q.z); break; }
                 }
             }
-            if (Application.isPlaying && Hostile) { fx.ClearBeacon(); return; }
-            float dist = Vector3.Distance(cam.transform.position, beaconPos);
+            bool alarm = Application.isPlaying && Hostile;
+            Vector3 eye = cam.transform.position;
+            // Ореолы окон и фонарей: отдельные огни видны издалека (вблизи их даёт само свечение), при тревоге — красные.
+            if (grid != null && grid.lights != null)
+            {
+                int n = Mathf.Min(28, grid.lights.Length / 3);
+                Color warm = alarm ? new Color(1f, 0.25f, 0.12f) : new Color(1f, 0.72f, 0.38f);
+                for (int i = 0; i < n; i++)
+                {
+                    Vector3 lp = model.TransformPoint(new Vector3(grid.lights[i * 3], grid.lights[i * 3 + 1], grid.lights[i * 3 + 2]));
+                    float ld = Vector3.Distance(eye, lp);
+                    float show = Mathf.Clamp01((ld - 200f) / 500f) * (0.8f + 0.2f * Mathf.Sin(time * 3.1f + i * 1.7f));
+                    warm.a = 0.075f * show;
+                    fx.SetLamp(1 + i, lp, Mathf.Clamp(ld * 0.014f, 5f, 42f), warm);
+                }
+            }
+            if (alarm) { fx.ClearBeacon(); return; }
+            float dist = Vector3.Distance(eye, beaconPos);
             float pulse = Mathf.Pow(Mathf.Max(0f, Mathf.Sin(time * 2.2f)), 4f);
             fx.SetBeacon(beaconPos, Mathf.Clamp(dist * 0.02f, 7f, 55f), new Color(1f, 0.85f, 0.55f, 0.12f + 0.4f * pulse));
         }
@@ -256,6 +273,7 @@ namespace SkyTide
             if (PlayerDocked)
             {
                 hull.Repair(repairPerSecond * dt);
+                hull.RepairFx(dt);   // ремонт виден: искры по обшивке, пока корпус не цел
             }
 
             // Жизнь крепости: дым из труб, пока камера не слишком далеко.
@@ -297,7 +315,24 @@ namespace SkyTide
             Vector3 dir;
             if (!Solve(muzzle, aimAt, out dir)) return;
             if (!warning) dir = Quaternion.Euler(UnityEngine.Random.Range(-spreadDeg, spreadDeg), UnityEngine.Random.Range(-spreadDeg, spreadDeg), 0f) * dir;
-            if (FxSystem.Instance != null) FxSystem.Instance.Fire(muzzle, dir, Vector3.zero, muzzleSpeed, true, shellLife, shellCaliber);
+            if (FxSystem.Instance == null) return;
+            FxSystem.Instance.Fire(muzzle, dir, Vector3.zero, muzzleSpeed, true, shellLife, shellCaliber);
+            if (warning) return;
+            // Залп башней: вместе с выбранным орудием бьют до двух соседних (в 30 м модели), чьи стволы смотрят на цель;
+            // пауза до следующего залпа длиннее во столько же раз — плотность огня прежняя.
+            int extra = 0;
+            for (int g = 0; g < guns.Length && extra < 2; g++)
+            {
+                if (g == pick || (guns[g] - guns[pick]).sqrMagnitude > 30f * 30f) continue;
+                Vector3 m2 = model.TransformPoint(guns[g]);
+                if (gunDirs != null && Vector3.Dot(model.TransformDirection(gunDirs[g]), (pp - m2).normalized) <= 0.25f) continue;
+                Vector3 d2;
+                if (!Solve(m2, pp, out d2)) continue;
+                d2 = Quaternion.Euler(UnityEngine.Random.Range(-spreadDeg, spreadDeg) * 1.5f, UnityEngine.Random.Range(-spreadDeg, spreadDeg) * 1.5f, 0f) * d2;
+                FxSystem.Instance.Fire(m2, d2, Vector3.zero, muzzleSpeed, true, shellLife, shellCaliber);
+                extra++;
+            }
+            if (extra > 0) nextShot = Time.time + (shotInterval + UnityEngine.Random.Range(0f, 0.4f)) * (1 + extra);
         }
 
         /// <summary>Сквозь крепость не пройти: нос, центр и корма корабля проверяются по карте высот.</summary>

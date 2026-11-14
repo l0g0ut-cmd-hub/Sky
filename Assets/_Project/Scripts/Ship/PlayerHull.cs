@@ -65,6 +65,20 @@ namespace SkyTide
             if (debris == null && game != null && game.materials != null && game.materials.darkWood != null) debris = new WreckDebris(game.materials.darkWood);
         }
 
+        float repairClock;
+        /// <summary>Ремонт у причала виден: по обшивке у пушечной палубы пробегают искры, пока корпус не цел.</summary>
+        public void RepairFx(float dt)
+        {
+            FxSystem fx = FxSystem.Instance;
+            if (fx == null || !Alive || model == null || Health >= maxHealth - 0.01f) return;
+            repairClock += dt;
+            if (repairClock < 0.22f) return;
+            repairClock = 0f;
+            Vector3 probe = model.TransformPoint(new Vector3(box.center.x + (Random.value < 0.5f ? -1f : 1f) * box.extents.x, box.center.y, Random.Range(box.min.z, box.max.z)));
+            Vector3 at, normal;
+            if (HullPoint(probe, out at, out normal)) fx.RepairSparks(at, normal);
+        }
+
         /// <summary>Ремонт у причала.</summary>
         public void Repair(float amount) { if (Alive) Health = Mathf.Min(maxHealth, Health + amount); }
         public Vector3 Center { get { return model != null ? model.TransformPoint(box.center) : transform.position; } }

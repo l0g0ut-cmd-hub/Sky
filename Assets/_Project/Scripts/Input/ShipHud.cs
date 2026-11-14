@@ -310,6 +310,29 @@ namespace SkyTide
             }
         }
 
+        static readonly string[] Cardinals = { "С", "СВ", "В", "ЮВ", "Ю", "ЮЗ", "З", "СЗ" };
+        /// <summary>Курс — компасная лента: румбы и деления едут под неподвижной меткой по центру плашки.</summary>
+        void Compass(TouchControls input, HudLayout l)
+        {
+            Rect c = Content(l.course);
+            float heading = input.ship.transform.eulerAngles.y;
+            const float span = 100f;
+            float perDeg = c.width / span, lw = l.unit * 0.085f, tick = Mathf.Max(1f, l.unit * 0.003f);
+            for (int d = 0; d < 360; d += 15)
+            {
+                float off = Mathf.DeltaAngle(heading, d);
+                if (Mathf.Abs(off) > span * 0.5f) continue;
+                float x = c.center.x + off * perDeg;
+                if (d % 45 == 0)
+                {
+                    if (x - lw * 0.5f < c.x || x + lw * 0.5f > c.xMax) continue;
+                    Text(new Rect(x - lw * 0.5f, c.y, lw, c.height * 0.74f), Cardinals[d / 45], l.unit * 0.032f, d % 90 == 0 ? cream : muted);
+                }
+                else Solid(new Rect(x - tick * 0.5f, c.yMax - c.height * 0.3f, tick, c.height * 0.22f), new Color(gold.r, gold.g, gold.b, 0.8f));
+            }
+            Solid(new Rect(c.center.x - tick, c.yMax - c.height * 0.24f, tick * 2f, c.height * 0.32f), new Color(1f, 0.86f, 0.5f, 1f));
+        }
+
         /// <summary>Меню паузы: затемнение, панель по центру, четыре строки (геометрия — HudLayout.PauseRow).</summary>
         void PauseMenu(TouchControls input, HudLayout l, int width, int height)
         {
@@ -321,7 +344,8 @@ namespace SkyTide
             {
                 Rect r = l.PauseRow(i);
                 string text = i == 0 ? "ПРОДОЛЖИТЬ" : i == 1 ? "ЗВУК · " + (input.SoundOn ? "ВКЛ" : "ВЫКЛ")
-                    : i == 2 ? "КАМЕРА · " + TouchControls.CameraSpeedNames[input.CameraSpeed] : "В ГЛАВНОЕ МЕНЮ";
+                    : i == 2 ? "КАМЕРА · " + TouchControls.CameraSpeedNames[input.CameraSpeed]
+                    : i == 3 ? "КНОПКИ · " + (input.BigButtons ? "КРУПНЫЕ" : "ОБЫЧНЫЕ") : "В ГЛАВНОЕ МЕНЮ";
                 Panel(r, l.unit, i == 0, input.Pressed(r));
                 PlateText(r, 0f, 1f, text, l.unit * 0.04f, cream);
             }
@@ -613,7 +637,7 @@ namespace SkyTide
                     // Плашки «облака» справа сверху нет — переключатель в панели FPS.
                     if(input.game.ships!=null&&input.game.ships.Length>1) {Panel(l.ship,l.unit);PlateText(l.ship,0f,1f,input.game.CurrentShipName,l.unit*0.03f,cream);}
                     cornerTop=l.safe.y+l.unit*0.02f;
-                    Panel(l.course,l.unit); PlateText(l.course,0f,1f,"КУРС "+(Mathf.RoundToInt(input.ship.transform.eulerAngles.y)%360).ToString("000")+"°",l.unit*0.034f,cream);
+                    Panel(l.course,l.unit); Compass(input,l);
                     Panel(l.speed,l.unit);PlateText(l.speed,0f,1f,"ХОД "+input.ship.Speed.ToString("F1")+" м/с",l.unit*0.034f,cream);
                     Telegraph(input,l);
                     Radar(input,l);
