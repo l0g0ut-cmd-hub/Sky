@@ -275,6 +275,7 @@ namespace SkyTide
             if (Hostile && Time.time >= nextBell) { nextBell = Time.time + 1.15f; SkySound.Alarm(transform.position); }
             UpdateBeacon(Camera.main, Time.time);
 
+            if (!mooredBuilt) BuildMoored();
             bool inside = InSafeZone(ship.transform.position);
             if (inside && !PlayerInside) EnteredAt = Time.time;
             PlayerInside = inside;
@@ -286,6 +287,16 @@ namespace SkyTide
             {
                 hull.Repair(repairPerSecond * dt);
                 hull.RepairFx(dt);   // ремонт виден: искры по обшивке, пока корпус не цел
+                // Автошвартовка: рукоять на «СТОП» — корабль сам подтягивается к месту у конца пирса (туда же он
+                // возвращается после гибели: причал + 30 м наружу) и встаёт носом от крепости. Дал ход — отпускает.
+                Vector3 moorOut = BerthWorld - Center; moorOut.y = 0f;
+                if (Mathf.Abs(ship.throttle) < 0.01f && moorOut.sqrMagnitude > 1f)
+                {
+                    moorOut.Normalize();
+                    Vector3 moorSpot = BerthWorld + moorOut * 30f; moorSpot.y = ship.transform.position.y;
+                    ship.transform.SetPositionAndRotation(Vector3.MoveTowards(ship.transform.position, moorSpot, 6f * dt),
+                        Quaternion.RotateTowards(ship.transform.rotation, Quaternion.LookRotation(moorOut, Vector3.up), 14f * dt));
+                }
             }
 
             // Жизнь крепости: дым из труб, пока камера не слишком далеко.
@@ -348,10 +359,49 @@ namespace SkyTide
         }
 
         /// <summary>Сквозь крепость не пройти: нос, центр и корма корабля проверяются по карте высот.</summary>
+        // Пришвартованные корабли у причала: два неподвижных корпуса по сторонам от места игрока (облегчённая модель
+        // корабля врага, без теней). Сквозь них не пройти; ядра их не задевают.
+        bool mooredBuilt; int mooredCount;
+        readonly Vector3[] moored = new Vector3[2];
+        void BuildMoored()
+        {
+            mooredBuilt = true;
+            SkyTideBootstrap game = SkyTideBootstrap.Instance;
+            if (!hasBerth || game == null || game.targetShip == null || game.targetShip.lite == null || game.materials == null || game.materials.shipBody == null) return;
+            Mesh hullMesh = ShipMeshLoader.Load(game.targetShip.lite);
+            Vector3 outward = BerthWorld - Center; outward.y = 0f;
+            if (hullMesh == null || outward.sqrMagnitude < 1f) return;
+            outward.Normalize();
+            Vector3 across = Vector3.Cross(Vector3.up, outward);
+            float level = game.spawnPosition.y;
+            for (int n = 0; n < 2; n++)
+            {
+                float lateral = n == 0 ? -62f : 62f;
+                Vector3 at = BerthWorld + outward * 34f + across * lateral; at.y = level;
+                // Место должно быть свободно от камня по всей длине корпуса.
+                bool free = true;
+                for (int k = -2; k <= 2; k++) if (TopAt(at + outward * (k * 9f)) > level - 6f) free = false;
+                if (!free) continue;
+                GameObject go = new GameObject("Moored ship");
+                go.transform.SetParent(transform, true);
+                go.transform.SetPositionAndRotation(at, Quaternion.LookRotation(n == 0 ? -outward : outward, Vector3.up));
+                go.AddComponent<MeshFilter>().sharedMesh = hullMesh;
+                MeshRenderer hullRenderer = go.AddComponent<MeshRenderer>();
+                hullRenderer.sharedMaterial = game.materials.shipBody;
+                hullRenderer.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+                moored[mooredCount++] = at;
+            }
+        }
+
         void Collide(ShipController ship)
         {
             if (grid == null || grid.heights == null) return;
             Vector3 p = ship.transform.position, f = ship.transform.forward;
+            for (int n = 0; n < mooredCount; n++)
+            {
+                Vector3 apart = p - moored[n]; apart.y = 0f;
+                if (apart.sqrMagnitude < 26f * 26f) { ship.Block(apart.sqrMagnitude > 1e-3f ? apart.normalized * 0.8f : -f, 0.3f); return; }
+            }
             float keel = p.y - 4f;   // днище: пирс на высоте корабля тоже упор, причаливают к его торцу
             foreach (float along in new[] { 28f, 0f, -28f })
             {
