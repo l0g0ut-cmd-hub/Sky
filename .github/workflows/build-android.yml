@@ -18,7 +18,7 @@ permissions:
 jobs:
   build:
     runs-on: ubuntu-latest
-    timeout-minutes: 120
+    timeout-minutes: 150
     env:
       UNITY_VERSION: 6000.0.36f1
       GAMECI_VERSION: v0.1.72

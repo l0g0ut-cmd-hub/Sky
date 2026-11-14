@@ -1130,6 +1130,10 @@ namespace SkyTide.EditorTools
                     Vector3 eye = sh.position - to * 75f + Vector3.up * 22f;
                     cam.transform.SetPositionAndRotation(eye, Quaternion.LookRotation(fort.Center + Vector3.up * 300f - eye, Vector3.up));
                     boot.World.Step(eye, 0f);
+                    // Кадры крепости — без объёмных облаков: на программном GPU CI три таких кадра стоили 35–55 минут
+                    // сборки (сборка 100 из-за них не уложилась в лимит). Для проверки модели и шейдера крепости облака не нужны.
+                    bool fortVol = boot.Volumetric != null && boot.Volumetric.enabled;
+                    if (boot.Volumetric != null) boot.Volumetric.enabled = false;
                     SaveFrame(cam, boot, rt, tex, dir, "208_fortress_view");
                     CheckFrame(tex, "208_fortress_view");
                     Vector3 side = Vector3.Cross(Vector3.up, to);
@@ -1160,6 +1164,7 @@ namespace SkyTide.EditorTools
                     SaveFrame(cam, boot, rt, tex, dir, "210_fortress_close");
                     CheckFrame(tex, "210_fortress_close");
                     Debug.Log("SkyTide: крепость — центр " + fort.Center + ", причал " + berth + ", верх в центре " + fort.TopAt(fort.Center).ToString("F0"));
+                    if (boot.Volumetric != null) boot.Volumetric.enabled = fortVol;
                 }
                 // Баннеры — проверка текста и раскладки HUD: объёмные облака выключены (на программном GPU CI кадр
                 // с башнями стоит ~3 мин, а для баннера сцена за ним не важна).
