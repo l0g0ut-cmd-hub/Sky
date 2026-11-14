@@ -35,6 +35,7 @@ namespace SkyTide
         public float respawnDelay = 6f;
 
         ShipController ctrl;
+        Transform playerFor; Broadside playerGuns; ShipController playerCtrl;   // без покадрового GetComponent
         Transform model;
         Bounds box;
         Vector3 waypoint;
@@ -184,7 +185,8 @@ namespace SkyTide
             float ang = Vector3.SignedAngle(transform.forward, heading, Vector3.up);
             // Уклонение: борт игрока заряжен и его ядра ложатся в наш корпус — на 2.2 с руль на борт и полный ход,
             // чтобы уйти из-под залпа; не чаще раза в 7–11 с (иначе в него было бы не попасть).
-            Broadside threat = player != null ? player.GetComponent<Broadside>() : null;
+            if (playerFor != player) { playerFor = player; playerGuns = player != null ? player.GetComponent<Broadside>() : null; playerCtrl = player != null ? player.GetComponent<ShipController>() : null; }
+            Broadside threat = playerGuns;
             if (threat != null && threat.AimOnTarget && threat.Readiness(threat.AimSide) >= 0.999f && Time.time >= nextEvade)
             {
                 evadeUntil = Time.time + 2.2f;
@@ -201,7 +203,8 @@ namespace SkyTide
         void CollideWithPlayer()
         {
             PlayerHull hull = PlayerHull.Instance;
-            ShipController other = player != null ? player.GetComponent<ShipController>() : null;
+            if (playerFor != player) { playerFor = player; playerGuns = player != null ? player.GetComponent<Broadside>() : null; playerCtrl = player != null ? player.GetComponent<ShipController>() : null; }
+            ShipController other = playerCtrl;
             if (other == null || hull == null || !hull.Alive) return;
             Vector3 a0 = transform.position, b0 = player.position;
             if ((a0 - b0).sqrMagnitude > 60f * 60f) return;

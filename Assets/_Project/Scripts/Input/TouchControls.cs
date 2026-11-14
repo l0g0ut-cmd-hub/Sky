@@ -370,10 +370,12 @@ namespace SkyTide
         Rect VolleyModeRect() { return Layout(ViewWidth,ViewHeight).mode; }
         Rect VolleyRect(int side) { HudLayout l=Layout(ViewWidth,ViewHeight); return side<0?l.port:l.starboard; }
 
+        Broadside gunsCache; ShipController gunsFor;
         public Broadside Guns()
         {
             if(ship==null)return null;
-            Broadside b=ship.GetComponent<Broadside>();
+            if(gunsFor!=ship||gunsCache==null){gunsFor=ship;gunsCache=ship.GetComponent<Broadside>();}   // зовётся несколько раз за кадр
+            Broadside b=gunsCache;
             return b!=null&&b.HasCannons?b:null;
         }
 

@@ -286,8 +286,18 @@ namespace SkyTide
             }
         }
 
+        // Строки HUD с числами собираются заново, только когда число изменилось: раньше каждая плашка каждый кадр
+        // создавала новую строку — мусор для сборщика и рывки кадра.
+        readonly Dictionary<int, KeyValuePair<int, string>> textCache = new Dictionary<int, KeyValuePair<int, string>>();
+        string Cached(int slot, int value, System.Func<int, string> make)
+        {
+            KeyValuePair<int, string> e;
+            if (textCache.TryGetValue(slot, out e) && e.Key == value) return e.Value;
+            string s = make(value); textCache[slot] = new KeyValuePair<int, string>(value, s); return s;
+        }
         static string Range(float dist) { return dist >= 1000f ? (dist / 1000f).ToString("F1") + " км" : Mathf.RoundToInt(dist / 10f) * 10 + " м"; }
         /// <summary>Под радаром — дальности двумя строками: ближайший враг и причал (у отметок подписи ложились на обод).</summary>
+        static float GunRange(TouchControls input) { Broadside g = input.Guns(); return g != null ? g.MaxRange : 0f; }
         void RadarLines(TouchControls input, HudLayout l)
         {
             Rect r = l.radar; float lh = l.unit * 0.036f, fs = l.unit * 0.027f, y = r.yMax + l.unit * 0.008f;
@@ -302,7 +312,7 @@ namespace SkyTide
             int rows = 1 + (best < float.MaxValue ? 1 : 0) + (fort != null ? 1 : 0);
             Box(new Rect(r.x, y - l.unit * 0.003f, r.width, lh * rows + l.unit * 0.006f), new Color(0.02f, 0.025f, 0.035f, 0.78f));   // плотнее: на светлых облаках подложка была серой, текст терялся
             Text(new Rect(r.x, y, r.width, lh), "РАДАР " + Range(input.RadarRange), fs, new Color(Mathf.Lerp(muted.r, 1f, 0.4f), Mathf.Lerp(muted.g, 1f, 0.4f), Mathf.Lerp(muted.b, 1f, 0.4f), 1f)); y += lh;
-            if (best < float.MaxValue) { Text(new Rect(r.x, y, r.width, lh), "ВРАГ " + Range(best) + (bestHealth < 0.995f ? " · " + Mathf.RoundToInt(bestHealth * 100f) + "%" : ""), fs, new Color(1f, 0.72f, 0.55f, 1f)); y += lh; }
+            if (best < float.MaxValue) { Text(new Rect(r.x, y, r.width, lh), "ВРАГ " + Range(best) + (bestHealth < 0.995f ? " · " + Mathf.RoundToInt(bestHealth * 100f) + "%" : ""), fs, best <= GunRange(input) ? new Color(1f, 0.72f, 0.55f, 1f) : new Color(0.72f, 0.74f, 0.78f, 1f)); y += lh; }   // серым — дальше, чем достают свои пушки
             if (fort != null)
             {
                 Vector3 d = fort.BerthWorld - input.ship.transform.position; d.y = 0f;
@@ -609,7 +619,7 @@ namespace SkyTide
             Rect cap = new Rect(bar.center.x - l.unit * 0.105f, bar.yMax + l.unit * 0.002f, l.unit * 0.21f, l.unit * 0.036f);
             float alarm = f < 0.3f && f > 0f ? 0.5f + 0.5f * Mathf.Sin(Time.unscaledTime * 6f) : 0f;
             Solid(cap, Color.Lerp(new Color(0.02f, 0.025f, 0.035f, 0.62f), new Color(0.55f, 0.06f, 0.04f, 0.8f), alarm));
-            Text(new Rect(bar.x, bar.yMax, bar.width, l.unit * 0.038f), "КОРПУС " + Mathf.RoundToInt(f * 100f) + "%", l.unit * 0.03f, f < 0.3f ? new Color(1f, 0.7f, 0.6f) : cream);
+            Text(new Rect(bar.x, bar.yMax, bar.width, l.unit * 0.038f), Cached(1, Mathf.RoundToInt(f * 100f), v => "КОРПУС " + v + "%"), l.unit * 0.03f, f < 0.3f ? new Color(1f, 0.7f, 0.6f) : cream);
         }
 
         void RadarKit(TouchControls input,HudLayout l,Vector2 c,float R,float range)
@@ -659,11 +669,11 @@ namespace SkyTide
                     if(input.game.ships!=null&&input.game.ships.Length>1) {Panel(l.ship,l.unit);PlateText(l.ship,0f,1f,input.game.CurrentShipName,l.unit*0.03f,cream);}
                     cornerTop=l.safe.y+l.unit*0.02f;
                     Panel(l.course,l.unit); Compass(input,l);
-                    Panel(l.speed,l.unit);PlateText(l.speed,0f,1f,TouchControls.GearNames[input.Gear]+" · "+Mathf.RoundToInt(Mathf.Abs(input.ship.Speed))+" м/с",l.unit*0.034f,cream);   // ступень рукояти и скорость
+                    Panel(l.speed,l.unit);PlateText(l.speed,0f,1f,Cached(3,input.Gear*1000+Mathf.RoundToInt(Mathf.Abs(input.ship.Speed)),v=>TouchControls.GearNames[v/1000]+" · "+(v%1000)+" м/с"),l.unit*0.034f,cream);   // ступень рукояти и скорость
                     Telegraph(input,l);
                     Radar(input,l);
                     Hull(l);
-                    Panel(l.fps,l.unit);PlateText(l.fps,0f,1f,Application.isPlaying?Mathf.RoundToInt(input.Fps)+" FPS":"FPS —",l.unit*0.03f,Application.isPlaying&&input.Fps<24f?new Color(1f,0.55f,0.45f,1f):muted);   // ниже 24 — красным: просадку видно сразу
+                    Panel(l.fps,l.unit);PlateText(l.fps,0f,1f,Application.isPlaying?Cached(2,Mathf.RoundToInt(input.Fps),v=>v+" FPS"):"FPS —",l.unit*0.03f,Application.isPlaying&&input.Fps<24f?new Color(1f,0.55f,0.45f,1f):muted);   // ниже 24 — красным: просадку видно сразу
                     Text(l.version,input.BuildText,l.unit*0.023f,cream);
                     Broadside guns=input.Guns();
                     if(guns!=null)

@@ -394,7 +394,7 @@ namespace SkyTide
         {
             SkyTideBootstrap game = SkyTideBootstrap.Instance;
             if (!Extras || dt <= 0f || game == null || game.Target == null || !game.Target.Alive) return;
-            ShipController ship = game.Target.GetComponent<ShipController>();
+            ShipController ship = game.Target.Controller;
             if (ship == null || ship.maxSpeed <= 0f) return;
             float speed01 = Mathf.Clamp01(ship.Speed / ship.maxSpeed);
             if (speed01 < 0.3f) return;

@@ -83,6 +83,14 @@ namespace SkyTide
             if (Application.isPlaying) volumetricClouds = PlayerPrefs.GetInt(VolumetricKey, 0) == 1;
             QualitySettings.vSyncCount = 0;
             Screen.sleepTimeout = SleepTimeout.NeverSleep;
+            if (Application.isPlaying)
+            {
+                // Физики в игре нет (столкновения и попадания считаются своим кодом) — её шаг каждый кадр не нужен.
+                Physics.simulationMode = SimulationMode.Script;
+                Physics2D.simulationMode = SimulationMode2D.Script;
+                // Системе не хватает памяти — отдаём всё незанятое, а не ждём, пока она закроет игру.
+                Application.lowMemory -= FreeMemory; Application.lowMemory += FreeMemory;
+            }
 
             ApplyEnvironment(materials);
             Light sun = SetupSun();
@@ -184,6 +192,7 @@ namespace SkyTide
         public TargetShip Target { get; private set; }
 
         /// <summary>Объёмные облака вкл/выкл: спрайты на высоте полёта показываются, только когда объёма нет.</summary>
+        static void FreeMemory() { Resources.UnloadUnusedAssets(); System.GC.Collect(); }
         public const string VolumetricKey = "SkyTide.Volumetric", Fps60Key = "SkyTide.Fps60";
         /// <summary>Выбор игрока (меню паузы, панель FPS): переключает и запоминает между запусками.</summary>
         public void ChooseVolumetric(bool on)

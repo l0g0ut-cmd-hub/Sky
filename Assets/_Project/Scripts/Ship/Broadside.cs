@@ -215,6 +215,7 @@ namespace SkyTide
 
         /// <summary>Борт, у которого сейчас прицельная дуга (-1 левый, +1 правый), и ложится ли его залп в корпус цели —
         /// по этому кнопка борта на HUD пишет «В ПРИЦЕЛЕ».</summary>
+        PlayerHull ownHull; bool ownTried;
         public int AimSide { get; private set; }
         public bool AimOnTarget { get; private set; }
 
@@ -311,7 +312,8 @@ namespace SkyTide
             fx.ClearPreview();
             solved = false;
             if (!showAim || model == null || mounts.Length == 0) return;
-            PlayerHull own = GetComponent<PlayerHull>();
+            if (!ownTried) { ownTried = true; ownHull = GetComponent<PlayerHull>(); }
+            PlayerHull own = ownHull;
             if (own != null && !own.Alive) return;   // корабль подбит — прицела нет
             TargetShip best = null; float bestD = float.MaxValue;
             foreach (TargetShip t in TargetShip.All)

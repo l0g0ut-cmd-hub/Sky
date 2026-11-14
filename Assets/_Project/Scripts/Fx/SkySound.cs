@@ -76,6 +76,8 @@ namespace SkyTide
 
         void Play(Pending p)
         {
+            // Свободный голос, если есть: при залпе в 16 стволов круговая очередь обрывала ещё звучащие попадания.
+            for (int k = 0; k < Voices && pool[next].isPlaying; k++) next = (next + 1) % Voices;
             AudioSource s = pool[next]; next = (next + 1) % Voices;
             s.transform.position = p.pos;
             s.clip = p.clip; s.volume = p.vol; s.pitch = p.pitch; s.minDistance = p.minD; s.maxDistance = p.maxD;
@@ -119,7 +121,7 @@ namespace SkyTide
                 PlayerHull h = PlayerHull.Instance;
                 ship = h != null ? h.GetComponent<ShipController>() : null;
                 if (ship == null) return;
-                sailSource = MakeLoop(ship.transform, sail);
+                sailSource = PlaySails ? MakeLoop(ship.transform, sail) : null;   // выключенный шум парусов не крутится вхолостую
                 creakSource = ship.gameObject.AddComponent<AudioSource>();
                 creakSource.playOnAwake = false; creakSource.spatialBlend = 0.6f; creakSource.minDistance = 10f; creakSource.maxDistance = 200f;
             }
