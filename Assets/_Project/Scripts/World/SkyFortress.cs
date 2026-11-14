@@ -76,6 +76,8 @@ namespace SkyTide
         {
             SkyFortress f = Instance;
             if (f == null || !InSafeZone(at)) return;
+            // Пока крепость бьёт по нарушителю-врагу, игрок может стрелять по нему и в зоне: он на её стороне.
+            foreach (TargetShip t in TargetShip.All) if (t != null && t.Alive && t.Outlaw) return;
             // Сначала предупредительный выстрел (через 0.7 с, всплеск перед носом), огонь на поражение — ещё через 1.8 с:
             // те же 2.5 с от залпа игрока до первого ядра в корабль.
             if (!f.Hostile) { f.nextShot = Time.time + 0.7f; f.warned = false; }
@@ -83,6 +85,43 @@ namespace SkyTide
             FortressAlarmAt = Time.time;
         }
         public static float FortressAlarmAt = -100f;
+        /// <summary>Враг дал залп в зоне крепости: орудия разворачиваются на него (HUD показывает оповещение).</summary>
+        public static float EnemyAlarmAt = -100f;
+        float nextEnemyShot;
+        public static void NotifyEnemyFired(TargetShip t)
+        {
+            SkyFortress f = Instance;
+            if (f == null || t == null) return;
+            EnemyAlarmAt = Time.time;
+            f.nextEnemyShot = Time.time + 1.5f;
+        }
+
+        /// <summary>Огонь по врагам-нарушителям: по орудию раз в ~1.2 с, с упреждением по ходу цели.</summary>
+        void FireAtOutlaws()
+        {
+            if (guns.Length == 0 || Time.time < nextEnemyShot || FxSystem.Instance == null) return;
+            foreach (TargetShip t in TargetShip.All)
+            {
+                if (t == null || !t.Alive || !t.Outlaw) continue;
+                Vector3 tp = t.Center;
+                Vector3 tv = t.Controller != null ? t.transform.forward * t.Controller.Speed : Vector3.zero;
+                for (int k = 0; k < guns.Length; k++)
+                {
+                    int g = (gunCursor + k) % guns.Length;
+                    Vector3 muzzle = model.TransformPoint(guns[g]);
+                    if ((tp - muzzle).sqrMagnitude > gunRange * gunRange) continue;
+                    if (gunDirs != null && Vector3.Dot(model.TransformDirection(gunDirs[g]), (tp - muzzle).normalized) <= 0.25f) continue;
+                    Vector3 dir;
+                    if (!Solve(muzzle, tp, tv, out dir)) continue;
+                    dir = Quaternion.Euler(UnityEngine.Random.Range(-spreadDeg, spreadDeg) * 1.6f, UnityEngine.Random.Range(-spreadDeg, spreadDeg) * 1.6f, 0f) * dir;
+                    // «Своё» ядро (не hostile): бьёт по кораблям врага, игрока не задевает.
+                    FxSystem.Instance.Fire(muzzle, dir, Vector3.zero, muzzleSpeed, false, shellLife, shellCaliber);
+                    gunCursor = g + 1;
+                    nextEnemyShot = Time.time + 1.2f + UnityEngine.Random.Range(0f, 0.5f);
+                    return;
+                }
+            }
+        }
         bool warned;
         float alarmGlow, nextBell;
         Vector3 beaconPos; bool beaconFound;
@@ -279,6 +318,9 @@ namespace SkyTide
             bool inside = InSafeZone(ship.transform.position);
             if (inside && !PlayerInside) EnteredAt = Time.time;
             PlayerInside = inside;
+            // Вышел из зоны — тревога спадает втрое быстрее: крепости незачем злиться на того, кто ушёл.
+            if (Hostile && !inside) hostileUntil -= dt * 2f;
+            FireAtOutlaws();
 
             // Причал: рядом и на малом ходу — ремонт.
             PlayerDocked = hasBerth && !Hostile && hull.Alive
@@ -309,6 +351,7 @@ namespace SkyTide
 
             Collide(ship);
             foreach (TargetShip t in TargetShip.All) if (t != null && t.Alive) { ShipController c = t.Controller; if (c != null) Collide(c); }
+            foreach (AllyShip ally in AllyShip.All) if (ally != null && ally.Controller != null) Collide(ally.Controller);
 
             if (!Hostile || !hull.Alive || guns.Length == 0 || Time.time < nextShot) return;
             // Залп по одному орудию, по очереди башен: плотный, но не мгновенный огонь.
@@ -415,7 +458,8 @@ namespace SkyTide
             }
         }
 
-        bool Solve(Vector3 from, Vector3 to, out Vector3 dir)
+        bool Solve(Vector3 from, Vector3 to, out Vector3 dir) { return Solve(from, to, playerVel, out dir); }
+        bool Solve(Vector3 from, Vector3 to, Vector3 lead, out Vector3 dir)
         {
             dir = Vector3.forward;
             Vector3 aim = to;
@@ -429,7 +473,7 @@ namespace SkyTide
                 float tFlight = x / (v * Mathf.Cos(theta));
                 Vector3 h = new Vector3(d.x, 0f, d.z).normalized;
                 dir = h * Mathf.Cos(theta) + Vector3.up * Mathf.Sin(theta);
-                aim = to + playerVel * (tFlight * 0.85f);
+                aim = to + lead * (tFlight * 0.85f);
             }
             return true;
         }

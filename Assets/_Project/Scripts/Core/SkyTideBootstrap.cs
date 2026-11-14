@@ -129,6 +129,16 @@ namespace SkyTide
             Ship = ShipFactory.Build("Player Ship", spawnPosition, spawnHeading, materials, CurrentShip);
             PlayerHull hull = Ship.GetComponent<PlayerHull>();
             if (hull == null) hull = Ship.gameObject.AddComponent<PlayerHull>();
+            if (Application.isPlaying)
+            {
+                // Свой корабль — флагман, вдвое-втрое сильнее рядового врага (просьба владельца): ход 40 против 20 м/с,
+                // поворот 50 против 24 °/с, корпус 90 попаданий против 30, ядро 125 против 85 м/с (предел ~1.2 км против
+                // 420 м у врага), наводка без разброса против пристрелки врага с ошибкой.
+                Ship.maxSpeed = 40f; Ship.maxYawRate = 50f; Ship.acceleration = 9f; Ship.deceleration = 11f;
+                hull.maxHealth = 540f;
+                Broadside flag = Ship.GetComponent<Broadside>();
+                if (flag != null) { flag.muzzleSpeed = 125f; flag.maxElevationDeg = 14f; }   // ядро живёт 7 с: при 14° предел ~750 м
+            }
             hull.Setup(Ship);
 
             if (targetShip != null && targetShip.IsValid)
@@ -136,7 +146,14 @@ namespace SkyTide
                 ShipController t = ShipFactory.Build("Target Ship", spawnPosition + new Vector3(260f, 0f, 220f), spawnHeading + 140f, materials, targetShip);
                 Target = t.gameObject.AddComponent<TargetShip>();
                 Target.Setup(t, Ship.transform, materials.darkWood,targetShip.mesh,targetShip.lights);
-                if (Application.isPlaying) t.gameObject.AddComponent<EnemyGunner>().Setup(Target, t);
+                if (Application.isPlaying)
+                {
+                    EnemyGunner eg = t.gameObject.AddComponent<EnemyGunner>();
+                    eg.Setup(Target, t);
+                    t.maxSpeed = 20f; t.maxYawRate = 24f;
+                    eg.maxRange = 420f; eg.rangeError = 0.11f; eg.sideError = 0.04f;
+                    Target.retreatRange = 380f;
+                }
                 // Экипаж на палубе врага — та же модель матроса, что у своего корабля (в кадрах CI тоже: виден на 211–213).
                 ShipVariant own = CurrentShip;
                 if (own != null && own.crew != null && own.crew.IsValid) t.gameObject.AddComponent<EnemyCrew>().Setup(Target, own.crew);
@@ -150,6 +167,16 @@ namespace SkyTide
                     Fortress = new GameObject("Sky Fortress").AddComponent<SkyFortress>();
                     Fortress.Setup(fm, fortressMaterials, fortressData, spawnPosition + fortressOffset, spawnPosition, fortressYaw, spawnPosition.y + 1.5f, fortressScale);
                 }
+            }
+
+            // Союзник — сторожевой корабль крепости (только в игре; в кадрах CI его нет): та же модель, что у врага,
+            // в светлом тоне, без пушек игрока и экипажа. Выходит в дозор у края безопасной зоны.
+            if (Application.isPlaying && Fortress != null && targetShip != null && targetShip.IsValid)
+            {
+                Vector3 guard = Fortress.Center + (spawnPosition - Fortress.Center).normalized * (Fortress.safeRadius - 180f); guard.y = spawnPosition.y;
+                ShipController a = ShipFactory.Build("Guard Ship", guard, spawnHeading + 90f, materials, targetShip);
+                Ally = a.gameObject.AddComponent<AllyShip>();
+                Ally.Setup(a);
             }
 
             // Ход боя: волны, счёт, замедление при потоплении (только в игре; в кадрах CI — значения по умолчанию).
@@ -190,6 +217,7 @@ namespace SkyTide
         public VolumetricClouds Volumetric { get; private set; }
         public FxSystem Fx { get; private set; }
         public TargetShip Target { get; private set; }
+        public AllyShip Ally { get; private set; }
 
         /// <summary>Объёмные облака вкл/выкл: спрайты на высоте полёта показываются, только когда объёма нет.</summary>
         static void FreeMemory() { Resources.UnloadUnusedAssets(); System.GC.Collect(); }

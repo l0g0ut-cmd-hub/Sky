@@ -5,7 +5,7 @@ namespace SkyTide
     /// <summary>Одна геометрия в пикселях (начало сверху слева) для рисования и попадания пальца.</summary>
     public struct HudLayout
     {
-        public Rect safe, port, starboard, mode, clouds, ship, course, speed, fps, version, hint, radar, telegraph, pause;
+        public Rect safe, port, starboard, mode, auto, clouds, ship, course, speed, fps, version, hint, radar, telegraph, pause;
         public Vector2 wheel;
         public float unit, radius;
 
@@ -22,6 +22,7 @@ namespace SkyTide
             l.starboard = new Rect(safeArea.xMax - m - w, safeArea.yMax - u * 0.09f - h, w, h);
             l.port = new Rect(l.starboard.x - gap - w, l.starboard.y, w, h);
             l.mode = new Rect(l.port.x, l.port.y - gap - u * 0.072f, w * 2f + gap, u * 0.072f);
+            l.auto = new Rect(l.mode.x, l.mode.y - gap - u * 0.072f, l.mode.width, u * 0.072f);   // «АВТОБОЙ» — над режимом залпа
             l.clouds = new Rect(safeArea.xMax - m - u * 0.43f, safeArea.y + m, u * 0.43f, u * 0.105f);
             l.ship = new Rect(l.clouds.x, l.clouds.yMax + gap, l.clouds.width, u * 0.08f);
             l.course = new Rect(safeArea.center.x - u * 0.15f, safeArea.y + m, u * 0.3f, u * 0.075f);

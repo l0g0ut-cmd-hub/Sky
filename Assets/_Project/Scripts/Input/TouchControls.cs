@@ -221,7 +221,7 @@ namespace SkyTide
                 if (hl.radar.Contains(p)) { owners[id] = Owner.Button; lastPos[id] = p; radarNear = !radarNear; return; }
                 // Рукоять хода можно вести пальцем прямо по шкале (и по подписям ступеней справа от неё).
                 Rect lever = new Rect(hl.telegraph.x - hl.unit * 0.03f, hl.telegraph.y, hl.telegraph.width + hl.unit * 0.2f, hl.telegraph.height);
-                if (lever.Contains(p)) { owners[id] = Owner.Telegraph; lastPos[id] = p; GearFromTouch(hl, p); return; }
+                if (lever.Contains(p)) { owners[id] = Owner.Telegraph; lastPos[id] = p; SetAutoBattle(false); GearFromTouch(hl, p); return; }
                 if (game != null && game.ships != null && game.ships.Length > 1 && ShipButtonRect().Contains(p))
                 {
                     owners[id] = Owner.Button;
@@ -239,12 +239,14 @@ namespace SkyTide
                 }
                 // Кнопки «облака» на экране нет (просьба владельца): переключатель — в панели FPS.
                 Broadside bs = Guns();
+                if (Application.isPlaying && hl.auto.Contains(p)) { owners[id] = Owner.Button; lastPos[id] = p; SetAutoBattle(!AutoBattle); return; }
                 if (bs != null && VolleyModeRect().Contains(p)) { owners[id] = Owner.Button; lastPos[id] = p; bs.ripple = !bs.ripple; return; }
                 if (bs != null && VolleyRect(-1).Contains(p)) { owners[id] = Owner.Button; lastPos[id] = p; if (bs.Readiness(-1) >= 0.9999f) Haptics.Pulse(45); bs.Fire(-1); return; }
                 if (bs != null && VolleyRect(1).Contains(p)) { owners[id] = Owner.Button; lastPos[id] = p; if (bs.Readiness(1) >= 0.9999f) Haptics.Pulse(45); bs.Fire(1); return; }
                 if (p.x < ViewWidth * 0.5f && stickId == int.MinValue)
                 {
                     owners[id] = Owner.Stick;
+                    SetAutoBattle(false);   // взял штурвал — управление снова у игрока
                     stickId = id;
                     stickOrigin = p;
                     stickPos = p;
@@ -359,6 +361,18 @@ namespace SkyTide
             {
                 ship.turn = Mathf.Clamp(stickValue.x + kx, -1f, 1f);
                 ship.throttle = GearThrottle[gear];
+                if (AutoBattle && Application.isPlaying)
+                {
+                    if (autopilot == null || autopilot.gameObject != ship.gameObject)
+                    {
+                        autopilot = ship.GetComponent<PlayerAutopilot>();
+                        if (autopilot == null) autopilot = ship.gameObject.AddComponent<PlayerAutopilot>();
+                    }
+                    autopilot.Tick();
+                    // Рукоять хода показывает, что выбрал автобой (и остаётся там, если его выключить).
+                    float at = autopilot.Throttle;
+                    gear = at > 0.85f ? 4 : at > 0.5f ? 3 : at > 0.1f ? 2 : 1;
+                }
             }
         }
 
@@ -371,6 +385,16 @@ namespace SkyTide
         Rect VolleyRect(int side) { HudLayout l=Layout(ViewWidth,ViewHeight); return side<0?l.port:l.starboard; }
 
         Broadside gunsCache; ShipController gunsFor;
+        // Автобой: корабль сам ведёт дозор, бой и ремонт (PlayerAutopilot). Касание штурвала или рукояти выключает.
+        public bool AutoBattle { get; private set; }
+        PlayerAutopilot autopilot;
+        public string AutoState { get { return AutoBattle && autopilot != null ? autopilot.State : ""; } }
+        public void SetAutoBattle(bool on)
+        {
+            if (AutoBattle == on) return;
+            AutoBattle = on;
+            if (on) Haptics.Pulse(30);
+        }
         public Broadside Guns()
         {
             if(ship==null)return null;
@@ -458,7 +482,7 @@ namespace SkyTide
         }
         public void ResetInteraction()
         {
-            owners.Clear();lastPos.Clear();stickId=int.MinValue;stickValue=Vector2.zero;lastPinch=-1f;gear=1;gearArmed=true;
+            owners.Clear();lastPos.Clear();stickId=int.MinValue;stickValue=Vector2.zero;lastPinch=-1f;gear=1;gearArmed=true;AutoBattle=false;
             if(ship!=null){ship.turn=0f;ship.throttle=0f;}
         }
         void OnApplicationFocus(bool focused) {if(!focused)ResetInteraction();}

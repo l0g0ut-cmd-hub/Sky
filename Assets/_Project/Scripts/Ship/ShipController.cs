@@ -39,6 +39,16 @@ namespace SkyTide
             damageTurn = health01 < 0.3f ? 0.8f : 1f;
         }
 
+        // Попадания по месту: руль (корма) и баллон (верх) — временная потеря поворотливости и хода.
+        float rudderUntil = -1f, balloonUntil = -1f;
+        public bool RudderHit { get { return Time.time < rudderUntil; } }
+        public bool BalloonHit { get { return Time.time < balloonUntil; } }
+        public void HitRudder(float seconds) { rudderUntil = Mathf.Max(rudderUntil, Time.time + seconds); }
+        public void HitBalloon(float seconds) { balloonUntil = Mathf.Max(balloonUntil, Time.time + seconds); }
+        public void ClearCrits() { rudderUntil = balloonUntil = -1f; }
+        float CritSpeed { get { return BalloonHit ? 0.65f : 1f; } }
+        float CritTurn { get { return RudderHit ? 0.5f : 1f; } }
+
         float smoothTurn;
         float bobPhase;
         float pitch;
@@ -71,7 +81,7 @@ namespace SkyTide
             if (dt <= 0f) return;
 
             float thr = Mathf.Clamp(throttle, -1f, 1f);
-            float targetSpeed = thr >= 0f ? thr * maxSpeed * damageSpeed : thr * maxReverseSpeed;
+            float targetSpeed = thr >= 0f ? thr * maxSpeed * damageSpeed * CritSpeed : thr * maxReverseSpeed;
             float rate = Mathf.Abs(targetSpeed) > Mathf.Abs(Speed) ? acceleration : deceleration;
             Speed = Mathf.MoveTowards(Speed, targetSpeed, rate * dt);
 
@@ -89,7 +99,7 @@ namespace SkyTide
             smoothTurn = Mathf.MoveTowards(smoothTurn, Mathf.Clamp(turn + steerIn, -1f, 1f), turnResponse * dt);
             // Корабль поворачивает и на месте (рулевые винты), но на ходу — заметно быстрее.
             float steer = 0.35f + 0.65f * Mathf.Clamp01(Mathf.Abs(Speed) / maxSpeed);
-            transform.Rotate(0f, smoothTurn * maxYawRate * steer * damageTurn * dt, 0f, Space.World);
+            transform.Rotate(0f, smoothTurn * maxYawRate * steer * damageTurn * CritTurn * dt, 0f, Space.World);
 
             Vector3 pos = transform.position + transform.forward * Speed * dt;
             Vector2 flat = new Vector2(pos.x, pos.z);

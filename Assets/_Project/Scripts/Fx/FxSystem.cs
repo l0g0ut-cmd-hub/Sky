@@ -604,7 +604,7 @@ namespace SkyTide
                         // Крепость: ядро не пролетает сквозь стены. Своё ядро крепости первую секунду не проверяется (дуло на башне).
                         SkyFortress fort = SkyFortress.Instance;
                         Vector3 fp;
-                        if (!hit && fort != null && (!p.hostile || p.age > 1f) && fort.TryHit(prev, end, out fp))
+                        if (!hit && fort != null && ((!p.hostile && p.caliber < 1.5f) || p.age > 1f) && fort.TryHit(prev, end, out fp)   /* тяжёлое «своё» ядро — орудие крепости: секунду летит мимо своих стен */)
                         {
                             end = fp; hit = true;
                             Vector3 outward = fp - fort.Center; outward.y = Mathf.Abs(outward.y) * 0.3f + 20f;

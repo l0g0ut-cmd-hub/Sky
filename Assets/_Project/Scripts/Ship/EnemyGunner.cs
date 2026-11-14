@@ -27,6 +27,9 @@ namespace SkyTide
         Transform model;
         Bounds box;
         float ready;
+        /// <summary>Выучка расчёта (задаёт TargetShip по капитану): множитель ошибки и перезарядки.</summary>
+        [System.NonSerialized] public float skillError = 1f, skillCooldown = 1f;
+        bool volleyAtOnce;
         int pendingSide; float pendingAt; int pendingLeft;
         Vector3 lastPlayerPos, playerVel, lastPos, selfVel;
 
@@ -56,12 +59,13 @@ namespace SkyTide
             {
                 Shoot(pendingSide, gunsPerSide - pendingLeft, pp + aimErr);
                 pendingLeft--;
-                pendingAt = Time.time + Random.Range(0.12f, 0.2f);
+                pendingAt = Time.time + (volleyAtOnce ? Random.Range(0.01f, 0.04f) : Random.Range(0.12f, 0.2f));
                 return;
             }
             if (Time.time < ready) return;
             if (target.Dazed) return;   // капитан растерялся — и пушки молчат
             if (SkyFortress.InSafeZone(pp)) return;   // под пушками крепости враг не стреляет
+            if (SkyFortress.InSafeZone(transform.position)) return;   // и сам из зоны крепости не стреляет (кроме глупости — ForceVolley)
             Vector3 rel = pp - transform.position; rel.y = 0f;
             float dist = rel.magnitude;
             if (dist < minRange || dist > maxRange) return;
@@ -76,11 +80,29 @@ namespace SkyTide
             engaged = true; lastVolleyVel = playerVel;
             Vector3 fwd = rel / Mathf.Max(dist, 1f), sideDir = Vector3.Cross(Vector3.up, fwd);
             float wild = Random.value < 0.2f ? 2.2f : 1f;
-            aimErr = (fwd * Gauss() * rangeError * dist + sideDir * Gauss() * sideError * dist + Vector3.up * Gauss() * 0.012f * dist) * errScale * wild;
+            // Подбитый стреляет хуже и реже: ниже половины прочности ошибка ×1.5, ниже 30% — ×2.2.
+            float hurt = target.Health01 < 0.3f ? 2.2f : target.Health01 < 0.5f ? 1.5f : 1f;
+            aimErr = (fwd * Gauss() * rangeError * dist + sideDir * Gauss() * sideError * dist + Vector3.up * Gauss() * 0.012f * dist) * errScale * wild * hurt * skillError;
+            volleyAtOnce = Random.value < 0.35f;   // иногда весь борт разом, чаще — волной
             pendingLeft = gunsPerSide;
             pendingAt = Time.time;
             LastVolleyTime = Time.time;
-            ready = Time.time + cooldown + Random.Range(0f, 1.5f);
+            ready = Time.time + (cooldown + Random.Range(0f, 1.5f)) * skillCooldown * (hurt > 1.4f ? 1.3f : 1f);
+        }
+
+        /// <summary>Залп «по глупости» — без проверок дальности и зоны, с большой ошибкой. false — стрелять нечем/не в кого.</summary>
+        public bool ForceVolley()
+        {
+            PlayerHull player = PlayerHull.Instance;
+            if (player == null || !player.Alive || target == null || !target.Alive || pendingLeft > 0) return false;
+            Vector3 pp = player.Center, rel = pp - transform.position; rel.y = 0f;
+            float dist = rel.magnitude;
+            if (dist < 30f || dist > maxRange) return false;
+            pendingSide = transform.InverseTransformDirection(rel).x > 0f ? 1 : -1;
+            aimErr = new Vector3(Gauss(), 0f, Gauss()) * (0.07f * dist);
+            volleyAtOnce = false; pendingLeft = gunsPerSide; pendingAt = Time.time; LastVolleyTime = Time.time;
+            ready = Time.time + cooldown + 2f;
+            return true;
         }
 
         void Shoot(int side, int index, Vector3 aimAt)

@@ -32,6 +32,120 @@ namespace SkyTide
         float dazeUntil = -1f, nextDaze, dazeTurn;
         public bool Dazed { get { return Time.time < dazeUntil; } }
         public int hitsToSink = 30;   // ~4 удачных бортовых залпа
+        // ---------- капитан, порт, глупости ----------
+        // Выучка капитана — на каждого нового врага своя: новичок чаще теряется, мажет и держится дальше; ветеран — наоборот.
+        public enum Skill { Novice, Seasoned, Veteran }
+        public Skill skill = Skill.Seasoned;
+        public static readonly string[] SkillNames = { "НОВИЧОК", "БЫВАЛЫЙ", "ВЕТЕРАН" };
+        float dazeScale = 1f;
+        // Порт: подбитый (а иногда и целый) враг уходит чиниться к причалу крепости — там он мирный. Иногда по глупости
+        // даёт залп прямо в порту: тогда крепость бьёт уже по нему, и он удирает из зоны.
+        enum Mode { Fight, ToPort, InPort, Flee }
+        Mode mode = Mode.Fight;
+        float nextPortThink, portUntil, dumbAt = -1f, nextPortRepair, burnClock;
+        /// <summary>До какого времени крепость считает этот корабль нарушителем и стреляет по нему.</summary>
+        public float OutlawUntil { get; private set; } = -1f;
+        public bool Outlaw { get { return Time.time < OutlawUntil; } }
+        public bool InPort { get { return mode == Mode.ToPort || mode == Mode.InPort; } }
+        EnemyGunner gunner; bool captainRolled;
+        /// <summary>Залп игрока: сколько ядер подряд легло в корпус (HUD показывает итог).</summary>
+        public static int Tally; public static float TallyAt = -100f;
+
+        void RollCaptain()
+        {
+            float r = Random.value;
+            skill = r < 0.35f ? Skill.Novice : r < 0.8f ? Skill.Seasoned : Skill.Veteran;
+            dazeScale = skill == Skill.Novice ? 0.6f : skill == Skill.Veteran ? 2.2f : 1f;
+            fightRange = skill == Skill.Novice ? 300f : skill == Skill.Veteran ? 220f : 260f;   // в пределах своих 420 м
+            if (gunner == null) gunner = GetComponent<EnemyGunner>();
+            if (gunner != null)
+            {
+                gunner.skillError = skill == Skill.Novice ? 1.5f : skill == Skill.Veteran ? 0.7f : 1f;
+                gunner.skillCooldown = skill == Skill.Novice ? 1.25f : skill == Skill.Veteran ? 0.85f : 1f;
+            }
+            mode = Mode.Fight; OutlawUntil = -1f; dumbAt = -1f;
+            nextPortThink = Time.time + Random.Range(25f, 45f);
+            if (ctrl != null) ctrl.ClearCrits();
+        }
+
+        /// <summary>Курс на точку в обход камня крепости: внутри круга причала курс не ведёт к центру, пока цель далеко.</summary>
+        void SteerTo(Vector3 goal, float throttle)
+        {
+            Vector3 to = goal - transform.position; to.y = 0f;
+            float dist = to.magnitude;
+            Vector3 heading = dist > 1f ? to / dist : transform.forward;
+            SkyFortress f = SkyFortress.Instance;
+            if (f != null && dist > 200f)
+            {
+                Vector3 off = transform.position - f.Center; off.y = 0f;
+                Vector3 berth = f.BerthWorld - f.Center; berth.y = 0f;
+                float keep = berth.magnitude + 70f;
+                if (off.sqrMagnitude < keep * keep && off.sqrMagnitude > 1f)
+                {
+                    Vector3 outward = off.normalized; float inward = Vector3.Dot(heading, outward);
+                    if (inward < 0.25f) heading = (heading - outward * inward + outward * 0.45f).normalized;
+                }
+            }
+            float ang = Vector3.SignedAngle(transform.forward, heading, Vector3.up);
+            ctrl.turn = Mathf.Clamp(ang / 35f, -1f, 1f);
+            ctrl.throttle = Mathf.Abs(ang) > 100f ? Mathf.Min(throttle, 0.3f) : throttle;
+        }
+
+        /// <summary>true — корабль занят портом или бегством, бой в этот кадр не ведётся.</summary>
+        bool PortLife()
+        {
+            SkyFortress f = SkyFortress.Instance;
+            if (f == null) { mode = Mode.Fight; return false; }
+            if (Outlaw && mode != Mode.Flee) mode = Mode.Flee;
+            if (mode == Mode.Fight)
+            {
+                if (Time.time < nextPortThink) return false;
+                nextPortThink = Time.time + Random.Range(20f, 35f);
+                bool go = Health01 < 0.45f ? Random.value < 0.6f : Random.value < 0.1f;
+                if (!go) return false;
+                mode = Mode.ToPort;
+                // Глупость случается не с каждым: новичок срывается чаще, ветеран — почти никогда.
+                float dumb = skill == Skill.Novice ? 0.55f : skill == Skill.Veteran ? 0.08f : 0.3f;
+                dumbAt = Random.value < dumb ? Time.time + Random.Range(25f, 70f) : -1f;
+                if (player != null && (player.position - transform.position).sqrMagnitude < 900f * 900f) HudNotice.Show("ВРАГ УХОДИТ В ПОРТ", 9, 3.5f);
+            }
+            Vector3 outDir = f.BerthWorld - f.Center; outDir.y = 0f;
+            outDir = outDir.sqrMagnitude > 1f ? outDir.normalized : Vector3.forward;
+            if (mode == Mode.Flee)
+            {
+                Vector3 off = transform.position - f.Center; off.y = 0f;
+                if (!Outlaw && off.magnitude > f.safeRadius + 200f) { mode = Mode.Fight; Pick(); return false; }
+                SteerTo(transform.position + (off.sqrMagnitude > 1f ? off.normalized : outDir) * 600f, 1f);
+                return true;
+            }
+            // Место гостя — в стороне от места игрока и пришвартованных кораблей.
+            Vector3 spot = f.BerthWorld + outDir * 70f + Vector3.Cross(Vector3.up, outDir) * 170f; spot.y = transform.position.y;
+            float d = Vector3.Distance(new Vector3(transform.position.x, spot.y, transform.position.z), spot);
+            bool inZone = SkyFortress.InSafeZone(transform.position);
+            // Глупость: в зоне крепости, игрок рядом и жив — залп. Крепость этого не прощает.
+            PlayerHull ph = PlayerHull.Instance;
+            if (dumbAt > 0f && Time.time >= dumbAt && inZone && ph != null && ph.Alive && player != null && SkyFortress.InSafeZone(player.position))
+            {
+                dumbAt = -1f;
+                if (gunner == null) gunner = GetComponent<EnemyGunner>();
+                if (gunner != null && gunner.ForceVolley()) { OutlawUntil = Time.time + 40f; SkyFortress.NotifyEnemyFired(this); mode = Mode.Flee; return true; }
+            }
+            if (mode == Mode.ToPort)
+            {
+                if (d < 45f) { mode = Mode.InPort; portUntil = Time.time + Random.Range(18f, 35f); }
+                else SteerTo(spot, d > 320f ? 0.75f : d > 120f ? 0.4f : 0.2f);
+                return true;
+            }
+            // У причала: стоит, чинится (попадание в 1.5 с), потом уходит обратно в бой.
+            ctrl.throttle = 0f; ctrl.turn = 0f;
+            if (Time.time >= nextPortRepair && hits > 0)
+            {
+                nextPortRepair = Time.time + 1.5f; hits--;
+                if (hits == 0 && damageVisual != null) damageVisual.ResetDamage();
+            }
+            if (Time.time >= portUntil && hits <= hitsToSink / 4) { mode = Mode.Fight; nextPortThink = Time.time + Random.Range(40f, 70f); Pick(); return false; }
+            return true;
+        }
         public float respawnDelay = 6f;
 
         ShipController ctrl;
@@ -107,6 +221,7 @@ namespace SkyTide
         void UpdateTimed()
         {
             if (ctrl == null) return;
+            if (!captainRolled && Application.isPlaying) { captainRolled = true; RollCaptain(); }
             Lamps();
             if (!Alive)
             {
@@ -115,12 +230,20 @@ namespace SkyTide
             }
             CollideWithPlayer();
             ctrl.SetDamage(Health01);
-            if (nextDaze <= 0f) nextDaze = Time.time + Random.Range(10f, 20f);
+            // Пожар добивает: ниже 30% прочности корабль теряет «попадание» каждые 7 с, пока не починится в порту.
+            if (Health01 < 0.3f && mode != Mode.InPort)
+            {
+                burnClock += Time.deltaTime;
+                if (burnClock >= 7f) { burnClock = 0f; Burn(); if (!Alive) return; }
+            }
+            else burnClock = 0f;
+            if (PortLife()) return;
+            if (nextDaze <= 0f) nextDaze = Time.time + Random.Range(10f, 20f) * dazeScale;
             if (Time.time >= nextDaze && !Dazed)
             {
                 dazeUntil = Time.time + Random.Range(2.5f, 6f);
                 dazeTurn = Random.value < 0.5f ? 0f : Random.Range(-0.8f, 0.8f);
-                nextDaze = dazeUntil + Random.Range(10f, 22f);
+                nextDaze = dazeUntil + Random.Range(10f, 22f) * dazeScale;
             }
             if (Dazed) { ctrl.turn = dazeTurn; ctrl.throttle = 0.08f; return; }
             Vector3 toPlayer = player != null ? player.position - transform.position : Vector3.zero;
@@ -228,6 +351,15 @@ namespace SkyTide
             other.Block(-n * push, hard ? 0.75f : 1f);
             if (!hard) return;
             nextScrape = Time.time + 0.7f;
+            // Таран: удар бортами на ходу бьёт оба корпуса (чем быстрее сближение, тем сильнее), на малом ходу — только скрежет.
+            float closing = Mathf.Abs(ctrl.Speed) + Mathf.Abs(other.Speed);
+            if (closing > 22f)
+            {
+                Vector3 ramAt = (pa + pb) * 0.5f; ramAt.y = a0.y + 2f;
+                hull.OnHit(ramAt, closing > 45f ? 2f : 1f);
+                OnHit(ramAt);
+                if (!Alive) return;
+            }
             Vector3 at = (pa + pb) * 0.5f; at.y = a0.y + 2f;
             FxSystem fx = FxSystem.Instance;
             if (fx != null) fx.Scrape(at, n);
@@ -262,6 +394,17 @@ namespace SkyTide
         {
             if (!Alive) return;
             hits++;
+            if (Time.time - TallyAt > 2.5f) Tally = 0;
+            Tally++; TallyAt = Time.time;
+            // Попадание по месту: корма — руль, верх с баллонами — ход (на 12 с).
+            if (Random.value < 0.4f && model != null)
+            {
+                Vector3 lp = model.InverseTransformPoint(point);
+                if (lp.z < box.min.z + box.size.z * 0.18f && !ctrl.RudderHit) { ctrl.HitRudder(12f); HudNotice.Show("ВРАГУ СБИТ РУЛЬ", 0); }
+                else if (lp.y > box.min.y + box.size.y * 0.6f && !ctrl.BalloonHit) { ctrl.HitBalloon(12f); HudNotice.Show("ВРАГУ ПРОБИТ БАЛЛОН", 0); }
+            }
+            // Подстрелили в порту — мирной стоянке конец: враг возвращается в бой.
+            if (InPort) { mode = Mode.Fight; nextPortThink = Time.time + Random.Range(30f, 50f); }
             FxSystem fx = FxSystem.Instance;
             Vector3 velocity = transform.forward * ctrl.Speed;
             Vector3 normal=(point-model.TransformPoint(box.center)).normalized;
@@ -287,10 +430,26 @@ namespace SkyTide
             else if (fx != null) fx.HullImpact(point,normal,velocity);
         }
 
+        /// <summary>Пожар: потеря прочности без попадания ядра (без счёта залпа и критов).</summary>
+        void Burn()
+        {
+            hits++;
+            if (hits < hitsToSink) return;
+            Vector3 at = Center, velocity = transform.forward * ctrl.Speed;
+            SkySound.ShipDestroyed(at);
+            FxSystem fx = FxSystem.Instance;
+            if (fx != null) fx.Explosion(at, 3f);
+            deadUntil = Time.time + respawnDelay;
+            if (damageVisual != null) damageVisual.BeginSink(at, velocity);
+            ctrl.throttle = 0f; ctrl.turn = 0f;
+            HudNotice.Show("ВРАГ СГОРЕЛ", 0);
+        }
+
         void Respawn()
         {
             deadUntil = -1f;
             hits = 0;
+            RollCaptain();
             if (damageVisual != null) damageVisual.ResetDamage();
             Vector3 c = player != null ? player.position : Vector3.zero;
             float a = Random.Range(0f, Mathf.PI * 2f);

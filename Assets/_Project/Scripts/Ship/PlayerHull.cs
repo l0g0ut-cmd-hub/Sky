@@ -150,6 +150,13 @@ namespace SkyTide
             OrbitCamera shake = Camera.main != null ? Camera.main.GetComponent<OrbitCamera>() : null;
             if (shake != null) shake.HitImpulse(power);
             Haptics.Pulse(power > 1.5f ? 70 : 30);
+            // Попадание по месту: корма — руль (10 с вдвое хуже поворот), верх с баллонами — ход (10 с −35%).
+            if (model != null && ctrl != null && Random.value < 0.5f)
+            {
+                Vector3 lp = model.InverseTransformPoint(point);
+                if (lp.z < box.min.z + box.size.z * 0.18f && !ctrl.RudderHit) { ctrl.HitRudder(10f); HudNotice.Show("РУЛЬ ПОВРЕЖДЁН · 10 с", 1); }
+                else if (lp.y > box.min.y + box.size.y * 0.6f && !ctrl.BalloonHit) { ctrl.HitBalloon(10f); HudNotice.Show("БАЛЛОН ПРОБИТ · ХОД ПАДАЕТ", 1); }
+            }
             FxSystem fx = FxSystem.Instance;
             SkySound.HullHit(point, Health <= damagePerHit * 2f);
             Vector3 velocity = ctrl != null ? ctrl.transform.forward * ctrl.Speed : Vector3.zero;
@@ -195,6 +202,14 @@ namespace SkyTide
             FxSystem fx = FxSystem.Instance;
             if (debris != null && dt > 0f) debris.Simulate(dt, fx);
             if (ctrl != null) ctrl.SetDamage(Alive ? Health01 : 1f);   // подбитый корабль теряет ход, ремонт возвращает
+            if (Alive && dt > 0f)
+            {
+                // Пожар (ниже 30%) жжёт корпус, пока идёт бой: 0.4% в секунду, но не ниже 10% — добить должен враг, а не огонь.
+                // 25 с без попаданий — команда тушит и чинится сама: до 50% прочности, 1% в секунду. Полный ремонт — у причала.
+                bool calm = Time.time - LastHitTime > 25f;
+                if (!calm && Health01 < 0.3f && Health01 > 0.1f) Health = Mathf.Max(maxHealth * 0.1f, Health - maxHealth * 0.004f * dt);
+                else if (calm && Health01 < 0.5f) Health = Mathf.Min(maxHealth * 0.5f, Health + maxHealth * 0.01f * dt);
+            }
             if (!Alive)
             {
                 if (Time.time >= deadUntil) { Respawn(); return; }

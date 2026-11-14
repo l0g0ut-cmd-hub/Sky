@@ -172,6 +172,16 @@ namespace SkyTide
                 Vector2 hd = new Vector2(Mathf.Sin(rel), -Mathf.Cos(rel));
                 if (!outside) Line(p + hd * g * 0.35f, p + hd * g * 1.05f, Mathf.Max(1.5f, R * 0.035f), new Color(1f, 0.42f, 0.26f, glow));
             }
+            // Союзники (сторожевой крепости): зелёная отметка-кораблик, за краем радара — у обода.
+            if (rShip != null) foreach (AllyShip ally in AllyShip.All)
+            {
+                if (ally == null) continue;
+                Vector3 al = input.ship.transform.InverseTransformPoint(ally.transform.position);
+                Vector2 av = new Vector2(al.x, -al.z); float ad = av.magnitude;
+                Vector2 adir = ad > 1e-3f ? av / ad : Vector2.up;
+                float arel = (ally.transform.eulerAngles.y - input.ship.transform.eulerAngles.y) * Mathf.Deg2Rad;
+                Image(rShip, c + adir * Mathf.Min(ad / range, 1f) * face * 0.9f, R * 0.2f, arel, new Color(0.55f, 1f, 0.65f, ad > range ? 0.6f : 1f));
+            }
             // Крепость-причал: значок «ангар» (лист иконок), за краем радара — прижат к ободу.
             SkyFortress fort = SkyFortress.Instance;
             if (fort != null)
@@ -246,6 +256,14 @@ namespace SkyTide
         readonly float[] volleyReadyAt={-10f,-10f};
         void Volley(TouchControls input,HudLayout l,Rect r,int side,float readiness,float cooldown,bool aimed)
         {
+            // Почему борт не «в прицеле»: враг дальше предела пушек — «ДАЛЕКО», в пределах, но не на траверзе — «ДОВЕРНИ».
+            string idle="ГОТОВ"; Broadside vg=input.Guns();
+            if(Application.isPlaying&&vg!=null&&vg.AimSide==side&&!aimed)
+            {
+                float nearest=float.MaxValue;
+                foreach(TargetShip ts in TargetShip.All){if(ts==null||!ts.Alive)continue;float d=Vector3.Distance(ts.transform.position,input.ship.transform.position);if(d<nearest)nearest=d;}
+                if(nearest<float.MaxValue)idle=nearest>vg.MaxRange?"ДАЛЕКО":"ДОВЕРНИ";
+            }
             bool ready=readiness>=0.9999f;
             Panel(r,l.unit,ready,input.Pressed(r));
             // Заливка перезарядки: кнопка наполняется янтарём слева направо, в момент готовности вспыхивает;
@@ -270,7 +288,7 @@ namespace SkyTide
                 float gapX=ih*0.15f;
                 row=side<0?new Rect(row.x+iw+gapX,row.y,row.width-iw-gapX,row.height):new Rect(row.x,row.y,row.width-iw-gapX,row.height);
             }
-            Text(row,ready?(aimed?"В ПРИЦЕЛЕ":"ГОТОВ"):((1f-readiness)*cooldown).ToString("F1")+" с",l.unit*0.03f,ready?(aimed?new Color(1f,0.88f,0.55f):gold):muted);
+            Text(row,ready?(aimed?"В ПРИЦЕЛЕ":idle):((1f-readiness)*cooldown).ToString("F1")+" с",l.unit*0.03f,ready?(aimed?new Color(1f,0.88f,0.55f):gold):muted);
             float bh=Mathf.Max(2f,c.height*0.1f);
             Rect bar=new Rect(c.x,c.yMax-bh,c.width,bh);
             if(HasKit)
@@ -541,6 +559,10 @@ namespace SkyTide
             {
                 // Край района боя: предупреждение, пока корабль в 250 м от границы (там же руль мягко отводит его обратно).
                 ShipController own = hull != null ? hull.GetComponent<ShipController>() : null;
+                // События боя (руль, баллон, порт, сторожевой) и итог залпа — малой плашкой, если она свободна.
+                if (note < 0.05f && HudNotice.Alpha > 0f) { noteText = HudNotice.Text; noteIcon = HudNotice.Icon; note = HudNotice.Alpha; }
+                else if (note < 0.05f && Application.isPlaying && TargetShip.Tally >= 2 && Time.time - TargetShip.TallyAt > 0.5f && Time.time - TargetShip.TallyAt < 3f)
+                { noteText = "ПОПАДАНИЙ · " + TargetShip.Tally; noteIcon = 0; note = Mathf.Clamp01(3f - (Time.time - TargetShip.TallyAt)); }
                 // Корпус ниже 35% и не у крепости — напоминание, где чинятся.
                 if (hull != null && hull.Health01 < 0.35f && note < 0.05f && Application.isPlaying) { noteText = "КОРПУС " + Mathf.RoundToInt(hull.Health01 * 100f) + "% · К ПРИЧАЛУ"; noteIcon = 9; note = 0.9f; }
                 if (own != null && own.EdgeWarning > 0.05f && note < 0.05f) { noteText = "КРАЙ РАЙОНА БОЯ"; noteIcon = 1; note = Mathf.Clamp01(own.EdgeWarning * 3f); }
@@ -550,7 +572,9 @@ namespace SkyTide
                 {
                     float alarm = Envelope(Time.time - SkyFortress.FortressAlarmAt, 3.5f, 0.15f, 0.5f);
                     float zone = Envelope(Time.time - fort.EnteredAt, 3f, 0.2f, 0.6f);
+                    float foeAlarm = Envelope(Time.time - SkyFortress.EnemyAlarmAt, 3.5f, 0.15f, 0.5f);
                     if (alarm > 0f) { noteText = "КРЕПОСТЬ ОТКРЫЛА ОГОНЬ"; noteIcon = 1; note = alarm; corner = false; }
+                    else if (foeAlarm > 0f) { noteText = "КРЕПОСТЬ БЬЁТ ПО ВРАГУ"; noteIcon = 0; note = foeAlarm; corner = false; }
                     else if (fort.Hostile) { noteText = "ТРЕВОГА · " + Mathf.CeilToInt(fort.HostileLeft) + " с"; noteIcon = 1; note = 1f; corner = true; }
                     else if (fort.PlayerDocked && hull != null) { noteText = "РЕМОНТ · " + Mathf.RoundToInt(hull.Health01 * 100f) + "%"; noteIcon = 0; note = 1f; corner = true; }
                     else if (zone > 0f && fort.PlayerInside) { noteText = "БЕЗОПАСНАЯ ЗОНА"; noteIcon = 0; note = zone; corner = false; }
@@ -682,6 +706,7 @@ namespace SkyTide
                         Volley(input,l,l.starboard,1,guns.Readiness(1),guns.cooldown,guns.AimOnTarget&&guns.AimSide>0);
                         Panel(l.mode,l.unit,false,input.Pressed(l.mode));
                         PlateText(l.mode,0f,1f,guns.ripple?"ЗАЛП ВОЛНОЙ":"ВЕСЬ БОРТ",l.unit*0.034f,cream);
+                        if(Application.isPlaying){string autoText=input.AutoBattle?(string.IsNullOrEmpty(input.AutoState)?"АВТОБОЙ · ВКЛ":input.AutoState):"АВТОБОЙ";Panel(l.auto,l.unit,input.AutoBattle,input.Pressed(l.auto));PlateText(l.auto,0f,1f,autoText,l.unit*(autoText.Length>20?0.026f:0.032f),input.AutoBattle?new Color(1f,0.88f,0.55f):cream);}
                     }
                     Vector2 home=input.StickActive?l.ClampWheel(input.StickOrigin):l.wheel;
                     float r=l.radius, a=input.StickActive?0.85f:0.45f;
