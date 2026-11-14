@@ -98,7 +98,7 @@ namespace SkyTide
             }
             if (emission != null)
             {
-                WithEmission(m, new Color(1.6f, 1.6f, 1.6f));
+                WithEmission(m, new Color(2.3f, 2.3f, 2.3f));   // фонари и окна дают ореол свечения
                 m.SetTexture("_EmissionMap", emission);
             }
             return m;
@@ -113,7 +113,7 @@ namespace SkyTide
             m.name = "Fortress";
             m.mainTexture = albedo;
             m.SetFloat("_Glossiness", 0.18f);
-            if (emission != null) { m.SetTexture("_EmissionMap", emission); m.SetColor("_EmissionColor", new Color(1.6f, 1.6f, 1.6f)); }
+            if (emission != null) { m.SetTexture("_EmissionMap", emission); m.SetColor("_EmissionColor", new Color(2.2f, 2.2f, 2.2f)); }
             // Плитки материалов (кладка, доски, скала): без них шейдер берёт серую заглушку — «как в модели».
             if (wall != null) m.SetTexture("_WallTex", wall);
             if (deck != null) m.SetTexture("_DeckTex", deck);

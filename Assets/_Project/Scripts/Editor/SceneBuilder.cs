@@ -312,7 +312,7 @@ namespace SkyTide.EditorTools
                 }
                 if (!string.IsNullOrEmpty(j.emission))
                 {
-                    MaterialFactory.WithEmission(m, new Color(1.6f, 1.6f, 1.6f));
+                    MaterialFactory.WithEmission(m, new Color(2.3f, 2.3f, 2.3f));   // фонари и окна дают ореол свечения
                     m.SetTexture("_EmissionMap", Tex(Models + j.emission, false, false, TextureWrapMode.Repeat, TextureWrapMode.Repeat, 2048, true));
                 }
                 else if (j.emissionColor != null && j.emissionColor.Length >= 3)

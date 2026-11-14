@@ -45,6 +45,7 @@ Shader "SkyTide/Fortress"
         half _Glossiness, _Metallic;
         float4 _TileSize;
         float4 _AerialRange;
+        float _FortressAlarm;   // 0..1 — тревога: огни краснеют и пульсируют (SkyFortress)
         float _DissolveTop, _DissolveRange, _AerialStrength, _DetailStrength, _DetailFar, _RockTop, _RockBlend, _BumpHeight;
 
         struct Input
@@ -90,9 +91,6 @@ Shader "SkyTide/Fortress"
             float2 gx = top ? dpx.xz : (xdom ? dpx.zy : dpx.xy);
             float2 gy = top ? dpy.xz : (xdom ? dpy.zy : dpy.xy);
             float3 inv = 1.0 / max(_TileSize.xyz, 0.1);
-            half3 wallD = tex2Dgrad(_WallTex, puv * inv.x, gx * inv.x, gy * inv.x).rgb;
-            half3 deckD = tex2Dgrad(_DeckTex, puv * inv.y, gx * inv.y, gy * inv.y).rgb;
-            half3 rockD = tex2Dgrad(_RockTex, puv * inv.z, gx * inv.z, gy * inv.z).rgb;
             // Что это за поверхность — по цвету модели: дерево насыщенное рыже-коричневое, камень серый.
             float cmax = max(albedo.r, max(albedo.g, albedo.b)), cmin = min(albedo.r, min(albedo.g, albedo.b));
             float wood = smoothstep(0.55, 0.8, (cmax - cmin) / max(cmax, 1e-3));
@@ -101,7 +99,17 @@ Shader "SkyTide/Fortress"
             float rock = saturate((_RockTop - IN.worldPos.y) / max(_RockBlend, 1.0));
             float dist = length(toEye);
             float amount = saturate((_DetailFar - dist) / (_DetailFar * 0.5)) * _DetailStrength * (1.0 - cloth) * (1.0 - glowMask);
-            half3 tile = lerp(lerp(wallD, rockD, rock), deckD, wood) * 2.5;   // 1 — «как в модели»
+            // Плитки читаются только вблизи: дальше _DetailFar (а крепость почти всегда в 2 км) их три выборки
+            // не делаются вовсе — это самая дорогая часть шейдера.
+            half3 tile = half3(1, 1, 1);   // 1 — «как в модели»
+            UNITY_BRANCH
+            if (amount > 0.002)
+            {
+                half3 wallD = tex2Dgrad(_WallTex, puv * inv.x, gx * inv.x, gy * inv.x).rgb;
+                half3 deckD = tex2Dgrad(_DeckTex, puv * inv.y, gx * inv.y, gy * inv.y).rgb;
+                half3 rockD = tex2Dgrad(_RockTex, puv * inv.z, gx * inv.z, gy * inv.z).rgb;
+                tile = lerp(lerp(wallD, rockD, rock), deckD, wood) * 2.5;
+            }
             albedo.rgb *= lerp(half3(1, 1, 1), tile, amount);
             // Рельеф из яркости плитки (швы кладки и щели досок темнее — значит глубже): нормаль по производным
             // высоты на экране (Mikkelsen, bump mapping unparametrized surfaces) — без карты нормалей и лишних выборок.
@@ -122,6 +130,9 @@ Shader "SkyTide/Fortress"
             float ph = dot(IN.worldPos, float3(0.11, 0.07, 0.13));
             float flicker = 0.86 + 0.09 * sin(_Time.y * 2.1 + ph) + 0.05 * sin(_Time.y * 9.0 + ph * 3.1);
             half3 glow = glowTex * _EmissionColor.rgb * flicker;
+            // Тревога: огни краснеют и пульсируют.
+            half glowLum = max(glowTex.r, max(glowTex.g, glowTex.b));
+            glow = lerp(glow, half3(2.8, 0.22, 0.1) * glowLum * (0.5 + 0.5 * sin(_Time.y * 7.0)), _FortressAlarm);
             // Контровой свет заката на башнях и стенах; вспышки выстрелов освещают камень у орудия.
             glow += SkyTideRimLight(wn, IN.worldPos) * 0.7;
             glow += albedo.rgb * SkyTideFlashLight(IN.worldPos) * 0.4;

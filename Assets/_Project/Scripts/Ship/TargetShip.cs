@@ -99,6 +99,7 @@ namespace SkyTide
                 return;
             }
             CollideWithPlayer();
+            ctrl.SetDamage(Health01);
             if (nextDaze <= 0f) nextDaze = Time.time + Random.Range(10f, 20f);
             if (Time.time >= nextDaze && !Dazed)
             {

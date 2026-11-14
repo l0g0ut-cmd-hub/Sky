@@ -38,6 +38,62 @@ namespace SkyTide
         public int Gear { get { return gear; } }
         public void SetGear(int g) { gear = Mathf.Clamp(g, 0, GearThrottle.Length - 1); gearArmed = true; }
         float lastCamTap = -10f; Vector2 lastCamTapPos;
+        // Подсказки первого запуска — по шагам, каждая гаснет после своего действия:
+        // 0 дать ход, 1 дать залп, 2 камера за корму, 3 обзор и масштаб, 4 — всё показано (запоминается).
+        int hintStage; bool hintDone, recentered; float hintShownFor;
+        const string HintsKey = "SkyTide.HintsDone";
+        public int HintStage { get { return hintStage; } }
+        // Пауза и настройки (звук, чувствительность камеры) — запоминаются между запусками.
+        public bool Paused { get; private set; }
+        public bool SoundOn { get; private set; } = true;
+        public int CameraSpeed { get; private set; } = 1;
+        static readonly float[] OrbitSpeeds = { 150f, 220f, 300f };
+        public static readonly string[] CameraSpeedNames = { "МЕДЛЕННАЯ", "СРЕДНЯЯ", "БЫСТРАЯ" };
+        // Радар: касание меняет масштаб 1.5 км ↔ 600 м.
+        bool radarNear;
+        public float RadarRange { get { return radarNear ? 600f : 1500f; } }
+
+        void UpdateHints()
+        {
+            if (hintStage >= 4) { hintAlpha = 0f; return; }
+            float dt = Time.unscaledDeltaTime;
+            if (!hintDone)
+            {
+                hintAlpha = Mathf.MoveTowards(hintAlpha, 1f, dt * 2f);
+                hintShownFor += dt;
+                Broadside guns = Guns();
+                if (hintStage == 0) hintDone = gear > 1;
+                else if (hintStage == 1) hintDone = guns == null || guns.Readiness(-1) < 0.99f || guns.Readiness(1) < 0.99f;
+                else if (hintStage == 2) hintDone = recentered || hintShownFor > 20f;
+                else hintDone = hintShownFor > 6f;
+            }
+            else
+            {
+                hintAlpha = Mathf.MoveTowards(hintAlpha, 0f, dt * 2f);
+                if (hintAlpha <= 0f)
+                {
+                    hintStage++; hintDone = false; hintShownFor = 0f; recentered = false;
+                    if (hintStage >= 4) { PlayerPrefs.SetInt(HintsKey, 1); PlayerPrefs.Save(); }
+                }
+            }
+        }
+
+        void PauseAction(int row)
+        {
+            if (row == 0) SetPaused(false);
+            else if (row == 1) { SoundOn = !SoundOn; AudioListener.volume = SoundOn ? 1f : 0f; PlayerPrefs.SetInt("SkyTide.Sound", SoundOn ? 1 : 0); }
+            else if (row == 2) { CameraSpeed = (CameraSpeed + 1) % OrbitSpeeds.Length; orbitDegreesPerScreen = OrbitSpeeds[CameraSpeed]; PlayerPrefs.SetInt("SkyTide.Camera", CameraSpeed); }
+            else if (row == 3) { SetPaused(false); ResetInteraction(); MainMenu.Open(); }
+        }
+
+        /// <summary>Пауза: время и звук стоят, касания принимает только меню паузы.</summary>
+        public void SetPaused(bool on)
+        {
+            Paused = on;
+            Time.timeScale = on ? 0f : 1f;
+            AudioListener.pause = on;
+            if (!on) PlayerPrefs.Save();
+        }
         float hintAlpha = 1f;
         bool touchedOnce;
         bool legacyInputOk = true;
@@ -50,6 +106,14 @@ namespace SkyTide
         void Awake()
         {
             Input.simulateMouseWithTouches = false;
+            if (Application.isPlaying)
+            {
+                if (PlayerPrefs.GetInt(HintsKey, 0) == 1) { hintStage = 4; hintAlpha = 0f; }
+                SoundOn = PlayerPrefs.GetInt("SkyTide.Sound", 1) == 1;
+                CameraSpeed = Mathf.Clamp(PlayerPrefs.GetInt("SkyTide.Camera", 1), 0, OrbitSpeeds.Length - 1);
+                AudioListener.volume = SoundOn ? 1f : 0f;
+                orbitDegreesPerScreen = OrbitSpeeds[CameraSpeed];
+            }
         }
 
         void Update(){long __pt=PerfTimers.Start();UpdateTimed();PerfTimers.Stop("Ввод",__pt);}
@@ -71,7 +135,7 @@ namespace SkyTide
             }
 
             fps = Mathf.Lerp(fps, 1f / Mathf.Max(Time.unscaledDeltaTime, 1e-4f), 0.05f);
-            if (touchedOnce) hintAlpha = Mathf.MoveTowards(hintAlpha, 0f, Time.deltaTime * 0.5f);
+            UpdateHints();
         }
 
         void ReadPointers()
@@ -108,6 +172,15 @@ namespace SkyTide
             if (began)
             {
                 touchedOnce = true;
+                HudLayout hl = Layout(ViewWidth, ViewHeight);
+                if (Paused)
+                {
+                    owners[id] = Owner.Button; lastPos[id] = p;
+                    for (int row = 0; row < HudLayout.PauseRows; row++) if (hl.PauseRow(row).Contains(p)) { PauseAction(row); break; }
+                    return;
+                }
+                if (Application.isPlaying && hl.pause.Contains(p)) { owners[id] = Owner.Button; lastPos[id] = p; SetPaused(true); return; }
+                if (hl.radar.Contains(p)) { owners[id] = Owner.Button; lastPos[id] = p; radarNear = !radarNear; return; }
                 if (game != null && game.ships != null && game.ships.Length > 1 && ShipButtonRect().Contains(p))
                 {
                     owners[id] = Owner.Button;
@@ -140,7 +213,7 @@ namespace SkyTide
                     owners[id] = Owner.Camera;
                     // Двойное касание одним пальцем — камера возвращается за корму.
                     float tapNow = Time.unscaledTime, tapR = Mathf.Min(ViewWidth, ViewHeight) * 0.09f;
-                    if (cam != null && CameraFingers() == 1 && tapNow - lastCamTap < 0.32f && (p - lastCamTapPos).sqrMagnitude < tapR * tapR) { cam.Recenter(); lastCamTap = -10f; }
+                    if (cam != null && CameraFingers() == 1 && tapNow - lastCamTap < 0.32f && (p - lastCamTapPos).sqrMagnitude < tapR * tapR) { cam.Recenter(); recentered = true; lastCamTap = -10f; }
                     else { lastCamTap = tapNow; lastCamTapPos = p; }
                 }
                 lastPos[id] = p;
@@ -231,6 +304,7 @@ namespace SkyTide
                 if (Input.GetKeyDown(KeyCode.W) || Input.GetKeyDown(KeyCode.UpArrow)) SetGear(gear + 1);
                 if (Input.GetKeyDown(KeyCode.S) || Input.GetKeyDown(KeyCode.DownArrow)) SetGear(gear - 1);
                 if (Input.GetKeyDown(KeyCode.Tab) && game != null) game.NextShip();
+                if (Input.GetKeyDown(KeyCode.Escape) && Application.isPlaying) SetPaused(!Paused);   // и кнопка «назад» на телефоне
                 Broadside guns = Guns();
                 if (guns != null && Input.GetKeyDown(KeyCode.Q)) guns.Fire(-1);
                 if (guns != null && Input.GetKeyDown(KeyCode.E)) guns.Fire(1);
@@ -343,7 +417,7 @@ namespace SkyTide
         }
         void OnApplicationFocus(bool focused) {if(!focused)ResetInteraction();}
         void OnApplicationPause(bool paused) {if(paused)ResetInteraction();}
-        void OnDisable() {ResetInteraction();}
+        void OnDisable() {if(Paused)SetPaused(false);ResetInteraction();}
         void OnDestroy() {hud.Dispose();}
 #if UNITY_EDITOR
         bool captureVisible;

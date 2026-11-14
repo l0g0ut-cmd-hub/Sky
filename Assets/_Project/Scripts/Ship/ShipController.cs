@@ -29,6 +29,14 @@ namespace SkyTide
 
         public float Speed { get; private set; }
 
+        // Повреждения: ниже 50% прочности корабль теряет 15% хода, ниже 30% — 30% хода и 20% поворотливости.
+        float damageSpeed = 1f, damageTurn = 1f;
+        public void SetDamage(float health01)
+        {
+            damageSpeed = health01 < 0.3f ? 0.7f : health01 < 0.5f ? 0.85f : 1f;
+            damageTurn = health01 < 0.3f ? 0.8f : 1f;
+        }
+
         float smoothTurn;
         float bobPhase;
         float pitch;
@@ -61,14 +69,14 @@ namespace SkyTide
             if (dt <= 0f) return;
 
             float thr = Mathf.Clamp(throttle, -1f, 1f);
-            float targetSpeed = thr >= 0f ? thr * maxSpeed : thr * maxReverseSpeed;
+            float targetSpeed = thr >= 0f ? thr * maxSpeed * damageSpeed : thr * maxReverseSpeed;
             float rate = Mathf.Abs(targetSpeed) > Mathf.Abs(Speed) ? acceleration : deceleration;
             Speed = Mathf.MoveTowards(Speed, targetSpeed, rate * dt);
 
             smoothTurn = Mathf.MoveTowards(smoothTurn, Mathf.Clamp(turn, -1f, 1f), turnResponse * dt);
             // Корабль поворачивает и на месте (рулевые винты), но на ходу — заметно быстрее.
             float steer = 0.35f + 0.65f * Mathf.Clamp01(Mathf.Abs(Speed) / maxSpeed);
-            transform.Rotate(0f, smoothTurn * maxYawRate * steer * dt, 0f, Space.World);
+            transform.Rotate(0f, smoothTurn * maxYawRate * steer * damageTurn * dt, 0f, Space.World);
 
             Vector3 pos = transform.position + transform.forward * Speed * dt;
             Vector2 flat = new Vector2(pos.x, pos.z);

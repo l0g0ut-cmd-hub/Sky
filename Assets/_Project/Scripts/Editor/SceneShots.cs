@@ -1144,6 +1144,7 @@ namespace SkyTide.EditorTools
                     boot.Fx.ClearPreview();
                     // Дым из труб крепости: десять секунд жизни, клуб раз в секунду.
                     for (int smokeStep = 0; smokeStep < 40; smokeStep++) { if (smokeStep % 4 == 0) fort.EmitSmoke(); boot.Fx.Simulate(0.25f); }
+                    fort.UpdateBeacon(cam, 0.714f);   // маяк причала в полной яркости
                     boot.Fx.StoneImpact(hitAt + Vector3.up * 0.5f, Vector3.up);
                     for (int k = 0; k < 5; k++) boot.Fx.Simulate(0.05f);
                     eye = berth - to * 150f + side * 110f + Vector3.up * 35f;

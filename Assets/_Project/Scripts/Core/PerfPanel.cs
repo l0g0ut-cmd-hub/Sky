@@ -196,6 +196,8 @@ namespace SkyTide
                 if (Cell(x, ref y, cw, h, ref col, "Море облаков", v.debugDeck)) v.debugDeck = !v.debugDeck;
                 if (Cell(x, ref y, cw, h, ref col, "Импосторы", v.impostors)) v.impostors = !v.impostors;
                 if (Cell(x, ref y, cw, h, ref col, "Облака ¼ за кадр", v.interleave)) v.interleave = !v.interleave;
+                // Ступеньки на краях облаков — от буфера в четверть разрешения; треть — ровнее, но дороже (цена — в автозамере).
+                if (Cell(x, ref y, cw, h, ref col, "Облака чётче (⅓)", v.resolutionDivider <= 3)) v.resolutionDivider = v.resolutionDivider <= 3 ? 4 : 3;
             }
             ShipCrew crew = game.Ship != null ? game.Ship.GetComponent<ShipCrew>() : null;
             if (crew != null && Cell(x, ref y, cw, h, ref col, "Экипаж", crew.Visible)) crew.SetVisible(!crew.Visible);
@@ -238,6 +240,7 @@ namespace SkyTide
             ShadowQuality sq = QualitySettings.shadows; bool lodOn = ShipLod.Enabled; int si = scaleIndex;
             bool autoWas = autoScale; float scaleWas = sceneScale;
             bool sharpWas = SkyTidePost.Sharpen, extrasWas = FxSystem.Extras;
+            int dividerWas = v != null ? v.resolutionDivider : 4; bool fortWas = game.Fortress != null && game.Fortress.Visible;
             autoScale = false;   // на время замера разрешение не плавает
             System.Action<bool> all = on =>
             {
@@ -248,6 +251,8 @@ namespace SkyTide
                 QualitySettings.shadows = on ? ShadowQuality.All : ShadowQuality.Disable;
                 ShipLod.Enabled = true;
                 SkyTidePost.Sharpen = on; FxSystem.Extras = on;
+                if (v != null) v.resolutionDivider = 4;
+                if (game.Fortress != null) game.Fortress.Visible = on;
                 SetScale(DefaultScaleIndex);   // база — как в игре по умолчанию: сцена 100%, облака ¼ лучей за кадр
             };
             var steps = new List<KeyValuePair<string, System.Action>>();
@@ -260,6 +265,8 @@ namespace SkyTide
                 steps.Add(new KeyValuePair<string, System.Action>("без импосторов", () => { all(true); v.impostors = false; }));
             }
             if (v != null) steps.Add(new KeyValuePair<string, System.Action>("облака: все лучи каждый кадр", () => { all(true); v.interleave = false; }));
+            if (v != null) steps.Add(new KeyValuePair<string, System.Action>("облака чётче (⅓ разрешения)", () => { all(true); v.resolutionDivider = 3; }));
+            if (game.Fortress != null) steps.Add(new KeyValuePair<string, System.Action>("без крепости", () => { all(true); game.Fortress.Visible = false; }));
             if (crew != null) steps.Add(new KeyValuePair<string, System.Action>("без экипажа", () => { all(true); crew.SetVisible(false); }));
             if (post != null) steps.Add(new KeyValuePair<string, System.Action>("без пост-обработки", () => { all(true); post.enabled = false; }));
             if (game.Fx != null) steps.Add(new KeyValuePair<string, System.Action>("без дыма и вспышек", () => { all(true); game.Fx.debugHidden = true; }));
@@ -298,6 +305,8 @@ namespace SkyTide
             if (game.Fx != null) game.Fx.debugHidden = !fOn;
             QualitySettings.shadows = sq; ShipLod.Enabled = lodOn;
             SkyTidePost.Sharpen = sharpWas; FxSystem.Extras = extrasWas;
+            if (v != null) v.resolutionDivider = dividerWas;
+            if (game.Fortress != null) game.Fortress.Visible = fortWas;
             scaleIndex = si; ApplyScale(scaleWas); autoScale = autoWas; autoAcc = 0f; autoFrames = 0; autoHold = Time.unscaledTime + 6f;
             System.Text.StringBuilder log = new System.Text.StringBuilder("SkyTide: автозамер\n");
             foreach (BenchRow b in bench) log.AppendFormat("{0}: FPS {1:F1}, ВК {2:F1} мс, кадр {3:F1} мс, игра {4:F1} мс\n", b.name, b.fps, b.gpu, b.frame, b.main);
@@ -323,7 +332,7 @@ namespace SkyTide
             // Почти непрозрачная подложка: под таблицей не должны читаться плашки HUD.
             GUI.color = new Color(0f, 0f, 0f, 0.95f); GUI.DrawTexture(r, Texture2D.whiteTexture); GUI.DrawTexture(r, Texture2D.whiteTexture); GUI.color = Color.white;
             if (small == null) small = new GUIStyle(label) { fontSize = Mathf.RoundToInt(label.fontSize * 0.8f) };
-            float x = r.x + u * 0.03f, w = r.width - u * 0.06f, y = r.y + u * 0.012f, lh = u * 0.042f;   // 17 строк замера помещаются над кнопками
+            float x = r.x + u * 0.03f, w = r.width - u * 0.06f, y = r.y + u * 0.012f, lh = u * 0.039f;   // 19 строк замера помещаются над кнопками
             string dev = SystemInfo.graphicsDeviceName + "  " + nativeW + "×" + nativeH + "  сборка " + Application.version;
             GUI.Label(new Rect(x, y, w, lh), "Автозамер · " + dev, small); y += lh;
             float c0 = w * 0.44f, cwid = (w - c0) / 5f;

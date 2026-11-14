@@ -328,9 +328,35 @@ namespace SkyTide
         void UpdateTimed()
         {
             if (!Application.isPlaying) return;
+            if (Time.timeSinceLevelLoad < 1.5f) Warm();
             SpeedFx(Time.deltaTime);
             Simulate(Time.deltaTime);
         }
+
+        /// <summary>Прогрев на заставке (первые полторы секунды): едва заметные вспышки у корабля игрока, врага и причала
+        /// заставляют видеокарту заранее собрать варианты шейдеров с точечным светом, а невидимая частица — загрузить
+        /// текстуры эффектов. Иначе это случалось на первом залпе и первом взрыве.</summary>
+        void Warm()
+        {
+            SkyTideBootstrap game = SkyTideBootstrap.Instance;
+            if (game == null) return;
+            if (game.Ship != null)
+            {
+                Flash(game.Ship.transform.position + Vector3.up * 6f, 0.03f, 60f);
+                if (ps.Count == 0) Add(new P { kind = Kind.Smoke, pos = game.Ship.transform.position + Vector3.down * 400f, life = 0.4f, size0 = 1f, size1 = 1f, alpha = 0f });
+            }
+            if (Time.timeSinceLevelLoad < 0.8f) { if (game.Target != null) Flash(game.Target.transform.position + Vector3.up * 6f, 0.03f, 60f); }
+            else if (game.Fortress != null) Flash(game.Fortress.BerthWorld + Vector3.up * 10f, 0.03f, 120f);
+        }
+
+        // Маяк причала: одно свечение, обновляется каждый кадр крепостью, не симулируется.
+        bool beaconOn; P beacon;
+        public void SetBeacon(Vector3 pos, float size, Color c)
+        {
+            beaconOn = c.a > 0.001f;
+            beacon = new P { kind = Kind.Glow, pos = pos, life = 1f, size0 = size, size1 = size, color = c, alpha = c.a };
+        }
+        public void ClearBeacon() { beaconOn = false; }
 
         float wakeClock, wispClock;
         /// <summary>Ощущение скорости: за кормой корабля игрока остаётся тающий след у киля, а по сторонам от курса
@@ -434,6 +460,7 @@ namespace SkyTide
         {
             ps.Clear();
             splashes.Clear();
+            beaconOn = false;
             drawn = 0;
             CloudSplashCount = 0;
             for (int i = 0; i < MaxFlashes; i++) flashes[i] = Vector4.zero;
@@ -673,6 +700,7 @@ namespace SkyTide
         {
             int baseCount = ps.Count;
             ps.AddRange(preview);
+            if (beaconOn) ps.Add(beacon);
             try { BuildMeshCore(cam); }
             finally { ps.RemoveRange(baseCount, ps.Count - baseCount); }
         }

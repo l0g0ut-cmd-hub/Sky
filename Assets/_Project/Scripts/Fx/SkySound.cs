@@ -98,6 +98,14 @@ namespace SkyTide
             Instance.At(Pick(Instance.lowBoom), at, 1f, 0.04f, 60f, 3000f);
             Instance.At(Instance.destroyed, at, 0.9f, 0.03f, 60f, 2500f);
         }
+        /// <summary>Набат крепости: удар по металлу слышен со стороны крепости на любом расстоянии (играется в 40 м от слушателя).</summary>
+        public static void Alarm(Vector3 from)
+        {
+            if (Instance == null) return;
+            Vector3 ear = Instance.Listener, dir = from - ear;
+            if (dir.sqrMagnitude < 1f) dir = Vector3.forward;
+            Instance.At(Instance.metal, ear + dir.normalized * 40f, 0.5f, 0.02f, 20f, 900f);
+        }
         public static void MetalHit(Vector3 at) { if (Instance != null) Instance.At(Instance.metal, at, 0.7f, 0.08f, 20f, 900f); }
         public static void Reloaded(Vector3 at) { if (Instance != null) Instance.At(Instance.clank, at, 0.35f, 0.05f, 8f, 150f); }
 

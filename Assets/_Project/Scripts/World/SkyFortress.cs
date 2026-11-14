@@ -75,11 +75,47 @@ namespace SkyTide
         {
             SkyFortress f = Instance;
             if (f == null || !InSafeZone(at)) return;
-            if (!f.Hostile) f.nextShot = Time.time + 2.5f;   // предупреждение на HUD, расчёты встают к орудиям — 2.5 с до первого выстрела
+            // Сначала предупредительный выстрел (через 0.7 с, всплеск перед носом), огонь на поражение — ещё через 1.8 с:
+            // те же 2.5 с от залпа игрока до первого ядра в корабль.
+            if (!f.Hostile) { f.nextShot = Time.time + 0.7f; f.warned = false; }
             f.hostileUntil = Time.time + f.hostileTime;
             FortressAlarmAt = Time.time;
         }
         public static float FortressAlarmAt = -100f;
+        bool warned;
+        float alarmGlow, nextBell;
+        Vector3 beaconPos; bool beaconFound;
+        /// <summary>Крепость рисуется (панель FPS, автозамер «без крепости»): столкновения и орудия работают в любом случае.</summary>
+        public bool Visible
+        {
+            get { MeshRenderer mr = model != null ? model.GetComponent<MeshRenderer>() : null; return mr != null && mr.enabled; }
+            set { MeshRenderer mr = model != null ? model.GetComponent<MeshRenderer>() : null; if (mr != null) mr.enabled = value; }
+        }
+
+        /// <summary>Маяк на конце пирса: пульсирующий огонь, крупнее с расстоянием — читается за пару километров.
+        /// При тревоге гаснет. Публичный — для кадров CI.</summary>
+        public void UpdateBeacon(Camera cam, float time)
+        {
+            FxSystem fx = FxSystem.Instance;
+            if (fx == null || cam == null || !hasBerth || model == null) return;
+            if (!beaconFound)
+            {
+                beaconFound = true;
+                Vector3 berth = BerthWorld, inward = transform.position - berth; inward.y = 0f;
+                float len = inward.magnitude;
+                inward = len > 1f ? inward / len : Vector3.forward;
+                beaconPos = berth + Vector3.up * 14f;
+                for (float d = 0f; d <= 200f; d += 6f)
+                {
+                    Vector3 q = berth + inward * d; float top = TopAt(q);
+                    if (top > -1e8f) { beaconPos = new Vector3(q.x, top + 9f, q.z); break; }
+                }
+            }
+            if (Application.isPlaying && Hostile) { fx.ClearBeacon(); return; }
+            float dist = Vector3.Distance(cam.transform.position, beaconPos);
+            float pulse = Mathf.Pow(Mathf.Max(0f, Mathf.Sin(time * 2.2f)), 4f);
+            fx.SetBeacon(beaconPos, Mathf.Clamp(dist * 0.02f, 7f, 55f), new Color(1f, 0.85f, 0.55f, 0.12f + 0.4f * pulse));
+        }
 
         /// <summary>Ставит крепость в <paramref name="position"/> пирсом к <paramref name="faceTowards"/> (+ yawOffset°),
         /// причал — на высоте pierHeight (модель поднимается/опускается целиком; низ уходит в облака).</summary>
@@ -204,6 +240,12 @@ namespace SkyTide
             Vector3 pp = hull.Center;
             playerVel = Vector3.Lerp(playerVel, (pp - lastPlayerPos) / dt, 0.2f); lastPlayerPos = pp;
 
+            // Тревога видна и слышна на самой крепости: огни краснеют и пульсируют (шейдер), бьёт набат.
+            alarmGlow = Mathf.MoveTowards(alarmGlow, Hostile ? 1f : 0f, dt * 2f);
+            Shader.SetGlobalFloat("_FortressAlarm", alarmGlow);
+            if (Hostile && Time.time >= nextBell) { nextBell = Time.time + 1.15f; SkySound.Alarm(transform.position); }
+            UpdateBeacon(Camera.main, Time.time);
+
             bool inside = InSafeZone(ship.transform.position);
             if (inside && !PlayerInside) EnteredAt = Time.time;
             PlayerInside = inside;
@@ -241,10 +283,20 @@ namespace SkyTide
             gunCursor = pick + 1;
             Vector3 muzzle = model.TransformPoint(guns[pick]);
             nextShot = Time.time + shotInterval + UnityEngine.Random.Range(0f, 0.4f);
+            // Первый выстрел тревоги — предупредительный: в облака перед носом корабля, без разброса.
+            bool warning = !warned;
+            Vector3 aimAt = pp;
+            if (warning)
+            {
+                warned = true;
+                nextShot = Time.time + 1.8f;
+                aimAt = ship.transform.position + ship.transform.forward * 80f;
+                aimAt.y = FxSystem.Instance != null ? FxSystem.Instance.deckTop : pp.y - 25f;
+            }
             if ((pp - muzzle).sqrMagnitude > gunRange * gunRange) return;
             Vector3 dir;
-            if (!Solve(muzzle, pp, out dir)) return;
-            dir = Quaternion.Euler(UnityEngine.Random.Range(-spreadDeg, spreadDeg), UnityEngine.Random.Range(-spreadDeg, spreadDeg), 0f) * dir;
+            if (!Solve(muzzle, aimAt, out dir)) return;
+            if (!warning) dir = Quaternion.Euler(UnityEngine.Random.Range(-spreadDeg, spreadDeg), UnityEngine.Random.Range(-spreadDeg, spreadDeg), 0f) * dir;
             if (FxSystem.Instance != null) FxSystem.Instance.Fire(muzzle, dir, Vector3.zero, muzzleSpeed, true, shellLife, shellCaliber);
         }
 

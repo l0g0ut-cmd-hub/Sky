@@ -299,14 +299,31 @@ namespace SkyTide
                 best = Mathf.Min(best, d.magnitude);
             }
             SkyFortress fort = SkyFortress.Instance;
-            int rows = (best < float.MaxValue ? 1 : 0) + (fort != null ? 1 : 0);
-            if (rows == 0) return;
+            int rows = 1 + (best < float.MaxValue ? 1 : 0) + (fort != null ? 1 : 0);
             Box(new Rect(r.x, y - l.unit * 0.003f, r.width, lh * rows + l.unit * 0.006f), new Color(0.04f, 0.05f, 0.07f, 0.5f));
+            Text(new Rect(r.x, y, r.width, lh), "РАДАР " + Range(input.RadarRange), fs, muted); y += lh;
             if (best < float.MaxValue) { Text(new Rect(r.x, y, r.width, lh), "ВРАГ " + Range(best), fs, new Color(1f, 0.72f, 0.55f, 1f)); y += lh; }
             if (fort != null)
             {
                 Vector3 d = fort.BerthWorld - input.ship.transform.position; d.y = 0f;
                 Text(new Rect(r.x, y, r.width, lh), "ПРИЧАЛ " + Range(d.magnitude), fs, fort.Hostile ? new Color(1f, 0.55f, 0.45f, 1f) : cream);
+            }
+        }
+
+        /// <summary>Меню паузы: затемнение, панель по центру, четыре строки (геометрия — HudLayout.PauseRow).</summary>
+        void PauseMenu(TouchControls input, HudLayout l, int width, int height)
+        {
+            Solid(new Rect(0f, 0f, width, height), new Color(0.02f, 0.03f, 0.05f, 0.6f));
+            Rect p = l.PausePanel;
+            Solid(p, new Color(0.05f, 0.06f, 0.08f, 0.88f));
+            Text(new Rect(p.x, p.y + l.unit * 0.03f, p.width, l.unit * 0.09f), "ПАУЗА", l.unit * 0.055f, cream);
+            for (int i = 0; i < HudLayout.PauseRows; i++)
+            {
+                Rect r = l.PauseRow(i);
+                string text = i == 0 ? "ПРОДОЛЖИТЬ" : i == 1 ? "ЗВУК · " + (input.SoundOn ? "ВКЛ" : "ВЫКЛ")
+                    : i == 2 ? "КАМЕРА · " + TouchControls.CameraSpeedNames[input.CameraSpeed] : "В ГЛАВНОЕ МЕНЮ";
+                Panel(r, l.unit, i == 0, input.Pressed(r));
+                PlateText(r, 0f, 1f, text, l.unit * 0.04f, cream);
             }
         }
 
@@ -331,7 +348,7 @@ namespace SkyTide
         void Radar(TouchControls input,HudLayout l)
         {
             Rect r=l.radar; if(r.width<l.unit*0.08f||input.ship==null)return;
-            const float range=1500f;
+            float range=input.RadarRange;   // касание радара меняет масштаб: 1.5 км или 600 м
             Vector2 c=r.center; float R=r.width*0.5f, lw=Mathf.Max(1f,l.unit*0.0025f);
             RadarLines(input,l);
             if(HasRadar) { RadarArt(input,l,c,R,range); return; }
@@ -504,7 +521,7 @@ namespace SkyTide
                 if (corner)
                 {
                     pw = Mathf.Min(l.safe.width * 0.2f, l.safe.height * 0.8f); ph = pw * 192f / 1024f;
-                    r = new Rect(l.safe.xMax - pw - l.unit * 0.03f, cornerTop, pw, ph);
+                    r = new Rect(l.pause.x - pw - l.unit * 0.015f, cornerTop, pw, ph);   // левее кнопки паузы
                 }
                 ImageRect(bPlate, r, Whole, new Color(1f, 1f, 1f, note));
                 Rect inner = Inner(r, 1024f, 192f, 150f, 48f, 874f, 144f);
@@ -587,7 +604,12 @@ namespace SkyTide
                 GL.Begin(GL.TRIANGLES);
                 try
                 {
+                    if(input.Paused)PauseMenu(input,l,width,height);
+                    else
+                    {
                     if(Application.isPlaying||CaptureBanner!=0)DamageVignette(width,height);   // под всеми плашками
+                    LoadBanners(); Panel(l.pause,l.unit,false,input.Pressed(l.pause));
+                    {float pi=l.pause.height*0.58f; Icon(10,new Rect(l.pause.center.x-pi*0.5f,l.pause.center.y-pi*0.5f,pi,pi),Color.white);}
                     // Плашки «облака» справа сверху нет — переключатель в панели FPS.
                     if(input.game.ships!=null&&input.game.ships.Length>1) {Panel(l.ship,l.unit);PlateText(l.ship,0f,1f,input.game.CurrentShipName,l.unit*0.03f,cream);}
                     cornerTop=l.safe.y+l.unit*0.02f;
@@ -633,16 +655,22 @@ namespace SkyTide
                     Disc(knob,r*0.31f,new Color(0.2f,0.17f,0.12f,a));Ring(knob,r*0.31f,Mathf.Max(1f,l.unit*0.004f),new Color(gold.r,gold.g,gold.b,a));
                     }
                     if(Application.isPlaying||CaptureBanner!=0)Banners(l);
-                    if(input.HintAlpha>0f)
+                    if(input.HintAlpha>0f&&input.HintStage<4)
                     {
-                        // Подсказка на плашке: на светлых облаках голый текст не читается.
+                        // Подсказки первого запуска — по шагам, на плашке (на светлых облаках голый текст не читается).
                         float ha=input.HintAlpha, pw=Mathf.Min(l.hint.width,l.unit*0.5f), ph=l.unit*0.095f;
                         Rect plate=new Rect(l.hint.center.x-pw*0.5f,l.hint.yMax-ph,pw,ph);
                         if(HasKit) {float hs=ph/PanelN[0].height; Slice9(plate,PanelN[0],30f,30f*hs,new Color(1f,1f,1f,ha));}
                         else Box(plate,new Color(0.055f,0.062f,0.073f,0.86f*ha));
-                        Color hint=new Color(cream.r,cream.g,cream.b,ha);
-                        PlateText(plate,0f,0.5f,"СПРАВА — ОБЗОР",l.unit*0.026f,hint);
-                        PlateText(plate,0.5f,0.5f,"2 ПАЛЬЦА — МАСШТАБ",l.unit*0.026f,hint);
+                        Color hint=new Color(cream.r,cream.g,cream.b,ha), act=new Color(1f,0.84f,0.5f,ha);
+                        string h1,h2;
+                        if(input.HintStage==0){h1="ДЖОЙСТИК ВВЕРХ";h2="ДАТЬ ХОД";}
+                        else if(input.HintStage==1){h1="КНОПКА БОРТА";h2="ДАТЬ ЗАЛП";}
+                        else if(input.HintStage==2){h1="ДВА КАСАНИЯ СПРАВА";h2="КАМЕРА ЗА КОРМУ";}
+                        else{h1="СПРАВА — ОБЗОР";h2="2 ПАЛЬЦА — МАСШТАБ";}
+                        PlateText(plate,0f,0.5f,h1,l.unit*0.026f,hint);
+                        PlateText(plate,0.5f,0.5f,h2,l.unit*0.026f,input.HintStage<3?act:hint);
+                    }
                     }
                 }
                 finally {GL.End();}

@@ -24,6 +24,10 @@ namespace SkyTide
         float damage, smokeClock, sinkAge = -1f, sinkSide = 1f;
         bool cloudContact;
         WreckDebris debris;
+        // Гибель: вторичные взрывы по корпусу, пока он падает; дымный столб над местом, где ушёл в облака.
+        float nextBlast, plumeLeft, plumeClock;
+        Vector3 splashPoint, lastModelPos;
+        bool hasLastPos;
 
         public bool Sinking { get { return sinkAge >= 0f; } }
         public bool Hidden { get; private set; }
@@ -77,6 +81,7 @@ namespace SkyTide
             sinkAge = 0f;
             damage = 1f;
             cloudContact = false;
+            nextBlast = 0.5f;
             if (ventCount == 0) { vents[0] = box.center; ventCount = 1; }
             Vector3 hullCenter = box.center - Vector3.up * (box.extents.y * 0.65f);
             if (debris != null) debris.Emit(model.TransformPoint(hullCenter), Vector3.up, shipVelocity, 20, true);
@@ -118,15 +123,29 @@ namespace SkyTide
             model.localRotation = restRotation * tilt;
             model.localPosition = restPosition + restRotation * (box.center - tilt * box.center) - Vector3.up * fall;
 
+            // Скорость корпуса в мире (с падением) — её наследуют языки огня, иначе при падении они отстают и висят в воздухе.
+            Vector3 modelPos = model.position;
+            Vector3 modelVelocity = hasLastPos ? (modelPos - lastModelPos) / dt : Vector3.zero;
+            lastModelPos = modelPos; hasLastPos = true;
             if (Sinking && !Hidden)
             {
+                if (fx != null && FxSystem.Extras && sinkAge < 2.8f && sinkAge >= nextBlast)
+                {
+                    // Крюйт-камера: взрывы идут по нижней части корпуса, пока корабль кренится и падает.
+                    nextBlast = sinkAge + Random.Range(0.35f, 0.6f);
+                    Vector3 blast = model.TransformPoint(box.center + new Vector3(Random.Range(-0.3f, 0.3f) * box.extents.x,
+                        -box.extents.y * Random.Range(0.3f, 0.6f), Random.Range(-0.7f, 0.7f) * box.extents.z));
+                    fx.Explosion(blast, 1.3f);
+                    SkySound.HullHit(blast, true);
+                }
                 Vector3 keel = model.TransformPoint(new Vector3(box.center.x, box.min.y, box.center.z));
                 Vector3 contact;
                 if (!cloudContact && fx != null && fx.TryCloudEntry(oldKeel, keel, out contact))
                 {
                     cloudContact = true;
                     HullCloudContacts++;
-                    fx.CloudSplash(contact, 2.4f);
+                    fx.CloudSplash(contact, 3.4f);
+                    splashPoint = contact; plumeLeft = 5f; plumeClock = 0f;
                 }
                 float bottom = fx != null && fx.volumetric != null ? fx.volumetric.deckBase : -60f;
                 // Корабль скрывается только целиком под слоем; взрыв больше не удаляет его мгновенно.
@@ -146,10 +165,16 @@ namespace SkyTide
                     {
                         Vector3 at=model.TransformPoint(vents[i]),normal=model.TransformDirection(ventNormals[i]);
                         fx.DamageSmoke(at+normal*.25f,damage);
-                        // При падении языки огня не догоняют разгоняющийся корпус и висят в воздухе — горит только до гибели, падает с дымом.
-                        if(Burning&&!Sinking)fx.DamageFire(at+normal*.4f,normal,damage,controller!=null?controller.transform.forward*controller.Speed:Vector3.zero);
+                        // Горит и при падении: огонь наследует скорость самого корпуса (раньше — только ход корабля, и языки отставали).
+                        if(Burning)fx.DamageFire(at+normal*.4f,normal,damage,Sinking?modelVelocity:(controller!=null?controller.transform.forward*controller.Speed:Vector3.zero));
                     }
                 }
+            }
+            // Над местом гибели ещё несколько секунд стоит дымный столб.
+            if (plumeLeft > 0f && fx != null && FxSystem.Extras)
+            {
+                plumeLeft -= dt; plumeClock += dt;
+                if (plumeClock >= 0.4f) { plumeClock = 0f; fx.Plume(splashPoint + Vector3.up * 3f, 1.4f); }
             }
             UpdateLights();
             if (debris != null) debris.Simulate(dt, fx);
@@ -174,6 +199,7 @@ namespace SkyTide
             impactSerial=0;if(marks!=null)marks.Clear();
             sinkAge = -1f;
             cloudContact = Hidden = false;
+            nextBlast = plumeLeft = plumeClock = 0f; hasLastPos = false;
             HullCloudContacts=0;
             if (model != null)
             {

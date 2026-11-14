@@ -42,6 +42,8 @@ namespace SkyTide
 
         void Start() { useGUILayout = false; start = Time.unscaledTime; }
         void OnDestroy() { Active = false; }
+        /// <summary>Снова показать главное меню (из паузы).</summary>
+        public static void Open() { if (Active) return; shown = false; Boot(); }
 
         /// <summary>Кадр картины на экране (заполнить, обрезая лишнее) с медленным наездом.</summary>
         Rect ArtRect(float t)

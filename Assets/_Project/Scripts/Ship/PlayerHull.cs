@@ -158,6 +158,7 @@ namespace SkyTide
             float dt = Time.deltaTime;
             FxSystem fx = FxSystem.Instance;
             if (debris != null && dt > 0f) debris.Simulate(dt, fx);
+            if (ctrl != null) ctrl.SetDamage(Alive ? Health01 : 1f);   // подбитый корабль теряет ход, ремонт возвращает
             if (!Alive)
             {
                 if (Time.time >= deadUntil) { Respawn(); return; }
