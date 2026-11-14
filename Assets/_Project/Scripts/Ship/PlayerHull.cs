@@ -18,6 +18,18 @@ namespace SkyTide
         public float Health01 { get { return Mathf.Clamp01(Health / maxHealth); } }
         public bool Alive { get { return deadUntil < 0f; } }
         public float LastHitTime { get; private set; } = -100f;
+        /// <summary>Откуда пришло последнее попадание: направление от корабля к месту удара (по горизонтали, мир).</summary>
+        public Vector3 LastHitDir { get; private set; }
+        float respawnedAt = -100f;
+        /// <summary>Затемнение экрана при возврате после гибели: гаснет за 0.6 с до переноса к причалу, проявляется 0.7 с после.</summary>
+        public float Blackout
+        {
+            get
+            {
+                if (!Alive) return Mathf.Clamp01(1f - (deadUntil - Time.time) / 0.6f);
+                return Mathf.Clamp01(1f - (Time.time - respawnedAt) / 0.7f);
+            }
+        }
         public float DeadFor { get { return Alive ? 0f : respawnDelay - (deadUntil - Time.time); } }
         /// <summary>Число очагов (пробоин), из которых идёт дым или огонь.</summary>
         public int VentCount { get { return ventCount; } }
@@ -132,6 +144,8 @@ namespace SkyTide
             power = Mathf.Max(1f, power);
             Health -= damagePerHit * power;
             LastHitTime = Time.time;
+            Vector3 fromShip = point - transform.position; fromShip.y = 0f;
+            LastHitDir = fromShip.sqrMagnitude > 1e-3f ? fromShip.normalized : Vector3.zero;
             // Удар по корпусу встряхивает камеру (сильнее — от тяжёлого ядра крепости).
             OrbitCamera shake = Camera.main != null ? Camera.main.GetComponent<OrbitCamera>() : null;
             if (shake != null) shake.HitImpulse(power);
@@ -235,6 +249,7 @@ namespace SkyTide
         void Respawn()
         {
             deadUntil = -1f;
+            respawnedAt = Time.time;
             Health = maxHealth;
             sinkAge = -1f;
             ventCount = ventCursor = 0;

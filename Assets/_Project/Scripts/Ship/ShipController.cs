@@ -28,6 +28,8 @@ namespace SkyTide
         public Transform visual;
 
         public float Speed { get; private set; }
+        /// <summary>0..1 — насколько корабль зашёл в последние 250 м перед границей района (HUD показывает предупреждение).</summary>
+        public float EdgeWarning { get; private set; }
 
         // Повреждения: ниже 50% прочности корабль теряет 15% хода, ниже 30% — 30% хода и 20% поворотливости.
         float damageSpeed = 1f, damageTurn = 1f;
@@ -73,7 +75,18 @@ namespace SkyTide
             float rate = Mathf.Abs(targetSpeed) > Mathf.Abs(Speed) ? acceleration : deceleration;
             Speed = Mathf.MoveTowards(Speed, targetSpeed, rate * dt);
 
-            smoothTurn = Mathf.MoveTowards(smoothTurn, Mathf.Clamp(turn, -1f, 1f), turnResponse * dt);
+            // Край района: вместо невидимой стены руль мягко отводит корабль обратно, если он идёт наружу.
+            float steerIn = 0f;
+            Vector3 fromCentre = new Vector3(transform.position.x, 0f, transform.position.z);
+            float out01 = Mathf.Clamp01((fromCentre.magnitude - (arenaRadius - 250f)) / 250f);
+            EdgeWarning = out01;
+            if (out01 > 0f)
+            {
+                Vector3 outward = fromCentre.normalized;
+                if (Vector3.Dot(transform.forward, outward) > -0.3f)
+                    steerIn = (Vector3.Cross(transform.forward, -outward).y >= 0f ? 1f : -1f) * out01;
+            }
+            smoothTurn = Mathf.MoveTowards(smoothTurn, Mathf.Clamp(turn + steerIn, -1f, 1f), turnResponse * dt);
             // Корабль поворачивает и на месте (рулевые винты), но на ходу — заметно быстрее.
             float steer = 0.35f + 0.65f * Mathf.Clamp01(Mathf.Abs(Speed) / maxSpeed);
             transform.Rotate(0f, smoothTurn * maxYawRate * steer * damageTurn * dt, 0f, Space.World);

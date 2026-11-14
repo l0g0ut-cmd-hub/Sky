@@ -30,6 +30,9 @@ namespace SkyTide
         [Range(0f, 1.5f)] public float sharpen = 0.7f;
         /// <summary>Переключатель в панели FPS и строка автозамера: сколько стоит резкость на телефоне.</summary>
         public static bool Sharpen = true;
+        /// <summary>Сумерки: с 3-й по 18-ю минуту игры закат темнеет до ночи (до 75% эффекта). Переключатель в панели FPS.</summary>
+        public static bool DuskOn = true;
+        public static float DuskNow { get { return DuskOn && Application.isPlaying ? Mathf.Clamp01((Time.timeSinceLevelLoad - 180f) / 900f) * 0.75f : 0f; } }
 
         [Header("Блум")]
         public float bloomThreshold = 1.2f;
@@ -147,6 +150,7 @@ namespace SkyTide
             mat.SetFloat("_Vignette", vignette);
             mat.SetColor("_VignetteColor", vignetteColor);
             mat.SetFloat("_Sharpen", Sharpen ? sharpen : 0f);
+            mat.SetFloat("_Dusk", DuskNow);
             Graphics.Blit(src, dst, mat, 5);
 
             for (int i = 0; i < n; i++)

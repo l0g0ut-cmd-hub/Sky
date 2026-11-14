@@ -128,6 +128,18 @@ namespace SkyTide
                     fx.SetLamp(1 + i, lp, Mathf.Clamp(ld * 0.014f, 5f, 42f), warm);
                 }
             }
+            // Граница безопасной зоны видна в мире: кольцо сигнальных огней над облаками (56 огней, шаг ~157 м), при тревоге красные.
+            const int ring = 56;
+            Color zoneLight = alarm ? new Color(1f, 0.3f, 0.2f) : new Color(0.55f, 1f, 0.7f);
+            Vector3 centre = transform.position;
+            for (int i = 0; i < ring; i++)
+            {
+                float a = i * Mathf.PI * 2f / ring;
+                Vector3 rp = new Vector3(centre.x + Mathf.Cos(a) * safeRadius, fx.deckTop + 12f, centre.z + Mathf.Sin(a) * safeRadius);
+                float rd = Vector3.Distance(eye, rp);
+                zoneLight.a = rd < 3000f ? 0.07f * (0.7f + 0.3f * Mathf.Sin(time * 2.4f + i * 0.9f)) : 0f;
+                fx.SetLamp(40 + i, rp, Mathf.Clamp(rd * 0.012f, 3f, 30f), zoneLight);
+            }
             if (alarm) { fx.ClearBeacon(); return; }
             float dist = Vector3.Distance(eye, beaconPos);
             float pulse = Mathf.Pow(Mathf.Max(0f, Mathf.Sin(time * 2.2f)), 4f);

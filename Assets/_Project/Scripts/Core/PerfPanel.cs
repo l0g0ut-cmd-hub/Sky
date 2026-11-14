@@ -176,7 +176,7 @@ namespace SkyTide
             Area = r;
             if (benchShow) { BenchTable(r, u); return; }
             GUI.color = new Color(0f, 0f, 0f, 0.8f); GUI.DrawTexture(r, Texture2D.whiteTexture); GUI.color = Color.white;
-            float y = r.y + u * 0.02f, h = u * 0.075f, x = r.x + u * 0.03f, w = r.width - u * 0.06f;
+            float y = r.y + u * 0.02f, h = u * 0.069f, x = r.x + u * 0.03f, w = r.width - u * 0.06f;   // ниже строка: клеток стало 14
             GUI.Label(new Rect(x, y, w, h), string.Format("FPS {0:F0}   ЦП {1:F1} мс   ВК {2}", fps, cpu, gpu > 0.01f ? gpu.ToString("F1") + " мс" : "нет данных"), label); y += h;
             GUI.Label(new Rect(x, y, w, h), string.Format("10 с: средний {0:F0}   худший 1% {1:F0}   макс. кадр {2:F0} мс", avgFps, lowFps, worstMs), label); y += h;
             if (small == null) { small = new GUIStyle(label) { fontSize = Mathf.RoundToInt(label.fontSize * 0.8f) }; }
@@ -208,6 +208,7 @@ namespace SkyTide
             if (Cell(x, ref y, cw, h, ref col, "Тени", shadows)) QualitySettings.shadows = shadows ? ShadowQuality.Disable : ShadowQuality.All;
             if (Cell(x, ref y, cw, h, ref col, "Лёгкие тени/LOD", ShipLod.Enabled)) ShipLod.Enabled = !ShipLod.Enabled;
             if (Cell(x, ref y, cw, h, ref col, "Резкость", SkyTidePost.Sharpen)) SkyTidePost.Sharpen = !SkyTidePost.Sharpen;
+            if (Cell(x, ref y, cw, h, ref col, "Сумерки", SkyTidePost.DuskOn)) SkyTidePost.DuskOn = !SkyTidePost.DuskOn;
             if (Cell(x, ref y, cw, h, ref col, "Новые эффекты", FxSystem.Extras)) FxSystem.Extras = !FxSystem.Extras;
             if (nativeW == 0) { nativeW = Screen.width; nativeH = Screen.height; }
             // Кнопка по кругу: 100% → 85% → 70% → авто (держит ~30 FPS) → 100%.

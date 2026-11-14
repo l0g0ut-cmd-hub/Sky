@@ -34,6 +34,7 @@ Shader "Hidden/SkyTide/Post"
     float _Vignette;
     float4 _VignetteColor;
     float _Sharpen;         // сила повышения резкости; 0 — выключено
+    float _Dusk;            // 0..1 — сумерки: тёмное и среднее уходит в синеву, яркие огни остаются
 
     struct v2f
     {
@@ -139,6 +140,12 @@ Shader "Hidden/SkyTide/Post"
             half lim = 0.35 * (Luminance(blur) + 0.02);
             half3 detail = clamp(c - blur, -lim.xxx, lim.xxx);
             c = max(half3(0, 0, 0), c + detail * _Sharpen);
+        }
+        if (_Dusk > 0.001)
+        {
+            // Сумерки: сцена темнеет и синеет, а всё яркое (огни, вспышки, солнце) остаётся — огни «разгораются».
+            half keep = smoothstep(0.7, 2.0, Luminance(c));
+            c *= lerp(half3(1, 1, 1), half3(0.3, 0.38, 0.6), _Dusk * (1.0 - keep));
         }
         c += tex2D(_BloomTex, i.uv).rgb * _BloomIntensity * _BloomTint.rgb;
         c += tex2D(_ShaftTex, i.uv).rgb * _ShaftColor.rgb * (_ShaftParams.w * _SunScreen.z);

@@ -466,6 +466,14 @@ namespace SkyTide
             if (!hull.Alive) a = 0.55f;
             if (a < 0.01f) return;
             ImageRect(bVignette, new Rect(0f, 0f, width, height), Whole, new Color(1f, 1f, 1f, a));
+            // Видно, откуда прилетело: половина кромки со стороны попадания ярче.
+            Camera view = Camera.main;
+            if (hull.Alive && hit > 0.02f && view != null && hull.LastHitDir != Vector3.zero)
+            {
+                float sideways = Vector3.Dot(hull.LastHitDir, view.transform.right), extra = Mathf.Clamp01(hit * 0.9f);
+                if (sideways < -0.25f) ImageRect(bVignette, new Rect(0f, 0f, width * 0.5f, height), new Rect(0f, 0f, 0.5f, 1f), new Color(1f, 1f, 1f, extra));
+                else if (sideways > 0.25f) ImageRect(bVignette, new Rect(width * 0.5f, 0f, width * 0.5f, height), new Rect(0.5f, 0f, 0.5f, 1f), new Color(1f, 1f, 1f, extra));
+            }
         }
 
         /// <summary>Баннер победы при гибели цели, баннер поражения при гибели своего корабля, плашка «враг даёт залп».</summary>
@@ -517,6 +525,9 @@ namespace SkyTide
             if (dead) { noteText = "ВОЗВРАТ ЧЕРЕЗ " + Mathf.CeilToInt(Mathf.Max(0f, delay - deadFor)) + " с"; noteIcon = 11; }
             else
             {
+                // Край района боя: предупреждение, пока корабль в 250 м от границы (там же руль мягко отводит его обратно).
+                ShipController own = hull != null ? hull.GetComponent<ShipController>() : null;
+                if (own != null && own.EdgeWarning > 0.05f && note < 0.05f) { noteText = "КРАЙ РАЙОНА БОЯ"; noteIcon = 1; note = Mathf.Clamp01(own.EdgeWarning * 3f); }
                 // Крепость: тревога важнее всего, затем ремонт у причала, затем вход в безопасную зону.
                 SkyFortress fort = SkyFortress.Instance;
                 if (fort != null && Application.isPlaying)
@@ -679,6 +690,10 @@ namespace SkyTide
                     Disc(knob,r*0.31f,new Color(0.2f,0.17f,0.12f,a));Ring(knob,r*0.31f,Mathf.Max(1f,l.unit*0.004f),new Color(gold.r,gold.g,gold.b,a));
                     }
                     if(Application.isPlaying||CaptureBanner!=0)Banners(l);
+                    {   // Возврат после гибели — через затемнение, а не мгновенным переносом.
+                        PlayerHull fadeHull=PlayerHull.Instance; float blackout=fadeHull!=null&&Application.isPlaying?fadeHull.Blackout:0f;
+                        if(blackout>0.004f)Solid(new Rect(0f,0f,width,height),new Color(0f,0f,0f,blackout));
+                    }
                     if(input.HintAlpha>0f&&input.HintStage<4)
                     {
                         // Подсказки первого запуска — по шагам, на плашке (на светлых облаках голый текст не читается).

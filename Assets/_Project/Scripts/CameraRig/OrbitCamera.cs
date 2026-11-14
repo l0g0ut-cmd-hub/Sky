@@ -30,6 +30,7 @@ namespace SkyTide
         Camera lens; float baseFov = -1f;
         float speedPull, wallDistance = -1f, wallLift, recenter;
         bool wallHeld;
+        float camLean;
         public const float DefaultPitch = 14f;
         /// <summary>Плавно вернуть камеру за корму (двойное касание правой половины экрана).</summary>
         public void Recenter() { recenter = 1f; }
@@ -140,6 +141,13 @@ namespace SkyTide
             transform.position = desired;
             snapped = true;
             transform.rotation = Quaternion.LookRotation(pivot - transform.position, Vector3.up);
+            // Камера кренится вместе с кораблём на треть его крена (не больше 7°) — только в игре.
+            if (Application.isPlaying && shipCtrl != null && shipCtrl.visual != null)
+            {
+                float lean = Mathf.Clamp(Mathf.DeltaAngle(0f, shipCtrl.visual.localEulerAngles.z) * 0.33f, -7f, 7f);
+                camLean = Mathf.Lerp(camLean, lean, 1f - Mathf.Exp(-4f * dt));
+                transform.rotation *= Quaternion.Euler(0f, 0f, camLean);
+            }
             StepRecoil(dt);
             if(recoil.sqrMagnitude>1e-10f)transform.rotation*=Quaternion.Euler(recoil.x,recoil.y,recoil.y*.35f);
         }

@@ -93,6 +93,17 @@ namespace SkyTide
             });
             Flash(muzzle, 2.5f * caliber, 32f * caliber);
             SkySound.CannonFired(muzzle, hostile);
+            if (Extras)
+            {
+                // Дымок из ствола ещё пару секунд после выстрела: клубы рождаются с задержкой там, куда к этому времени придёт дуло.
+                for (int k = 1; k <= 5; k++)
+                {
+                    float delay = 0.35f * k;
+                    Add(new P { kind = Kind.Smoke, pos = muzzle + shipVel * delay + dir * 0.3f, vel = shipVel * 0.85f + Vector3.up * 1.2f + dir * 0.6f, age = -delay,
+                                life = Random.Range(1f, 1.5f), size0 = 0.35f * caliber, size1 = Random.Range(1.2f, 1.7f) * caliber, rot = Random.Range(0f, 6.28f),
+                                spin = Random.Range(-0.5f, 0.5f), drag = 0.6f, rise = 0.5f, color = new Color(0.75f, 0.72f, 0.7f), alpha = 0.3f, seed = Random.value * 10f });
+                }
+            }
             // Короткий направленный факел с горячей сердцевиной, затем остаётся только дым.
             Add(new P { kind = Kind.Glow, pos = muzzle + dir * 0.6f, vel = shipVel, life = 0.07f,
                         size0 = 1.4f, size1 = 2.4f, color = new Color(1f, 0.72f, 0.35f), alpha = 0.65f });
@@ -352,7 +363,7 @@ namespace SkyTide
 
         // Постоянные огни (маяк причала, ореолы фонарей крепости и врага): свечения в закреплённых гнёздах,
         // владелец обновляет своё гнездо каждый кадр; не симулируются. Гнёзда: 0 — маяк, 1–28 — крепость, 30–39 — враг.
-        public const int MaxLamps = 40;
+        public const int MaxLamps = 96;   // 40–95 — кольцо сигнальных огней безопасной зоны
         readonly P[] lamps = new P[MaxLamps];
         readonly bool[] lampOn = new bool[MaxLamps];
         public void SetLamp(int slot, Vector3 pos, float size, Color c)
