@@ -218,20 +218,80 @@ namespace SkyTide
         public int AimSide { get; private set; }
         public bool AimOnTarget { get; private set; }
 
+        // ---------- наводка борта ----------
+        // Стволы в модели смотрят строго в борт и по горизонту: с высоты полёта ядро падало в облака через ~270 м, а в
+        // корпус цели на той же высоте попадало только ближе ~100 м — при том, что враг держит 330 м и сам бьёт
+        // навесом до 650 м. Поэтому «прицел не работал»: дуга всегда ложилась в облака под врагом.
+        // Теперь расчёт борта, обращённого к цели, сам берёт возвышение по дальности (как наводчик врага) и доворачивает
+        // стволы до ±10° в точку упреждения (цель идёт своим курсом, ядро несёт ход своего корабля). Дело игрока —
+        // поставить цель на траверз: дальше ±30° от траверза стволы стоят прямо, как раньше.
+        [Tooltip("Наводка: доворот стволов по горизонту и пределы возвышения, градусы")]
+        public float traverseDeg = 10f, minElevationDeg = -8f, maxElevationDeg = 24f;
+        bool solved; int solvedSide; Vector3 aimPoint, targetVel; float flightTime;
+        /// <summary>Дальность, на которую борт достаёт при предельном возвышении (для HUD).</summary>
+        public float MaxRange { get { float g = FxSystem.Instance != null ? FxSystem.Instance.gravity : 9.81f; return muzzleSpeed * muzzleSpeed * Mathf.Sin(2f * maxElevationDeg * Mathf.Deg2Rad) / g; } }
+        public bool HasSolution { get { return solved; } }
+        public float FlightTime { get { return flightTime; } }
+
+        float LowAngle(float x, float y, float g)
+        {
+            float v = muzzleSpeed, disc = v * v * v * v - g * (g * x * x + 2f * y * v * v);
+            float theta = disc < 0f || x < 1f ? maxElevationDeg * Mathf.Deg2Rad : Mathf.Atan((v * v - Mathf.Sqrt(disc)) / (g * x));
+            return Mathf.Clamp(theta, minElevationDeg * Mathf.Deg2Rad, maxElevationDeg * Mathf.Deg2Rad);
+        }
+
+        void Solve(TargetShip best, CannonMount mid, float side, float g)
+        {
+            solved = false;
+            if (best == null || mid == null || model == null) return;
+            Vector3 muzzle = model.TransformPoint(mid.Muzzle), own = velocity; own.y = 0f;
+            Vector3 tpos = best.Center;
+            targetVel = best.Controller != null ? best.transform.forward * best.Controller.Speed : Vector3.zero;
+            Vector3 rel = targetVel - own;   // в системе своего корабля: его ход ядро уносит с собой
+            float t = 0f;
+            for (int it = 0; it < 4; it++)
+            {
+                Vector3 d = tpos + rel * t - muzzle;
+                float x = new Vector2(d.x, d.z).magnitude;
+                float theta = LowAngle(x, d.y, g);
+                t = x / Mathf.Max(1f, muzzleSpeed * Mathf.Cos(theta));
+            }
+            aimPoint = tpos + rel * t; flightTime = t; solvedSide = side > 0f ? 1 : -1; solved = true;
+        }
+
+        /// <summary>Куда смотрит ствол с учётом наводки (мир). Без решения — по оси ствола модели.</summary>
+        Vector3 GunDir(CannonMount m, float g)
+        {
+            Vector3 w = model.TransformDirection(m.Dir).normalized;
+            if (!solved || (m.side > 0f ? 1 : -1) != solvedSide) return w;
+            Vector3 d = aimPoint - model.TransformPoint(m.Muzzle);
+            Vector3 h0 = new Vector3(w.x, 0f, w.z), hd = new Vector3(d.x, 0f, d.z);
+            float x = hd.magnitude;
+            if (x < 20f || h0.sqrMagnitude < 1e-4f) return w;
+            h0.Normalize();
+            float ang = Vector3.SignedAngle(h0, hd, Vector3.up);
+            if (Mathf.Abs(ang) > 30f) return w;   // цель не на траверзе — стволы стоят прямо
+            Vector3 h = Quaternion.AngleAxis(Mathf.Clamp(ang, -traverseDeg, traverseDeg), Vector3.up) * h0;
+            float theta = LowAngle(x, d.y, g);
+            return h * Mathf.Cos(theta) + Vector3.up * Mathf.Sin(theta);
+        }
+
         /// <summary>Путь ядра пушки m до корпуса цели или до моря облаков. hull — попало в корпус.</summary>
         bool TracePath(CannonMount m, TargetShip best, FxSystem fx, out Vector3 end, out bool hull)
         {
             hull = false;
             Vector3 p = model.TransformPoint(m.Muzzle);
-            Vector3 v = model.TransformDirection(m.Dir).normalized * muzzleSpeed + velocity;
             float g = fx.gravity; const float step = 0.06f;
+            Vector3 v = GunDir(m, g) * muzzleSpeed + velocity;
+            Vector3 tv = solved ? targetVel : Vector3.zero;
             end = p;
             for (int i = 0; i < 120; i++)
             {
                 Vector3 prev = p;
                 v.y -= g * step; p += v * step;
-                Vector3 hp;
-                if (best != null && (p - best.transform.position).sqrMagnitude < 45f * 45f && best.TryHit(prev, p, out hp)) { end = hp; hull = true; return true; }
+                // Цель за время полёта уйдёт на tv·t: проверяем путь ядра в её системе, точку попадания возвращаем в мир.
+                Vector3 hp, shift = tv * ((i + 1) * step);
+                if (best != null && (p - shift - best.transform.position).sqrMagnitude < 45f * 45f && best.TryHit(prev - shift, p - shift, out hp)) { end = hp + shift; hull = true; return true; }
                 if (p.y < fx.deckTop - 5f) { end = prev; return true; }
             }
             end = p;
@@ -249,6 +309,7 @@ namespace SkyTide
             AimOnTarget = false;
             if (fx == null) return;
             fx.ClearPreview();
+            solved = false;
             if (!showAim || model == null || mounts.Length == 0) return;
             PlayerHull own = GetComponent<PlayerHull>();
             if (own != null && !own.Alive) return;   // корабль подбит — прицела нет
@@ -278,18 +339,20 @@ namespace SkyTide
             bool ready = Readiness((int)side) >= 0.999f;
             float alpha = ready ? 0.95f : 0.55f;
             // Пунктир: короткие штрихи вдоль пути средней пушки (раньше — крупные, похожие на летящие ядра).
-            Vector3 p = model.TransformPoint(mid.Muzzle);
-            Vector3 v = model.TransformDirection(mid.Dir).normalized * muzzleSpeed + velocity;
-            fx.AddAim(p + v.normalized * 2.5f, v, 3.2f, 4, 187f / 158f, alpha);   // шеврон у дула
             float g = fx.gravity; const float step = 0.06f;
+            Solve(best, mid, side, g);
+            Vector3 p = model.TransformPoint(mid.Muzzle);
+            Vector3 v = GunDir(mid, g) * muzzleSpeed + velocity;
+            Vector3 tv = solved ? targetVel : Vector3.zero;
+            fx.AddAim(p + v.normalized * 2.5f, v, 3.2f, 4, 187f / 158f, alpha);   // шеврон у дула
             float travelled = 0f; Vector3 midEnd = p; bool midHull = false;
             for (int i = 0; i < 120; i++)
             {
                 Vector3 prev = p;
                 v.y -= g * step; p += v * step;
                 travelled += (p - prev).magnitude;
-                Vector3 hp;
-                if (best != null && (p - best.transform.position).sqrMagnitude < 45f * 45f && best.TryHit(prev, p, out hp)) { midEnd = hp; midHull = true; break; }
+                Vector3 hp, shift = tv * ((i + 1) * step);
+                if (best != null && (p - shift - best.transform.position).sqrMagnitude < 45f * 45f && best.TryHit(prev - shift, p - shift, out hp)) { midEnd = hp + shift; midHull = true; break; }
                 if (p.y < fx.deckTop - 5f) { midEnd = prev; break; }
                 midEnd = p;
                 if (i % 2 == 1) fx.AddAim(Vector3.Lerp(prev, p, 0.5f), p - prev, 2.2f + travelled * 0.012f, ready ? 0 : 1, 0.42f, alpha * 0.9f);
@@ -298,6 +361,9 @@ namespace SkyTide
             if (fore != null && fore != mid) TracePath(fore, best, fx, out foreEnd, out foreHull);
             if (aft != null && aft != mid) TracePath(aft, best, fx, out aftEnd, out aftHull);
             AimOnTarget = midHull || foreHull || aftHull;
+            // Залп не ложится в цель, но решение есть: малая метка там, где цель окажется к прилёту ядер, —
+            // её и надо поставить на траверз (доворот стволов ограничен).
+            if (!AimOnTarget && solved) fx.AddAim(best.Center + targetVel * flightTime, Vector3.up, 6f, 3, 1f, 0.45f);
             float mark = ready ? 1f : 0.6f;
             if (midHull) fx.AddAim(midEnd, Vector3.up, 9f, 3, 1f, mark);            // прицел на корпусе цели
             if (foreHull && fore != mid) fx.AddAim(foreEnd, Vector3.up, 5f, 3, 1f, mark * 0.8f);
@@ -331,7 +397,8 @@ namespace SkyTide
         {
             if (model == null || FxSystem.Instance == null) return;
             Vector3 muzzle = model.TransformPoint(m.Muzzle);
-            Vector3 dir = model.TransformDirection(m.Dir).normalized;
+            // Наводка — только в игре: проверки CI сверяют выстрел с осью ствола модели.
+            Vector3 dir = Application.isPlaying ? GunDir(m, FxSystem.Instance.gravity) : model.TransformDirection(m.Dir).normalized;
             FxSystem.Instance.Fire(muzzle, dir, velocity, muzzleSpeed);
             if(crew!=null)crew.NotifyShot(m,now);
             if (recoilEnabled)
