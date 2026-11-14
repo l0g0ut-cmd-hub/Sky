@@ -1282,6 +1282,11 @@ namespace SkyTide.EditorTools
                 string profile = System.Environment.GetEnvironmentVariable("SKYTIDE_SHOT_PROFILE") ?? "battle-life";
                 if(profile=="battle-life")
                 {
+                    // Владелец: «Ещё уменьшай проверки, ждать по 40 минут это тоже перебор». Все кадры сборки снимаются без
+                    // объёмных облаков (на программном GPU CI они стоили ещё ~10 минут); проверки логики остаются.
+                    // Состояние облаков возвращается перед выходом — сцена для игры не меняется.
+                    bool cloudsWere=boot.Volumetric!=null&&boot.Volumetric.enabled;
+                    if(boot.Volumetric!=null)boot.Volumetric.enabled=false;
                     CaptureLife(oc,cam,boot,dir,true,false);boot.Fx.Clear();
                     // Владелец: «Уменьши количество проверок чтобы сборка не была по два часа». Кадры с объёмными облаками на
                     // программном GPU CI — главная трата времени: убраны 30_vol_toward_sun (2–3 мин) и 45_vol_muzzle_flash
@@ -1297,6 +1302,7 @@ namespace SkyTide.EditorTools
                     finally{reviewGuns.ripple=ripple;reviewGuns.SetReadinessCapture(1,1);boot.Fx.Clear();Random.state=random;}
                     CaptureOverview(oc,cam,boot,dir);
                     Debug.Log("SkyTide: быстрая проверка battle-life (3x800x380 + 5x960x456 + обзор 8x960x456), кадров="+Directory.GetFiles(dir,"*.jpg").Length+", секунд="+(Time.realtimeSinceStartup-start).ToString("F1"));
+                    if(boot.Volumetric!=null)boot.Volumetric.enabled=cloudsWere;
                     return;
                 }
                 if(profile=="deck-motion")
