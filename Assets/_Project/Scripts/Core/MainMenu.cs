@@ -67,7 +67,14 @@ namespace SkyTide
             float t = Time.unscaledTime - start;
             if (leaveAt >= 0f)
             {
-                if (Time.unscaledTime - leaveAt > 0.7f) { Active = false; Destroy(gameObject); }
+                if (Time.unscaledTime - leaveAt > 0.7f)
+                {
+                    Active = false; Destroy(gameObject);
+                    // «Настройки» в меню ведут в те же настройки, что и пауза в игре.
+                    SkyTideBootstrap game = SkyTideBootstrap.Instance;
+                    TouchControls controls = game != null ? game.GetComponent<TouchControls>() : null;
+                    if (toSettings && controls != null) controls.SetPaused(true);
+                }
                 return;
             }
             bool down = Input.touchCount > 0 && Input.GetTouch(0).phase == TouchPhase.Began || Input.GetMouseButtonDown(0);
@@ -86,12 +93,13 @@ namespace SkyTide
             if (Input.GetKeyDown(KeyCode.Return) || Input.GetKeyDown(KeyCode.Space)) Press(0);
         }
 
+        bool toSettings;
         void Press(int i)
         {
             switch (i)
             {
                 case 0: leaveAt = Time.unscaledTime; break;
-                case 1: toast = "Настройки — скоро"; toastAt = Time.unscaledTime; break;
+                case 1: toSettings = true; leaveAt = Time.unscaledTime; break;
                 case 2: toast = "Ангар — скоро"; toastAt = Time.unscaledTime; break;
                 case 3: Application.Quit(); break;
             }

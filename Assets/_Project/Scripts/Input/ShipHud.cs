@@ -638,7 +638,7 @@ namespace SkyTide
                     if(input.game.ships!=null&&input.game.ships.Length>1) {Panel(l.ship,l.unit);PlateText(l.ship,0f,1f,input.game.CurrentShipName,l.unit*0.03f,cream);}
                     cornerTop=l.safe.y+l.unit*0.02f;
                     Panel(l.course,l.unit); Compass(input,l);
-                    Panel(l.speed,l.unit);PlateText(l.speed,0f,1f,"ХОД "+input.ship.Speed.ToString("F1")+" м/с",l.unit*0.034f,cream);
+                    Panel(l.speed,l.unit);PlateText(l.speed,0f,1f,TouchControls.GearNames[input.Gear]+" · "+Mathf.RoundToInt(Mathf.Abs(input.ship.Speed))+" м/с",l.unit*0.034f,cream);   // ступень рукояти и скорость
                     Telegraph(input,l);
                     Radar(input,l);
                     Hull(l);
