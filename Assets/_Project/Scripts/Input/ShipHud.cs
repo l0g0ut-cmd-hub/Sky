@@ -180,7 +180,10 @@ namespace SkyTide
                 Vector2 av = new Vector2(al.x, -al.z); float ad = av.magnitude;
                 Vector2 adir = ad > 1e-3f ? av / ad : Vector2.up;
                 float arel = (ally.transform.eulerAngles.y - input.ship.transform.eulerAngles.y) * Mathf.Deg2Rad;
-                Image(rShip, c + adir * Mathf.Min(ad / range, 1f) * face * 0.9f, R * 0.2f, arel, new Color(0.55f, 1f, 0.65f, ad > range ? 0.6f : 1f));
+                if (!ally.Alive) continue;
+                Color ac = ally.role == AllyShip.Role.Merchant ? new Color(1f, 0.92f, 0.45f) : new Color(0.55f, 1f, 0.65f);
+                ac.a = ad > range ? 0.6f : 1f;
+                Image(rShip, c + adir * Mathf.Min(ad / range, 1f) * face * 0.9f, R * 0.2f, arel, ac);
             }
             // Крепость-причал: значок «ангар» (лист иконок), за краем радара — прижат к ободу.
             SkyFortress fort = SkyFortress.Instance;
@@ -207,6 +210,17 @@ namespace SkyTide
                 Icon(9, new Rect(p.x - g * 0.5f, p.y - g * 0.5f, g, g), fort.Hostile ? new Color(1f, 0.45f, 0.35f, 1f) : Color.white);
             }
             Image(rFrame, c, size, 0f, Color.white);
+            // Ветер: голубая стрелка у обода — куда дует (вверх — наш нос); длиннее — сильнее.
+            if (Application.isPlaying)
+            {
+                Vector3 wl = input.ship.transform.InverseTransformDirection(WindField.Dir);
+                Vector2 wd = new Vector2(wl.x, -wl.z); if (wd.sqrMagnitude > 1e-4f) wd.Normalize();
+                Vector2 tail = c - wd * face * 0.98f, head = tail + wd * face * (0.25f + 0.25f * WindField.Strength);
+                Color wc = new Color(0.62f, 0.86f, 1f, 0.95f); float lw = Mathf.Max(1.5f, R * 0.04f);
+                Line(tail, head, lw, wc);
+                Vector2 n = new Vector2(-wd.y, wd.x);
+                Line(head, head - wd * R * 0.12f + n * R * 0.08f, lw, wc); Line(head, head - wd * R * 0.12f - n * R * 0.08f, lw, wc);
+            }
             if (rShip != null) Image(rShip, c, R * 0.3f, 0f, Color.white);
         }
 
@@ -436,6 +450,7 @@ namespace SkyTide
         // ---------- баннеры, оповещения, виньетка (Resources/UI: banner_victory/defeat 2048×512, plate_notice 1024×192,
         // vignette_damage 2:1, icons 4×4). Текст всегда в пределах внутреннего поля плашки (пиксели картинки ниже). ----------
         Texture2D bVictory, bDefeat, bPlate, bVignette, bIcons; bool bannersTried;
+        string victoryText = "ЦЕЛЬ УНИЧТОЖЕНА";
         readonly HashSet<TargetShip> sunkSeen = new HashSet<TargetShip>();
         float victoryAt = -100f;
         float cornerTop;   // верх свободного места в правом верхнем углу — для малых подсказок
@@ -516,7 +531,7 @@ namespace SkyTide
             if (Application.isPlaying) foreach (TargetShip t in TargetShip.All)
             {
                 if (t == null) continue;
-                if (!t.Alive && sunkSeen.Add(t)) victoryAt = Time.time;
+                if (!t.Alive && sunkSeen.Add(t)) { victoryAt = Time.time; victoryText = t.Captured ? "ПРИЗ ВЗЯТ" : "ЦЕЛЬ УНИЧТОЖЕНА"; }
                 else if (t.Alive) sunkSeen.Remove(t);
             }
             PlayerHull hull = PlayerHull.Instance;
@@ -544,9 +559,9 @@ namespace SkyTide
                 {
                     ImageRect(bVictory, r, Whole, new Color(1f, 1f, 1f, vic));
                     // Надпись строго по центру поля, с запасом от угловых орнаментов (они заходят внутрь до ~x 500 из 2048).
-                    Text(Inner(r, 2048f, 512f, 530f, 180f, 1518f, 310f), "ЦЕЛЬ УНИЧТОЖЕНА", bh * 0.42f, new Color(1f, 0.86f, 0.55f, vic));
+                    Text(Inner(r, 2048f, 512f, 530f, 180f, 1518f, 310f), victoryText, bh * 0.42f, new Color(1f, 0.86f, 0.55f, vic));
                 }
-                else Text(new Rect(l.safe.x, l.safe.center.y - l.unit * 0.06f, l.safe.width, l.unit * 0.12f), "ЦЕЛЬ УНИЧТОЖЕНА", l.unit * 0.06f, new Color(1f, 0.86f, 0.55f, vic));
+                else Text(new Rect(l.safe.x, l.safe.center.y - l.unit * 0.06f, l.safe.width, l.unit * 0.12f), victoryText, l.unit * 0.06f, new Color(1f, 0.86f, 0.55f, vic));
             }
             // Плашка оповещения сверху по центру, ниже полосы корпуса: «враг даёт залп», а при гибели — отсчёт возврата.
             float note = dead ? Mathf.Clamp01(deadFor / 0.35f) : capV ? 1f : Envelope(Time.time - EnemyGunner.LastVolleyTime, 2.4f, 0.15f, 0.5f);
@@ -697,6 +712,7 @@ namespace SkyTide
                     Telegraph(input,l);
                     Radar(input,l);
                     Hull(l);
+                    if(Application.isPlaying&&input.cam!=null){Panel(l.spy,l.unit,input.cam.ScopeOn,input.Pressed(l.spy));PlateText(l.spy,0f,1f,"×4",l.unit*0.032f,input.cam.ScopeOn?new Color(1f,0.88f,0.55f):cream);}   // подзорная труба
                     Panel(l.fps,l.unit);PlateText(l.fps,0f,1f,Application.isPlaying?Cached(2,Mathf.RoundToInt(input.Fps),v=>v+" FPS"):"FPS —",l.unit*0.03f,Application.isPlaying&&input.Fps<24f?new Color(1f,0.55f,0.45f,1f):muted);   // ниже 24 — красным: просадку видно сразу
                     Text(l.version,input.BuildText,l.unit*0.023f,cream);
                     Broadside guns=input.Guns();
@@ -705,7 +721,18 @@ namespace SkyTide
                         Volley(input,l,l.port,-1,guns.Readiness(-1),guns.cooldown,guns.AimOnTarget&&guns.AimSide<0);
                         Volley(input,l,l.starboard,1,guns.Readiness(1),guns.cooldown,guns.AimOnTarget&&guns.AimSide>0);
                         Panel(l.mode,l.unit,false,input.Pressed(l.mode));
-                        PlateText(l.mode,0f,1f,guns.ripple?"ЗАЛП ВОЛНОЙ":"ВЕСЬ БОРТ",l.unit*0.034f,cream);
+                        PlateText(l.mode,0f,1f,guns.ripple?"ВОЛНОЙ":"ВЕСЬ БОРТ",l.unit*0.03f,cream);
+                        Panel(l.ammo,l.unit,guns.chainShot,input.Pressed(l.ammo));
+                        PlateText(l.ammo,0f,1f,guns.chainShot?"КНИППЕЛИ":"ЯДРА",l.unit*0.03f,guns.chainShot?new Color(1f,0.88f,0.55f):cream);
+                        // Абордаж: кнопка, пока можно; во время схватки — полоса хода абордажа.
+                        PlayerBoarding pb=input.Boarding();
+                        if(Application.isPlaying&&pb!=null&&(pb.Candidate!=null||pb.Active))
+                        {
+                            float pulse=pb.Active?1f:0.75f+0.25f*Mathf.Sin(Time.unscaledTime*7f);
+                            Panel(l.board,l.unit,true,input.Pressed(l.board));
+                            if(pb.Active)Solid(new Rect(l.board.x+l.board.height*0.12f,l.board.yMax-l.board.height*0.22f,(l.board.width-l.board.height*0.24f)*pb.Progress01,l.board.height*0.1f),gold);
+                            PlateText(l.board,0f,1f,pb.Active?Cached(4,Mathf.RoundToInt(pb.Progress01*100f),v=>"АБОРДАЖ · "+v+"%"):"НА АБОРДАЖ",l.unit*0.036f,new Color(1f,0.88f,0.55f,pulse));
+                        }
                         if(Application.isPlaying){string autoText=input.AutoBattle?(string.IsNullOrEmpty(input.AutoState)?"АВТОБОЙ · ВКЛ":input.AutoState):"АВТОБОЙ";Panel(l.auto,l.unit,input.AutoBattle,input.Pressed(l.auto));PlateText(l.auto,0f,1f,autoText,l.unit*(autoText.Length>20?0.026f:0.032f),input.AutoBattle?new Color(1f,0.88f,0.55f):cream);}
                     }
                     Vector2 home=input.StickActive?l.ClampWheel(input.StickOrigin):l.wheel;

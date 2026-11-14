@@ -51,8 +51,45 @@ namespace SkyTide
         /// <summary>Залп игрока: сколько ядер подряд легло в корпус (HUD показывает итог).</summary>
         public static int Tally; public static float TallyAt = -100f;
 
+        // Тяжёлый: иногда рядовой враг выходит тяжёлым — вдвое прочнее, медленнее, 6 пушек на борт, бьёт дальше.
+        [System.NonSerialized] public bool canBeHeavy;
+        public bool Heavy { get; private set; }
+        bool baseSaved; int baseHits; float baseSpeed, baseYaw; int baseGuns; float baseRange, baseCooldown;
+        /// <summary>Взят на абордаж (а не потоплен) — HUD пишет «ПРИЗ ВЗЯТ».</summary>
+        public bool Captured { get; private set; }
+        /// <summary>Идёт абордаж: корабль лежит в дрейфе.</summary>
+        [System.NonSerialized] public bool BeingBoarded;
+        public void Capture()
+        {
+            if (!Alive) return;
+            Captured = true; BeingBoarded = false;
+            deadUntil = Time.time + respawnDelay;
+            ctrl.throttle = 0f; ctrl.turn = 0f;
+            ctrl.visual.gameObject.SetActive(false);
+        }
+        void ApplyClass()
+        {
+            if (gunner == null) gunner = GetComponent<EnemyGunner>();
+            if (!baseSaved)
+            {
+                baseSaved = true; baseHits = hitsToSink; baseSpeed = ctrl.maxSpeed; baseYaw = ctrl.maxYawRate;
+                if (gunner != null) { baseGuns = gunner.gunsPerSide; baseRange = gunner.maxRange; baseCooldown = gunner.cooldown; }
+            }
+            Heavy = canBeHeavy && captainRolled && Random.value < 0.22f;
+            hitsToSink = Heavy ? baseHits * 2 : baseHits;
+            ctrl.maxSpeed = Heavy ? baseSpeed * 0.75f : baseSpeed; ctrl.maxYawRate = Heavy ? baseYaw * 0.75f : baseYaw;
+            if (gunner != null) { gunner.gunsPerSide = Heavy ? 6 : baseGuns; gunner.maxRange = Heavy ? baseRange * 1.15f : baseRange; gunner.cooldown = Heavy ? baseCooldown * 1.35f : baseCooldown; }
+            // Тяжёлый — тёмный, почти чёрный корпус: виден издалека.
+            MaterialPropertyBlock tint = new MaterialPropertyBlock();
+            tint.SetColor("_Color", Heavy ? new Color(0.55f, 0.42f, 0.4f) : Color.white);
+            foreach (MeshRenderer mr in ctrl.visual.GetComponentsInChildren<MeshRenderer>(true)) mr.SetPropertyBlock(tint);
+            if (Heavy && player != null && (player.position - transform.position).sqrMagnitude < 2500f * 2500f) HudNotice.Show("ТЯЖЁЛЫЙ КОРАБЛЬ ВРАГА", 1, 4f);
+        }
+
         void RollCaptain()
         {
+            Captured = false; BeingBoarded = false;
+            ApplyClass();
             float r = Random.value;
             skill = r < 0.35f ? Skill.Novice : r < 0.8f ? Skill.Seasoned : Skill.Veteran;
             dazeScale = skill == Skill.Novice ? 0.6f : skill == Skill.Veteran ? 2.2f : 1f;
@@ -221,7 +258,8 @@ namespace SkyTide
         void UpdateTimed()
         {
             if (ctrl == null) return;
-            if (!captainRolled && Application.isPlaying) { captainRolled = true; RollCaptain(); }
+            if (!captainRolled && Application.isPlaying) { RollCaptain(); captainRolled = true; }
+            if (BeingBoarded && Alive) { ctrl.throttle = 0f; ctrl.turn = 0f; return; }
             Lamps();
             if (!Alive)
             {
@@ -249,7 +287,19 @@ namespace SkyTide
             Vector3 toPlayer = player != null ? player.position - transform.position : Vector3.zero;
             toPlayer.y = 0f;
             PlayerHull playerHull = PlayerHull.Instance;
-            if (player != null && playerHull != null && playerHull.Alive && !SkyFortress.InSafeZone(player.position)) { Engage(toPlayer); return; }
+            bool playerFair = player != null && playerHull != null && playerHull.Alive && !SkyFortress.InSafeZone(player.position);
+            // Свои корабли тоже цели: торговца враг выбирает охотнее (лёгкая добыча), сторожевого и ведомого — если они
+            // заметно ближе флагмана. Всё — вне безопасной зоны крепости.
+            AllyShip prey = null; float preyD = playerFair ? toPlayer.magnitude * 0.7f : 900f;
+            foreach (AllyShip al in AllyShip.All)
+            {
+                if (al == null || !al.Alive || SkyFortress.InSafeZone(al.transform.position)) continue;
+                Vector3 ta = al.transform.position - transform.position; ta.y = 0f;
+                float d = ta.magnitude * (al.role == AllyShip.Role.Merchant ? 0.6f : 1f);
+                if (d < preyD && ta.magnitude < 900f) { preyD = d; prey = al; }
+            }
+            if (prey != null) { Vector3 tp = prey.transform.position - transform.position; tp.y = 0f; Engage(tp); return; }
+            if (playerFair) { Engage(toPlayer); return; }
             fightSide = 0f;
             if (player != null && toPlayer.magnitude > leash && !SkyFortress.InSafeZone(player.position)) { waypoint = player.position; nextPick = Time.time + 8f; }
             Vector3 to = waypoint - transform.position;
@@ -393,9 +443,18 @@ namespace SkyTide
             return false;
         }
 
-        public void OnHit(Vector3 point)
+        float chainAcc;
+        public void OnHit(Vector3 point, bool chain = false)
         {
             if (!Alive) return;
+            // Книппель режет баллоны и такелаж: ход падает надолго, а корпус получает треть удара.
+            if (chain)
+            {
+                if (!ctrl.BalloonHit || Random.value < 0.5f) { ctrl.HitBalloon(16f); HudNotice.Show("КНИППЕЛЬ · ВРАГ ТЕРЯЕТ ХОД", 0); }
+                chainAcc += 0.34f;
+                if (chainAcc < 1f) { FxSystem cfx = FxSystem.Instance; if (cfx != null) cfx.Explosion(point, 0.5f); return; }
+                chainAcc -= 1f;
+            }
             hits++;
             if (Time.time - TallyAt > 2.5f) Tally = 0;
             Tally++; TallyAt = Time.time;

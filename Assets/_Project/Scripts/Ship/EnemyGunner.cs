@@ -31,6 +31,9 @@ namespace SkyTide
         [System.NonSerialized] public float skillError = 1f, skillCooldown = 1f;
         bool volleyAtOnce;
         int pendingSide; float pendingAt; int pendingLeft;
+        AllyShip victimAlly;   // цель залпа: null — корабль игрока, иначе свой корабль (сторожевой, ведомый, торговец)
+        Vector3 VictimCenter(Vector3 pp) { return victimAlly != null && victimAlly.Alive ? victimAlly.Center : pp; }
+        Vector3 VictimVel { get { return victimAlly != null && victimAlly.Alive ? victimAlly.Velocity : playerVel; } }
         Vector3 lastPlayerPos, playerVel, lastPos, selfVel;
 
         public void Setup(TargetShip t, ShipController c)
@@ -53,31 +56,32 @@ namespace SkyTide
             Vector3 pp = player.Center;
             playerVel = Vector3.Lerp(playerVel, (pp - lastPlayerPos) / dt, 0.2f); lastPlayerPos = pp;
             selfVel = Vector3.Lerp(selfVel, (transform.position - lastPos) / dt, 0.2f); lastPos = transform.position;
-            if (!target.Alive || !player.Alive) { pendingLeft = 0; engaged = false; return; }
+            if (!target.Alive) { pendingLeft = 0; engaged = false; return; }
 
             if (pendingLeft > 0 && Time.time >= pendingAt)
             {
-                Shoot(pendingSide, gunsPerSide - pendingLeft, pp + aimErr);
+                if (victimAlly == null && !player.Alive) { pendingLeft = 0; return; }
+                Shoot(pendingSide, gunsPerSide - pendingLeft, VictimCenter(pp) + aimErr);
                 pendingLeft--;
                 pendingAt = Time.time + (volleyAtOnce ? Random.Range(0.01f, 0.04f) : Random.Range(0.12f, 0.2f));
                 return;
             }
             if (Time.time < ready) return;
             if (target.Dazed) return;   // капитан растерялся — и пушки молчат
-            if (SkyFortress.InSafeZone(pp)) return;   // под пушками крепости враг не стреляет
-            if (SkyFortress.InSafeZone(transform.position)) return;   // и сам из зоны крепости не стреляет (кроме глупости — ForceVolley)
-            Vector3 rel = pp - transform.position; rel.y = 0f;
-            float dist = rel.magnitude;
-            if (dist < minRange || dist > maxRange) return;
-            Vector3 local = transform.InverseTransformDirection(rel);
-            float bearing = Mathf.Atan2(Mathf.Abs(local.x), local.z) * Mathf.Rad2Deg;
-            if (bearing < 55f || bearing > 125f) return;
+            if (SkyFortress.InSafeZone(transform.position)) return;   // из зоны крепости не стреляет (кроме глупости — ForceVolley)
+            // Цель залпа — ближайший на траверзе в пределах пушек: корабль игрока или свой (сторожевой, ведомый, торговец).
+            // Под пушками крепости (в безопасной зоне) враг ни по кому не стреляет.
+            victimAlly = null; float dist = float.MaxValue; Vector3 rel = Vector3.zero, local = Vector3.zero;
+            if (player.Alive && !SkyFortress.InSafeZone(pp)) TryVictim(pp, null, ref dist, ref rel, ref local);
+            foreach (AllyShip al in AllyShip.All)
+                if (al != null && al.Alive && !SkyFortress.InSafeZone(al.transform.position)) TryVictim(al.Center, al, ref dist, ref rel, ref local);
+            if (dist == float.MaxValue) return;
             // Затупы расчёта: иногда залп запаздывает (замешкались с фитилями), иногда — «на авось» с двойной ошибкой.
             if (Random.value < 0.2f) { ready = Time.time + Random.Range(1f, 3f); return; }
             pendingSide = local.x > 0f ? 1 : -1;
-            Vector3 dv = playerVel - lastVolleyVel;
+            Vector3 dv = VictimVel - lastVolleyVel;
             if (!engaged || dv.magnitude > 5f) errScale = 1f; else errScale = Mathf.Max(0.2f, errScale * 0.6f);
-            engaged = true; lastVolleyVel = playerVel;
+            engaged = true; lastVolleyVel = VictimVel;
             Vector3 fwd = rel / Mathf.Max(dist, 1f), sideDir = Vector3.Cross(Vector3.up, fwd);
             float wild = Random.value < 0.2f ? 2.2f : 1f;
             // Подбитый стреляет хуже и реже: ниже половины прочности ошибка ×1.5, ниже 30% — ×2.2.
@@ -98,6 +102,7 @@ namespace SkyTide
             Vector3 pp = player.Center, rel = pp - transform.position; rel.y = 0f;
             float dist = rel.magnitude;
             if (dist < 30f || dist > maxRange) return false;
+            victimAlly = null;
             pendingSide = transform.InverseTransformDirection(rel).x > 0f ? 1 : -1;
             aimErr = new Vector3(Gauss(), 0f, Gauss()) * (0.07f * dist);
             volleyAtOnce = false; pendingLeft = gunsPerSide; pendingAt = Time.time; LastVolleyTime = Time.time;
@@ -150,6 +155,17 @@ namespace SkyTide
             return best;
         }
 
+        void TryVictim(Vector3 c, AllyShip al, ref float best, ref Vector3 bestRel, ref Vector3 bestLocal)
+        {
+            Vector3 r = c - transform.position; r.y = 0f;
+            float d = r.magnitude;
+            if (d < minRange || d > maxRange || d >= best) return;
+            Vector3 l = transform.InverseTransformDirection(r);
+            float bearing = Mathf.Atan2(Mathf.Abs(l.x), l.z) * Mathf.Rad2Deg;
+            if (bearing < 55f || bearing > 125f) return;
+            best = d; bestRel = r; bestLocal = l; victimAlly = al;
+        }
+
         static float Gauss()
         {
             float u1 = Mathf.Max(1e-4f, Random.value), u2 = Random.value;
@@ -171,7 +187,7 @@ namespace SkyTide
                 float tFlight = x / (v * Mathf.Cos(theta));
                 Vector3 h = new Vector3(d.x, 0f, d.z).normalized;
                 dir = h * Mathf.Cos(theta) + Vector3.up * Mathf.Sin(theta);
-                aim = to + (playerVel - selfVel) * (tFlight * 0.8f);   // упреждение неполное — наводчик не идеален
+                aim = to + (VictimVel - selfVel) * (tFlight * 0.8f);   // упреждение неполное — наводчик не идеален
             }
             return true;
         }

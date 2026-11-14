@@ -28,6 +28,13 @@ namespace SkyTide
         public Transform visual;
 
         public float Speed { get; private set; }
+        /// <summary>Все корабли в мире (свой, враги, союзники, торговец) — для расталкивания и выбора целей.</summary>
+        public static readonly System.Collections.Generic.List<ShipController> All = new System.Collections.Generic.List<ShipController>();
+        void OnEnable() { if (!All.Contains(this)) All.Add(this); }
+        void OnDisable() { All.Remove(this); }
+        /// <summary>Радиус корпуса в плане для расталкивания (м): у корабля ×0.72 — меньше.</summary>
+        public float HullRadius { get { return 15f * transform.lossyScale.x; } }
+        public bool IsPlayer { get { return PlayerHull.Instance != null && PlayerHull.Instance.gameObject == gameObject; } }
         /// <summary>0..1 — насколько корабль зашёл в последние 250 м перед границей района (HUD показывает предупреждение).</summary>
         public float EdgeWarning { get; private set; }
 
@@ -81,7 +88,8 @@ namespace SkyTide
             if (dt <= 0f) return;
 
             float thr = Mathf.Clamp(throttle, -1f, 1f);
-            float targetSpeed = thr >= 0f ? thr * maxSpeed * damageSpeed * CritSpeed : thr * maxReverseSpeed;
+            float wind = Application.isPlaying ? WindField.SpeedFactor(transform.forward) : 1f;
+            float targetSpeed = thr >= 0f ? thr * maxSpeed * damageSpeed * CritSpeed * wind : thr * maxReverseSpeed;
             float rate = Mathf.Abs(targetSpeed) > Mathf.Abs(Speed) ? acceleration : deceleration;
             Speed = Mathf.MoveTowards(Speed, targetSpeed, rate * dt);
 
@@ -110,6 +118,23 @@ namespace SkyTide
                 pos.z = flat.y;
             }
             transform.position = pos;
+            // Корабли не проходят друг сквозь друга: ближе суммы радиусов — каждый отходит на свою половину (без урона;
+            // удар и щепа при столкновении со своим кораблём — в TargetShip.CollideWithPlayer).
+            if (Application.isPlaying)
+                for (int i = 0; i < All.Count; i++)
+                {
+                    ShipController o = All[i];
+                    if (o == null || o == this || !o.isActiveAndEnabled) continue;
+                    // Свой корабль с врагом сталкивается по-настоящему (удар, щепа, таран — TargetShip.CollideWithPlayer).
+                    if ((IsPlayer && o.GetComponent<TargetShip>() != null) || (o.IsPlayer && GetComponent<TargetShip>() != null)) continue;
+                    Vector3 d = transform.position - o.transform.position; d.y = 0f;
+                    float min = HullRadius + o.HullRadius;
+                    float m2 = d.sqrMagnitude;
+                    if (m2 >= min * min || m2 < 1e-4f) continue;
+                    float m = Mathf.Sqrt(m2);
+                    transform.position += d / m * ((min - m) * 0.5f);
+                    Speed *= 1f - Mathf.Min(0.5f, dt * 2f);
+                }
 
             if (visual != null)
             {

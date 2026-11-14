@@ -4,68 +4,165 @@ using UnityEngine;
 namespace SkyTide
 {
     /// <summary>
-    /// Союзник: сторожевой корабль крепости. Ходит дозором по кругу у края безопасной зоны; увидел врага ближе
-    /// engageRange (или нарушителя, по которому бьёт крепость) — выходит на него бортом и стреляет залпами по четыре
-    /// ядра с упреждением. Дальше leash от центра крепости за врагом не идёт — возвращается в дозор.
-    /// Ядра «свои» (не hostile): бьют по кораблям врага, игрока и крепость у дула не задевают.
-    /// Первая версия: враг по союзнику не стреляет и повредить его нельзя — он под защитой крепости.
+    /// Свои корабли (корпус модели врага в светлом тоне, без пушечных моделей игрока и экипажа):
+    /// • Guard — сторожевой крепости: дозор у края безопасной зоны, выходит на врагов ближе engageRange от себя
+    ///   (и на нарушителя, по которому бьёт крепость);
+    /// • Wingman — ведомый: держится справа-сзади от флагмана, бьёт врагов, подошедших к флагману ближе 750 м;
+    /// • Merchant — торговец: идёт издалека к причалу крепости, стоит, уходит; пушек нет. Дошёл — флагману ремонт +10%.
+    /// Все уязвимы: ядра врага бьют по ним (FxSystem), потоплен — через respawnDelay возвращается (боевые — от причала,
+    /// торговец — издалека). Подбитый ниже 35% (боевые) уходит чиниться к причалу и возвращается целым.
     /// </summary>
     public class AllyShip : MonoBehaviour
     {
+        public enum Role { Guard, Wingman, Merchant }
         public static readonly List<AllyShip> All = new List<AllyShip>();
+        public Role role = Role.Guard;
         public float engageRange = 750f, fightRange = 300f, leash = 2300f, cooldown = 7f, muzzleSpeed = 85f;
-        public float rangeError = 0.06f, sideError = 0.025f;
-        public int gunsPerSide = 4;
+        public float rangeError = 0.06f, sideError = 0.025f, respawnDelay = 30f;
+        public int gunsPerSide = 4, hitsToSink = 30;
+        public static readonly string[] RoleNames = { "СТОРОЖЕВОЙ", "ВЕДОМЫЙ", "ТОРГОВЕЦ" };
 
         ShipController ctrl;
         Transform model;
         Bounds box;
-        float patrolAngle, ready, pendingAt, fightSide;
-        int pendingLeft, pendingSide;
+        ShipHitSurface surface;
+        ShipDamageVisual damage;
+        float ready, pendingAt, fightSide, deadUntil = -1f, nextRepair, waitUntil;
+        int pendingLeft, pendingSide, hits;
         Vector3 aimErr, lastPos, selfVel;
         TargetShip foe;
-        bool announced;
+        bool announced, repairing;
+        enum Leg { Inbound, Docked, Outbound }
+        Leg leg;
+        Vector3 merchantFrom;
 
         public ShipController Controller { get { return ctrl; } }
+        public bool Alive { get { return deadUntil < 0f; } }
         public bool Fighting { get { return foe != null; } }
+        public float Health01 { get { return Mathf.Clamp01(1f - hits / (float)Mathf.Max(1, hitsToSink)); } }
+        public Vector3 Center { get { return model != null ? model.TransformPoint(box.center) : transform.position; } }
+        public Vector3 Velocity { get { return ctrl != null ? transform.forward * ctrl.Speed : Vector3.zero; } }
 
-        public void Setup(ShipController c)
+        public void Setup(ShipController c, Role r, TextAsset geometry, Material wood)
         {
-            ctrl = c;
+            ctrl = c; role = r;
             Transform v = c.visual;
             model = v != null && v.childCount > 0 ? v.GetChild(0) : v;
             MeshFilter mf = model != null ? model.GetComponent<MeshFilter>() : null;
             box = mf != null && mf.sharedMesh != null ? mf.sharedMesh.bounds : new Bounds(Vector3.up * 8f, new Vector3(10f, 14f, 36f));
-            // Свои — светлее и холоднее врага: тот же корпус, другой тон (и на облегчённой копии).
+            if (geometry != null) surface = new ShipHitSurface(geometry);
+            damage = gameObject.AddComponent<ShipDamageVisual>();
+            damage.Configure(model, box, wood, surface);
+            // Свои — светлее и холоднее врага (боевые голубоватые, торговец — светлое дерево с зеленцой).
             MaterialPropertyBlock tint = new MaterialPropertyBlock();
-            tint.SetColor("_Color", new Color(0.78f, 0.95f, 1.2f));
-            foreach (MeshRenderer r in c.visual.GetComponentsInChildren<MeshRenderer>(true)) r.SetPropertyBlock(tint);
-            ctrl.maxSpeed = 22f; ctrl.maxYawRate = 26f;
+            tint.SetColor("_Color", r == Role.Merchant ? new Color(1.05f, 1.1f, 0.85f) : new Color(0.78f, 0.95f, 1.2f));
+            foreach (MeshRenderer mr in c.visual.GetComponentsInChildren<MeshRenderer>(true)) mr.SetPropertyBlock(tint);
+            if (r == Role.Merchant) { ctrl.maxSpeed = 16f; ctrl.maxYawRate = 20f; hitsToSink = 20; respawnDelay = 45f; gunsPerSide = 0; }
+            else if (r == Role.Wingman) { ctrl.maxSpeed = 34f; ctrl.maxYawRate = 34f; hitsToSink = 34; }
+            else { ctrl.maxSpeed = 22f; ctrl.maxYawRate = 26f; hitsToSink = 40; }
             ready = Time.time + 8f;
+            merchantFrom = transform.position;
             if (!All.Contains(this)) All.Add(this);
         }
         void OnEnable() { if (!All.Contains(this)) All.Add(this); }
         void OnDisable() { All.Remove(this); }
 
+        // ---------- попадания ----------
+        public bool TryHit(Vector3 a, Vector3 b, out Vector3 point)
+        {
+            point = b;
+            if (!Alive || model == null) return false;
+            if (surface != null)
+            {
+                ShipHitSurface.Contact c;
+                if (!surface.Trace(model.InverseTransformPoint(a), model.InverseTransformPoint(b), out c)) return false;
+                point = model.TransformPoint(c.point);
+                return true;
+            }
+            Bounds bb = box; bb.Expand(1.2f);
+            for (int i = 0; i <= 6; i++) { Vector3 p = Vector3.Lerp(a, b, i / 6f); if (bb.Contains(model.InverseTransformPoint(p))) { point = p; return true; } }
+            return false;
+        }
+
+        public void OnHit(Vector3 point, float power = 1f)
+        {
+            if (!Alive) return;
+            hits += power > 1.5f ? 3 : 1;
+            Vector3 normal = (point - Center).normalized;
+            if (damage != null) damage.Hit(point, hits / (float)Mathf.Max(1, hitsToSink), Velocity, normal);
+            SkySound.HullHit(point, false);
+            FxSystem fx = FxSystem.Instance;
+            if (hits >= hitsToSink)
+            {
+                SkySound.ShipDestroyed(point);
+                if (fx != null) fx.Explosion(Center, 3f);
+                deadUntil = Time.time + respawnDelay;
+                if (damage != null) damage.BeginSink(point, Velocity);
+                ctrl.throttle = 0f; ctrl.turn = 0f;
+                HudNotice.Show(RoleNames[(int)role] + " ПОТОПЛЕН", 1, 3.5f);
+            }
+            else if (fx != null) fx.HullImpact(point, normal, Velocity);
+        }
+
+        void Respawn()
+        {
+            deadUntil = -1f; hits = 0; repairing = false; foe = null; pendingLeft = 0;
+            if (damage != null) damage.ResetDamage();
+            SkyFortress f = SkyFortress.Instance;
+            Vector3 at;
+            if (role == Role.Merchant || f == null)
+            {
+                float a = Random.Range(0f, Mathf.PI * 2f);
+                Vector3 c = f != null ? f.Center : transform.position;
+                at = c + new Vector3(Mathf.Cos(a), 0f, Mathf.Sin(a)) * ((f != null ? f.safeRadius : 1400f) + 1500f);
+                leg = Leg.Inbound; merchantFrom = at;
+            }
+            else
+            {
+                Vector3 outDir = f.BerthWorld - f.Center; outDir.y = 0f; outDir = outDir.sqrMagnitude > 1f ? outDir.normalized : Vector3.forward;
+                at = f.BerthWorld + outDir * 160f + Vector3.Cross(Vector3.up, outDir) * (role == Role.Wingman ? -220f : 220f);
+            }
+            at.y = transform.position.y;
+            transform.position = at;
+            ctrl.visual.gameObject.SetActive(true);
+            ctrl.enabled = true;
+        }
+
         void Update()
         {
             long pt = PerfTimers.Start();
             Tick(Time.deltaTime);
-            PerfTimers.Stop("Союзник", pt);
+            PerfTimers.Stop("Союзники", pt);
         }
 
         void Tick(float dt)
         {
-            SkyFortress f = SkyFortress.Instance;
-            if (ctrl == null || f == null || dt <= 0f) return;
+            if (ctrl == null || dt <= 0f) return;
+            if (!Alive)
+            {
+                if (damage != null && damage.Hidden) ctrl.visual.gameObject.SetActive(false);
+                if (Time.time >= deadUntil) Respawn();
+                return;
+            }
             selfVel = Vector3.Lerp(selfVel, (transform.position - lastPos) / dt, 0.2f); lastPos = transform.position;
+            ctrl.SetDamage(Health01);
+            SkyFortress f = SkyFortress.Instance;
+            if (role == Role.Merchant) { Merchant(f); return; }
+            if (Health01 < 0.35f) repairing = true;
+            if (repairing && f != null) { foe = null; pendingLeft = 0; GoRepair(f); return; }
             foe = PickFoe(f);
-            if (foe == null) { announced = false; pendingLeft = 0; Patrol(f); return; }
+            if (foe == null)
+            {
+                announced = false; pendingLeft = 0;
+                if (role == Role.Wingman) Follow(); else Patrol(f);
+                return;
+            }
             if (!announced)
             {
                 announced = true;
                 PlayerHull ph = PlayerHull.Instance;
-                if (ph != null && (ph.transform.position - transform.position).sqrMagnitude < 1500f * 1500f) HudNotice.Show("СТОРОЖЕВОЙ ИДЁТ НА ВРАГА", 0, 3.5f);
+                if (ph != null && (ph.transform.position - transform.position).sqrMagnitude < 1500f * 1500f)
+                    HudNotice.Show(role == Role.Wingman ? "ВЕДОМЫЙ АТАКУЕТ" : "СТОРОЖЕВОЙ ИДЁТ НА ВРАГА", 0, 3f);
             }
             Engage(foe);
             Gunnery(foe);
@@ -73,15 +170,18 @@ namespace SkyTide
 
         TargetShip PickFoe(SkyFortress f)
         {
+            PlayerHull ph = PlayerHull.Instance;
+            Vector3 anchor = role == Role.Wingman && ph != null ? ph.transform.position : (f != null ? f.Center : transform.position);
             TargetShip best = null; float bestD = float.MaxValue;
             foreach (TargetShip t in TargetShip.All)
             {
                 if (t == null || !t.Alive) continue;
-                if (t.InPort && !t.Outlaw) continue;   // мирно стоящий в порту — гость, не цель
-                Vector3 off = t.transform.position - f.Center; off.y = 0f;
-                if (off.magnitude > leash) continue;
+                if (t.InPort && !t.Outlaw) continue;   // гость порта — не цель
+                Vector3 off = t.transform.position - anchor; off.y = 0f;
+                float limit = role == Role.Wingman ? engageRange : leash;
+                if (off.magnitude > limit) continue;
                 float d = Vector3.Distance(t.transform.position, transform.position);
-                if (!t.Outlaw && d > engageRange) continue;
+                if (role == Role.Guard && !t.Outlaw && d > engageRange) continue;
                 if (d < bestD) { bestD = d; best = t; }
             }
             return best;
@@ -89,13 +189,85 @@ namespace SkyTide
 
         void Patrol(SkyFortress f)
         {
-            // Дозор по кругу чуть внутри края зоны, против часовой стрелки.
-            float radius = f.safeRadius - 180f;
+            if (f == null) { Steer(transform.forward, 0.5f); return; }
             Vector3 off = transform.position - f.Center; off.y = 0f;
-            float here = Mathf.Atan2(off.z, off.x);
-            patrolAngle = here + 0.22f;
-            Vector3 goal = f.Center + new Vector3(Mathf.Cos(patrolAngle), 0f, Mathf.Sin(patrolAngle)) * radius;
+            float here = Mathf.Atan2(off.z, off.x) + 0.22f;
+            Vector3 goal = f.Center + new Vector3(Mathf.Cos(here), 0f, Mathf.Sin(here)) * (f.safeRadius - 180f);
             Steer(goal - transform.position, 0.5f);
+        }
+
+        void Follow()
+        {
+            PlayerHull ph = PlayerHull.Instance;
+            if (ph == null) { Steer(transform.forward, 0.4f); return; }
+            Transform lead = ph.transform;
+            Vector3 slot = lead.position + lead.right * 110f - lead.forward * 70f; slot.y = transform.position.y;
+            Vector3 to = slot - transform.position; to.y = 0f;
+            float d = to.magnitude;
+            ShipController lc = lead.GetComponent<ShipController>();
+            float leadSpeed = lc != null ? Mathf.Abs(lc.Speed) : 0f;
+            // Далеко — догоняет полным ходом, близко к своему месту — идёт курсом и ходом флагмана.
+            if (d > 60f) Steer(to, Mathf.Clamp01(d / 300f + leadSpeed / Mathf.Max(1f, ctrl.maxSpeed)));
+            else Steer(lead.forward + to * 0.01f, Mathf.Clamp01(leadSpeed / Mathf.Max(1f, ctrl.maxSpeed)));
+        }
+
+        void GoRepair(SkyFortress f)
+        {
+            Vector3 outDir = f.BerthWorld - f.Center; outDir.y = 0f; outDir = outDir.sqrMagnitude > 1f ? outDir.normalized : Vector3.forward;
+            Vector3 spot = f.BerthWorld + outDir * 90f + Vector3.Cross(Vector3.up, outDir) * (role == Role.Wingman ? -150f : 150f);
+            Vector3 to = spot - transform.position; to.y = 0f;
+            if (to.magnitude > 45f) { SteerAround(f, spot, to.magnitude > 300f ? 0.8f : 0.3f); return; }
+            ctrl.throttle = 0f; ctrl.turn = 0f;
+            if (Time.time >= nextRepair && hits > 0) { nextRepair = Time.time + 1.2f; hits--; if (hits == 0 && damage != null) damage.ResetDamage(); }
+            if (hits == 0) repairing = false;
+        }
+
+        void Merchant(SkyFortress f)
+        {
+            if (f == null) return;
+            Vector3 outDir = f.BerthWorld - f.Center; outDir.y = 0f; outDir = outDir.sqrMagnitude > 1f ? outDir.normalized : Vector3.forward;
+            Vector3 spot = f.BerthWorld + outDir * 70f - Vector3.Cross(Vector3.up, outDir) * 170f; spot.y = transform.position.y;
+            Vector3 to = spot - transform.position; to.y = 0f;
+            if (leg == Leg.Inbound)
+            {
+                if (to.magnitude < 50f)
+                {
+                    leg = Leg.Docked; waitUntil = Time.time + 25f;
+                    PlayerHull ph = PlayerHull.Instance;
+                    if (ph != null && ph.Alive) { ph.Repair(ph.maxHealth * 0.1f); HudNotice.Show("ТОРГОВЕЦ ДОШЁЛ · РЕМОНТ +10%", 0, 3.5f); }
+                }
+                else SteerAround(f, spot, to.magnitude > 300f ? 0.9f : 0.35f);
+                return;
+            }
+            if (leg == Leg.Docked)
+            {
+                ctrl.throttle = 0f; ctrl.turn = 0f;
+                if (Time.time >= waitUntil) leg = Leg.Outbound;
+                return;
+            }
+            // Уходит: по направлению от крепости; далеко — исчезает и через паузу приходит новый.
+            Vector3 off = transform.position - f.Center; off.y = 0f;
+            Steer(off.sqrMagnitude > 1f ? off.normalized : outDir, 0.9f);
+            if (off.magnitude > f.safeRadius + 1700f) { deadUntil = Time.time + respawnDelay; ctrl.visual.gameObject.SetActive(false); }
+        }
+
+        /// <summary>Курс на точку в обход камня крепости.</summary>
+        void SteerAround(SkyFortress f, Vector3 goal, float throttle)
+        {
+            Vector3 to = goal - transform.position; to.y = 0f;
+            Vector3 heading = to.sqrMagnitude > 1f ? to.normalized : transform.forward;
+            if (to.magnitude > 200f)
+            {
+                Vector3 off = transform.position - f.Center; off.y = 0f;
+                Vector3 berth = f.BerthWorld - f.Center; berth.y = 0f;
+                float keep = berth.magnitude + 70f;
+                if (off.sqrMagnitude < keep * keep && off.sqrMagnitude > 1f)
+                {
+                    Vector3 outward = off.normalized; float inward = Vector3.Dot(heading, outward);
+                    if (inward < 0.25f) heading = (heading - outward * inward + outward * 0.45f).normalized;
+                }
+            }
+            Steer(heading, throttle);
         }
 
         void Engage(TargetShip t)
@@ -117,13 +289,13 @@ namespace SkyTide
             if (heading.sqrMagnitude < 1e-4f) heading = transform.forward;
             float ang = Vector3.SignedAngle(transform.forward, heading.normalized, Vector3.up);
             ctrl.turn = Mathf.Clamp(ang / 35f, -1f, 1f);
-            ctrl.throttle = Mathf.Abs(ang) > 100f ? 0.3f : throttle;
+            ctrl.throttle = Mathf.Abs(ang) > 100f ? Mathf.Min(0.3f, throttle) : throttle;
         }
 
         void Gunnery(TargetShip t)
         {
             FxSystem fx = FxSystem.Instance;
-            if (fx == null || model == null) return;
+            if (fx == null || model == null || gunsPerSide <= 0) return;
             Vector3 tp = t.Center;
             if (pendingLeft > 0 && Time.time >= pendingAt)
             {
@@ -144,7 +316,9 @@ namespace SkyTide
             Vector3 local = transform.InverseTransformDirection(rel);
             float bearing = Mathf.Atan2(Mathf.Abs(local.x), local.z) * Mathf.Rad2Deg;
             if (bearing < 55f || bearing > 125f) return;
-            // Над своим портом сторожевой не палит по тем, кто стоит у самого причала рядом с игроком.
+            // По врагу, который трётся о флагман, не бьём: ядра могли бы лечь в своих (свои ядра своих не ранят, но смотрится глупо).
+            PlayerHull ph = PlayerHull.Instance;
+            if (ph != null && (ph.transform.position - t.transform.position).sqrMagnitude < 45f * 45f) return;
             pendingSide = local.x > 0f ? 1 : -1;
             Vector3 fwd = rel / Mathf.Max(dist, 1f), side = Vector3.Cross(Vector3.up, fwd);
             aimErr = fwd * Gauss() * rangeError * dist + side * Gauss() * sideError * dist;

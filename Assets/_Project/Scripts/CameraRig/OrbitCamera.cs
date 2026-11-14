@@ -103,7 +103,8 @@ namespace SkyTide
             if (Application.isPlaying)
             {
                 if (lens == null) lens = GetComponent<Camera>();
-                if (lens != null) { if (baseFov < 0f) baseFov = lens.fieldOfView; lens.fieldOfView = baseFov + 5f * speedPull; }
+                scopeBlend = Mathf.MoveTowards(scopeBlend, ScopeOn ? 1f : 0f, dt * 3f);
+                if (lens != null) { if (baseFov < 0f) baseFov = lens.fieldOfView; lens.fieldOfView = Mathf.Lerp(baseFov + 5f * speedPull, baseFov * 0.28f, scopeBlend); }
                 // Дальность теней — по удалению камеры: вблизи та же карта теней ложится на меньший участок (тени резче),
                 // издалека — хватает до корабля. Шаг 10 м, чтобы тени не «дышали» при каждом движении пальцев.
                 float shadowReach = Mathf.Clamp(Mathf.Ceil((reach + 55f) / 10f) * 10f, 90f, 200f);
@@ -152,8 +153,37 @@ namespace SkyTide
                 camLean = Mathf.Lerp(camLean, lean, 1f - Mathf.Exp(-4f * dt));
                 transform.rotation *= Quaternion.Euler(0f, 0f, camLean);
             }
+            // Подзорная труба: с юта своего корабля прямо на цель (ближайший враг), обзор ×0.28. Цель погибла — труба убирается.
+            if (Application.isPlaying && scopeBlend > 0.001f)
+            {
+                if (ScopeOn && (scopeTarget == null || !scopeTarget.Alive)) ScopeOn = false;
+                Vector3 deck = target.position + Vector3.up * 14f - target.forward * 10f;
+                Vector3 look = scopeTarget != null && scopeTarget.Alive ? scopeTarget.Center : deck + target.forward * 300f;
+                Quaternion scopeRot = Quaternion.LookRotation(look - deck, Vector3.up);
+                float k2 = scopeBlend * scopeBlend * (3f - 2f * scopeBlend);
+                transform.position = Vector3.Lerp(transform.position, deck, k2);
+                transform.rotation = Quaternion.Slerp(transform.rotation, scopeRot, k2);
+            }
             StepRecoil(dt);
             if(recoil.sqrMagnitude>1e-10f)transform.rotation*=Quaternion.Euler(recoil.x,recoil.y,recoil.y*.35f);
+        }
+
+        public bool ScopeOn { get; private set; }
+        float scopeBlend; TargetShip scopeTarget;
+        /// <summary>Подзорная труба вкл/выкл (кнопка рядом с FPS): наводится на ближайшего живого врага.</summary>
+        public void ToggleScope()
+        {
+            if (ScopeOn) { ScopeOn = false; return; }
+            scopeTarget = null; float best = float.MaxValue;
+            if (target != null)
+                foreach (TargetShip t in TargetShip.All)
+                {
+                    if (t == null || !t.Alive) continue;
+                    float d = (t.transform.position - target.position).sqrMagnitude;
+                    if (d < best) { best = d; scopeTarget = t; }
+                }
+            ScopeOn = scopeTarget != null;
+            if (!ScopeOn) HudNotice.Show("ВРАГОВ НЕ ВИДНО", 1, 1.5f);
         }
     }
 }

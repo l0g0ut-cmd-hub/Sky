@@ -33,6 +33,9 @@ namespace SkyTide
         public float cooldown = 2.2f;
         [Tooltip("true — волной от носа к корме, false — весь борт разом")]
         public bool ripple = true;
+        /// <summary>Заряд: false — ядра (корпус), true — книппели (баллоны и ход; летят медленнее и ближе).</summary>
+        [NonSerialized] public bool chainShot;
+        float ShotSpeed { get { return chainShot ? muzzleSpeed * 0.8f : muzzleSpeed; } }
         [NonSerialized] public ShipCrew crew;
 
         ShipController ship;
@@ -215,7 +218,7 @@ namespace SkyTide
 
         /// <summary>Борт, у которого сейчас прицельная дуга (-1 левый, +1 правый), и ложится ли его залп в корпус цели —
         /// по этому кнопка борта на HUD пишет «В ПРИЦЕЛЕ».</summary>
-        PlayerHull ownHull; bool ownTried;
+        PlayerHull ownHull; bool ownTried; float ownRetry;
         public int AimSide { get; private set; }
         public bool AimOnTarget { get; private set; }
 
@@ -230,13 +233,13 @@ namespace SkyTide
         public float traverseDeg = 10f, minElevationDeg = -8f, maxElevationDeg = 24f;
         bool solved; int solvedSide; Vector3 aimPoint, targetVel; float flightTime;
         /// <summary>Дальность, на которую борт достаёт при предельном возвышении (для HUD).</summary>
-        public float MaxRange { get { float g = FxSystem.Instance != null ? FxSystem.Instance.gravity : 9.81f; return muzzleSpeed * muzzleSpeed * Mathf.Sin(2f * maxElevationDeg * Mathf.Deg2Rad) / g; } }
+        public float MaxRange { get { float g = FxSystem.Instance != null ? FxSystem.Instance.gravity : 9.81f; return ShotSpeed * ShotSpeed * Mathf.Sin(2f * maxElevationDeg * Mathf.Deg2Rad) / g; } }
         public bool HasSolution { get { return solved; } }
         public float FlightTime { get { return flightTime; } }
 
         float LowAngle(float x, float y, float g)
         {
-            float v = muzzleSpeed, disc = v * v * v * v - g * (g * x * x + 2f * y * v * v);
+            float v = ShotSpeed, disc = v * v * v * v - g * (g * x * x + 2f * y * v * v);
             float theta = disc < 0f || x < 1f ? maxElevationDeg * Mathf.Deg2Rad : Mathf.Atan((v * v - Mathf.Sqrt(disc)) / (g * x));
             return Mathf.Clamp(theta, minElevationDeg * Mathf.Deg2Rad, maxElevationDeg * Mathf.Deg2Rad);
         }
@@ -255,7 +258,7 @@ namespace SkyTide
                 Vector3 d = tpos + rel * t - muzzle;
                 float x = new Vector2(d.x, d.z).magnitude;
                 float theta = LowAngle(x, d.y, g);
-                t = x / Mathf.Max(1f, muzzleSpeed * Mathf.Cos(theta));
+                t = x / Mathf.Max(1f, ShotSpeed * Mathf.Cos(theta));
             }
             aimPoint = tpos + rel * t; flightTime = t; solvedSide = side > 0f ? 1 : -1; solved = true;
         }
@@ -283,7 +286,7 @@ namespace SkyTide
             hull = false;
             Vector3 p = model.TransformPoint(m.Muzzle);
             float g = fx.gravity; const float step = 0.06f;
-            Vector3 v = GunDir(m, g) * muzzleSpeed + velocity;
+            Vector3 v = GunDir(m, g) * ShotSpeed + velocity;
             Vector3 tv = solved ? targetVel : Vector3.zero;
             end = p;
             for (int i = 0; i < 120; i++)
@@ -309,10 +312,14 @@ namespace SkyTide
             FxSystem fx = FxSystem.Instance;
             AimOnTarget = false;
             if (fx == null) return;
+            // Прицел рисует только корабль игрока. Раньше Broadside врага (и союзников) в своём Update тоже звал
+            // ClearPreview — и, если его Update шёл после нашего, стирал прицельную дугу игрока: дуга мигала или
+            // пропадала совсем («прицел не работает»). Порядок Update в Unity не задан — отсюда «то есть, то нет».
+            if (ownHull == null && (!ownTried || Time.realtimeSinceStartup >= ownRetry)) { ownTried = true; ownRetry = Time.realtimeSinceStartup + 1f; ownHull = GetComponent<PlayerHull>(); }
+            if (ownHull == null) return;
             fx.ClearPreview();
             solved = false;
             if (!showAim || model == null || mounts.Length == 0) return;
-            if (!ownTried) { ownTried = true; ownHull = GetComponent<PlayerHull>(); }
             PlayerHull own = ownHull;
             if (own != null && !own.Alive) return;   // корабль подбит — прицела нет
             TargetShip best = null; float bestD = float.MaxValue;
@@ -344,7 +351,7 @@ namespace SkyTide
             float g = fx.gravity; const float step = 0.06f;
             Solve(best, mid, side, g);
             Vector3 p = model.TransformPoint(mid.Muzzle);
-            Vector3 v = GunDir(mid, g) * muzzleSpeed + velocity;
+            Vector3 v = GunDir(mid, g) * ShotSpeed + velocity;
             Vector3 tv = solved ? targetVel : Vector3.zero;
             fx.AddAim(p + v.normalized * 2.5f, v, 3.2f, 4, 187f / 158f, alpha);   // шеврон у дула
             float travelled = 0f; Vector3 midEnd = p; bool midHull = false;
@@ -357,7 +364,7 @@ namespace SkyTide
                 if (best != null && (p - shift - best.transform.position).sqrMagnitude < 45f * 45f && best.TryHit(prev - shift, p - shift, out hp)) { midEnd = hp + shift; midHull = true; break; }
                 if (p.y < fx.deckTop - 5f) { midEnd = prev; break; }
                 midEnd = p;
-                if (i % 2 == 1) fx.AddAim(Vector3.Lerp(prev, p, 0.5f), p - prev, 2.2f + travelled * 0.012f, ready ? 0 : 1, 0.42f, alpha * 0.9f);
+                if (i % 2 == 1) fx.AddAim(Vector3.Lerp(prev, p, 0.5f), p - prev, 3.2f + travelled * 0.018f, ready ? 0 : 1, 0.5f, Mathf.Min(1f, alpha * 1.05f));   // крупнее и плотнее: с 62 м штрихи 2 м терялись
             }
             Vector3 foreEnd = midEnd, aftEnd = midEnd; bool foreHull = false, aftHull = false;
             if (fore != null && fore != mid) TracePath(fore, best, fx, out foreEnd, out foreHull);
@@ -401,7 +408,7 @@ namespace SkyTide
             Vector3 muzzle = model.TransformPoint(m.Muzzle);
             // Наводка — только в игре: проверки CI сверяют выстрел с осью ствола модели.
             Vector3 dir = Application.isPlaying ? GunDir(m, FxSystem.Instance.gravity) : model.TransformDirection(m.Dir).normalized;
-            FxSystem.Instance.Fire(muzzle, dir, velocity, muzzleSpeed);
+            FxSystem.Instance.Fire(muzzle, dir, velocity, ShotSpeed, false, 7f, 1f, Application.isPlaying && chainShot);
             if(crew!=null)crew.NotifyShot(m,now);
             if (recoilEnabled)
             {

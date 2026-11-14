@@ -173,6 +173,7 @@ namespace SkyTide
             // ближе и уклоняется чаще. Двое на одного — флагман сильнее любого втрое, так бой не превращается в избиение.
             if (Application.isPlaying && Target != null && targetShip != null && targetShip.IsValid)
             {
+                ShipVariant crewFrom2 = CurrentShip;
                 ShipController s = ShipFactory.Build("Scout Ship", spawnPosition + new Vector3(-420f, 0f, 520f), spawnHeading - 120f, materials, targetShip);
                 s.transform.localScale = Vector3.one * 0.72f;
                 Scout = s.gameObject.AddComponent<TargetShip>();
@@ -184,18 +185,43 @@ namespace SkyTide
                 sg.Setup(Scout, s);
                 sg.gunsPerSide = 3; sg.maxRange = 360f; sg.cooldown = 5f; sg.rangeError = 0.12f; sg.sideError = 0.045f;
                 Scout.retreatRange = 340f;
+                // Второй рядовой — заходит с другой стороны; иногда (при возрождении) любой рядовой выходит тяжёлым.
+                ShipController e2 = ShipFactory.Build("Raider Ship", spawnPosition + new Vector3(640f, 0f, -380f), spawnHeading + 60f, materials, targetShip);
+                Raider = e2.gameObject.AddComponent<TargetShip>();
+                Raider.lampSlot = -1;
+                Raider.Setup(e2, Ship.transform, materials.darkWood, targetShip.mesh, targetShip.lights);
+                e2.maxSpeed = 20f; e2.maxYawRate = 24f;
+                EnemyGunner rg = e2.gameObject.AddComponent<EnemyGunner>();
+                rg.Setup(Raider, e2);
+                rg.maxRange = 420f; rg.rangeError = 0.11f; rg.sideError = 0.04f;
+                Raider.retreatRange = 380f; Raider.canBeHeavy = true; Target.canBeHeavy = true;
+                if (crewFrom2 != null && crewFrom2.crew != null && crewFrom2.crew.IsValid) e2.gameObject.AddComponent<EnemyCrew>().Setup(Raider, crewFrom2.crew);
                 ShipVariant crewFrom = CurrentShip;
                 if (crewFrom != null && crewFrom.crew != null && crewFrom.crew.IsValid) s.gameObject.AddComponent<EnemyCrew>().Setup(Scout, crewFrom.crew);
             }
+
+            if (Application.isPlaying && GetComponent<WeatherSystem>() == null) gameObject.AddComponent<WeatherSystem>();
 
             // Союзник — сторожевой корабль крепости (только в игре; в кадрах CI его нет): та же модель, что у врага,
             // в светлом тоне, без пушек игрока и экипажа. Выходит в дозор у края безопасной зоны.
             if (Application.isPlaying && Fortress != null && targetShip != null && targetShip.IsValid)
             {
-                Vector3 guard = Fortress.Center + (spawnPosition - Fortress.Center).normalized * (Fortress.safeRadius - 180f); guard.y = spawnPosition.y;
-                ShipController a = ShipFactory.Build("Guard Ship", guard, spawnHeading + 90f, materials, targetShip);
-                Ally = a.gameObject.AddComponent<AllyShip>();
-                Ally.Setup(a);
+                // Свои: два сторожевых по разные стороны зоны, ведомый у флагмана, торговец идёт к причалу издалека.
+                Vector3 toSpawn = (spawnPosition - Fortress.Center); toSpawn.y = 0f; toSpawn.Normalize();
+                for (int g = 0; g < 2; g++)
+                {
+                    Vector3 guard = Fortress.Center + Quaternion.Euler(0f, g == 0 ? 0f : 180f, 0f) * toSpawn * (Fortress.safeRadius - 180f); guard.y = spawnPosition.y;
+                    ShipController a = ShipFactory.Build("Guard Ship " + g, guard, spawnHeading + 90f + g * 180f, materials, targetShip);
+                    AllyShip al = a.gameObject.AddComponent<AllyShip>();
+                    al.Setup(a, AllyShip.Role.Guard, targetShip.mesh, materials.darkWood);
+                    if (g == 0) Ally = al;
+                }
+                ShipController w = ShipFactory.Build("Wingman", spawnPosition + new Vector3(110f, 0f, -70f), spawnHeading, materials, targetShip);
+                w.gameObject.AddComponent<AllyShip>().Setup(w, AllyShip.Role.Wingman, targetShip.mesh, materials.darkWood);
+                Vector3 far = Fortress.Center - toSpawn * (Fortress.safeRadius + 1400f); far.y = spawnPosition.y;
+                ShipController m = ShipFactory.Build("Merchant", far, spawnHeading + 180f, materials, targetShip);
+                m.transform.localScale = Vector3.one * 0.85f;
+                m.gameObject.AddComponent<AllyShip>().Setup(m, AllyShip.Role.Merchant, targetShip.mesh, materials.darkWood);
             }
 
             // Ход боя: волны, счёт, замедление при потоплении (только в игре; в кадрах CI — значения по умолчанию).
@@ -238,6 +264,7 @@ namespace SkyTide
         public TargetShip Target { get; private set; }
         public AllyShip Ally { get; private set; }
         public TargetShip Scout { get; private set; }
+        public TargetShip Raider { get; private set; }
 
         /// <summary>Объёмные облака вкл/выкл: спрайты на высоте полёта показываются, только когда объёма нет.</summary>
         static void FreeMemory() { Resources.UnloadUnusedAssets(); System.GC.Collect(); }

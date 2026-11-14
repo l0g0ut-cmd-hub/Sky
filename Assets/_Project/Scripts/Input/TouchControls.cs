@@ -239,6 +239,10 @@ namespace SkyTide
                 }
                 // Кнопки «облака» на экране нет (просьба владельца): переключатель — в панели FPS.
                 Broadside bs = Guns();
+                if (Application.isPlaying && bs != null && hl.ammo.Contains(p)) { owners[id] = Owner.Button; lastPos[id] = p; bs.chainShot = !bs.chainShot; HudNotice.Show(bs.chainShot ? "ЗАРЯД · КНИППЕЛИ (БАЛЛОНЫ И ХОД)" : "ЗАРЯД · ЯДРА (КОРПУС)", 0, 2f); return; }
+                PlayerBoarding pbd = Application.isPlaying ? Boarding() : null;
+                if (pbd != null && pbd.Candidate != null && hl.board.Contains(p)) { owners[id] = Owner.Button; lastPos[id] = p; pbd.Begin(); return; }
+                if (Application.isPlaying && cam != null && hl.spy.Contains(p)) { owners[id] = Owner.Button; lastPos[id] = p; cam.ToggleScope(); return; }
                 if (Application.isPlaying && hl.auto.Contains(p)) { owners[id] = Owner.Button; lastPos[id] = p; SetAutoBattle(!AutoBattle); return; }
                 if (bs != null && VolleyModeRect().Contains(p)) { owners[id] = Owner.Button; lastPos[id] = p; bs.ripple = !bs.ripple; return; }
                 if (bs != null && VolleyRect(-1).Contains(p)) { owners[id] = Owner.Button; lastPos[id] = p; if (bs.Readiness(-1) >= 0.9999f) Haptics.Pulse(45); bs.Fire(-1); return; }
@@ -361,7 +365,9 @@ namespace SkyTide
             {
                 ship.turn = Mathf.Clamp(stickValue.x + kx, -1f, 1f);
                 ship.throttle = GearThrottle[gear];
-                if (AutoBattle && Application.isPlaying)
+                PlayerBoarding pbs = Application.isPlaying ? Boarding() : null;
+                if (pbs != null && pbs.Active) { ship.turn = 0f; ship.throttle = 0f; }
+                else if (AutoBattle && Application.isPlaying)
                 {
                     if (autopilot == null || autopilot.gameObject != ship.gameObject)
                     {
@@ -385,6 +391,17 @@ namespace SkyTide
         Rect VolleyRect(int side) { HudLayout l=Layout(ViewWidth,ViewHeight); return side<0?l.port:l.starboard; }
 
         Broadside gunsCache; ShipController gunsFor;
+        PlayerBoarding boardingCache;
+        public PlayerBoarding Boarding()
+        {
+            if (ship == null) return null;
+            if (boardingCache == null || boardingCache.gameObject != ship.gameObject)
+            {
+                boardingCache = ship.GetComponent<PlayerBoarding>();
+                if (boardingCache == null && Application.isPlaying) boardingCache = ship.gameObject.AddComponent<PlayerBoarding>();
+            }
+            return boardingCache;
+        }
         // Автобой: корабль сам ведёт дозор, бой и ремонт (PlayerAutopilot). Касание штурвала или рукояти выключает.
         public bool AutoBattle { get; private set; }
         PlayerAutopilot autopilot;

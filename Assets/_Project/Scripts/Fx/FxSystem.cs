@@ -38,6 +38,7 @@ namespace SkyTide
             public float aspect, surfaceY;
             public bool hostile;   // ядро врага: бьёт по кораблю игрока, а не по мишеням
             public float caliber;  // ядро: во сколько раз крупнее корабельного (0 и 1 — обычное); множитель урона
+            public bool chain;     // книппель: два ядра на цепи — бьёт по баллонам и ходу, корпусу почти не вредит
             public float trail;    // горящий обломок: > 0 — оставляет дымный хвост (счётчик до следующего клуба)
         }
 
@@ -79,7 +80,7 @@ namespace SkyTide
         /// <summary>Выстрел из ствола: точка дула и направление ствола — в мире; скорость корабля добавляется к ядру и дыму.
         /// caliber — калибр относительно корабельной пушки: во столько раз крупнее ядро, вспышка и дым,
         /// и во столько же раз сильнее попадание (орудия крепости — 3).</summary>
-        public void Fire(Vector3 muzzle, Vector3 dir, Vector3 shipVel, float muzzleSpeed, bool hostile = false, float shellLife = 7f, float caliber = 1f)
+        public void Fire(Vector3 muzzle, Vector3 dir, Vector3 shipVel, float muzzleSpeed, bool hostile = false, float shellLife = 7f, float caliber = 1f, bool chain = false)
         {
             dir.Normalize();
             caliber = Mathf.Max(1f, caliber);
@@ -88,8 +89,8 @@ namespace SkyTide
             // Ядро
             Add(new P
             {
-                kind = Kind.Ball, pos = muzzle, vel = dir * muzzleSpeed + shipVel, life = shellLife, hostile = hostile, caliber = caliber,
-                size0 = 0.85f, size1 = 0.7f, color = new Color(0.2f, 0.15f, 0.12f), alpha = 1f, seed = s
+                kind = Kind.Ball, pos = muzzle, vel = dir * muzzleSpeed + shipVel, life = shellLife, hostile = hostile, caliber = caliber, chain = chain,
+                size0 = chain ? 1.6f : 0.85f, size1 = chain ? 1.4f : 0.7f, color = chain ? new Color(0.12f, 0.1f, 0.09f) : new Color(0.2f, 0.15f, 0.12f), alpha = 1f, seed = s
             });
             Flash(muzzle, 2.5f * caliber, 32f * caliber);
             SkySound.CannonFired(muzzle, hostile);
@@ -339,6 +340,7 @@ namespace SkyTide
         void UpdateTimed()
         {
             if (!Application.isPlaying) return;
+            wind = WindField.Drift;   // дым, пыль и щепу сносит общим ветром (он же ускоряет корабли по ветру)
             if (Time.timeSinceLevelLoad < 1.5f) Warm();
             SpeedFx(Time.deltaTime);
             EnemyWake(Time.deltaTime);
@@ -589,6 +591,12 @@ namespace SkyTide
                         {
                             Vector3 hp; PlayerHull ph = PlayerHull.Instance;
                             if (ph != null && ph.TryHit(prev, end, out hp)) { end = hp; hit = true; ph.OnHit(hp, Mathf.Max(1f, p.caliber)); }
+                            // Ядра врага бьют и по своим кораблям (сторожевой, ведомый, торговец).
+                            else for (int j = 0; j < AllyShip.All.Count; j++)
+                            {
+                                AllyShip al = AllyShip.All[j];
+                                if (al != null && (al.transform.position - p.pos).sqrMagnitude < 60f * 60f && al.TryHit(prev, end, out hp)) { end = hp; hit = true; al.OnHit(hp, Mathf.Max(1f, p.caliber)); break; }
+                            }
                         }
                         else for (int j = 0; j < TargetShip.All.Count; j++)
                         {
@@ -600,7 +608,7 @@ namespace SkyTide
                                 target = TargetShip.All[j];
                             }
                         }
-                        if (target != null) { end = hitPoint; hit = true; target.OnHit(hitPoint); }
+                        if (target != null) { end = hitPoint; hit = true; target.OnHit(hitPoint, p.chain); }
                         // Крепость: ядро не пролетает сквозь стены. Своё ядро крепости первую секунду не проверяется (дуло на башне).
                         SkyFortress fort = SkyFortress.Instance;
                         Vector3 fp;
