@@ -17,12 +17,13 @@ namespace SkyTide
 
         [Header("Тон")]
         public float exposure = 1.02f;
-        public float contrast = 1.08f;
+        public float contrast = 1.03f;
+        [Range(0f, 1f)] public float film = 0.35f;   // доля ACES в итоговой кривой (1 — как до пакета 109)
         public float saturation = 1f;
         public Color shadowTone = new Color(0.44f, 0.46f, 0.6f);
         public Color highlightTone = new Color(0.6f, 0.5f, 0.42f);
-        [Range(0f, 1f)] public float toneStrength = 0.22f;
-        [Range(0f, 1f)] public float vignette = 0.38f;
+        [Range(0f, 1f)] public float toneStrength = 0.14f;
+        [Range(0f, 1f)] public float vignette = 0.26f;
         public Color vignetteColor = new Color(0.35f, 0.18f, 0.22f);
 
         [Header("Резкость")]
@@ -145,6 +146,7 @@ namespace SkyTide
             mat.SetColor("_BloomTint", bloomTint);
             mat.SetFloat("_Exposure", exposure);
             mat.SetFloat("_Contrast", contrast);
+            mat.SetFloat("_Film", film);
             mat.SetFloat("_Saturation", saturation);
             mat.SetColor("_ShadowTone", shadowTone);
             mat.SetColor("_HighlightTone", highlightTone);

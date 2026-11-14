@@ -300,8 +300,8 @@ namespace SkyTide
             }
             SkyFortress fort = SkyFortress.Instance;
             int rows = 1 + (best < float.MaxValue ? 1 : 0) + (fort != null ? 1 : 0);
-            Box(new Rect(r.x, y - l.unit * 0.003f, r.width, lh * rows + l.unit * 0.006f), new Color(0.04f, 0.05f, 0.07f, 0.5f));
-            Text(new Rect(r.x, y, r.width, lh), "РАДАР " + Range(input.RadarRange), fs, muted); y += lh;
+            Box(new Rect(r.x, y - l.unit * 0.003f, r.width, lh * rows + l.unit * 0.006f), new Color(0.02f, 0.025f, 0.035f, 0.78f));   // плотнее: на светлых облаках подложка была серой, текст терялся
+            Text(new Rect(r.x, y, r.width, lh), "РАДАР " + Range(input.RadarRange), fs, new Color(Mathf.Lerp(muted.r, 1f, 0.4f), Mathf.Lerp(muted.g, 1f, 0.4f), Mathf.Lerp(muted.b, 1f, 0.4f), 1f)); y += lh;
             if (best < float.MaxValue) { Text(new Rect(r.x, y, r.width, lh), "ВРАГ " + Range(best), fs, new Color(1f, 0.72f, 0.55f, 1f)); y += lh; }
             if (fort != null)
             {
