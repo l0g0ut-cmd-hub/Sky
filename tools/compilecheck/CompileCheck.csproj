@@ -1,0 +1,14 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- Компиляция скриптов игры (без Editor/) против настоящих сборок UnityEngine.*Module (Unity 2022.3, ближайшие
+       доступные к 6000.0). Сборки: tools/compilecheck/run.sh скачивает их в .unity-refs. Без Unity и лицензии. -->
+  <PropertyGroup>
+    <OutputType>Library</OutputType><TargetFramework>net8.0</TargetFramework><LangVersion>9.0</LangVersion>
+    <Nullable>disable</Nullable><EnableDefaultCompileItems>false</EnableDefaultCompileItems><AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <NoWarn>CS8632;CS0414;CS0169;CS0649;CS0219;CS0162;CS1701;CS1702</NoWarn>
+    <UnityRefs Condition="'$(UnityRefs)'==''">$(MSBuildThisFileDirectory).unity-refs/refs/2022.3.62f3/Managed</UnityRefs>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="../../Assets/**/*.cs" Exclude="../../Assets/**/Editor/**" />
+    <Reference Include="$(UnityRefs)/UnityEngine.*Module.dll" />
+  </ItemGroup>
+</Project>
