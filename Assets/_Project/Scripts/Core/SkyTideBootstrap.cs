@@ -233,6 +233,7 @@ namespace SkyTide
             keepNoise = noise != null ? (Texture)noise : SkyNoise.Flow(128);
             Shader.SetGlobalTexture("_SkyTideNoise", keepNoise);
             Shader.SetGlobalVector("_SkyTideSunDir", -sun.transform.forward);
+            Shader.SetGlobalFloat("_SkyTideRim", 1f);   // контровой свет заката на кораблях и крепости (SkyTide.cginc)
             Texture pano = null;
             if (m.skybox != null && m.skybox.HasProperty("_MainTex")) pano = m.skybox.GetTexture("_MainTex");
             if (pano == null)

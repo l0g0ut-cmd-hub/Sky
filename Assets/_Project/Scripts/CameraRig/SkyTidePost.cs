@@ -25,6 +25,12 @@ namespace SkyTide
         [Range(0f, 1f)] public float vignette = 0.38f;
         public Color vignetteColor = new Color(0.35f, 0.18f, 0.22f);
 
+        [Header("Резкость")]
+        [Tooltip("Сила повышения резкости в последнем проходе (4 выборки). 0 — выключено.")]
+        [Range(0f, 1.5f)] public float sharpen = 0.7f;
+        /// <summary>Переключатель в панели FPS и строка автозамера: сколько стоит резкость на телефоне.</summary>
+        public static bool Sharpen = true;
+
         [Header("Блум")]
         public float bloomThreshold = 1.2f;
         public float bloomKnee = 0.45f;
@@ -140,6 +146,7 @@ namespace SkyTide
             mat.SetFloat("_ToneStrength", toneStrength);
             mat.SetFloat("_Vignette", vignette);
             mat.SetColor("_VignetteColor", vignetteColor);
+            mat.SetFloat("_Sharpen", Sharpen ? sharpen : 0f);
             Graphics.Blit(src, dst, mat, 5);
 
             for (int i = 0; i < n; i++)

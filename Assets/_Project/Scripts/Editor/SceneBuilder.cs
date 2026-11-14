@@ -284,8 +284,12 @@ namespace SkyTide.EditorTools
                 Color c = j.color != null && j.color.Length >= 3 ? new Color(j.color[0], j.color[1], j.color[2]).gamma : Color.white;
                 bool cloth = j.name == "Weathered sewn linen" || j.name == "Old linen repair patches" || j.name == "Oxblood pennant";
                 float transmission = j.name == "Old linen repair patches" ? 0.07f : (j.name == "Oxblood pennant" ? 0.12f : 0.2f);
+                // Дерево, латунь и прочее — на своём шейдере корпуса (Standard BRDF + контровой свет заката);
+                // железо пушек остаётся на ShipIron (откат стволов), ткань — на ShipCloth.
+                bool forged = j.name == "Black forged iron";
                 Material m = cloth ? MaterialFactory.Cloth(file + "_" + i, c, Mathf.Clamp01(j.smoothness), transmission)
-                    : MaterialFactory.Opaque(file + "_" + i, c, Mathf.Clamp01(j.smoothness));
+                    : forged ? MaterialFactory.Opaque(file + "_" + i, c, Mathf.Clamp01(j.smoothness))
+                    : MaterialFactory.ShipSurface(file + "_" + i, c, Mathf.Clamp01(j.smoothness));
                 if (j.name == "Black forged iron")
                 {
                     Shader iron = Shader.Find("SkyTide/ShipIron");

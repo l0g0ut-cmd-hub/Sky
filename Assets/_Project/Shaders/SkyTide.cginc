@@ -26,6 +26,20 @@ inline float3 SkyTideFlashLight(float3 p)
     return min(light, float3(6, 6, 6));
 }
 
+// Контровой свет заката: золотая кромка на гранях, которые видны вскользь и повёрнуты хотя бы боком к солнцу.
+// Ярче всего, когда камера смотрит в сторону солнца (корабль против света), и гаснет, когда солнце за спиной.
+float _SkyTideRim;   // 1 — включён (SkyTideBootstrap), 0 — выключен
+inline half3 SkyTideRimLight(float3 n, float3 worldPos)
+{
+    float3 v = normalize(_WorldSpaceCameraPos - worldPos);
+    float3 l = normalize(_SkyTideSunDir.xyz);
+    half fres = 1.0 - saturate(dot(n, v));
+    fres = fres * fres * fres;
+    half toSun = saturate(dot(n, l) * 0.6 + 0.4);
+    half against = saturate(0.35 - dot(v, l) * 0.65);
+    return half3(1.0, 0.62, 0.3) * (fres * toSun * against * 1.6 * _SkyTideRim);
+}
+
 // Цвет панорамы в направлении dir (та же развёртка, что у Skybox/Panoramic: центр картинки = +X).
 inline float3 SkyTidePanorama(float3 dir)
 {

@@ -117,7 +117,15 @@ Shader "SkyTide/Fortress"
             o.Normal = normalize(float3(dot(wn, tanW), dot(wn, bitW), dot(wn, n0)));
             o.Metallic = _Metallic;
             o.Smoothness = _Glossiness;
-            o.Emission = glowTex * _EmissionColor.rgb;
+            // Огни живут: свет в окнах медленно «дышит», фонари подрагивают; фаза плавно меняется по крепости,
+            // так что соседние огни мерцают вразнобой, а внутри одного окна яркость ровная.
+            float ph = dot(IN.worldPos, float3(0.11, 0.07, 0.13));
+            float flicker = 0.86 + 0.09 * sin(_Time.y * 2.1 + ph) + 0.05 * sin(_Time.y * 9.0 + ph * 3.1);
+            half3 glow = glowTex * _EmissionColor.rgb * flicker;
+            // Контровой свет заката на башнях и стенах; вспышки выстрелов освещают камень у орудия.
+            glow += SkyTideRimLight(wn, IN.worldPos) * 0.7;
+            glow += albedo.rgb * SkyTideFlashLight(IN.worldPos) * 0.4;
+            o.Emission = glow;
             o.Alpha = 1;
         }
 

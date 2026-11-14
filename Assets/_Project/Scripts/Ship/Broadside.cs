@@ -53,6 +53,19 @@ namespace SkyTide
 #endif
 
         public bool HasCannons { get { return mounts.Length > 0; } }
+        /// <summary>Пушечная палуба в координатах модели: высота дул и их размах по длине корпуса.</summary>
+        public bool GunDeck(out float y, out float zMin, out float zMax)
+        {
+            y = 0f; zMin = float.MaxValue; zMax = float.MinValue;
+            if (mounts.Length == 0) return false;
+            for (int i = 0; i < mounts.Length; i++)
+            {
+                Vector3 m = mounts[i].Muzzle;
+                y += m.y; zMin = Mathf.Min(zMin, m.z); zMax = Mathf.Max(zMax, m.z);
+            }
+            y /= mounts.Length;
+            return true;
+        }
 
         public static CannonMount[] Parse(TextAsset json)
         {
@@ -150,6 +163,8 @@ namespace SkyTide
         public bool Fire(int side)
         {
             if (model == null || mounts.Length == 0) return false;
+            PlayerHull own = GetComponent<PlayerHull>();
+            if (own != null && !own.Alive) return false;   // подбитый корабль не стреляет
             int k = side < 0 ? 0 : 1;
             float now = Application.isPlaying ? Time.time : 0f;
             if (now < ready[k]) return false;
@@ -198,17 +213,45 @@ namespace SkyTide
         [Tooltip("Прицельная дуга борта, обращённого к цели")]
         public bool showAim = true;
 
+        /// <summary>Борт, у которого сейчас прицельная дуга (-1 левый, +1 правый), и ложится ли его залп в корпус цели —
+        /// по этому кнопка борта на HUD пишет «В ПРИЦЕЛЕ».</summary>
+        public int AimSide { get; private set; }
+        public bool AimOnTarget { get; private set; }
+
+        /// <summary>Путь ядра пушки m до корпуса цели или до моря облаков. hull — попало в корпус.</summary>
+        bool TracePath(CannonMount m, TargetShip best, FxSystem fx, out Vector3 end, out bool hull)
+        {
+            hull = false;
+            Vector3 p = model.TransformPoint(m.Muzzle);
+            Vector3 v = model.TransformDirection(m.Dir).normalized * muzzleSpeed + velocity;
+            float g = fx.gravity; const float step = 0.06f;
+            end = p;
+            for (int i = 0; i < 120; i++)
+            {
+                Vector3 prev = p;
+                v.y -= g * step; p += v * step;
+                Vector3 hp;
+                if (best != null && (p - best.transform.position).sqrMagnitude < 45f * 45f && best.TryHit(prev, p, out hp)) { end = hp; hull = true; return true; }
+                if (p.y < fx.deckTop - 5f) { end = prev; return true; }
+            }
+            end = p;
+            return false;
+        }
+
         /// <summary>
-        /// Прицельная дуга: путь ядра средней пушки борта, обращённого к ближайшей цели (до 1.2 км, курсовой угол
-        /// 35–145°), — пунктир светящихся точек до входа в море облаков или до корпуса цели; там — крупная отметка.
-        /// Янтарная — борт готов, серая — перезарядка.
+        /// Прицел борта, обращённого к ближайшей цели: тонкий пунктир пути ядра средней пушки, а в конце — накрытие
+        /// всего борта. Если ядра ложатся в корпус — перекрестия на корпусе (средняя, носовая и кормовая пушки);
+        /// если в облака — эллипс от места падения носового ядра до кормового. Янтарный — борт готов, серый — перезарядка.
         /// </summary>
         public void AimPreview()
         {
             FxSystem fx = FxSystem.Instance;
+            AimOnTarget = false;
             if (fx == null) return;
             fx.ClearPreview();
             if (!showAim || model == null || mounts.Length == 0) return;
+            PlayerHull own = GetComponent<PlayerHull>();
+            if (own != null && !own.Alive) return;   // корабль подбит — прицела нет
             TargetShip best = null; float bestD = float.MaxValue;
             foreach (TargetShip t in TargetShip.All)
             {
@@ -216,46 +259,59 @@ namespace SkyTide
                 float d = Vector3.Distance(t.transform.position, transform.position);
                 if (d < bestD) { bestD = d; best = t; }
             }
-            // Дуга видна всегда — у борта, обращённого к ближайшей цели (нет цели — правый борт):
-            // игрок видит, куда лягут ядра, и доворачивает. Раньше дуга пряталась, если цель не на траверзе 35–145°.
+            // Дуга видна всегда — у борта, обращённого к ближайшей цели (нет цели — правый борт).
             float side = 1f;
             if (best != null) side = transform.InverseTransformPoint(best.transform.position).x >= 0f ? 1f : -1f;
-            // Средняя по длине пушка этого борта.
-            CannonMount mid = null; float midZ = 0f; int count = 0;
-            foreach (CannonMount m in mounts) if (Mathf.Sign(m.side) == side) { midZ += m.Muzzle.z; count++; }
+            AimSide = side > 0f ? 1 : -1;
+            // Средняя, носовая и кормовая пушки этого борта.
+            CannonMount mid = null, fore = null, aft = null; float midZ = 0f; int count = 0;
+            foreach (CannonMount m in mounts)
+            {
+                if (Mathf.Sign(m.side) != side) continue;
+                midZ += m.Muzzle.z; count++;
+                if (fore == null || m.Muzzle.z > fore.Muzzle.z) fore = m;
+                if (aft == null || m.Muzzle.z < aft.Muzzle.z) aft = m;
+            }
             if (count == 0) return;
             midZ /= count; float bestDz = float.MaxValue;
             foreach (CannonMount m in mounts) if (Mathf.Sign(m.side) == side && Mathf.Abs(m.Muzzle.z - midZ) < bestDz) { bestDz = Mathf.Abs(m.Muzzle.z - midZ); mid = m; }
             bool ready = Readiness((int)side) >= 0.999f;
+            float alpha = ready ? 0.95f : 0.55f;
+            // Пунктир: короткие штрихи вдоль пути средней пушки (раньше — крупные, похожие на летящие ядра).
             Vector3 p = model.TransformPoint(mid.Muzzle);
             Vector3 v = model.TransformDirection(mid.Dir).normalized * muzzleSpeed + velocity;
-            float alpha = ready ? 0.95f : 0.55f;
             fx.AddAim(p + v.normalized * 2.5f, v, 3.2f, 4, 187f / 158f, alpha);   // шеврон у дула
-            float g = fx.gravity, step = 0.06f;
-            Vector3 segStart = p;
+            float g = fx.gravity; const float step = 0.06f;
+            float travelled = 0f; Vector3 midEnd = p; bool midHull = false;
             for (int i = 0; i < 120; i++)
             {
                 Vector3 prev = p;
                 v.y -= g * step; p += v * step;
+                travelled += (p - prev).magnitude;
                 Vector3 hp;
-                if (best != null && (p - best.transform.position).sqrMagnitude < 45f * 45f && best.TryHit(prev, p, out hp))
-                {
-                    fx.AddAim(hp, Vector3.up, 9f, 3, 1f, ready ? 1f : 0.6f);   // прицел на корпусе цели
-                    return;
-                }
-                if (p.y < fx.deckTop - 5f)
-                {
-                    fx.AddAim(prev, Vector3.up, 20f, 2, 1f, alpha);           // кольцо падения на облаках
-                    return;
-                }
-                if (i % 3 == 2)
-                {
-                    // Штрих на отрезке пути (голова — вперёд по полёту), с промежутком.
-                    Vector3 c = Vector3.Lerp(segStart, p, 0.5f);
-                    float len = Vector3.Distance(segStart, p) * 0.8f;
-                    fx.AddAim(c, p - segStart, len, ready ? 0 : 1, 104f / 523f * 1.6f, alpha);
-                    segStart = p;
-                }
+                if (best != null && (p - best.transform.position).sqrMagnitude < 45f * 45f && best.TryHit(prev, p, out hp)) { midEnd = hp; midHull = true; break; }
+                if (p.y < fx.deckTop - 5f) { midEnd = prev; break; }
+                midEnd = p;
+                if (i % 2 == 1) fx.AddAim(Vector3.Lerp(prev, p, 0.5f), p - prev, 2.2f + travelled * 0.012f, ready ? 0 : 1, 0.42f, alpha * 0.9f);
+            }
+            Vector3 foreEnd = midEnd, aftEnd = midEnd; bool foreHull = false, aftHull = false;
+            if (fore != null && fore != mid) TracePath(fore, best, fx, out foreEnd, out foreHull);
+            if (aft != null && aft != mid) TracePath(aft, best, fx, out aftEnd, out aftHull);
+            AimOnTarget = midHull || foreHull || aftHull;
+            float mark = ready ? 1f : 0.6f;
+            if (midHull) fx.AddAim(midEnd, Vector3.up, 9f, 3, 1f, mark);            // прицел на корпусе цели
+            if (foreHull && fore != mid) fx.AddAim(foreEnd, Vector3.up, 5f, 3, 1f, mark * 0.8f);
+            if (aftHull && aft != mid) fx.AddAim(aftEnd, Vector3.up, 5f, 3, 1f, mark * 0.8f);
+            if (!midHull)
+            {
+                // Накрытие борта на облаках: эллипс вдоль линии падения от носового ядра к кормовому.
+                Vector3 a = foreHull ? midEnd : foreEnd, b = aftHull ? midEnd : aftEnd;
+                Vector3 line = b - a; line.y = 0f;
+                float span = line.magnitude;
+                Vector3 centre = (a + b) * 0.5f; centre.y = midEnd.y;
+                float length = Mathf.Max(22f, span + 16f);
+                float rot = span > 1f ? Mathf.Atan2(line.z, line.x) : 0f;
+                fx.AddAim(centre, Vector3.up, length, 2, Mathf.Clamp(16f / length, 0.3f, 1f), alpha, rot);
             }
         }
 

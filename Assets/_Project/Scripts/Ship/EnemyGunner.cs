@@ -5,7 +5,8 @@ namespace SkyTide
     /// <summary>
     /// Мишень отвечает огнём: когда игрок у её борта (курсовой угол 55–125°) в 90–650 м, борт даёт залп из четырёх
     /// пушек. Наводка — баллистика с упреждением по относительной скорости и небольшим разбросом,
-    /// поэтому по манёвренному кораблю попадает не всегда. Дула — по габариту модели (у модели Meshy нет узлов пушек).
+    /// поэтому по манёвренному кораблю попадает не всегда. Дула — на обшивке модели (луч по точной поверхности
+    /// корпуса; у модели Meshy нет узлов пушек), без поверхности — по габариту.
     /// </summary>
     public class EnemyGunner : MonoBehaviour
     {
@@ -86,13 +87,45 @@ namespace SkyTide
         {
             FxSystem fx = FxSystem.Instance;
             if (fx == null) return;
-            float z = Mathf.Lerp(box.min.z + box.size.z * 0.3f, box.max.z - box.size.z * 0.3f, gunsPerSide > 1 ? index / (float)(gunsPerSide - 1) : 0.5f);
-            Vector3 localMuzzle = new Vector3(side * (box.extents.x * 0.92f), box.min.y + box.size.y * 0.38f, z);
+            Vector3 localMuzzle = MuzzleLocal(side, index);
             Vector3 muzzle = model.TransformPoint(localMuzzle);
             Vector3 dir;
             if (!Solve(muzzle, aimAt, out dir)) return;
             dir = Quaternion.Euler(Random.Range(-spreadDeg, spreadDeg), Random.Range(-spreadDeg, spreadDeg), 0f) * dir;
             fx.Fire(muzzle, dir, selfVel, muzzleSpeed, true);
+        }
+
+        Vector3[] muzzles; bool[] muzzleFound;
+        readonly float[] widths = new float[8]; readonly Vector3[] hits = new Vector3[8];
+        /// <summary>Дуло в координатах модели. Луч снаружи к оси корпуса на восьми высотах нижней части модели; из
+        /// попаданий берётся среднее по ширине (самое широкое может быть рулём или парусом, самое узкое — килем).</summary>
+        Vector3 MuzzleLocal(int side, int index)
+        {
+            int n = Mathf.Max(1, gunsPerSide);
+            if (muzzles == null || muzzles.Length != n * 2) { muzzles = new Vector3[n * 2]; muzzleFound = new bool[n * 2]; }
+            index = Mathf.Clamp(index, 0, n - 1);
+            int slot = (side > 0 ? n : 0) + index;
+            if (muzzleFound[slot]) return muzzles[slot];
+            float z = Mathf.Lerp(box.min.z + box.size.z * 0.3f, box.max.z - box.size.z * 0.3f, n > 1 ? index / (float)(n - 1) : 0.5f);
+            Vector3 best = new Vector3(box.center.x + side * (box.extents.x * 0.92f), box.min.y + box.size.y * 0.38f, z);
+            ShipHitSurface surface = target != null ? target.Surface : null;
+            if (surface != null)
+            {
+                int found = 0;
+                for (int k = 0; k < 8; k++)
+                {
+                    float y = box.min.y + box.size.y * (0.12f + 0.035f * k);
+                    ShipHitSurface.Contact c;
+                    if (!surface.Trace(new Vector3(box.center.x + side * (box.extents.x + 4f), y, z), new Vector3(box.center.x, y, z), out c)) continue;
+                    float w = Mathf.Abs(c.point.x - box.center.x);
+                    int at = found;
+                    while (at > 0 && widths[at - 1] > w) { widths[at] = widths[at - 1]; hits[at] = hits[at - 1]; at--; }
+                    widths[at] = w; hits[at] = c.point; found++;
+                }
+                if (found > 0) best = hits[found / 2] + new Vector3(side * 0.35f, 0f, 0f);
+            }
+            muzzles[slot] = best; muzzleFound[slot] = true;
+            return best;
         }
 
         static float Gauss()

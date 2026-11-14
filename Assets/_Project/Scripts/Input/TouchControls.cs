@@ -5,8 +5,9 @@ namespace SkyTide
 {
     /// <summary>
     /// Управление для телефона (и мыши/клавиатуры в редакторе).
-    /// Левая половина экрана — плавающий джойстик: появляется там, где коснулись; вверх — ход вперёд,
-    /// вниз — назад/тормоз, в стороны — поворот. Правая половина — вращение камеры вокруг корабля,
+    /// Левая половина экрана — плавающий джойстик: появляется там, где коснулись; в стороны — поворот,
+    /// вверх/вниз — рукоять хода на ступень (НАЗАД · СТОП · МАЛЫЙ · СРЕДНИЙ · ПОЛНЫЙ): ход держится сам,
+    /// палец можно убрать. Двойное касание правой половины — камера за корму. Правая половина — вращение камеры вокруг корабля,
     /// двумя пальцами — приближение. Мышь: левая кнопка как палец, колесо — приближение.
     /// Клавиатура: WASD/стрелки — корабль.
     /// </summary>
@@ -30,6 +31,13 @@ namespace SkyTide
         Vector2 stickPos;
         Vector2 stickValue;
         float lastPinch = -1f;
+        // Рукоять хода (машинный телеграф): ступень остаётся после отпускания джойстика.
+        static readonly float[] GearThrottle = { -1f, 0f, 0.35f, 0.68f, 1f };
+        public static readonly string[] GearNames = { "НАЗАД", "СТОП", "МАЛЫЙ", "СРЕДНИЙ", "ПОЛНЫЙ" };
+        int gear = 1; bool gearArmed = true; float gearRepeatAt;
+        public int Gear { get { return gear; } }
+        public void SetGear(int g) { gear = Mathf.Clamp(g, 0, GearThrottle.Length - 1); gearArmed = true; }
+        float lastCamTap = -10f; Vector2 lastCamTapPos;
         float hintAlpha = 1f;
         bool touchedOnce;
         bool legacyInputOk = true;
@@ -130,6 +138,10 @@ namespace SkyTide
                 else
                 {
                     owners[id] = Owner.Camera;
+                    // Двойное касание одним пальцем — камера возвращается за корму.
+                    float tapNow = Time.unscaledTime, tapR = Mathf.Min(ViewWidth, ViewHeight) * 0.09f;
+                    if (cam != null && CameraFingers() == 1 && tapNow - lastCamTap < 0.32f && (p - lastCamTapPos).sqrMagnitude < tapR * tapR) { cam.Recenter(); lastCamTap = -10f; }
+                    else { lastCamTap = tapNow; lastCamTapPos = p; }
                 }
                 lastPos[id] = p;
                 return;
@@ -145,6 +157,7 @@ namespace SkyTide
                 float perPixel = orbitDegreesPerScreen / Mathf.Max(1f, ViewWidth);
                 cam.yaw += d.x * perPixel;
                 cam.pitch += d.y * perPixel;
+                if (d.sqrMagnitude > 4f) cam.CancelRecenter();   // игрок сам повёл камеру — возврат за корму отменяется
             }
             lastPos[id] = p;
 
@@ -198,13 +211,25 @@ namespace SkyTide
                 stickValue = Vector2.zero;
             }
 
-            float kx = 0f, ky = 0f;
+            // Рукоять хода: отклонение джойстика вверх/вниз за порог — на ступень; держишь — ещё ступень каждые 0.45 с.
+            float sy = stickValue.y, gearNow = Time.unscaledTime;
+            if (Mathf.Abs(sy) > 0.55f)
+            {
+                if (gearArmed || gearNow >= gearRepeatAt)
+                {
+                    gear = Mathf.Clamp(gear + (sy > 0f ? 1 : -1), 0, GearThrottle.Length - 1);
+                    gearRepeatAt = gearNow + 0.45f; gearArmed = false;
+                }
+            }
+            else if (Mathf.Abs(sy) < 0.3f) gearArmed = true;
+
+            float kx = 0f;
             if(readKeyboard)
             {
                 if (Input.GetKey(KeyCode.A) || Input.GetKey(KeyCode.LeftArrow)) kx -= 1f;
                 if (Input.GetKey(KeyCode.D) || Input.GetKey(KeyCode.RightArrow)) kx += 1f;
-                if (Input.GetKey(KeyCode.W) || Input.GetKey(KeyCode.UpArrow)) ky += 1f;
-                if (Input.GetKey(KeyCode.S) || Input.GetKey(KeyCode.DownArrow)) ky -= 1f;
+                if (Input.GetKeyDown(KeyCode.W) || Input.GetKeyDown(KeyCode.UpArrow)) SetGear(gear + 1);
+                if (Input.GetKeyDown(KeyCode.S) || Input.GetKeyDown(KeyCode.DownArrow)) SetGear(gear - 1);
                 if (Input.GetKeyDown(KeyCode.Tab) && game != null) game.NextShip();
                 Broadside guns = Guns();
                 if (guns != null && Input.GetKeyDown(KeyCode.Q)) guns.Fire(-1);
@@ -215,7 +240,7 @@ namespace SkyTide
             if (ship != null)
             {
                 ship.turn = Mathf.Clamp(stickValue.x + kx, -1f, 1f);
-                ship.throttle = Mathf.Clamp(stickValue.y + ky, -1f, 1f);
+                ship.throttle = GearThrottle[gear];
             }
         }
 
@@ -313,7 +338,7 @@ namespace SkyTide
         }
         public void ResetInteraction()
         {
-            owners.Clear();lastPos.Clear();stickId=int.MinValue;stickValue=Vector2.zero;lastPinch=-1f;
+            owners.Clear();lastPos.Clear();stickId=int.MinValue;stickValue=Vector2.zero;lastPinch=-1f;gear=1;gearArmed=true;
             if(ship!=null){ship.turn=0f;ship.throttle=0f;}
         }
         void OnApplicationFocus(bool focused) {if(!focused)ResetInteraction();}

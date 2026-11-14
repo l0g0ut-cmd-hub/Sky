@@ -4,7 +4,9 @@ using UnityEngine;
 namespace SkyTide
 {
     /// <summary>
-    /// Корабль-мишень: ходит по случайным точкам вокруг игрока (ShipController получает руль и ход как от джойстика).
+    /// Корабль-враг. В бою держит игрока на траверзе в своей дальности (сближается наискось, слишком близко —
+    /// отворачивает, подбитый ниже 30% — отходит на дальнюю дистанцию и отстреливается). Пока игрок в безопасной
+    /// зоне крепости или подбит — ходит по случайным точкам вокруг него (ShipController получает руль и ход как от джойстика).
     /// Попадание ядра — взрыв на корпусе; после hitsToSink попаданий — большой взрыв, мишень исчезает и
     /// через respawnDelay появляется в другом месте.
     /// Попадание считается по отрезку пути ядра за кадр против габарита меша модели (в его локальных координатах).
@@ -17,6 +19,11 @@ namespace SkyTide
         public float minRange = 140f, maxRange = 320f;
         /// <summary>Дальше этого мишень бросает свою точку и идёт обратно к игроку — не убегает.</summary>
         public float leash = 450f;
+        [Tooltip("Дальность боя бортом и дальность отхода подбитого (ниже 30% прочности), м")]
+        public float fightRange = 330f, retreatRange = 520f;
+        [Tooltip("На каком расстоянии от игрока появляется новый враг — за дальними облаками, а не в кадре")]
+        public float spawnRange = 1200f;
+        float fightSide, nextScrape;
         // «Затупы»: время от времени капитан мишени теряется — сбрасывает ход, дрейфует, крутит руль не туда.
         float dazeUntil = -1f, nextDaze, dazeTurn;
         public bool Dazed { get { return Time.time < dazeUntil; } }
@@ -91,6 +98,7 @@ namespace SkyTide
                 if (Time.time >= deadUntil) Respawn();
                 return;
             }
+            CollideWithPlayer();
             if (nextDaze <= 0f) nextDaze = Time.time + Random.Range(10f, 20f);
             if (Time.time >= nextDaze && !Dazed)
             {
@@ -101,6 +109,9 @@ namespace SkyTide
             if (Dazed) { ctrl.turn = dazeTurn; ctrl.throttle = 0.08f; return; }
             Vector3 toPlayer = player != null ? player.position - transform.position : Vector3.zero;
             toPlayer.y = 0f;
+            PlayerHull playerHull = PlayerHull.Instance;
+            if (player != null && playerHull != null && playerHull.Alive && !SkyFortress.InSafeZone(player.position)) { Engage(toPlayer); return; }
+            fightSide = 0f;
             if (player != null && toPlayer.magnitude > leash && !SkyFortress.InSafeZone(player.position)) { waypoint = player.position; nextPick = Time.time + 8f; }
             Vector3 to = waypoint - transform.position;
             to.y = 0f;
@@ -108,6 +119,77 @@ namespace SkyTide
             float ang = Vector3.SignedAngle(transform.forward, to, Vector3.up);
             ctrl.turn = Mathf.Clamp(ang / 35f, -1f, 1f);
             ctrl.throttle = Mathf.Abs(ang) > 100f ? 0.25f : 0.55f;
+        }
+
+        /// <summary>Бой бортом: курс такой, чтобы игрок был на нужном курсовом угле с выбранного борта.</summary>
+        void Engage(Vector3 toPlayer)
+        {
+            float dist = toPlayer.magnitude;
+            if (dist < 1f) { ctrl.turn = 0f; ctrl.throttle = 0.5f; return; }
+            Vector3 dir = toPlayer / dist;
+            // Борт, которым идём к игроку, меняется, только когда игрок уверенно ушёл на другую сторону.
+            float localX = Vector3.Dot(transform.right, dir);
+            if (fightSide == 0f) fightSide = localX >= 0f ? 1f : -1f;
+            else if (Mathf.Sign(localX) != fightSide && Mathf.Abs(localX) > 0.45f) fightSide = -fightSide;
+            bool hurt = Health01 < 0.3f;
+            float want = hurt ? retreatRange : fightRange;
+            // Курсовой угол на игрока: 90° — на траверзе; дальше своей дальности — острее (сближение), ближе — тупее (отход).
+            float bearing = 90f + Mathf.Clamp((want - dist) / 90f, -1f, 1f) * 40f;
+            bool far = dist > want + 250f;
+            if (far) bearing = 20f;
+            Vector3 heading = Quaternion.Euler(0f, -fightSide * bearing, 0f) * dir;
+            // В безопасную зону крепости враг не заходит: у её края курс не ведёт внутрь.
+            SkyFortress f = SkyFortress.Instance;
+            if (f != null)
+            {
+                Vector3 off = transform.position - f.Center; off.y = 0f;
+                float edge = f.safeRadius + 160f;
+                if (off.sqrMagnitude < edge * edge && off.sqrMagnitude > 1f)
+                {
+                    Vector3 outward = off.normalized; float inward = Vector3.Dot(heading, outward);
+                    if (inward < 0.2f) heading = (heading - outward * inward + outward * 0.35f).normalized;
+                }
+            }
+            float ang = Vector3.SignedAngle(transform.forward, heading, Vector3.up);
+            ctrl.turn = Mathf.Clamp(ang / 35f, -1f, 1f);
+            ctrl.throttle = Mathf.Abs(ang) > 100f ? 0.3f : far ? 0.85f : hurt ? 0.7f : 0.6f;
+        }
+
+        /// <summary>Корабли не проходят друг сквозь друга: борта сталкиваются — расталкивает, оба теряют ход,
+        /// летит щепа. Урона нет. Корпуса — по пять точек вдоль оси, сближение меньше 13 м — упор.</summary>
+        void CollideWithPlayer()
+        {
+            PlayerHull hull = PlayerHull.Instance;
+            ShipController other = player != null ? player.GetComponent<ShipController>() : null;
+            if (other == null || hull == null || !hull.Alive) return;
+            Vector3 a0 = transform.position, b0 = player.position;
+            if ((a0 - b0).sqrMagnitude > 60f * 60f) return;
+            Vector3 af = transform.forward, bf = player.forward;
+            float best = float.MaxValue; Vector3 pa = a0, pb = b0;
+            for (int i = -2; i <= 2; i++)
+                for (int j = -2; j <= 2; j++)
+                {
+                    Vector3 x = a0 + af * (i * 8f), y = b0 + bf * (j * 8f);
+                    float d = (x.x - y.x) * (x.x - y.x) + (x.z - y.z) * (x.z - y.z);
+                    if (d < best) { best = d; pa = x; pb = y; }
+                }
+            const float gap = 13f;
+            if (best >= gap * gap) return;
+            Vector3 n = pa - pb; n.y = 0f;
+            if (n.sqrMagnitude < 1e-3f) n = transform.right;
+            n.Normalize();
+            float push = (gap - Mathf.Sqrt(best)) * 0.5f;
+            bool hard = Time.time >= nextScrape;
+            ctrl.Block(n * push, hard ? 0.75f : 1f);
+            other.Block(-n * push, hard ? 0.75f : 1f);
+            if (!hard) return;
+            nextScrape = Time.time + 0.7f;
+            Vector3 at = (pa + pb) * 0.5f; at.y = a0.y + 2f;
+            FxSystem fx = FxSystem.Instance;
+            if (fx != null) fx.Scrape(at, n);
+            SkySound.HullHit(at, false);
+            OrbitCamera oc = Camera.main != null ? Camera.main.GetComponent<OrbitCamera>() : null;
+            if (oc != null) oc.HitImpulse(1f);
         }
 
         /// <summary>Пересекает ли путь ядра a→b корпус; point — точка попадания.</summary>
@@ -168,7 +250,8 @@ namespace SkyTide
             if (damageVisual != null) damageVisual.ResetDamage();
             Vector3 c = player != null ? player.position : Vector3.zero;
             float a = Random.Range(0f, Mathf.PI * 2f);
-            Vector3 at = new Vector3(c.x + Mathf.Cos(a) * maxRange, transform.position.y, c.z + Mathf.Sin(a) * maxRange);
+            // Новый враг приходит издалека (spawnRange), а не возникает в кадре в 320 м.
+            Vector3 at = new Vector3(c.x + Mathf.Cos(a) * spawnRange, transform.position.y, c.z + Mathf.Sin(a) * spawnRange);
             // Новый враг не появляется в безопасной зоне крепости (и тем более внутри неё) — выносим за край.
             SkyFortress f = SkyFortress.Instance;
             if (f != null)
@@ -178,7 +261,9 @@ namespace SkyTide
                 if (off.sqrMagnitude < r * r) { if (off.sqrMagnitude < 1f) off = Vector3.forward; at = f.Center + off.normalized * r; at.y = transform.position.y; }
             }
             transform.position = at;
-            transform.rotation = Quaternion.Euler(0f, Random.Range(0f, 360f), 0f);
+            Vector3 back = c - at; back.y = 0f;
+            transform.rotation = back.sqrMagnitude > 1f ? Quaternion.LookRotation(back.normalized, Vector3.up) : Quaternion.Euler(0f, Random.Range(0f, 360f), 0f);
+            fightSide = 0f;
             ctrl.visual.gameObject.SetActive(true);
             Pick();
         }

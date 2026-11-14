@@ -33,6 +33,7 @@ Shader "Hidden/SkyTide/Post"
     float _ToneStrength;
     float _Vignette;
     float4 _VignetteColor;
+    float _Sharpen;         // сила повышения резкости; 0 — выключено
 
     struct v2f
     {
@@ -128,6 +129,17 @@ Shader "Hidden/SkyTide/Post"
     half4 fragFinal (v2f i) : SV_Target
     {
         half3 c = tex2D(_MainTex, i.uv).rgb;
+        if (_Sharpen > 0.001)
+        {
+            // Резкость: разность с четырьмя соседями, ограниченная долей яркости, — мелкие детали (такелаж, кладка,
+            // доски) чётче, плавные облака не меняются, у ярких огней нет ореолов.
+            float2 px = _MainTex_TexelSize.xy;
+            half3 blur = (tex2D(_MainTex, i.uv + float2(px.x, 0)).rgb + tex2D(_MainTex, i.uv - float2(px.x, 0)).rgb
+                        + tex2D(_MainTex, i.uv + float2(0, px.y)).rgb + tex2D(_MainTex, i.uv - float2(0, px.y)).rgb) * 0.25;
+            half lim = 0.35 * (Luminance(blur) + 0.02);
+            half3 detail = clamp(c - blur, -lim.xxx, lim.xxx);
+            c = max(half3(0, 0, 0), c + detail * _Sharpen);
+        }
         c += tex2D(_BloomTex, i.uv).rgb * _BloomIntensity * _BloomTint.rgb;
         c += tex2D(_ShaftTex, i.uv).rgb * _ShaftColor.rgb * (_ShaftParams.w * _SunScreen.z);
 

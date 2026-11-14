@@ -19,8 +19,10 @@ Shader "SkyTide/ShipCloth"
         CGPROGRAM
         #pragma target 3.0
         #pragma surface surf SkyCloth fullforwardshadows addshadow vertex:AnimateCloth exclude_path:deferred
+        #include "UnityCG.cginc"
         #include "UnityPBSLighting.cginc"
         #include "UnityStandardUtils.cginc"
+        #include "SkyTide.cginc"
 
         sampler2D _MainTex, _BumpMap;
         half4 _Color;
@@ -58,6 +60,8 @@ Shader "SkyTide/ShipCloth"
         {
             float2 uv_MainTex;
             float2 uv_BumpMap;
+            float3 worldPos;
+            float3 worldNormal; INTERNAL_DATA
             float facing : VFACE;
         };
 
@@ -82,6 +86,8 @@ Shader "SkyTide/ShipCloth"
                 * (IN.facing >= 0 ? 1.0 : -1.0);
             o.Metallic = _Metallic;
             o.Smoothness = _Glossiness;
+            // Контровой свет заката на баллоне, парусах и вымпеле (нормаль уже развёрнута к зрителю).
+            o.Emission = SkyTideRimLight(WorldNormalVector(IN, o.Normal), IN.worldPos) * 0.85;
             o.Occlusion = 1;
             o.Alpha = 1;
         }

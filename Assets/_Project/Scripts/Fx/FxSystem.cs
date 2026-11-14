@@ -21,6 +21,9 @@ namespace SkyTide
         const int MaxParticles = 3000;
         const int MaxFlashes = 4;
         const int MaxLights = 2;   // только vertex light, без теней и дополнительных forward-проходов
+        /// <summary>Новые эффекты пакета 100: ударное кольцо и клубы взрыва, горящие обломки, столбы дыма и отсвет
+        /// пожаров, клочья тумана на ходу и след за кормой. Переключатель в панели FPS и строка автозамера.</summary>
+        public static bool Extras = true;
 
         // Значения совпадают с Fx.shader.
         enum Kind { Glow = 0, Smoke = 1, Ball = 2, Muzzle = 3, Spark = 4, Foam = 5, Wave = 6, Splinter = 7, Flame = 8, Aim = 9, Flip = 10 }
@@ -35,6 +38,7 @@ namespace SkyTide
             public float aspect, surfaceY;
             public bool hostile;   // ядро врага: бьёт по кораблю игрока, а не по мишеням
             public float caliber;  // ядро: во сколько раз крупнее корабельного (0 и 1 — обычное); множитель урона
+            public float trail;    // горящий обломок: > 0 — оставляет дымный хвост (счётчик до следующего клуба)
         }
 
         readonly List<P> ps = new List<P>(MaxParticles);
@@ -175,6 +179,33 @@ namespace SkyTide
                             size0 = 2f * scale, size1 = Random.Range(8f, 12f) * scale, rot = Random.Range(0f, 6.28f), spin = Random.Range(-0.3f, 0.3f),
                             drag = 1.4f, rise = 1.6f, color = new Color(0.23f, 0.19f, 0.18f), alpha = 0.78f, seed = Random.value * 10f });
             }
+            if (!Extras || scale < 0.95f) return;
+            // Ударное кольцо по воздуху: быстро расходится от взрыва и тает.
+            Add(new P { kind = Kind.Wave, pos = at, surfaceY = at.y - 6f, life = 0.55f * Mathf.Sqrt(scale), size0 = 5f * scale, size1 = 34f * scale,
+                        color = new Color(1f, 0.88f, 0.7f), alpha = 0.34f, seed = Random.value * 10f });
+            // Чёрно-рыжий клуб: рваные тёмные клубы растут после огненного шара и уходят по ветру.
+            for (int k = 0; k < 3 * scale; k++)
+            {
+                Vector3 r = Random.insideUnitSphere;
+                Add(new P { kind = Kind.Flip, pos = at + r * 2f * scale + Vector3.up * scale, vel = r * 3f * scale + Vector3.up * Random.Range(2f, 4f),
+                            age = -0.12f - 0.1f * k, life = Random.Range(3.2f, 4.6f) * Mathf.Sqrt(scale), size0 = 5f * scale, size1 = Random.Range(11f, 15f) * scale,
+                            rot = Random.Range(0f, 6.28f), spin = Random.Range(-0.2f, 0.2f), drag = 1.1f, rise = 1.4f,
+                            color = k % 2 == 0 ? new Color(0.2f, 0.15f, 0.13f) : new Color(0.42f, 0.24f, 0.13f), alpha = 0.8f, seed = 6f + Random.value * 0.999f });
+            }
+            // Гибель корабля: горящие обломки летят по дуге и тянут дымные хвосты.
+            if (scale >= 2f)
+            {
+                Add(new P { kind = Kind.Flip, pos = at + Random.insideUnitSphere * 3f, vel = Vector3.up * 2f, age = -0.16f, life = 1.1f * Mathf.Sqrt(scale),
+                            size0 = 7f * scale, size1 = 10f * scale, rot = Random.Range(-0.6f, 0.6f), color = Color.white, alpha = 1f, seed = Random.value * 0.999f });
+                for (int k = 0; k < 7; k++)
+                {
+                    Vector3 r = Random.onUnitSphere;
+                    r.y = Mathf.Abs(r.y) * 0.7f + 0.35f;
+                    Add(new P { kind = Kind.Splinter, pos = at + r * 2f, vel = r.normalized * Random.Range(20f, 34f), axis = Random.onUnitSphere,
+                                aspect = Random.Range(0.2f, 0.35f), life = Random.Range(3.2f, 4.6f), size0 = Random.Range(1.2f, 2f),
+                                color = new Color(0.2f, 0.09f, 0.04f), alpha = 1f, spin = Random.Range(-6f, 6f), seed = Random.value * 10f, trail = 0.01f });
+                }
+            }
         }
 
         void Add(P p)
@@ -195,6 +226,28 @@ namespace SkyTide
                     aspect=Random.Range(.07f,.16f),life=Random.Range(1.2f,2.4f),size0=Random.Range(.45f,1.2f),
                     color=new Color(.34f,.16f,.055f),alpha=1,spin=Random.Range(-7f,7f),seed=Random.value*10});
             }
+        }
+
+        /// <summary>Борта кораблей столкнулись: щепа, искры и пыль, без взрыва.</summary>
+        public void Scrape(Vector3 at, Vector3 normal)
+        {
+            for (int i = 0; i < 10; i++)
+            {
+                Vector3 direction = (Random.insideUnitSphere + Vector3.up * 0.5f).normalized;
+                Add(new P { kind = Kind.Splinter, pos = at + Random.insideUnitSphere * 1.5f, vel = direction * Random.Range(5f, 13f), axis = Random.onUnitSphere,
+                    aspect = Random.Range(0.07f, 0.16f), life = Random.Range(1.2f, 2.2f), size0 = Random.Range(0.45f, 1.1f),
+                    color = new Color(0.34f, 0.16f, 0.055f), alpha = 1f, spin = Random.Range(-7f, 7f), seed = Random.value * 10f });
+            }
+            for (int k = 0; k < 6; k++)
+            {
+                Vector3 velocity = (Random.onUnitSphere + Vector3.up * 0.6f) * Random.Range(8f, 18f);
+                Add(new P { kind = Kind.Spark, pos = at, vel = velocity, axis = velocity.normalized, aspect = 0.14f, life = Random.Range(0.3f, 0.7f),
+                    size0 = 0.8f, size1 = 0.15f, color = new Color(1f, 0.6f, 0.2f), alpha = 0.7f });
+            }
+            for (int k = 0; k < 3; k++)
+                Add(new P { kind = Kind.Smoke, pos = at + Random.insideUnitSphere, vel = normal * Random.Range(-2f, 2f) + Vector3.up * 1.5f,
+                    life = Random.Range(1.6f, 2.4f), size0 = 1.2f, size1 = Random.Range(4f, 6f), rot = Random.Range(0f, 6.28f), spin = Random.Range(-0.4f, 0.4f),
+                    drag = 1.4f, rise = 0.8f, color = new Color(0.5f, 0.46f, 0.43f), alpha = 0.4f, seed = Random.value * 10f });
         }
 
         /// <summary>Клуб печного дыма (трубы крепости): медленно поднимается, растёт и тает; scale — масштаб постройки.</summary>
@@ -242,6 +295,21 @@ namespace SkyTide
             Vector3 velocity=inheritedVelocity+Vector3.up*Random.Range(2f,4f)+wind*.18f+outward*.6f;
             Add(new P{kind=Kind.Spark,pos=at+Vector3.up*.4f,vel=velocity,axis=Vector3.up,aspect=.2f,
                 life=Random.Range(.65f,1.2f),size0=.22f,size1=.05f,color=new Color(1,.5f,.08f),alpha=.65f});
+            if(!Extras)return;
+            // Столб тёмного дыма над очагом: клубы крупнее и живут дольше обычного дыма пробоины — горящий корабль
+            // видно издалека. Искры летят выше. Тёплый отсвет огня ложится на обшивку вокруг.
+            Add(new P{kind=Kind.Smoke,pos=at+Vector3.up*(height*.9f)+Random.insideUnitSphere*.4f,
+                vel=inheritedVelocity*.35f+Vector3.up*Random.Range(3f,4.5f)+outward*.5f,life=Random.Range(3.6f,5f),
+                size0=Random.Range(1.3f,1.8f),size1=Mathf.Lerp(6f,9f,severity),rot=Random.Range(0f,6.28f),spin=Random.Range(-.3f,.3f),
+                drag=.45f,rise=1.3f,color=new Color(.13f,.11f,.1f),alpha=Mathf.Lerp(.4f,.6f,severity),seed=Random.value*10f});
+            for(int k=0;k<2;k++)
+            {
+                Vector3 up=inheritedVelocity+Vector3.up*Random.Range(5f,9f)+wind*.3f+Random.insideUnitSphere*1.5f;
+                Add(new P{kind=Kind.Spark,pos=at+Vector3.up*(height*.5f),vel=up,axis=Vector3.up,aspect=.2f,
+                    life=Random.Range(.9f,1.6f),size0=.3f,size1=.06f,color=new Color(1,.55f,.12f),alpha=.75f});
+            }
+            Add(new P{kind=Kind.Glow,pos=at+outward*.8f+Vector3.up*(height*.3f),vel=inheritedVelocity,life=.3f,
+                size0=height*2.2f,size1=height*2.6f,color=new Color(1,.42f,.1f),alpha=.045f});
         }
 
         /// <summary>Дым из закреплённой на повреждённом корпусе точки; не из летящего ядра.</summary>
@@ -259,7 +327,45 @@ namespace SkyTide
         void Update(){long __pt=PerfTimers.Start();UpdateTimed();PerfTimers.Stop("Эффекты: расчёт",__pt);}
         void UpdateTimed()
         {
-            if (Application.isPlaying) Simulate(Time.deltaTime);
+            if (!Application.isPlaying) return;
+            SpeedFx(Time.deltaTime);
+            Simulate(Time.deltaTime);
+        }
+
+        float wakeClock, wispClock;
+        /// <summary>Ощущение скорости: за кормой корабля игрока остаётся тающий след у киля, а по сторонам от курса
+        /// впереди рождаются клочья тумана — они стоят на месте, и корабль проносится мимо. На малом ходу их нет.</summary>
+        void SpeedFx(float dt)
+        {
+            SkyTideBootstrap game = SkyTideBootstrap.Instance;
+            if (!Extras || dt <= 0f || game == null || game.Ship == null) return;
+            ShipController ship = game.Ship;
+            PlayerHull hull = PlayerHull.Instance;
+            if (hull != null && !hull.Alive) return;
+            float speed01 = ship.maxSpeed > 0f ? Mathf.Clamp01(ship.Speed / ship.maxSpeed) : 0f;
+            if (speed01 < 0.3f) return;
+            Transform t = ship.transform;
+            Vector3 fwd = t.forward, right = t.right;
+            wakeClock += dt * speed01;
+            while (wakeClock > 0.09f)
+            {
+                wakeClock -= 0.09f;
+                Add(new P { kind = Kind.Smoke, pos = t.position - fwd * 19f + right * Random.Range(-2.5f, 2.5f) + Vector3.up * Random.Range(-3f, 0.5f),
+                            vel = fwd * (ship.Speed * 0.12f) + Random.insideUnitSphere * 0.8f, life = Random.Range(1f, 1.5f),
+                            size0 = 1.4f, size1 = Random.Range(3f, 4.2f), rot = Random.Range(0f, 6.28f), spin = Random.Range(-0.5f, 0.5f),
+                            drag = 0.8f, rise = 0.1f, color = new Color(0.88f, 0.84f, 0.86f), alpha = 0.22f * speed01, seed = Random.value * 10f });
+            }
+            float fast = (speed01 - 0.3f) / 0.7f;
+            wispClock += dt * fast;
+            while (wispClock > 0.1f)
+            {
+                wispClock -= 0.1f;
+                float sideways = Random.Range(16f, 70f) * (Random.value < 0.5f ? -1f : 1f);
+                Add(new P { kind = Kind.Smoke, pos = t.position + fwd * Random.Range(70f, 150f) + right * sideways + Vector3.up * Random.Range(-8f, 30f),
+                            vel = Random.insideUnitSphere * 0.5f, life = Random.Range(2.6f, 3.6f), size0 = Random.Range(4f, 6f), size1 = Random.Range(8f, 11f),
+                            rot = Random.Range(0f, 6.28f), spin = Random.Range(-0.15f, 0.15f), drag = 0.2f, rise = 0f,
+                            color = new Color(0.9f, 0.86f, 0.88f), alpha = 0.13f * (0.5f + 0.5f * fast), seed = Random.value * 10f });
+            }
         }
 
         struct Splash { public Vector3 pos; public float scale; }
@@ -375,6 +481,20 @@ namespace SkyTide
                     p.pos += p.vel * dt;
                     if (p.kind == Kind.Spark) p.axis = p.vel.normalized;
                     if (p.kind == Kind.Splinter) p.rot += p.spin * dt;
+                    if (p.kind == Kind.Splinter && p.trail > 0f)
+                    {
+                        p.trail -= dt;
+                        if (p.trail <= 0f)
+                        {
+                            p.trail = 0.07f;
+                            float left = 1f - p.age / Mathf.Max(p.life, 1e-3f);
+                            Add(new P { kind = Kind.Smoke, pos = p.pos, vel = p.vel * 0.12f, life = Random.Range(1.3f, 2f), size0 = 0.9f, size1 = Random.Range(3f, 4.5f),
+                                        rot = Random.Range(0f, 6.28f), spin = Random.Range(-0.4f, 0.4f), drag = 1.2f, rise = 0.6f,
+                                        color = new Color(0.2f, 0.17f, 0.16f), alpha = 0.5f * left, seed = Random.value * 10f });
+                            Add(new P { kind = Kind.Glow, pos = p.pos, vel = p.vel * 0.5f, life = 0.22f, size0 = 2.2f, size1 = 0.8f,
+                                        color = new Color(1f, 0.42f, 0.1f), alpha = 0.3f * left });
+                        }
+                    }
                     Vector3 cloudPoint;
                     bool entered = TryCloudEntry(prev, p.pos, out cloudPoint);
                     Vector3 end = entered ? cloudPoint : p.pos;
@@ -542,10 +662,11 @@ namespace SkyTide
 
         /// <summary>Элемент прицельного набора (UI/aim_kit): 0/1 — штрих янтарь/серебро вдоль axis, 2 — кольцо на облаках,
         /// 3 — прицел на корпусе, 4 — шеврон у дула. aspect — ширина/длина для штрихов.</summary>
-        public void AddAim(Vector3 pos, Vector3 axis, float size, int element, float aspect, float alpha)
+        public void AddAim(Vector3 pos, Vector3 axis, float size, int element, float aspect, float alpha, float rot = 0f)
         {
+            // Кольцо (элемент 2) можно вытянуть в эллипс: aspect — ширина/длина, rot — поворот длинной оси в плоскости облаков.
             preview.Add(new P { kind = Kind.Aim, pos = pos, axis = axis.normalized, aspect = aspect, life = 1f, size0 = size, size1 = size,
-                                color = Color.white, alpha = alpha, seed = element });
+                                rot = rot, color = Color.white, alpha = alpha, seed = element });
         }
 
         void BuildMesh(Camera cam)

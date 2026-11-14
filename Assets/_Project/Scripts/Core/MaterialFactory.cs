@@ -20,6 +20,19 @@ namespace SkyTide
             return m;
         }
 
+        /// <summary>Корпус корабля: Standard BRDF с теми же картами + контровой свет заката и свет вспышек (SkyTide/ShipHull).</summary>
+        public static Material ShipSurface(string name, Color color, float smoothness)
+        {
+            Shader shader = Shader.Find("SkyTide/ShipHull");
+            if (shader == null) throw new System.InvalidOperationException("ShipHull shader is missing");
+            Material m = new Material(shader);
+            m.name = name;
+            m.color = color;
+            m.SetFloat("_Glossiness", smoothness);
+            m.SetFloat("_Metallic", 0f);
+            return m;
+        }
+
         public static Material Cloth(string name, Color color, float smoothness, float transmission)
         {
             Shader shader = Shader.Find("SkyTide/ShipCloth");
@@ -75,7 +88,7 @@ namespace SkyTide
 
         public static Material ShipBody(Texture albedo, Texture normal, Texture emission)
         {
-            Material m = Opaque("ShipBody", Color.white, 0.18f);
+            Material m = ShipSurface("ShipBody", Color.white, 0.18f);
             m.mainTexture = albedo;
             if (normal != null)
             {

@@ -172,7 +172,7 @@ namespace SkyTide
                 GUI.Label(new Rect(pr.x + u * 0.02f, pr.y, pr.width, pr.height), string.Format("Автозамер {0}/{1}: {2}", benchIndex, benchTotal, benchStep), label);
                 return;
             }
-            Rect r = new Rect(Screen.width * 0.27f, u * 0.05f, Screen.width * 0.46f, u * 0.86f);
+            Rect r = new Rect(Screen.width * 0.27f, u * 0.03f, Screen.width * 0.46f, u * 0.94f);   // выше: добавились «Резкость» и «Новые эффекты»
             Area = r;
             if (benchShow) { BenchTable(r, u); return; }
             GUI.color = new Color(0f, 0f, 0f, 0.8f); GUI.DrawTexture(r, Texture2D.whiteTexture); GUI.color = Color.white;
@@ -205,6 +205,8 @@ namespace SkyTide
             bool shadows = QualitySettings.shadows != ShadowQuality.Disable;
             if (Cell(x, ref y, cw, h, ref col, "Тени", shadows)) QualitySettings.shadows = shadows ? ShadowQuality.Disable : ShadowQuality.All;
             if (Cell(x, ref y, cw, h, ref col, "Лёгкие тени/LOD", ShipLod.Enabled)) ShipLod.Enabled = !ShipLod.Enabled;
+            if (Cell(x, ref y, cw, h, ref col, "Резкость", SkyTidePost.Sharpen)) SkyTidePost.Sharpen = !SkyTidePost.Sharpen;
+            if (Cell(x, ref y, cw, h, ref col, "Новые эффекты", FxSystem.Extras)) FxSystem.Extras = !FxSystem.Extras;
             if (nativeW == 0) { nativeW = Screen.width; nativeH = Screen.height; }
             // Кнопка по кругу: 100% → 85% → 70% → авто (держит ~30 FPS) → 100%.
             if (GUI.Button(new Rect(x + col * (cw + u * 0.02f), y, cw, h * 0.9f), (autoScale ? "Сцена авто · " : "Сцена ") + Mathf.RoundToInt(sceneScale * 100f) + "%", button))
@@ -235,6 +237,7 @@ namespace SkyTide
             bool cOn = crew != null && crew.Visible, pOn = post != null && post.enabled, fOn = game.Fx != null && !game.Fx.debugHidden;
             ShadowQuality sq = QualitySettings.shadows; bool lodOn = ShipLod.Enabled; int si = scaleIndex;
             bool autoWas = autoScale; float scaleWas = sceneScale;
+            bool sharpWas = SkyTidePost.Sharpen, extrasWas = FxSystem.Extras;
             autoScale = false;   // на время замера разрешение не плавает
             System.Action<bool> all = on =>
             {
@@ -244,6 +247,7 @@ namespace SkyTide
                 if (game.Fx != null) game.Fx.debugHidden = !on;
                 QualitySettings.shadows = on ? ShadowQuality.All : ShadowQuality.Disable;
                 ShipLod.Enabled = true;
+                SkyTidePost.Sharpen = on; FxSystem.Extras = on;
                 SetScale(DefaultScaleIndex);   // база — как в игре по умолчанию: сцена 100%, облака ¼ лучей за кадр
             };
             var steps = new List<KeyValuePair<string, System.Action>>();
@@ -259,6 +263,8 @@ namespace SkyTide
             if (crew != null) steps.Add(new KeyValuePair<string, System.Action>("без экипажа", () => { all(true); crew.SetVisible(false); }));
             if (post != null) steps.Add(new KeyValuePair<string, System.Action>("без пост-обработки", () => { all(true); post.enabled = false; }));
             if (game.Fx != null) steps.Add(new KeyValuePair<string, System.Action>("без дыма и вспышек", () => { all(true); game.Fx.debugHidden = true; }));
+            if (post != null) steps.Add(new KeyValuePair<string, System.Action>("без резкости", () => { all(true); SkyTidePost.Sharpen = false; }));
+            steps.Add(new KeyValuePair<string, System.Action>("без новых эффектов", () => { all(true); FxSystem.Extras = false; }));
             steps.Add(new KeyValuePair<string, System.Action>("без теней", () => { all(true); QualitySettings.shadows = ShadowQuality.Disable; }));
             steps.Add(new KeyValuePair<string, System.Action>("полные модели (без лёгких)", () => { all(true); ShipLod.Enabled = false; }));
             steps.Add(new KeyValuePair<string, System.Action>("сцена 85% (HUD родной)", () => { all(true); SetScale(1); }));
@@ -291,6 +297,7 @@ namespace SkyTide
             if (post != null) post.enabled = pOn;
             if (game.Fx != null) game.Fx.debugHidden = !fOn;
             QualitySettings.shadows = sq; ShipLod.Enabled = lodOn;
+            SkyTidePost.Sharpen = sharpWas; FxSystem.Extras = extrasWas;
             scaleIndex = si; ApplyScale(scaleWas); autoScale = autoWas; autoAcc = 0f; autoFrames = 0; autoHold = Time.unscaledTime + 6f;
             System.Text.StringBuilder log = new System.Text.StringBuilder("SkyTide: автозамер\n");
             foreach (BenchRow b in bench) log.AppendFormat("{0}: FPS {1:F1}, ВК {2:F1} мс, кадр {3:F1} мс, игра {4:F1} мс\n", b.name, b.fps, b.gpu, b.frame, b.main);
@@ -316,7 +323,7 @@ namespace SkyTide
             // Почти непрозрачная подложка: под таблицей не должны читаться плашки HUD.
             GUI.color = new Color(0f, 0f, 0f, 0.95f); GUI.DrawTexture(r, Texture2D.whiteTexture); GUI.DrawTexture(r, Texture2D.whiteTexture); GUI.color = Color.white;
             if (small == null) small = new GUIStyle(label) { fontSize = Mathf.RoundToInt(label.fontSize * 0.8f) };
-            float x = r.x + u * 0.03f, w = r.width - u * 0.06f, y = r.y + u * 0.012f, lh = u * 0.046f;
+            float x = r.x + u * 0.03f, w = r.width - u * 0.06f, y = r.y + u * 0.012f, lh = u * 0.042f;   // 17 строк замера помещаются над кнопками
             string dev = SystemInfo.graphicsDeviceName + "  " + nativeW + "×" + nativeH + "  сборка " + Application.version;
             GUI.Label(new Rect(x, y, w, lh), "Автозамер · " + dev, small); y += lh;
             float c0 = w * 0.44f, cwid = (w - c0) / 5f;

@@ -108,7 +108,12 @@ Shader "Hidden/SkyTide/Fx"
                 if (kind > 8.5 && kind < 9.5)
                 {
                     int e = (int)(v.data.w + 0.5);
-                    if (e == 2) offset = float3(q.x, 0, q.y);          // кольцо — плашмя на облаках
+                    if (e == 2)
+                    {
+                        // кольцо — плашмя на облаках; axis.w < 1 сжимает его поперёк в эллипс накрытия борта
+                        float2 el = float2(v.uv.x, v.uv.y * v.axis.w);
+                        offset = float3(el.x * c - el.y * s, 0, el.x * s + el.y * c);
+                    }
                     else if (e == 3) offset = _FxRight.xyz * q.x + _FxUp.xyz * q.y;   // прицел — к камере
                 }
                 if (kind > 9.5 && floor(v.data.w) > 4.5 && floor(v.data.w) < 5.5)
