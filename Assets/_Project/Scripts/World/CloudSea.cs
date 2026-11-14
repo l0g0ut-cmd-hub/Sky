@@ -280,6 +280,19 @@ namespace SkyTide
                     d = p - cp;
                     d.y = 0f;
                 }
+                // Облака не встают в крепость (видео 107: белое облако-спрайт перерезало башню): точка внутри круга крепости
+                // плюс половина ширины облака выносится на край круга; при дрейфе облако обтекает крепость.
+                SkyFortress fort = SkyFortress.Instance;
+                if (fort != null)
+                {
+                    Vector3 fc = fort.Center; float keep = fort.BoundRadius + 120f + c.baseScale * 0.5f;
+                    float fx = p.x - fc.x, fz = p.z - fc.z, f2 = fx * fx + fz * fz;
+                    if (f2 < keep * keep)
+                    {
+                        float fd = Mathf.Sqrt(f2); if (fd < 1f) { fx = 1f; fz = 0f; fd = 1f; }
+                        p.x = fc.x + fx / fd * keep; p.z = fc.z + fz / fd * keep;
+                    }
+                }
                 c.t.position = p;
 
                 float s = c.baseScale * (1f + c.breathe * Mathf.Sin(time * 0.13f + c.phase));

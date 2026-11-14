@@ -65,6 +65,7 @@ Shader "SkyTide/CloudSprite"
                 float2 noiseUV : TEXCOORD4;
                 float3 weights : TEXCOORD5;   // против солнца / нейтрально / в тени
                 float bottomV : TEXCOORD6;
+                float3 sky : TEXCOORD7;      // цвет неба за облаком — по центру облака, в вершинах (atan2/acos в пикселе дороги)
                 float4 color : COLOR;
             };
 
@@ -99,6 +100,7 @@ Shader "SkyTide/CloudSprite"
                 float lit = smoothstep(0.15, 0.85, s);
                 float shadow = smoothstep(0.1, 0.8, -s);
                 o.weights = float3(lit, 1.0 - lit - shadow, shadow);
+                o.sky = SkyTidePanorama(origin - _WorldSpaceCameraPos + float3(0, v.vertex.y * sy * 0.5, 0));
                 return o;
             }
 
@@ -109,9 +111,10 @@ Shader "SkyTide/CloudSprite"
                 float2 n2 = tex2D(_SkyTideNoise, i.noiseUV * 1.93 + float2(-t * 0.8, t * 1.3)).rg;
                 float2 d = ((n1 + n2) * 0.5 - 0.5) * _Distort;
 
-                float4 tex = tex2D(_MainTex, i.uvLit + d) * i.weights.x
-                           + tex2D(_MainTex, i.uvMid + d) * i.weights.y
-                           + tex2D(_MainTex, i.uvShadow + d) * i.weights.z;
+                // Вес вариантов один на всё облако: выборки только тех двух, что смешиваются (третья всегда с нулевым весом).
+                float4 tex = tex2D(_MainTex, i.uvMid + d) * i.weights.y;
+                UNITY_BRANCH if (i.weights.x > 0.001) tex += tex2D(_MainTex, i.uvLit + d) * i.weights.x;
+                UNITY_BRANCH if (i.weights.z > 0.001) tex += tex2D(_MainTex, i.uvShadow + d) * i.weights.z;
 
                 float a = tex.a * i.color.a;
                 // Низ картинки обрезан по прямой (облако «растёт из моря»): у облаков, висящих в воздухе, это была ровная
@@ -129,7 +132,7 @@ Shader "SkyTide/CloudSprite"
                 col *= 1.0 + _SunWarmth * i.weights.x * float3(1.0, 0.55, 0.2);
 
                 // Воздушная перспектива: дальние облака растворяются в цвете неба за ними.
-                col = lerp(col, SkyTidePanorama(vdir), SkyTideAerial(dist));
+                col = lerp(col, i.sky, SkyTideAerial(dist));
 
                 a *= saturate((dist - _NearFade.x) / max(_NearFade.y - _NearFade.x, 1.0));
                 // Картинка стоит вертикально: при взгляде сверху/снизу она видна ребром — растворяем.

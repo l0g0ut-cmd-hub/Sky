@@ -135,7 +135,7 @@ namespace SkyTide
                 crewFar=far;
                 for(int i=0;i<crewRenderers.Length;i++)if(crewRenderers[i]!=null)crewRenderers[i].forceRenderingOff=far;
             }
-            bool shadows=sailorShadows?d<78f:d<72f;
+            bool shadows=sailorShadows?d<44f:d<40f;   // обычная камера (62 м) — без теней матросов: 15 фигур × 2 каскада, а тень в пару пикселей
             if(shadows!=sailorShadows)
             {
                 sailorShadows=shadows;

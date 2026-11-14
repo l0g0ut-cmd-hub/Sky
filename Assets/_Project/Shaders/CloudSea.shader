@@ -52,6 +52,7 @@ Shader "SkyTide/CloudSea"
             {
                 float4 pos : SV_POSITION;
                 float3 worldPos : TEXCOORD0;
+                float3 sky : TEXCOORD1;   // цвет неба у горизонта — в вершинах (плоскость ездит за камерой, сетка вершин стоит)
             };
 
             v2f vert (appdata v)
@@ -59,6 +60,8 @@ Shader "SkyTide/CloudSea"
                 v2f o;
                 o.pos = UnityObjectToClipPos(v.vertex);
                 o.worldPos = mul(unity_ObjectToWorld, v.vertex).xyz;
+                float3 vd = o.worldPos - _WorldSpaceCameraPos;
+                o.sky = SkyTidePanorama(float3(vd.x, min(vd.y, -1.0), vd.z));
                 return o;
             }
 
@@ -85,7 +88,7 @@ Shader "SkyTide/CloudSea"
                 float3 col = c.rgb * _Color.rgb * lerp(_ShadowTint.rgb, float3(1, 1, 1), saturate(sunDot * 0.5 + 0.5));
                 col += _SunGlow.rgb * pow(saturate(sunDot), _SunGlowPower) * graze * (0.35 + 0.65 * Luminance(c.rgb));
 
-                col = lerp(col, SkyTidePanorama(vdir), SkyTideAerial(dist));
+                col = lerp(col, i.sky, SkyTideAerial(dist));
                 return fixed4(col, c.a * _AlphaMul * _Color.a);
             }
             ENDCG

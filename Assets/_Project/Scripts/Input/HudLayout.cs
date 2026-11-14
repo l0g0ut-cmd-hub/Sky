@@ -63,8 +63,10 @@ namespace SkyTide
         public Vector2 ClampWheel(Vector2 origin)
         {
             float r = radius * 1.15f;
+            // Плавающий штурвал не залезает на плашку хода и строки радара над ней (видео сборки 107): верх — ниже плашки.
+            float top = Mathf.Min(speed.yMax + r * 0.95f, safe.yMax - r);
             return new Vector2(Mathf.Clamp(origin.x, safe.x + r, safe.center.x - r),
-                Mathf.Clamp(origin.y, safe.y + r, safe.yMax - r));
+                Mathf.Clamp(origin.y, Mathf.Max(safe.y + r, top), safe.yMax - r));
         }
     }
 }

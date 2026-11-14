@@ -261,18 +261,21 @@ namespace SkyTide
         }
 
         /// <summary>Ореолы фонарей и окон: издалека корабль читается по огням (вблизи их даёт само свечение).</summary>
+        /// <summary>Первый слот ореолов в FxSystem (10 штук); меньше нуля — без ореолов (второй враг: слоты заняты).</summary>
+        [System.NonSerialized] public int lampSlot = 30;
         void Lamps()
         {
+            if (lampSlot < 0) return;
             FxSystem fx = FxSystem.Instance; Camera cam = Camera.main;
             if (fx == null || cam == null || model == null) return;
             bool lit = Alive || (damageVisual != null && damageVisual.Sinking && !damageVisual.Hidden);
             Vector3 eye = cam.transform.position;
             for (int i = 0; i < lamps.Length; i++)
             {
-                if (!lit) { fx.ClearLamp(30 + i); continue; }
+                if (!lit) { fx.ClearLamp(lampSlot + i); continue; }
                 Vector3 p = model.TransformPoint(lamps[i]);
                 float d = Vector3.Distance(eye, p);
-                fx.SetLamp(30 + i, p, Mathf.Clamp(d * 0.014f, 1.5f, 16f), new Color(1f, 0.72f, 0.38f, 0.08f * Mathf.Clamp01((d - 90f) / 220f)));
+                fx.SetLamp(lampSlot + i, p, Mathf.Clamp(d * 0.014f, 1.5f, 16f), new Color(1f, 0.72f, 0.38f, 0.08f * Mathf.Clamp01((d - 90f) / 220f)));
             }
         }
 

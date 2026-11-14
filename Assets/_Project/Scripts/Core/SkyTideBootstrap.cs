@@ -169,6 +169,25 @@ namespace SkyTide
                 }
             }
 
+            // Второй враг — разведчик (только в игре): тот же корпус в 0.72 размера, быстрее и слабее рядового, держится
+            // ближе и уклоняется чаще. Двое на одного — флагман сильнее любого втрое, так бой не превращается в избиение.
+            if (Application.isPlaying && Target != null && targetShip != null && targetShip.IsValid)
+            {
+                ShipController s = ShipFactory.Build("Scout Ship", spawnPosition + new Vector3(-420f, 0f, 520f), spawnHeading - 120f, materials, targetShip);
+                s.transform.localScale = Vector3.one * 0.72f;
+                Scout = s.gameObject.AddComponent<TargetShip>();
+                Scout.lampSlot = -1;
+                Scout.Setup(s, Ship.transform, materials.darkWood, targetShip.mesh, targetShip.lights);
+                Scout.hitsToSink = 16; Scout.spawnRange = 1500f;
+                s.maxSpeed = 27f; s.maxYawRate = 34f;
+                EnemyGunner sg = s.gameObject.AddComponent<EnemyGunner>();
+                sg.Setup(Scout, s);
+                sg.gunsPerSide = 3; sg.maxRange = 360f; sg.cooldown = 5f; sg.rangeError = 0.12f; sg.sideError = 0.045f;
+                Scout.retreatRange = 340f;
+                ShipVariant crewFrom = CurrentShip;
+                if (crewFrom != null && crewFrom.crew != null && crewFrom.crew.IsValid) s.gameObject.AddComponent<EnemyCrew>().Setup(Scout, crewFrom.crew);
+            }
+
             // Союзник — сторожевой корабль крепости (только в игре; в кадрах CI его нет): та же модель, что у врага,
             // в светлом тоне, без пушек игрока и экипажа. Выходит в дозор у края безопасной зоны.
             if (Application.isPlaying && Fortress != null && targetShip != null && targetShip.IsValid)
@@ -218,6 +237,7 @@ namespace SkyTide
         public FxSystem Fx { get; private set; }
         public TargetShip Target { get; private set; }
         public AllyShip Ally { get; private set; }
+        public TargetShip Scout { get; private set; }
 
         /// <summary>Объёмные облака вкл/выкл: спрайты на высоте полёта показываются, только когда объёма нет.</summary>
         static void FreeMemory() { Resources.UnloadUnusedAssets(); System.GC.Collect(); }
