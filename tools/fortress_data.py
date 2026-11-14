@@ -140,6 +140,15 @@ def main():
         guns = [float(v) for q in barrels for v in q]
         gun_dirs = [float(v) for q in dirs for v in q]
     print('пушек-стволов найдено: %d' % len(barrels))
+    # Печные трубы: тонкие высокие отдельные куски на крышах (30–60 треугольников, не шире 5 м, высотой 15–30 м,
+    # выше главной площадки на 80+ м). Точка дыма — середина верха.
+    smoke = []
+    for rid, cnt in zip(*np.unique(troot, return_counts=True)):
+        if cnt < 30 or cnt > 60: continue
+        Q = Wp[wroot == rid]; lo_, hi_ = Q.min(0), Q.max(0)
+        if max(hi_[0] - lo_[0], hi_[2] - lo_[2]) > 5 or not (15 <= hi_[1] - lo_[1] <= 30) or lo_[1] < deck + 80: continue
+        smoke += [float((lo_[0] + hi_[0]) / 2), float(hi_[1]), float((lo_[2] + hi_[2]) / 2)]
+    print('труб найдено: %d' % (len(smoke) // 3))
 
     # Пирс: широкая площадка ниже палубы, дальняя от центра.
     lo_x, lo_z = lo[0], lo[2]
@@ -170,7 +179,7 @@ def main():
     print('pier centre', pc.round(1), 'length %.0f width %.0f' % (along.max() - along.min(), across.max() - across.min()))
 
     hs = np.where(np.isnan(H), -1e4, H)
-    out = dict(guns=[round(float(v), 2) for v in guns], gunDirs=[round(float(v), 3) for v in gun_dirs],
+    out = dict(guns=[round(float(v), 2) for v in guns], gunDirs=[round(float(v), 3) for v in gun_dirs], smoke=[round(float(v), 2) for v in smoke],
                berth=[round(float(bpos[0]), 2), round(pyh, 2), round(float(bpos[1]), 2)],
                pierDir=[round(float(pdir[0]), 4), round(float(pdir[1]), 4)],
                gridOrigin=[round(float(lo_x), 3), round(float(lo_z), 3)],

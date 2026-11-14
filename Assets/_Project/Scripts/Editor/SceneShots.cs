@@ -1066,6 +1066,7 @@ namespace SkyTide.EditorTools
             Quaternion oldRot = target != null ? target.transform.rotation : Quaternion.identity;
             try
             {
+                ShipHud.CaptureExtras = true;   // плашка волны и метка врага — как в игре
                 boot.SetVolumetric(true);
                 boot.Fx.Clear();
                 if (controls != null) controls.SetHudCapture(true, rt.width, rt.height);
@@ -1142,6 +1143,8 @@ namespace SkyTide.EditorTools
                     if (fortShader == null || !fortShader.isSupported) throw new System.InvalidOperationException("Шейдер крепости Fortress не собран");
                     hitAt = new Vector3(onPier.x, fort.TopAt(onPier), onPier.z);
                     boot.Fx.ClearPreview();
+                    // Дым из труб крепости: десять секунд жизни, клуб раз в секунду.
+                    for (int smokeStep = 0; smokeStep < 40; smokeStep++) { if (smokeStep % 4 == 0) fort.EmitSmoke(); boot.Fx.Simulate(0.25f); }
                     boot.Fx.StoneImpact(hitAt + Vector3.up * 0.5f, Vector3.up);
                     for (int k = 0; k < 5; k++) boot.Fx.Simulate(0.05f);
                     eye = berth - to * 150f + side * 110f + Vector3.up * 35f;
@@ -1173,6 +1176,7 @@ namespace SkyTide.EditorTools
             finally
             {
                 ShipHud.CaptureBanner = 0;
+                ShipHud.CaptureExtras = false;
                 if (controls != null) controls.SetHudCapture(false);
                 if (target != null) target.transform.SetPositionAndRotation(oldTarget, oldRot);
                 boot.Fx.ClearPreview(); boot.Fx.Clear();

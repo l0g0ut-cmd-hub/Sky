@@ -29,6 +29,12 @@ namespace SkyTide
             float strength=Mathf.Clamp01(55f/Mathf.Max(27f,distance));
             recoilVelocity+=new Vector2(5f,side*3f)*strength;
         }
+        /// <summary>Встряска от попадания по своему кораблю: случайное направление, сила — по калибру ядра.</summary>
+        public void HitImpulse(float power)
+        {
+            float strength=Mathf.Clamp01(55f/Mathf.Max(27f,distance))*Mathf.Min(2.2f,0.7f+0.4f*power);
+            recoilVelocity+=new Vector2(Random.Range(-4f,4f),Random.Range(-4f,4f))*strength;
+        }
         void OnDisable(){recoil=recoilVelocity=Vector2.zero;}
         void StepRecoil(float dt)
         {

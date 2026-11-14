@@ -21,13 +21,20 @@ namespace SkyTide
         public float gunRange = 2400f, shotInterval = 0.9f, spreadDeg = 1.2f, muzzleSpeed = 220f, gravity = 9.81f, shellLife = 12f;
         [Tooltip("Калибр орудий башен относительно корабельной пушки: размер ядра, вспышки, дыма и урон.")]
         public float shellCaliber = 3f;
-        public float berthRadius = 100f, berthMaxSpeed = 5f, repairPerSecond = 6f;
+        public float berthRadius = 100f, berthMaxSpeed = 5f, repairPerSecond = 14f;
+        /// <summary>Когда и чем крепость усилила корабль у причала (для оповещения HUD).</summary>
+        public static float UpgradeAt = -100f;
+        public static string UpgradeText = "";
+        float baseReload = -1f;
+        /// <summary>Сколько секунд ещё длится тревога.</summary>
+        public float HostileLeft { get { return Mathf.Max(0f, hostileUntil - Time.time); } }
 
         [Serializable]
         class Data
         {
             public float[] guns;        // x,y,z на дуло (модель)
             public float[] gunDirs;     // x,y,z — куда смотрит ствол (модель); пусто — стволы не размечены
+            public float[] smoke;       // x,y,z — верх печных труб (модель): оттуда идёт дым
             public float[] berth;       // x,y,z точки причала (модель)
             public float[] pierDir;     // x,z направления пирса от центра (модель)
             public float[] gridOrigin;  // x,z угла карты высот (модель)
@@ -40,6 +47,10 @@ namespace SkyTide
         Transform model;
         Vector3[] guns = new Vector3[0];
         Vector3[] gunDirs;   // направление каждого ствола (модель) или null
+        Vector3[] chimneys = new Vector3[0];
+        float nextSmoke; int smokeCursor;
+        [Tooltip("Дым из труб: пауза между клубами (с) и дальность от камеры, с которой он идёт (м).")]
+        public float smokeInterval = 0.9f, smokeRange = 2600f;
         Vector3 berthLocal;
         bool hasBerth;
         Data grid;
@@ -94,6 +105,11 @@ namespace SkyTide
                         for (int i = 0; i < guns.Length; i++) gunDirs[i] = new Vector3(grid.gunDirs[i * 3], grid.gunDirs[i * 3 + 1], grid.gunDirs[i * 3 + 2]);
                     }
                 }
+                if (grid.smoke != null && grid.smoke.Length >= 3)
+                {
+                    chimneys = new Vector3[grid.smoke.Length / 3];
+                    for (int i = 0; i < chimneys.Length; i++) chimneys[i] = new Vector3(grid.smoke[i * 3], grid.smoke[i * 3 + 1], grid.smoke[i * 3 + 2]);
+                }
                 if (grid.berth != null && grid.berth.Length >= 3) { berthLocal = new Vector3(grid.berth[0], grid.berth[1], grid.berth[2]); hasBerth = true; }
                 if (grid.heights == null || grid.heights.Length != grid.gw * grid.gh) grid.heights = null;
                 if (grid.gridOrigin != null && grid.gridOrigin.Length >= 2)
@@ -126,6 +142,17 @@ namespace SkyTide
                 float rockTop = model.TransformPoint(new Vector3(0f, grid.deck - 4f, 0f)).y;
                 foreach (Material m in materials) if (m != null && m.HasProperty("_RockTop")) m.SetFloat("_RockTop", rockTop);
             }
+        }
+
+        /// <summary>Крепость снимает тревогу (игрок вернулся к причалу после гибели).</summary>
+        public void Pardon() { hostileUntil = -1f; }
+
+        /// <summary>Клуб дыма из очередной трубы. Публичный — для кадров CI.</summary>
+        public void EmitSmoke()
+        {
+            if (chimneys.Length == 0 || model == null || FxSystem.Instance == null) return;
+            Vector3 top = model.TransformPoint(chimneys[smokeCursor++ % chimneys.Length]);
+            FxSystem.Instance.Plume(top, model.lossyScale.y);
         }
 
         public Vector3 BerthWorld { get { return model != null ? model.TransformPoint(berthLocal) : transform.position; } }
@@ -187,7 +214,32 @@ namespace SkyTide
             // Причал: рядом и на малом ходу — ремонт.
             PlayerDocked = hasBerth && !Hostile && hull.Alive
                 && (ship.transform.position - BerthWorld).sqrMagnitude < berthRadius * berthRadius && Mathf.Abs(ship.Speed) < berthMaxSpeed;
-            if (PlayerDocked) hull.Repair(repairPerSecond * dt);
+            if (PlayerDocked)
+            {
+                hull.Repair(repairPerSecond * dt);
+                // Трофеи с потопленных врагов крепость меняет на усиление: прочнее корпус, быстрее перезарядка (до −40%).
+                int trophies = SkyCampaign.TakeTrophies();
+                if (trophies > 0)
+                {
+                    hull.Upgrade(trophies);
+                    Broadside broadside = ship.GetComponent<Broadside>();
+                    if (broadside != null)
+                    {
+                        if (baseReload < 0f) baseReload = broadside.cooldown;
+                        broadside.cooldown = Mathf.Max(baseReload * 0.6f, broadside.cooldown * Mathf.Pow(0.95f, trophies));
+                    }
+                    UpgradeAt = Time.time;
+                    UpgradeText = "УСИЛЕНИЕ · КОРПУС " + Mathf.RoundToInt(hull.maxHealth);
+                }
+            }
+
+            // Жизнь крепости: дым из труб, пока камера не слишком далеко.
+            if (chimneys.Length > 0 && Time.time >= nextSmoke)
+            {
+                nextSmoke = Time.time + smokeInterval;
+                Camera cam = Camera.main;
+                if (cam != null && (cam.transform.position - transform.position).sqrMagnitude < smokeRange * smokeRange) EmitSmoke();
+            }
 
             Collide(ship);
             foreach (TargetShip t in TargetShip.All) if (t != null && t.Alive) { ShipController c = t.Controller; if (c != null) Collide(c); }

@@ -134,6 +134,9 @@ namespace SkyTide
                 }
             }
 
+            // Ход боя: волны, счёт, замедление при потоплении (только в игре; в кадрах CI — значения по умолчанию).
+            if (Application.isPlaying && GetComponent<SkyCampaign>() == null) gameObject.AddComponent<SkyCampaign>();
+
             cam.target = Ship.transform;
             cam.Snap();
 

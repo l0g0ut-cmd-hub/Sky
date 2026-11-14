@@ -26,6 +26,12 @@ namespace SkyTide
         int scaleIndex; int nativeW, nativeH, styleFor;
         const int DefaultScaleIndex = 2;
         bool defaultScaleApplied;
+        // Авторазрешение сцены: держит ~30 FPS, меняя долю разрешения ступенями 100/85/70/60% (HUD всегда родной).
+        // Телефон греется и за сессию теряет до половины скорости видеокарты (автозамеры 89 и 92) — одна
+        // постоянная доля под это не подходит.
+        bool autoScale = true;
+        float sceneScale = 1f, autoAcc, autoHold;
+        int autoFrames;
         // Автозамер: по очереди выключает каждую часть (остальное включено), меряет и показывает таблицу на одном экране.
         struct BenchRow { public string name; public float fps, gpu, frame, main; }
         readonly List<BenchRow> bench = new List<BenchRow>();
@@ -98,7 +104,23 @@ namespace SkyTide
             {
                 SetScale(DefaultScaleIndex);
                 defaultScaleApplied = SceneScaler.Active;
-                if (!defaultScaleApplied) scaleIndex = 0;
+                if (!defaultScaleApplied) { scaleIndex = 0; sceneScale = 1f; }
+                autoHold = Time.unscaledTime + 12f;   // прогрев шейдеров и первые кадры в расчёт не идут
+            }
+            if (defaultScaleApplied && autoScale && !benchRunning && Application.isPlaying)
+            {
+                autoAcc += Time.unscaledDeltaTime; autoFrames++;
+                if (autoAcc >= 4f)
+                {
+                    float autoFps = autoFrames / autoAcc; autoAcc = 0f; autoFrames = 0;
+                    if (Time.unscaledTime > autoHold)
+                    {
+                        float next = sceneScale;
+                        if (autoFps < 26f && sceneScale > 0.61f) next = sceneScale > 0.86f ? 0.85f : sceneScale > 0.71f ? 0.7f : 0.6f;
+                        else if (autoFps > 46f && sceneScale < 0.99f) next = sceneScale < 0.65f ? 0.7f : sceneScale < 0.8f ? 0.85f : 1f;
+                        if (!Mathf.Approximately(next, sceneScale)) { ApplyScale(next); autoHold = Time.unscaledTime + 10f; }
+                    }
+                }
             }
             PerfTimers.Enabled = Open && details;
             if (PerfTimers.Enabled) { StartRecorders(); PerfTimers.Collect(); }
@@ -185,9 +207,12 @@ namespace SkyTide
             if (Cell(x, ref y, cw, h, ref col, "Тени", shadows)) QualitySettings.shadows = shadows ? ShadowQuality.Disable : ShadowQuality.All;
             if (Cell(x, ref y, cw, h, ref col, "Лёгкие тени/LOD", ShipLod.Enabled)) ShipLod.Enabled = !ShipLod.Enabled;
             if (nativeW == 0) { nativeW = Screen.width; nativeH = Screen.height; }
-            if (GUI.Button(new Rect(x + col * (cw + u * 0.02f), y, cw, h * 0.9f), "Сцена " + Mathf.RoundToInt(scales[scaleIndex] * 100f) + "%", button))
+            // Кнопка по кругу: авто → 100% → 85% → 70% → авто.
+            if (GUI.Button(new Rect(x + col * (cw + u * 0.02f), y, cw, h * 0.9f), (autoScale ? "Сцена авто · " : "Сцена ") + Mathf.RoundToInt(sceneScale * 100f) + "%", button))
             {
-                SetScale((scaleIndex + 1) % scales.Length);
+                if (autoScale) { autoScale = false; SetScale(0); }
+                else if (scaleIndex < scales.Length - 1) SetScale(scaleIndex + 1);
+                else { autoScale = true; autoAcc = 0f; autoFrames = 0; }
             }
             y += h; col = 0;
             if (GUI.Button(new Rect(x, y + h * 0.2f, w, h), "Закрыть", button)) Open = false;
@@ -210,6 +235,8 @@ namespace SkyTide
             bool ilOn = v != null && v.interleave;
             bool cOn = crew != null && crew.Visible, pOn = post != null && post.enabled, fOn = game.Fx != null && !game.Fx.debugHidden;
             ShadowQuality sq = QualitySettings.shadows; bool lodOn = ShipLod.Enabled; int si = scaleIndex;
+            bool autoWas = autoScale; float scaleWas = sceneScale;
+            autoScale = false;   // на время замера разрешение не плавает
             System.Action<bool> all = on =>
             {
                 if (v != null) { if (v.enabled != on) game.SetVolumetric(on); v.debugTowers = on; v.debugDeck = on; v.impostors = on; v.interleave = on; }
@@ -264,7 +291,8 @@ namespace SkyTide
             if (crew != null && crew.Visible != cOn) crew.SetVisible(cOn);
             if (post != null) post.enabled = pOn;
             if (game.Fx != null) game.Fx.debugHidden = !fOn;
-            QualitySettings.shadows = sq; ShipLod.Enabled = lodOn; SetScale(si);
+            QualitySettings.shadows = sq; ShipLod.Enabled = lodOn;
+            scaleIndex = si; ApplyScale(scaleWas); autoScale = autoWas; autoAcc = 0f; autoFrames = 0; autoHold = Time.unscaledTime + 6f;
             System.Text.StringBuilder log = new System.Text.StringBuilder("SkyTide: автозамер\n");
             foreach (BenchRow b in bench) log.AppendFormat("{0}: FPS {1:F1}, ВК {2:F1} мс, кадр {3:F1} мс, игра {4:F1} мс\n", b.name, b.fps, b.gpu, b.frame, b.main);
             Debug.Log(log.ToString());
@@ -273,9 +301,15 @@ namespace SkyTide
 
         void SetScale(int i)
         {
-            if (i == scaleIndex) return;
             scaleIndex = i;
-            SceneScaler.SetScale(scales[i]);   // сцена в доле разрешения, HUD — в родном
+            ApplyScale(scales[i]);
+        }
+
+        void ApplyScale(float s)
+        {
+            if (Mathf.Approximately(s, sceneScale)) return;
+            sceneScale = s;
+            SceneScaler.SetScale(s);   // сцена в доле разрешения, HUD — в родном
         }
 
         void BenchTable(Rect r, float u)

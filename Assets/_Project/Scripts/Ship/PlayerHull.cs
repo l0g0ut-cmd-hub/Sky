@@ -40,6 +40,13 @@ namespace SkyTide
             box = mf != null && mf.sharedMesh != null ? mf.sharedMesh.bounds : new Bounds(Vector3.up * 8f, new Vector3(10f, 14f, 36f));
         }
 
+        /// <summary>Усиление у причала за трофеи: +20 прочности за каждый, не больше 600; корпус сразу цел.</summary>
+        public void Upgrade(int trophies)
+        {
+            maxHealth = Mathf.Min(600f, maxHealth + 20f * Mathf.Max(0, trophies));
+            if (Alive) Health = maxHealth;
+        }
+
         /// <summary>Ремонт у причала.</summary>
         public void Repair(float amount) { if (Alive) Health = Mathf.Min(maxHealth, Health + amount); }
         public Vector3 Center { get { return model != null ? model.TransformPoint(box.center) : transform.position; } }
@@ -64,12 +71,16 @@ namespace SkyTide
             if (!Alive) return;
             Health -= damagePerHit * Mathf.Max(1f, power);
             LastHitTime = Time.time;
+            // Удар по корпусу встряхивает камеру (сильнее — от тяжёлого ядра крепости).
+            OrbitCamera shake = Camera.main != null ? Camera.main.GetComponent<OrbitCamera>() : null;
+            if (shake != null) shake.HitImpulse(Mathf.Max(1f, power));
             FxSystem fx = FxSystem.Instance;
             SkySound.HullHit(point, Health <= damagePerHit * 2f);
             if (Health <= 0f)
             {
                 Health = 0f;
                 SkySound.ShipDestroyed(Center);
+                SkyCampaign.PlayerLost();
                 if (fx != null) fx.Explosion(Center, 3f);
                 deadUntil = Time.time + respawnDelay;
                 if (ctrl != null && ctrl.visual != null) ctrl.visual.gameObject.SetActive(false);
@@ -84,6 +95,22 @@ namespace SkyTide
             {
                 deadUntil = -1f;
                 Health = maxHealth;
+                // Возвращаемся к причалу крепости: носом от неё, без хода, крепость снимает тревогу.
+                SkyFortress fort = SkyFortress.Instance;
+                if (fort != null && ctrl != null)
+                {
+                    Vector3 berth = fort.BerthWorld, away = berth - fort.Center;
+                    away.y = 0f;
+                    if (away.sqrMagnitude < 1f) away = Vector3.forward;
+                    away.Normalize();
+                    Vector3 at = berth + away * 30f;
+                    at.y = ctrl.transform.position.y;
+                    ctrl.transform.SetPositionAndRotation(at, Quaternion.LookRotation(away, Vector3.up));
+                    ctrl.Block(Vector3.zero, 0f);
+                    fort.Pardon();
+                    OrbitCamera oc = Camera.main != null ? Camera.main.GetComponent<OrbitCamera>() : null;
+                    if (oc != null) oc.Snap();
+                }
                 if (ctrl != null && ctrl.visual != null) ctrl.visual.gameObject.SetActive(true);
             }
         }

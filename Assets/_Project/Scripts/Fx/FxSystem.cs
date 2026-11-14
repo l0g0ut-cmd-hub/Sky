@@ -197,6 +197,15 @@ namespace SkyTide
             }
         }
 
+        /// <summary>Клуб печного дыма (трубы крепости): медленно поднимается, растёт и тает; scale — масштаб постройки.</summary>
+        public void Plume(Vector3 at, float scale)
+        {
+            Add(new P { kind = Kind.Smoke, pos = at + Random.insideUnitSphere * scale, vel = Vector3.up * Random.Range(2.5f, 4f) * scale + Random.insideUnitSphere * 0.6f * scale,
+                life = Random.Range(9f, 12f), size0 = Random.Range(2.5f, 3.5f) * scale, size1 = Random.Range(14f, 19f) * scale,
+                rot = Random.Range(0f, 6.28f), spin = Random.Range(-0.15f, 0.15f), drag = 0.25f, rise = 0.5f * scale,
+                color = new Color(0.42f, 0.39f, 0.38f), alpha = Random.Range(0.32f, 0.45f), seed = Random.value * 10f });
+        }
+
         /// <summary>Ядро в стену крепости: вспышка, каменная крошка по баллистике, пыль.</summary>
         public void StoneImpact(Vector3 at, Vector3 outward)
         {

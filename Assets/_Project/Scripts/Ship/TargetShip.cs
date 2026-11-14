@@ -39,6 +39,10 @@ namespace SkyTide
         public ShipController Controller { get { return ctrl; } }
         public ShipDamageVisual DamageVisual { get { return damageVisual; } }
         public int HitCount { get { return hits; } }
+        /// <summary>Остаток прочности 0–1 (для метки врага на HUD).</summary>
+        public float Health01 { get { return Mathf.Clamp01(1f - hits / (float)Mathf.Max(1, hitsToSink)); } }
+        /// <summary>Середина корпуса в мире.</summary>
+        public Vector3 Center { get { return model != null ? model.TransformPoint(box.center) : transform.position; } }
         public ShipHitSurface Surface {get {return surface;}}
         public Vector3 ImpactNormal {get {return model.TransformDirection(lastContact.normal).normalized;}}
 
@@ -148,6 +152,7 @@ namespace SkyTide
             if (hits >= hitsToSink)
             {
                 SkySound.ShipDestroyed(point);
+                SkyCampaign.EnemySunk();
                 if (fx != null) fx.Explosion(model.TransformPoint(box.center), 3f);
                 deadUntil = Time.time + respawnDelay;
                 if (damageVisual != null) damageVisual.BeginSink(point, velocity);
@@ -164,9 +169,19 @@ namespace SkyTide
             if (damageVisual != null) damageVisual.ResetDamage();
             Vector3 c = player != null ? player.position : Vector3.zero;
             float a = Random.Range(0f, Mathf.PI * 2f);
-            transform.position = new Vector3(c.x + Mathf.Cos(a) * maxRange, transform.position.y, c.z + Mathf.Sin(a) * maxRange);
+            Vector3 at = new Vector3(c.x + Mathf.Cos(a) * maxRange, transform.position.y, c.z + Mathf.Sin(a) * maxRange);
+            // Новый враг не появляется в безопасной зоне крепости (и тем более внутри неё) — выносим за край.
+            SkyFortress f = SkyFortress.Instance;
+            if (f != null)
+            {
+                Vector3 off = at - f.Center; off.y = 0f;
+                float r = f.safeRadius + 150f;
+                if (off.sqrMagnitude < r * r) { if (off.sqrMagnitude < 1f) off = Vector3.forward; at = f.Center + off.normalized * r; at.y = transform.position.y; }
+            }
+            transform.position = at;
             transform.rotation = Quaternion.Euler(0f, Random.Range(0f, 360f), 0f);
             ctrl.visual.gameObject.SetActive(true);
+            SkyCampaign.EnemyReturned(this);
             Pick();
         }
 
