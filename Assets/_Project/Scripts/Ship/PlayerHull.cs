@@ -36,6 +36,9 @@ namespace SkyTide
         float sinkAge = -1f, sinkSide = 1f, sinkDrift;
         bool splashed;
         WreckDebris debris;
+        // Следы попаданий на обшивке — те же наклейки пробоин, что на корабле врага; ремонт до полного их убирает.
+        ShipImpactMarks marks;
+        int markSerial;
 
         public void Setup(ShipController c)
         {
@@ -62,6 +65,8 @@ namespace SkyTide
                 try { surface = new ShipHitSurface(variant.lite); }
                 catch (System.Exception e) { surface = null; Debug.LogWarning("SkyTide: обшивка корабля игрока не построена — " + e.Message); }
             }
+            if (marks != null) { marks.Dispose(); marks = null; }
+            if (surface != null && model != null) marks = new ShipImpactMarks(model, surface);
             if (debris == null && game != null && game.materials != null && game.materials.darkWood != null) debris = new WreckDebris(game.materials.darkWood);
         }
 
@@ -142,6 +147,7 @@ namespace SkyTide
                 ventNormals[ventCursor] = model.InverseTransformDirection(normal).normalized;
                 ventCursor = (ventCursor + 1) % vents.Length;
                 ventCount = Mathf.Min(ventCount + 1, vents.Length);
+                if (marks != null) marks.Add(at, normal, 1f - Health01, ++markSerial);
             }
             // Удар качает корпус от подбитого борта и выбивает щепу.
             if (ctrl != null) ctrl.Recoil(side * 0.5f * Mathf.Min(2f, power));
@@ -178,7 +184,11 @@ namespace SkyTide
                 if (Time.time >= deadUntil) { Respawn(); return; }
                 Sink(dt, fx);
             }
-            else if (Health >= maxHealth - 0.01f) ventCount = ventCursor = 0;   // отремонтирован — пробоины заделаны
+            else if (Health >= maxHealth - 0.01f)
+            {
+                ventCount = ventCursor = 0;   // отремонтирован — пробоины заделаны
+                if (marks != null && markSerial > 0) { marks.Clear(); markSerial = 0; }
+            }
 
             // Дым из пробоин ниже 60% прочности, огонь ниже 30%; тонущий корабль дымит, но не горит.
             float damage = 1f - Health01;
@@ -228,6 +238,8 @@ namespace SkyTide
             Health = maxHealth;
             sinkAge = -1f;
             ventCount = ventCursor = 0;
+            if (marks != null) marks.Clear();
+            markSerial = 0;
             OrbitCamera oc = Camera.main != null ? Camera.main.GetComponent<OrbitCamera>() : null;
             if (oc != null) oc.lookDrop = 0f;
             if (ctrl == null) return;
@@ -258,6 +270,6 @@ namespace SkyTide
             if (oc != null) oc.Snap();
         }
 
-        void OnDestroy() { if (debris != null) debris.Dispose(); }
+        void OnDestroy() { if (debris != null) debris.Dispose(); if (marks != null) marks.Dispose(); }
     }
 }

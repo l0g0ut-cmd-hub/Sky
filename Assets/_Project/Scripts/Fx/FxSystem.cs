@@ -330,6 +330,7 @@ namespace SkyTide
             if (!Application.isPlaying) return;
             if (Time.timeSinceLevelLoad < 1.5f) Warm();
             SpeedFx(Time.deltaTime);
+            EnemyWake(Time.deltaTime);
             Simulate(Time.deltaTime);
         }
 
@@ -374,6 +375,29 @@ namespace SkyTide
                     size0 = 0.5f, size1 = 0.08f, color = new Color(1f, 0.75f, 0.35f), alpha = 0.8f });
             }
             Add(new P { kind = Kind.Glow, pos = at + normal * 0.4f, life = 0.12f, size0 = 1.6f, size1 = 2.4f, color = new Color(1f, 0.8f, 0.45f), alpha = 0.25f });
+        }
+
+        float enemyWakeClock;
+        /// <summary>За кормой врага на ходу — такой же тающий след у киля, как за кораблём игрока.</summary>
+        void EnemyWake(float dt)
+        {
+            SkyTideBootstrap game = SkyTideBootstrap.Instance;
+            if (!Extras || dt <= 0f || game == null || game.Target == null || !game.Target.Alive) return;
+            ShipController ship = game.Target.GetComponent<ShipController>();
+            if (ship == null || ship.maxSpeed <= 0f) return;
+            float speed01 = Mathf.Clamp01(ship.Speed / ship.maxSpeed);
+            if (speed01 < 0.3f) return;
+            Transform t = ship.transform;
+            Vector3 fwd = t.forward, right = t.right;
+            enemyWakeClock += dt * speed01;
+            while (enemyWakeClock > 0.09f)
+            {
+                enemyWakeClock -= 0.09f;
+                Add(new P { kind = Kind.Smoke, pos = t.position - fwd * 19f + right * Random.Range(-2.5f, 2.5f) + Vector3.up * Random.Range(-3f, 0.5f),
+                            vel = fwd * (ship.Speed * 0.12f) + Random.insideUnitSphere * 0.8f, life = Random.Range(1f, 1.5f),
+                            size0 = 1.4f, size1 = Random.Range(3f, 4.2f), rot = Random.Range(0f, 6.28f), spin = Random.Range(-0.5f, 0.5f),
+                            drag = 0.8f, rise = 0.1f, color = new Color(0.88f, 0.84f, 0.86f), alpha = 0.22f * speed01, seed = Random.value * 10f });
+            }
         }
 
         float wakeClock, wispClock;

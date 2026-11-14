@@ -22,7 +22,7 @@ namespace SkyTide
         [Tooltip("Градусов поворота камеры на ширину экрана")]
         public float orbitDegreesPerScreen = 220f;
 
-        enum Owner { Stick, Camera, Button }
+        enum Owner { Stick, Camera, Button, Telegraph }
 
         readonly Dictionary<int, Owner> owners = new Dictionary<int, Owner>();
         readonly Dictionary<int, Vector2> lastPos = new Dictionary<int, Vector2>();
@@ -77,6 +77,12 @@ namespace SkyTide
                     if (hintStage >= 4) { PlayerPrefs.SetInt(HintsKey, 1); PlayerPrefs.Save(); }
                 }
             }
+        }
+
+        void GearFromTouch(HudLayout l, Vector2 p)
+        {
+            float step = l.telegraph.height / GearThrottle.Length;
+            SetGear(Mathf.FloorToInt((l.telegraph.yMax - p.y) / Mathf.Max(1f, step)));
         }
 
         void PauseAction(int row)
@@ -185,6 +191,9 @@ namespace SkyTide
                 }
                 if (Application.isPlaying && hl.pause.Contains(p)) { owners[id] = Owner.Button; lastPos[id] = p; SetPaused(true); return; }
                 if (hl.radar.Contains(p)) { owners[id] = Owner.Button; lastPos[id] = p; radarNear = !radarNear; return; }
+                // Рукоять хода можно вести пальцем прямо по шкале (и по подписям ступеней справа от неё).
+                Rect lever = new Rect(hl.telegraph.x - hl.unit * 0.03f, hl.telegraph.y, hl.telegraph.width + hl.unit * 0.2f, hl.telegraph.height);
+                if (lever.Contains(p)) { owners[id] = Owner.Telegraph; lastPos[id] = p; GearFromTouch(hl, p); return; }
                 if (game != null && game.ships != null && game.ships.Length > 1 && ShipButtonRect().Contains(p))
                 {
                     owners[id] = Owner.Button;
@@ -228,6 +237,7 @@ namespace SkyTide
             if (!owners.TryGetValue(id, out o)) return;
 
             if (o == Owner.Stick) stickPos = p;
+            else if (o == Owner.Telegraph) GearFromTouch(Layout(ViewWidth, ViewHeight), p);
             else if (o == Owner.Camera && cam != null && CameraFingers() == 1)
             {
                 Vector2 d = p - lastPos[id];
