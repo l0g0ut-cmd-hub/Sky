@@ -1165,6 +1165,43 @@ namespace SkyTide.EditorTools
                 // с башнями стоит ~3 мин, а для баннера сцена за ним не важна).
                 bool volWas = boot.Volumetric != null && boot.Volumetric.enabled;
                 if (boot.Volumetric != null) boot.Volumetric.enabled = false;
+                // Съёмка корабля врага для подгонки экипажа и парусов (мои кадры, без проверок): сверху, сбоку, с кормы,
+                // и профиль высот по оси в журнал — где палуба, где низ баллона.
+                if (boot.Target != null && boot.Target.DamageVisual != null && boot.Target.DamageVisual.Model != null)
+                {
+                    Transform enemyModel = boot.Target.DamageVisual.Model;
+                    Vector3[] enemyViews = { new Vector3(0.1f, 60f, 0f), new Vector3(42f, 9f, 0f), new Vector3(14f, 20f, -34f) };
+                    string[] enemyNames = { "211_enemy_top", "212_enemy_side", "213_enemy_quarter" };
+                    for (int vi = 0; vi < enemyViews.Length; vi++)
+                    {
+                        Vector3 enemyEye = enemyModel.TransformPoint(enemyViews[vi]), enemyLook = enemyModel.TransformPoint(new Vector3(0f, 8f, 0f));
+                        cam.transform.SetPositionAndRotation(enemyEye, Quaternion.LookRotation(enemyLook - enemyEye, vi == 0 ? enemyModel.forward : Vector3.up));
+                        boot.World.Step(enemyEye, 0f);
+                        SaveFrame(cam, boot, rt, tex, dir, enemyNames[vi]);
+                    }
+                    ShipHitSurface enemySurface = boot.Target.Surface;
+                    if (enemySurface != null)
+                    {
+                        Bounds eb = enemySurface.Bounds;
+                        System.Text.StringBuilder profile = new System.Text.StringBuilder("SkyTide: профиль корабля врага (модель), габарит " + eb.min + " … " + eb.max + "\n");
+                        for (int zi = 0; zi <= 8; zi++)
+                            for (int xi = -1; xi <= 1; xi++)
+                            {
+                                float pz = Mathf.Lerp(eb.min.z, eb.max.z, 0.08f + 0.84f * zi / 8f), px = eb.center.x + xi * eb.extents.x * 0.35f;
+                                profile.Append("z=" + pz.ToString("F1") + " x=" + px.ToString("F1") + ":");
+                                Vector3 rayFrom = new Vector3(px, eb.max.y + 1f, pz), rayTo = new Vector3(px, eb.min.y - 1f, pz);
+                                for (int layer = 0; layer < 8; layer++)
+                                {
+                                    ShipHitSurface.Contact contact;
+                                    if (!enemySurface.Trace(rayFrom, rayTo, out contact)) break;
+                                    profile.Append(" " + contact.point.y.ToString("F1"));
+                                    rayFrom = contact.point + Vector3.down * 0.05f;
+                                }
+                                profile.Append("\n");
+                            }
+                        Debug.Log(profile.ToString());
+                    }
+                }
                 ShipHud.CaptureBanner = 1;
                 OverviewFrame(oc, cam, boot, rt, tex, dir, new Shot("206_banner_victory", 20f, 12f, 70f));
                 ShipHud.CaptureBanner = 2;
