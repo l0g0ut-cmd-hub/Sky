@@ -122,6 +122,9 @@ namespace SkyTide
                 Target = t.gameObject.AddComponent<TargetShip>();
                 Target.Setup(t, Ship.transform, materials.darkWood,targetShip.mesh,targetShip.lights);
                 if (Application.isPlaying) t.gameObject.AddComponent<EnemyGunner>().Setup(Target, t);
+                // Экипаж на палубе врага — та же модель матроса, что у своего корабля (в кадрах CI тоже: виден на 211–213).
+                ShipVariant own = CurrentShip;
+                if (own != null && own.crew != null && own.crew.IsValid) t.gameObject.AddComponent<EnemyCrew>().Setup(Target, own.crew);
             }
 
             if (fortressMesh != null && fortressMaterials != null && fortressMaterials.Length > 0)

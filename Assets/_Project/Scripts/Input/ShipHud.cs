@@ -357,11 +357,13 @@ namespace SkyTide
             Rect t = l.telegraph; int n = TouchControls.GearNames.Length; float step = t.height / n;
             if (HasKit) SpriteRot(t.center, new Vector2(t.height, t.width), Mathf.PI * 0.5f, KGroove, Color.white);
             else Box(t, new Color(0.015f, 0.02f, 0.026f, 0.9f));
+            // Подложка под подписями ступеней: на ярком море облаков серые подписи пропадали (видео сборки 102).
+            Solid(new Rect(t.xMax + l.unit * 0.012f, t.y - step * 0.05f, l.unit * 0.135f, t.height + step * 0.1f), new Color(0.015f, 0.02f, 0.026f, 0.5f));
             for (int i = 0; i < n; i++)
             {
                 float cy = t.yMax - (i + 0.5f) * step; bool on = i == input.Gear;
                 Solid(new Rect(t.xMax + l.unit * 0.004f, cy - Mathf.Max(1f, l.unit * 0.002f), l.unit * 0.012f, Mathf.Max(2f, l.unit * 0.004f)), new Color(gold.r, gold.g, gold.b, on ? 1f : 0.6f));
-                Text(new Rect(t.xMax + l.unit * 0.018f, cy - step * 0.5f, l.unit * 0.15f, step), TouchControls.GearNames[i], l.unit * 0.025f, on ? new Color(1f, 0.86f, 0.5f, 1f) : new Color(muted.r, muted.g, muted.b, 0.9f));
+                Text(new Rect(t.xMax + l.unit * 0.018f, cy - step * 0.5f, l.unit * 0.15f, step), TouchControls.GearNames[i], l.unit * 0.025f, on ? new Color(1f, 0.86f, 0.5f, 1f) : new Color(Mathf.Lerp(muted.r, 1f, 0.35f), Mathf.Lerp(muted.g, 1f, 0.35f), Mathf.Lerp(muted.b, 1f, 0.35f), 1f));
             }
             float hy = t.yMax - (input.Gear + 0.5f) * step, kd = t.width * 2.1f, kh = kd * KKnob.height / KKnob.width;
             if (HasKit) Sprite(new Rect(t.center.x - kd * 0.5f, hy - kh * 0.5f, kd, kh), KKnob, Color.white);
@@ -552,7 +554,7 @@ namespace SkyTide
             if (note > 0f && bPlate != null)
             {
                 float pw = Mathf.Min(l.safe.width * 0.32f, l.safe.height * 1.3f), ph = pw * 192f / 1024f;
-                Rect r = new Rect(l.safe.center.x - pw * 0.5f, l.safe.y + l.safe.height * 0.2f, pw, ph);
+                Rect r = new Rect(l.safe.center.x - pw * 0.5f, l.safe.y + l.safe.height * 0.235f, pw, ph);   // ниже подписи «КОРПУС»: на 0.2 плашка при появлении наезжала на неё
                 if (corner)
                 {
                     pw = Mathf.Min(l.safe.width * 0.2f, l.safe.height * 0.8f); ph = pw * 192f / 1024f;
