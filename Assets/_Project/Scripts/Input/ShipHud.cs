@@ -481,7 +481,7 @@ namespace SkyTide
                 {
                     // Метка у края не ложится на радар, плашку хода и штурвал слева и на кнопки залпа справа.
                     x = Mathf.Max(x, l.radar.xMax + tw * 0.5f + l.unit * 0.02f);
-                    y = Mathf.Min(y, l.volley.y - l.unit * 0.03f);
+                    y = Mathf.Min(y, l.mode.y - l.unit * 0.03f);
                 }
                 Color red = new Color(1f, 0.42f, 0.28f, 0.95f);
                 Rect bar = new Rect(x - bw * 0.5f, y - bh, bw, bh);
