@@ -24,6 +24,8 @@ namespace SkyTide
         float nextCreak;
         /// <summary>Скрип корпуса выключен: на телефоне звучал как скрип двери (просьба владельца).</summary>
         public static bool PlayCreaks = false;
+        /// <summary>Шум парусов на ходу — выключен по просьбе владельца (сборка 99).</summary>
+        public static bool PlaySails = false;
         ShipController ship;
         struct Pending { public float at; public AudioClip clip; public Vector3 pos; public float vol, pitch, minD, maxD; }
         readonly List<Pending> pending = new List<Pending>();
@@ -116,7 +118,7 @@ namespace SkyTide
             // Паруса громче на ходу, скрип — чаще на поворотах; на палубе всё это под меню не звучит.
             bool quiet = MainMenu.Active || StudioSplash.Active;
             float speed01 = Mathf.Clamp01(Mathf.Abs(ship.Speed) / Mathf.Max(1f, ship.maxSpeed));
-            if (sailSource != null) sailSource.volume = Mathf.MoveTowards(sailSource.volume, quiet ? 0f : 0.12f + 0.35f * speed01, Time.deltaTime * 0.5f);
+            if (sailSource != null) sailSource.volume = Mathf.MoveTowards(sailSource.volume, quiet || !PlaySails ? 0f : 0.12f + 0.35f * speed01, Time.deltaTime * 0.5f);
             if (PlayCreaks && !quiet && Time.time >= nextCreak && creakSource != null && creaks.Length > 0)
             {
                 AudioClip c = creaks[Random.Range(0, creaks.Length)];

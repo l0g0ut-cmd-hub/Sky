@@ -303,9 +303,9 @@ namespace SkyTide
         Texture2D bVictory, bDefeat, bPlate, bVignette, bIcons; bool bannersTried;
         readonly HashSet<TargetShip> sunkSeen = new HashSet<TargetShip>();
         float victoryAt = -100f;
-        /// <summary>Рисовать ли в кадрах CI то, что в игре рисуется всегда (плашка волны, метка врага): включают мои обзорные кадры.</summary>
+        /// <summary>Рисовать ли в кадрах CI то, что в игре рисуется всегда (метка врага): включают мои обзорные кадры.</summary>
         public static bool CaptureExtras;
-        float cornerTop;   // верх свободного места в правом верхнем углу (под плашкой волны) — для малых подсказок
+        float cornerTop;   // верх свободного места в правом верхнем углу — для малых подсказок
         /// <summary>Кадры проверки в редакторе: 1 — баннер победы и оповещение, 2 — поражение с виньеткой.</summary>
         public static int CaptureBanner;
         void LoadBanners()
@@ -417,8 +417,6 @@ namespace SkyTide
                     else if (upg > 0f) { noteText = SkyFortress.UpgradeText; noteIcon = 0; note = upg; }
                     else if (fort.PlayerDocked && hull != null) { noteText = "РЕМОНТ · " + Mathf.RoundToInt(hull.Health01 * 100f) + "%"; noteIcon = 0; note = 1f; corner = true; }
                     else if (zone > 0f && fort.PlayerInside) { noteText = "БЕЗОПАСНАЯ ЗОНА"; noteIcon = 0; note = zone; }
-                    else if (Envelope(Time.time - SkyCampaign.WaveAnnouncedAt, 3.2f, 0.2f, 0.6f) > 0f && note <= 0f)
-                    { noteText = "ВОЛНА " + SkyCampaign.Wave + " · ВРАГ СИЛЬНЕЕ"; noteIcon = 1; note = Envelope(Time.time - SkyCampaign.WaveAnnouncedAt, 3.2f, 0.2f, 0.6f); }
                     else if (fort.PlayerInside && !fort.Hostile && note <= 0f && hull != null)
                     {
                         // В зоне — постоянная подсказка: сколько до причала, а у причала на ходу — сбавить ход.
@@ -479,6 +477,12 @@ namespace SkyTide
                 }
                 x = Mathf.Clamp(x, l.safe.x + tw * 0.5f + l.unit * 0.01f, l.safe.xMax - tw * 0.5f - l.unit * 0.01f);
                 y = Mathf.Clamp(y, l.safe.y + th + bh + l.unit * 0.02f, l.safe.yMax - l.unit * 0.02f);
+                if (!inside)
+                {
+                    // Метка у края не ложится на радар, плашку хода и штурвал слева и на кнопки залпа справа.
+                    x = Mathf.Max(x, l.radar.xMax + tw * 0.5f + l.unit * 0.02f);
+                    y = Mathf.Min(y, l.volley.y - l.unit * 0.03f);
+                }
                 Color red = new Color(1f, 0.42f, 0.28f, 0.95f);
                 Rect bar = new Rect(x - bw * 0.5f, y - bh, bw, bh);
                 Box(new Rect(bar.x - 1f, bar.y - 1f, bar.width + 2f, bar.height + 2f), new Color(0.02f, 0.02f, 0.03f, 0.8f));
@@ -557,10 +561,8 @@ namespace SkyTide
                     cornerTop=l.safe.y+l.unit*0.02f;
                     if(Application.isPlaying||CaptureExtras)
                     {
-                        // Волна и счёт побед — справа сверху; метка врага — над его кораблём (или у края экрана, если он вне кадра).
+                        // Метка врага — над его кораблём (или у края экрана, если он вне кадра).
                         EnemyMarkers(l);
-                        Panel(l.clouds,l.unit);PlateText(l.clouds,0f,1f,"ВОЛНА "+SkyCampaign.Wave+" · СБИТО "+SkyCampaign.Kills,l.unit*0.03f,cream);
-                        cornerTop=(input.game.ships!=null&&input.game.ships.Length>1?l.ship.yMax:l.clouds.yMax)+l.unit*0.02f;
                     }
                     Panel(l.course,l.unit); PlateText(l.course,0f,1f,"КУРС "+(Mathf.RoundToInt(input.ship.transform.eulerAngles.y)%360).ToString("000")+"°",l.unit*0.034f,cream);
                     Panel(l.speed,l.unit);PlateText(l.speed,0f,1f,"ХОД "+input.ship.Speed.ToString("F1")+" м/с",l.unit*0.034f,cream);

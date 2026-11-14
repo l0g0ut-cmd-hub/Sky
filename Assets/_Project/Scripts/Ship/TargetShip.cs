@@ -181,7 +181,6 @@ namespace SkyTide
             transform.position = at;
             transform.rotation = Quaternion.Euler(0f, Random.Range(0f, 360f), 0f);
             ctrl.visual.gameObject.SetActive(true);
-            SkyCampaign.EnemyReturned(this);
             Pick();
         }
 
