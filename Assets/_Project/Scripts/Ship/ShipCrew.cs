@@ -111,7 +111,40 @@ namespace SkyTide
         {
             for(int i=0;i<4;i++)if(object.ReferenceEquals(mount,upperMounts[i]))firedAt[i]=now;
         }
-        void LateUpdate(){if(Application.isPlaying&&Visible){long __pt=PerfTimers.Start();Pose(Time.time);PropShadows();PerfTimers.Stop("Экипаж: позы",__pt);}}
+        void LateUpdate(){if(Application.isPlaying&&Visible){long __pt=PerfTimers.Start();if(!DistanceCull())Pose(Time.time);PropShadows();PerfTimers.Stop("Экипаж: позы",__pt);}}
+
+        // Экипаж по автозамеру сборки 105 стоит видеокарте ~9 мс (15 матросов со скиннингом, ~70 предметов, тени).
+        // Дальше 120 м от камеры матрос — меньше 15 пикселей: вся палубная команда и реквизит не рисуются и не позируются
+        // (орудия при этом стреляют как прежде — Visible не меняется). Тени матросов — только ближе 75 м (обычный вид камеры — 62–70 м — с тенями).
+        Renderer[] crewRenderers; SkinnedMeshRenderer[] sailorSkins; Transform cullFor; bool crewFar, sailorShadows=true;
+        public bool DrawnNow {get {return Visible&&!crewFar;}}
+        bool DistanceCull()
+        {
+            if(group==null)return false;
+            if(crewRenderers==null||cullFor!=group)
+            {
+                crewRenderers=group.GetComponentsInChildren<Renderer>(true);
+                sailorSkins=group.GetComponentsInChildren<SkinnedMeshRenderer>(true);
+                cullFor=group;crewFar=false;sailorShadows=true;
+            }
+            Camera cam=Camera.main;if(cam==null)return false;
+            float d=(cam.transform.position-group.position).magnitude;
+            bool far=crewFar?d>112f:d>122f;
+            if(far!=crewFar)
+            {
+                crewFar=far;
+                for(int i=0;i<crewRenderers.Length;i++)if(crewRenderers[i]!=null)crewRenderers[i].forceRenderingOff=far;
+            }
+            bool shadows=sailorShadows?d<78f:d<72f;
+            if(shadows!=sailorShadows)
+            {
+                sailorShadows=shadows;
+                UnityEngine.Rendering.ShadowCastingMode mode=shadows?UnityEngine.Rendering.ShadowCastingMode.On:UnityEngine.Rendering.ShadowCastingMode.Off;
+                for(int i=0;i<sailorSkins.Length;i++)if(sailorSkins[i]!=null)sailorSkins[i].shadowCastingMode=mode;
+            }
+            if(far&&wheel!=null&&ship!=null)WheelAngle=-Mathf.Clamp(ship.turn,-1f,1f)*50f;
+            return far;
+        }
 
         // Тени мелкого реквизита (шляпы, банники, ящики, утки — меньше 1.2 м) рисуются только при камере ближе 45 м:
         // дальше они занимают единицы пикселей, а в замере экипаж давал 114 отбрасывающих тень вместо 31.

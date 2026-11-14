@@ -51,6 +51,7 @@ Shader "SkyTide/CloudSprite"
                 float2 uvLit : TEXCOORD0;
                 float2 uvMid : TEXCOORD1;
                 float2 uvShadow : TEXCOORD2;
+                float2 quadUV : TEXCOORD3;   // y: 0 у низа квада, 1 у верха
                 float4 color : COLOR;
             };
 
@@ -63,6 +64,7 @@ Shader "SkyTide/CloudSprite"
                 float3 worldPos : TEXCOORD3;
                 float2 noiseUV : TEXCOORD4;
                 float3 weights : TEXCOORD5;   // против солнца / нейтрально / в тени
+                float bottomV : TEXCOORD6;
                 float4 color : COLOR;
             };
 
@@ -83,6 +85,7 @@ Shader "SkyTide/CloudSprite"
                 o.uvShadow = v.uvShadow;
                 o.color = v.color;
                 o.worldPos = wpos;
+                o.bottomV = v.quadUV.y;
 
                 float3 origin = center;
                 // Постоянная фаза облака (задаётся один раз при создании). Хэш от мировой позиции здесь нельзя:
@@ -111,6 +114,9 @@ Shader "SkyTide/CloudSprite"
                            + tex2D(_MainTex, i.uvShadow + d) * i.weights.z;
 
                 float a = tex.a * i.color.a;
+                // Низ картинки обрезан по прямой (облако «растёт из моря»): у облаков, висящих в воздухе, это была ровная
+                // горизонтальная кромка на полэкрана (видео сборки 105). Нижние 18% квада плавно тают.
+                a *= smoothstep(0.0, 0.18, i.bottomV);
                 // Эрозия: тонкие края медленно тают и нарастают.
                 float er = (n1.r + n2.g) * 0.5;
                 a = saturate(a - er * _Erode * (1.0 - a) * 1.4);

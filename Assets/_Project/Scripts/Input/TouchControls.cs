@@ -91,7 +91,8 @@ namespace SkyTide
             else if (row == 1) { SoundOn = !SoundOn; AudioListener.volume = SoundOn ? 1f : 0f; PlayerPrefs.SetInt("SkyTide.Sound", SoundOn ? 1 : 0); }
             else if (row == 2) { CameraSpeed = (CameraSpeed + 1) % OrbitSpeeds.Length; orbitDegreesPerScreen = OrbitSpeeds[CameraSpeed]; PlayerPrefs.SetInt("SkyTide.Camera", CameraSpeed); }
             else if (row == 3) { BigButtons = !BigButtons; HudLayout.ButtonScale = BigButtons ? 1.2f : 1f; PlayerPrefs.SetInt("SkyTide.Buttons", BigButtons ? 1 : 0); }
-            else if (row == 4) { SetPaused(false); ResetInteraction(); MainMenu.Open(); }
+            else if (row == 4) { if (game != null) game.ChooseVolumetric(!game.volumetricClouds); }
+            else if (row == 5) { SetPaused(false); ResetInteraction(); MainMenu.Open(); }
         }
 
         /// <summary>Пауза: время и звук стоят, касания принимает только меню паузы.</summary>

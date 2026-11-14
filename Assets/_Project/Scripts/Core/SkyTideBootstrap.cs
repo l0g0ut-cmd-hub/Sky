@@ -73,7 +73,14 @@ namespace SkyTide
             Instance = this;
             materials.EnsureAll();
 
-            Application.targetFrameRate = 60;
+            // Потолок 30 кадров: телефон владельца (Mali-G76) 60 не держит ни в одном режиме, а без потолка греется и
+            // сбрасывает частоты — те же кадры становятся в 1.5–2 раза дороже (автозамеры 89/92/105). Ровные 30 лучше
+            // плавающих 20–40. Переключатель «60 кадров» — в панели FPS, запоминается.
+            Application.targetFrameRate = Application.isPlaying && PlayerPrefs.GetInt(Fps60Key, 0) == 0 ? 30 : 60;
+            // Облака в игре по умолчанию рисованные: владелец по видео сборки 105 — «со всем выключенным нравится больше»
+            // (объёмные на телефоне — мягкая серая вата в ¼ разрешения) и они же стоят 8–18 мс видеокарты.
+            // Объёмные — строкой «ОБЛАКА» в меню паузы, выбор запоминается. В кадрах CI — как задано в сцене.
+            if (Application.isPlaying) volumetricClouds = PlayerPrefs.GetInt(VolumetricKey, 0) == 1;
             QualitySettings.vSyncCount = 0;
             Screen.sleepTimeout = SleepTimeout.NeverSleep;
 
@@ -177,6 +184,19 @@ namespace SkyTide
         public TargetShip Target { get; private set; }
 
         /// <summary>Объёмные облака вкл/выкл: спрайты на высоте полёта показываются, только когда объёма нет.</summary>
+        public const string VolumetricKey = "SkyTide.Volumetric", Fps60Key = "SkyTide.Fps60";
+        /// <summary>Выбор игрока (меню паузы, панель FPS): переключает и запоминает между запусками.</summary>
+        public void ChooseVolumetric(bool on)
+        {
+            SetVolumetric(on);
+            PlayerPrefs.SetInt(VolumetricKey, on ? 1 : 0); PlayerPrefs.Save();
+        }
+        public static bool Fps60 { get { return Application.targetFrameRate > 30; } }
+        public static void ChooseFps60(bool on)
+        {
+            Application.targetFrameRate = on ? 60 : 30;
+            PlayerPrefs.SetInt(Fps60Key, on ? 1 : 0); PlayerPrefs.Save();
+        }
         public void SetVolumetric(bool on)
         {
             volumetricClouds = on;

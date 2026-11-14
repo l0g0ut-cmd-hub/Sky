@@ -31,7 +31,9 @@ namespace SkyTide
         /// <summary>Переключатель в панели FPS и строка автозамера: сколько стоит резкость на телефоне.</summary>
         public static bool Sharpen = true;
         /// <summary>Сумерки: с 3-й по 18-ю минуту игры закат темнеет до ночи (до 75% эффекта). Переключатель в панели FPS.</summary>
-        public static bool DuskOn = true;
+        // По умолчанию выключены: к 18-й минуте сумерки гасили тёмное и среднее на 75% и уводили в синеву — на видео
+        // сборки 105 картинка тёмно-фиолетовая вместо заката. Переключатель «Сумерки» в панели FPS остался.
+        public static bool DuskOn = false;
         public static float DuskNow { get { return DuskOn && Application.isPlaying ? Mathf.Clamp01((Time.timeSinceLevelLoad - 180f) / 900f) * 0.75f : 0f; } }
 
         [Header("Блум")]

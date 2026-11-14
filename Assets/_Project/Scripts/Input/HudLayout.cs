@@ -43,20 +43,20 @@ namespace SkyTide
         }
 
         /// <summary>Меню паузы: панель по центру и её строки (одна геометрия для рисования и касаний).</summary>
-        public const int PauseRows = 5;
+        public const int PauseRows = 6;
         public Rect PausePanel
         {
             get
             {
-                float w = Mathf.Min(safe.width * 0.42f, unit * 0.86f), h = unit * 0.78f;
+                float w = Mathf.Min(safe.width * 0.42f, unit * 0.86f), h = unit * 0.84f;
                 return new Rect(safe.center.x - w * 0.5f, safe.center.y - h * 0.5f, w, h);
             }
         }
         public Rect PauseRow(int i)
         {
             Rect p = PausePanel;
-            float rh = unit * 0.1f, gap = unit * 0.022f;
-            return new Rect(p.x + unit * 0.05f, p.y + unit * 0.14f + i * (rh + gap), p.width - unit * 0.1f, rh);
+            float rh = unit * 0.094f, gap = unit * 0.018f;
+            return new Rect(p.x + unit * 0.05f, p.y + unit * 0.135f + i * (rh + gap), p.width - unit * 0.1f, rh);
         }
 
         public Vector2 ClampWheel(Vector2 origin)

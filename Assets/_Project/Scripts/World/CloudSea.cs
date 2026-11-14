@@ -180,6 +180,7 @@ namespace SkyTide
             mesh.SetUVs(0, Corners(lit));
             mesh.SetUVs(1, Corners(mid));
             mesh.SetUVs(2, Corners(shadow));
+            mesh.SetUVs(3, new List<Vector2> { new Vector2(0f, 0f), new Vector2(0f, 1f), new Vector2(1f, 1f), new Vector2(1f, 0f) });
             Color bottom = new Color(0.94f, 0.9f, 0.94f, 1f);   // низ чуть холоднее
             Color top = Color.white;
             mesh.colors = new Color[] { bottom, top, top, bottom };

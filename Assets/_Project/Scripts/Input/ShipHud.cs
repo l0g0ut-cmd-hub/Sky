@@ -345,7 +345,8 @@ namespace SkyTide
                 Rect r = l.PauseRow(i);
                 string text = i == 0 ? "ПРОДОЛЖИТЬ" : i == 1 ? "ЗВУК · " + (input.SoundOn ? "ВКЛ" : "ВЫКЛ")
                     : i == 2 ? "КАМЕРА · " + TouchControls.CameraSpeedNames[input.CameraSpeed]
-                    : i == 3 ? "КНОПКИ · " + (input.BigButtons ? "КРУПНЫЕ" : "ОБЫЧНЫЕ") : "В ГЛАВНОЕ МЕНЮ";
+                    : i == 3 ? "КНОПКИ · " + (input.BigButtons ? "КРУПНЫЕ" : "ОБЫЧНЫЕ")
+                    : i == 4 ? "ОБЛАКА · " + (input.game != null && input.game.volumetricClouds ? "ОБЪЁМНЫЕ" : "РИСОВАННЫЕ") : "В ГЛАВНОЕ МЕНЮ";
                 Panel(r, l.unit, i == 0, input.Pressed(r));
                 PlateText(r, 0f, 1f, text, l.unit * 0.04f, cream);
             }

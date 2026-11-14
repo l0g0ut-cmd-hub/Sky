@@ -191,7 +191,7 @@ namespace SkyTide
             float cw = (w - u * 0.02f) * 0.5f; int col = 0;
             if (v != null)
             {
-                if (Cell(x, ref y, cw, h, ref col, "Объёмные облака", v.enabled)) game.SetVolumetric(!v.enabled);
+                if (Cell(x, ref y, cw, h, ref col, "Объёмные облака", v.enabled)) game.ChooseVolumetric(!v.enabled);
                 if (Cell(x, ref y, cw, h, ref col, "Башни", v.debugTowers)) v.debugTowers = !v.debugTowers;
                 if (Cell(x, ref y, cw, h, ref col, "Море облаков", v.debugDeck)) v.debugDeck = !v.debugDeck;
                 if (Cell(x, ref y, cw, h, ref col, "Импосторы", v.impostors)) v.impostors = !v.impostors;
@@ -210,6 +210,7 @@ namespace SkyTide
             if (Cell(x, ref y, cw, h, ref col, "Резкость", SkyTidePost.Sharpen)) SkyTidePost.Sharpen = !SkyTidePost.Sharpen;
             if (Cell(x, ref y, cw, h, ref col, "Сумерки", SkyTidePost.DuskOn)) SkyTidePost.DuskOn = !SkyTidePost.DuskOn;
             if (Cell(x, ref y, cw, h, ref col, "Новые эффекты", FxSystem.Extras)) FxSystem.Extras = !FxSystem.Extras;
+            if (Cell(x, ref y, cw, h, ref col, "60 кадров (иначе 30)", SkyTideBootstrap.Fps60)) SkyTideBootstrap.ChooseFps60(!SkyTideBootstrap.Fps60);
             if (nativeW == 0) { nativeW = Screen.width; nativeH = Screen.height; }
             // Кнопка по кругу: 100% → 85% → 70% → авто (держит ~30 FPS) → 100%.
             if (GUI.Button(new Rect(x + col * (cw + u * 0.02f), y, cw, h * 0.9f), (autoScale ? "Сцена авто · " : "Сцена ") + Mathf.RoundToInt(sceneScale * 100f) + "%", button))
@@ -246,9 +247,12 @@ namespace SkyTide
             // Сцена замирает на весь замер: корабль, враг, крепость и камера стоят, кадр один и тот же. На сборке 102
             // корабль летел к крепости, и строки мерили разные кадры («без теней» вышло на 7 мс медленнее базы).
             float timeScaleWas = Time.timeScale; Time.timeScale = 0f;
+            // И без потолка кадров: при 30 кадрах видеокарта простаивает, а нужна её полная цена.
+            int fpsCapWas = Application.targetFrameRate; Application.targetFrameRate = 120;
             System.Action<bool> all = on =>
             {
-                if (v != null) { if (v.enabled != on) game.SetVolumetric(on); v.debugTowers = on; v.debugDeck = on; v.impostors = on; v.interleave = on; }
+                bool vol = on && vOn;   // база — облака как выбраны в игре (по умолчанию рисованные)
+                if (v != null) { if (v.enabled != vol) game.SetVolumetric(vol); v.debugTowers = on; v.debugDeck = on; v.impostors = on; v.interleave = on; }
                 if (crew != null && crew.Visible != on) crew.SetVisible(on);
                 if (post != null) post.enabled = on;
                 if (game.Fx != null) game.Fx.debugHidden = !on;
@@ -261,15 +265,16 @@ namespace SkyTide
             };
             var steps = new List<KeyValuePair<string, System.Action>>();
             steps.Add(new KeyValuePair<string, System.Action>("Как в игре (база)", () => all(true)));
-            if (v != null)
+            if (v != null && !vOn) steps.Add(new KeyValuePair<string, System.Action>("с объёмными облаками", () => { all(true); game.SetVolumetric(true); }));
+            if (v != null && vOn)
             {
                 steps.Add(new KeyValuePair<string, System.Action>("без объёмных облаков", () => { all(true); game.SetVolumetric(false); }));
                 steps.Add(new KeyValuePair<string, System.Action>("без башен", () => { all(true); v.debugTowers = false; }));
                 steps.Add(new KeyValuePair<string, System.Action>("без моря облаков", () => { all(true); v.debugDeck = false; }));
                 steps.Add(new KeyValuePair<string, System.Action>("без импосторов", () => { all(true); v.impostors = false; }));
             }
-            if (v != null) steps.Add(new KeyValuePair<string, System.Action>("облака: все лучи каждый кадр", () => { all(true); v.interleave = false; }));
-            if (v != null) steps.Add(new KeyValuePair<string, System.Action>("облака чётче (⅓ разрешения)", () => { all(true); v.resolutionDivider = 3; }));
+            if (v != null && vOn) steps.Add(new KeyValuePair<string, System.Action>("облака: все лучи каждый кадр", () => { all(true); v.interleave = false; }));
+            if (v != null && vOn) steps.Add(new KeyValuePair<string, System.Action>("облака чётче (⅓ разрешения)", () => { all(true); v.resolutionDivider = 3; }));
             if (game.Fortress != null) steps.Add(new KeyValuePair<string, System.Action>("без крепости", () => { all(true); game.Fortress.Visible = false; }));
             if (crew != null) steps.Add(new KeyValuePair<string, System.Action>("без экипажа", () => { all(true); crew.SetVisible(false); }));
             if (post != null) steps.Add(new KeyValuePair<string, System.Action>("без пост-обработки", () => { all(true); post.enabled = false; }));
@@ -312,7 +317,7 @@ namespace SkyTide
             SkyTidePost.Sharpen = sharpWas; FxSystem.Extras = extrasWas;
             if (v != null) v.resolutionDivider = dividerWas;
             if (game.Fortress != null) game.Fortress.Visible = fortWas;
-            Time.timeScale = timeScaleWas;
+            Time.timeScale = timeScaleWas; Application.targetFrameRate = fpsCapWas;
             scaleIndex = si; ApplyScale(scaleWas); autoScale = autoWas; autoAcc = 0f; autoFrames = 0; autoHold = Time.unscaledTime + 6f;
             System.Text.StringBuilder log = new System.Text.StringBuilder("SkyTide: автозамер\n");
             foreach (BenchRow b in bench) log.AppendFormat("{0}: FPS {1:F1}, ВК {2:F1} мс, кадр {3:F1} мс, игра {4:F1} мс\n", b.name, b.fps, b.gpu, b.frame, b.main);
