@@ -26,7 +26,7 @@ namespace SkyTide
             l.ship = new Rect(l.clouds.x, l.clouds.yMax + gap, l.clouds.width, u * 0.08f);
             l.course = new Rect(safeArea.center.x - u * 0.15f, safeArea.y + m, u * 0.3f, u * 0.075f);
             l.fps = new Rect(safeArea.x + m, safeArea.y + m, u * 0.22f, u * 0.065f);
-            l.speed = new Rect(safeArea.x + m, safeArea.yMax - u * 0.425f, u * 0.34f, u * 0.07f);
+            l.speed = new Rect(safeArea.x + m, safeArea.yMax - u * 0.46f, u * 0.34f, u * 0.07f);   // выше штурвала: на 0.425 верхняя рукоять и шарик джойстика лезли на текст (видео сборки 102)
             // Под радаром — две строки дальностей (враг, причал): место под них вычитается из радара на низких экранах.
             float rd = Mathf.Min(u * 0.3f, l.speed.y - l.fps.yMax - gap * 2f - u * 0.125f);
             l.radar = new Rect(safeArea.x + m, l.fps.yMax + gap, rd, rd);

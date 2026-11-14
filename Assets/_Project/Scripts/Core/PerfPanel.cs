@@ -243,6 +243,9 @@ namespace SkyTide
             bool sharpWas = SkyTidePost.Sharpen, extrasWas = FxSystem.Extras;
             int dividerWas = v != null ? v.resolutionDivider : 4; bool fortWas = game.Fortress != null && game.Fortress.Visible;
             autoScale = false;   // на время замера разрешение не плавает
+            // Сцена замирает на весь замер: корабль, враг, крепость и камера стоят, кадр один и тот же. На сборке 102
+            // корабль летел к крепости, и строки мерили разные кадры («без теней» вышло на 7 мс медленнее базы).
+            float timeScaleWas = Time.timeScale; Time.timeScale = 0f;
             System.Action<bool> all = on =>
             {
                 if (v != null) { if (v.enabled != on) game.SetVolumetric(on); v.debugTowers = on; v.debugDeck = on; v.impostors = on; v.interleave = on; }
@@ -278,6 +281,7 @@ namespace SkyTide
             steps.Add(new KeyValuePair<string, System.Action>("сцена 85% (HUD родной)", () => { all(true); SetScale(1); }));
             steps.Add(new KeyValuePair<string, System.Action>("сцена 70% (HUD родной)", () => { all(true); SetScale(2); }));
             steps.Add(new KeyValuePair<string, System.Action>("всё выключено", () => all(false)));
+            steps.Add(new KeyValuePair<string, System.Action>("база ещё раз (сверка)", () => all(true)));
             benchTotal = steps.Count;
             for (int k = 0; k < steps.Count; k++)
             {
@@ -308,6 +312,7 @@ namespace SkyTide
             SkyTidePost.Sharpen = sharpWas; FxSystem.Extras = extrasWas;
             if (v != null) v.resolutionDivider = dividerWas;
             if (game.Fortress != null) game.Fortress.Visible = fortWas;
+            Time.timeScale = timeScaleWas;
             scaleIndex = si; ApplyScale(scaleWas); autoScale = autoWas; autoAcc = 0f; autoFrames = 0; autoHold = Time.unscaledTime + 6f;
             System.Text.StringBuilder log = new System.Text.StringBuilder("SkyTide: автозамер\n");
             foreach (BenchRow b in bench) log.AppendFormat("{0}: FPS {1:F1}, ВК {2:F1} мс, кадр {3:F1} мс, игра {4:F1} мс\n", b.name, b.fps, b.gpu, b.frame, b.main);

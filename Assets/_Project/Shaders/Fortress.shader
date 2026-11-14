@@ -19,7 +19,7 @@ Shader "SkyTide/Fortress"
         _RockBlend ("Rock blend (m)", Float) = 30
         _DetailStrength ("Detail strength", Range(0,1)) = 0.9
         _DetailFar ("Detail fade distance (m)", Float) = 1200
-        _BumpHeight ("Relief height (m)", Float) = 0.5
+        _BumpHeight ("Relief height (m)", Float) = 0.12
         _Glossiness ("Smoothness", Range(0,1)) = 0.18
         _Metallic ("Metallic", Range(0,1)) = 0
         _EmissionMap ("Emission", 2D) = "black" {}
@@ -113,8 +113,14 @@ Shader "SkyTide/Fortress"
             albedo.rgb *= lerp(half3(1, 1, 1), tile, amount);
             // Рельеф из яркости плитки (швы кладки и щели досок темнее — значит глубже): нормаль по производным
             // высоты на экране (Mikkelsen, bump mapping unparametrized surfaces) — без карты нормалей и лишних выборок.
-            float h = dot(tile, half3(0.3, 0.59, 0.11)) * _BumpHeight * amount;
-            float slopeMax = 1.2;   // не круче ~50°: на смене проекции высота скачет
+            // Рельеф гаснет, когда тексель плитки мельче ~полпикселя (крепость вдали, стена под острым углом):
+            // ddx/ddy яркости там — шум между соседними квадами 2×2, на телефоне это «стекловата» по всей стене
+            // (видео сборки 102). Цвет плитки остаётся — его сглаживают мипы.
+            float invSel = lerp(lerp(inv.x, inv.z, rock), inv.y, wood);
+            float texPerPx = max(length(gx), length(gy)) * invSel * 1024.0;
+            float bumpFade = 1.0 - smoothstep(0.3, 0.8, texPerPx);
+            float h = dot(tile, half3(0.3, 0.59, 0.11)) * _BumpHeight * amount * bumpFade;
+            float slopeMax = 0.6;   // не круче ~30°: на смене проекции высота скачет; круче — нормаль «мигает» по пикселям
             float dhx = clamp(ddx(h), -slopeMax * length(dpx), slopeMax * length(dpx));
             float dhy = clamp(ddy(h), -slopeMax * length(dpy), slopeMax * length(dpy));
             float3 r1 = cross(dpy, gn), r2 = cross(gn, dpx);
@@ -134,7 +140,9 @@ Shader "SkyTide/Fortress"
             half glowLum = max(glowTex.r, max(glowTex.g, glowTex.b));
             glow = lerp(glow, half3(2.8, 0.22, 0.1) * glowLum * (0.5 + 0.5 * sin(_Time.y * 7.0)), _FortressAlarm);
             // Контровой свет заката на башнях и стенах; вспышки выстрелов освещают камень у орудия.
-            glow += SkyTideRimLight(wn, IN.worldPos) * 0.7;
+            // Контровой свет — по гладкой нормали грани: с рельефной нормалью (кубический френель) каждый «крутой»
+            // пиксель рельефа вспыхивал белой искрой — на видео сборки 102 стены крепости покрыты белой штриховкой.
+            glow += SkyTideRimLight(gn, IN.worldPos) * 0.7;
             glow += albedo.rgb * SkyTideFlashLight(IN.worldPos) * 0.4;
             o.Emission = glow;
             o.Alpha = 1;
