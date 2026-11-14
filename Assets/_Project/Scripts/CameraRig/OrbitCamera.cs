@@ -104,6 +104,10 @@ namespace SkyTide
             {
                 if (lens == null) lens = GetComponent<Camera>();
                 if (lens != null) { if (baseFov < 0f) baseFov = lens.fieldOfView; lens.fieldOfView = baseFov + 5f * speedPull; }
+                // Дальность теней — по удалению камеры: вблизи та же карта теней ложится на меньший участок (тени резче),
+                // издалека — хватает до корабля. Шаг 10 м, чтобы тени не «дышали» при каждом движении пальцев.
+                float shadowReach = Mathf.Clamp(Mathf.Ceil((reach + 55f) / 10f) * 10f, 90f, 200f);
+                if (!Mathf.Approximately(QualitySettings.shadowDistance, shadowReach)) QualitySettings.shadowDistance = shadowReach;
             }
             // Крепость: по карте высот вдоль луча «корабль → камера». Низкое (пирс, парапет до 14 м над лучом) —
             // камера поднимается над ним; высокое (стена, башня) — подъезжает к кораблю, не входя в камень.

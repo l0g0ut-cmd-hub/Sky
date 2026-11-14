@@ -149,6 +149,7 @@ namespace SkyTide
             // Удар по корпусу встряхивает камеру (сильнее — от тяжёлого ядра крепости).
             OrbitCamera shake = Camera.main != null ? Camera.main.GetComponent<OrbitCamera>() : null;
             if (shake != null) shake.HitImpulse(power);
+            Haptics.Pulse(power > 1.5f ? 70 : 30);
             FxSystem fx = FxSystem.Instance;
             SkySound.HullHit(point, Health <= damagePerHit * 2f);
             Vector3 velocity = ctrl != null ? ctrl.transform.forward * ctrl.Speed : Vector3.zero;
@@ -170,6 +171,7 @@ namespace SkyTide
             {
                 Health = 0f;
                 SkySound.ShipDestroyed(Center);
+                Haptics.LongBuzz();
                 if (fx != null) fx.Explosion(Center, 3f);
                 deadUntil = Time.time + respawnDelay;
                 // Корабль не исчезает во вспышке: кренится на подбитый борт и уходит в облака.

@@ -92,7 +92,8 @@ namespace SkyTide
             else if (row == 2) { CameraSpeed = (CameraSpeed + 1) % OrbitSpeeds.Length; orbitDegreesPerScreen = OrbitSpeeds[CameraSpeed]; PlayerPrefs.SetInt("SkyTide.Camera", CameraSpeed); }
             else if (row == 3) { BigButtons = !BigButtons; HudLayout.ButtonScale = BigButtons ? 1.2f : 1f; PlayerPrefs.SetInt("SkyTide.Buttons", BigButtons ? 1 : 0); }
             else if (row == 4) { if (game != null) game.ChooseVolumetric(!game.volumetricClouds); }
-            else if (row == 5) { SetPaused(false); ResetInteraction(); MainMenu.Open(); }
+            else if (row == 5) { Haptics.Enabled = !Haptics.Enabled; PlayerPrefs.SetInt(Haptics.Key, Haptics.Enabled ? 1 : 0); Haptics.Pulse(40); }
+            else if (row == 6) { SetPaused(false); ResetInteraction(); MainMenu.Open(); }
         }
 
         /// <summary>Пауза: время и звук стоят, касания принимает только меню паузы.</summary>
@@ -101,7 +102,31 @@ namespace SkyTide
             Paused = on;
             Time.timeScale = on ? 0f : 1f;
             AudioListener.pause = on;
+            // На паузе кадр рисуется раз в три — телефон остывает, меню при этом отвечает сразу.
+            UnityEngine.Rendering.OnDemandRendering.renderFrameInterval = on ? 3 : 1;
+            if (cam != null) PlayerPrefs.SetFloat("SkyTide.Zoom", cam.distance);
+            Broadside guns = Guns();
+            if (guns != null) PlayerPrefs.SetInt("SkyTide.Ripple", guns.ripple ? 1 : 0);
+            PlayerPrefs.SetInt("SkyTide.RadarNear", radarNear ? 1 : 0);
             if (!on) PlayerPrefs.Save();
+        }
+        // Свернули игру (звонок, блокировка экрана) — пауза, а не бой вслепую.
+        void OnApplicationPause(bool paused)
+        {
+            if (!paused) return;
+            ResetInteraction();
+            if (paused && Application.isPlaying && !Paused && !MainMenu.Active && !StudioSplash.Active) SetPaused(true);
+        }
+        bool restored;
+        void RestoreChoices()
+        {
+            if (restored || !Application.isPlaying) return;
+            Broadside guns = Guns();
+            if (cam == null || guns == null) return;
+            restored = true;
+            cam.distance = Mathf.Clamp(PlayerPrefs.GetFloat("SkyTide.Zoom", cam.distance), cam.minDistance, cam.maxDistance);
+            guns.ripple = PlayerPrefs.GetInt("SkyTide.Ripple", guns.ripple ? 1 : 0) == 1;
+            radarNear = PlayerPrefs.GetInt("SkyTide.RadarNear", 0) == 1;
         }
         float hintAlpha = 1f;
         bool touchedOnce;
@@ -123,6 +148,7 @@ namespace SkyTide
                 AudioListener.volume = SoundOn ? 1f : 0f;
                 orbitDegreesPerScreen = OrbitSpeeds[CameraSpeed];
                 BigButtons = PlayerPrefs.GetInt("SkyTide.Buttons", 0) == 1;
+                Haptics.Enabled = PlayerPrefs.GetInt(Haptics.Key, 0) == 1;
                 HudLayout.ButtonScale = BigButtons ? 1.2f : 1f;
             }
         }
@@ -133,6 +159,7 @@ namespace SkyTide
             if (!legacyInputOk) return;
             // Заставка студии и главное меню закрывают экран — касания им, а не кораблю.
             if (StudioSplash.Active || MainMenu.Active) { if (owners.Count > 0 || stickId != int.MinValue) ResetInteraction(); return; }
+            RestoreChoices();
             try
             {
                 ReadPointers();
@@ -213,8 +240,8 @@ namespace SkyTide
                 // Кнопки «облака» на экране нет (просьба владельца): переключатель — в панели FPS.
                 Broadside bs = Guns();
                 if (bs != null && VolleyModeRect().Contains(p)) { owners[id] = Owner.Button; lastPos[id] = p; bs.ripple = !bs.ripple; return; }
-                if (bs != null && VolleyRect(-1).Contains(p)) { owners[id] = Owner.Button; lastPos[id] = p; bs.Fire(-1); return; }
-                if (bs != null && VolleyRect(1).Contains(p)) { owners[id] = Owner.Button; lastPos[id] = p; bs.Fire(1); return; }
+                if (bs != null && VolleyRect(-1).Contains(p)) { owners[id] = Owner.Button; lastPos[id] = p; if (bs.Readiness(-1) >= 0.9999f) Haptics.Pulse(45); bs.Fire(-1); return; }
+                if (bs != null && VolleyRect(1).Contains(p)) { owners[id] = Owner.Button; lastPos[id] = p; if (bs.Readiness(1) >= 0.9999f) Haptics.Pulse(45); bs.Fire(1); return; }
                 if (p.x < ViewWidth * 0.5f && stickId == int.MinValue)
                 {
                     owners[id] = Owner.Stick;
@@ -303,7 +330,9 @@ namespace SkyTide
             float sy = stickValue.y, gearNow = Time.unscaledTime;
             if (Mathf.Abs(sy) > 0.55f)
             {
-                if (gearArmed || gearNow >= gearRepeatAt)
+                // Удержание вниз доводит рукоять до «СТОП» и там останавливается: задний ход — только новым движением
+                // (раньше, сбрасывая ход удержанием, корабль сам уезжал назад).
+                if (gearArmed || (gearNow >= gearRepeatAt && !(sy < 0f && gear == 1)))
                 {
                     gear = Mathf.Clamp(gear + (sy > 0f ? 1 : -1), 0, GearThrottle.Length - 1);
                     gearRepeatAt = gearNow + 0.45f; gearArmed = false;
@@ -319,7 +348,7 @@ namespace SkyTide
                 if (Input.GetKeyDown(KeyCode.W) || Input.GetKeyDown(KeyCode.UpArrow)) SetGear(gear + 1);
                 if (Input.GetKeyDown(KeyCode.S) || Input.GetKeyDown(KeyCode.DownArrow)) SetGear(gear - 1);
                 if (Input.GetKeyDown(KeyCode.Tab) && game != null) game.NextShip();
-                if (Input.GetKeyDown(KeyCode.Escape) && Application.isPlaying) SetPaused(!Paused);   // и кнопка «назад» на телефоне
+                if (Input.GetKeyDown(KeyCode.Escape) && Application.isPlaying) { if (PerfPanel.Open && !Paused) PerfPanel.Toggle(); else SetPaused(!Paused); }   // и кнопка «назад» на телефоне
                 Broadside guns = Guns();
                 if (guns != null && Input.GetKeyDown(KeyCode.Q)) guns.Fire(-1);
                 if (guns != null && Input.GetKeyDown(KeyCode.E)) guns.Fire(1);
@@ -431,7 +460,6 @@ namespace SkyTide
             if(ship!=null){ship.turn=0f;ship.throttle=0f;}
         }
         void OnApplicationFocus(bool focused) {if(!focused)ResetInteraction();}
-        void OnApplicationPause(bool paused) {if(paused)ResetInteraction();}
         void OnDisable() {if(Paused)SetPaused(false);ResetInteraction();}
         void OnDestroy() {hud.Dispose();}
 #if UNITY_EDITOR

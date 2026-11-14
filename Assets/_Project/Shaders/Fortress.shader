@@ -18,7 +18,7 @@ Shader "SkyTide/Fortress"
         _RockTop ("Rock below (world Y)", Float) = 110
         _RockBlend ("Rock blend (m)", Float) = 30
         _DetailStrength ("Detail strength", Range(0,1)) = 0.9
-        _DetailFar ("Detail fade distance (m)", Float) = 1200
+        _DetailFar ("Detail fade distance (m)", Float) = 650
         _BumpHeight ("Relief height (m)", Float) = 0.12
         _Glossiness ("Smoothness", Range(0,1)) = 0.18
         _Metallic ("Metallic", Range(0,1)) = 0

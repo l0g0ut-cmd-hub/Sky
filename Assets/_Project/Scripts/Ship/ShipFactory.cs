@@ -70,6 +70,9 @@ namespace SkyTide
             lamp.range = 16f;
             lamp.intensity = 1.4f;
             lamp.shadows = LightShadows.None;
+            // По вершинам, в основном проходе: «важный» точечный свет заставлял рисовать весь корабль (438 тыс. треугольников
+            // у игрока, 207 тыс. у врага) и экипаж у кормы ВТОРОЙ раз — отдельным проходом ради одного фонаря.
+            lamp.renderMode = LightRenderMode.ForceVertex;
             return go.transform;
         }
 
@@ -104,6 +107,7 @@ namespace SkyTide
             lamp.range = 14f;
             lamp.intensity = 1.6f;
             lamp.shadows = LightShadows.None;
+            lamp.renderMode = LightRenderMode.ForceVertex;
 
             // Руль и бушприт
             Prim(PrimitiveType.Cube, v, new Vector3(0f, -3.6f, -13.6f), Vector3.zero, new Vector3(0.45f, 4.5f, 2.6f), m.darkWood);

@@ -299,6 +299,7 @@ namespace SkyTide
             if (found == null) found = new GameObject("Sun").AddComponent<Light>();
             ConfigureSun(found);
             QualitySettings.shadowDistance = 160f;
+            QualitySettings.pixelLightCount = 0;   // кроме солнца, попиксельных источников нет — никаких добавочных проходов по геометрии
             QualitySettings.shadows = ShadowQuality.All;
             if ((int)QualitySettings.shadowResolution < (int)ShadowResolution.High)
                 QualitySettings.shadowResolution = ShadowResolution.High;

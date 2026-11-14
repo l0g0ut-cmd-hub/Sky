@@ -291,18 +291,18 @@ namespace SkyTide
         void RadarLines(TouchControls input, HudLayout l)
         {
             Rect r = l.radar; float lh = l.unit * 0.036f, fs = l.unit * 0.027f, y = r.yMax + l.unit * 0.008f;
-            float best = float.MaxValue;
+            float best = float.MaxValue, bestHealth = 1f;
             foreach (TargetShip t in TargetShip.All)
             {
                 if (t == null || !t.Alive) continue;
                 Vector3 d = t.transform.position - input.ship.transform.position; d.y = 0f;
-                best = Mathf.Min(best, d.magnitude);
+                if (d.magnitude < best) { best = d.magnitude; bestHealth = t.Health01; }
             }
             SkyFortress fort = SkyFortress.Instance;
             int rows = 1 + (best < float.MaxValue ? 1 : 0) + (fort != null ? 1 : 0);
             Box(new Rect(r.x, y - l.unit * 0.003f, r.width, lh * rows + l.unit * 0.006f), new Color(0.02f, 0.025f, 0.035f, 0.78f));   // плотнее: на светлых облаках подложка была серой, текст терялся
             Text(new Rect(r.x, y, r.width, lh), "РАДАР " + Range(input.RadarRange), fs, new Color(Mathf.Lerp(muted.r, 1f, 0.4f), Mathf.Lerp(muted.g, 1f, 0.4f), Mathf.Lerp(muted.b, 1f, 0.4f), 1f)); y += lh;
-            if (best < float.MaxValue) { Text(new Rect(r.x, y, r.width, lh), "ВРАГ " + Range(best), fs, new Color(1f, 0.72f, 0.55f, 1f)); y += lh; }
+            if (best < float.MaxValue) { Text(new Rect(r.x, y, r.width, lh), "ВРАГ " + Range(best) + (bestHealth < 0.995f ? " · " + Mathf.RoundToInt(bestHealth * 100f) + "%" : ""), fs, new Color(1f, 0.72f, 0.55f, 1f)); y += lh; }
             if (fort != null)
             {
                 Vector3 d = fort.BerthWorld - input.ship.transform.position; d.y = 0f;
@@ -346,9 +346,10 @@ namespace SkyTide
                 string text = i == 0 ? "ПРОДОЛЖИТЬ" : i == 1 ? "ЗВУК · " + (input.SoundOn ? "ВКЛ" : "ВЫКЛ")
                     : i == 2 ? "КАМЕРА · " + TouchControls.CameraSpeedNames[input.CameraSpeed]
                     : i == 3 ? "КНОПКИ · " + (input.BigButtons ? "КРУПНЫЕ" : "ОБЫЧНЫЕ")
-                    : i == 4 ? "ОБЛАКА · " + (input.game != null && input.game.volumetricClouds ? "ОБЪЁМНЫЕ" : "РИСОВАННЫЕ") : "В ГЛАВНОЕ МЕНЮ";
+                    : i == 4 ? "ОБЛАКА · " + (input.game != null && input.game.volumetricClouds ? "ОБЪЁМНЫЕ" : "РИСОВАННЫЕ")
+                    : i == 5 ? "ВИБРАЦИЯ · " + (Haptics.Enabled ? "ВКЛ" : "ВЫКЛ") : "В ГЛАВНОЕ МЕНЮ";
                 Panel(r, l.unit, i == 0, input.Pressed(r));
-                PlateText(r, 0f, 1f, text, l.unit * 0.04f, cream);
+                PlateText(r, 0f, 1f, text, l.unit * 0.036f, cream);
             }
         }
 
@@ -530,6 +531,8 @@ namespace SkyTide
             {
                 // Край района боя: предупреждение, пока корабль в 250 м от границы (там же руль мягко отводит его обратно).
                 ShipController own = hull != null ? hull.GetComponent<ShipController>() : null;
+                // Корпус ниже 35% и не у крепости — напоминание, где чинятся.
+                if (hull != null && hull.Health01 < 0.35f && note < 0.05f && Application.isPlaying) { noteText = "КОРПУС " + Mathf.RoundToInt(hull.Health01 * 100f) + "% · К ПРИЧАЛУ"; noteIcon = 9; note = 0.9f; }
                 if (own != null && own.EdgeWarning > 0.05f && note < 0.05f) { noteText = "КРАЙ РАЙОНА БОЯ"; noteIcon = 1; note = Mathf.Clamp01(own.EdgeWarning * 3f); }
                 // Крепость: тревога важнее всего, затем ремонт у причала, затем вход в безопасную зону.
                 SkyFortress fort = SkyFortress.Instance;
@@ -602,7 +605,11 @@ namespace SkyTide
                 float pad = bar.height * 0.22f;
                 Solid(new Rect(bar.x + bar.width * f, bar.y + pad, bar.width * (hullGhost - f), bar.height - pad * 2f), new Color(1f, 0.95f, 0.85f, 0.9f));
             }
-            Text(new Rect(bar.x, bar.yMax, bar.width, l.unit * 0.038f), "КОРПУС " + Mathf.RoundToInt(f * 100f) + "%", l.unit * 0.03f, f < 0.3f ? new Color(1f, 0.55f, 0.45f) : cream);
+            // Подпись — на тёмной подложке (на светлых облаках терялась); ниже 30% подложка пульсирует красным.
+            Rect cap = new Rect(bar.center.x - l.unit * 0.105f, bar.yMax + l.unit * 0.002f, l.unit * 0.21f, l.unit * 0.036f);
+            float alarm = f < 0.3f && f > 0f ? 0.5f + 0.5f * Mathf.Sin(Time.unscaledTime * 6f) : 0f;
+            Solid(cap, Color.Lerp(new Color(0.02f, 0.025f, 0.035f, 0.62f), new Color(0.55f, 0.06f, 0.04f, 0.8f), alarm));
+            Text(new Rect(bar.x, bar.yMax, bar.width, l.unit * 0.038f), "КОРПУС " + Mathf.RoundToInt(f * 100f) + "%", l.unit * 0.03f, f < 0.3f ? new Color(1f, 0.7f, 0.6f) : cream);
         }
 
         void RadarKit(TouchControls input,HudLayout l,Vector2 c,float R,float range)
@@ -656,7 +663,7 @@ namespace SkyTide
                     Telegraph(input,l);
                     Radar(input,l);
                     Hull(l);
-                    Panel(l.fps,l.unit);PlateText(l.fps,0f,1f,Application.isPlaying?Mathf.RoundToInt(input.Fps)+" FPS":"FPS —",l.unit*0.03f,muted);
+                    Panel(l.fps,l.unit);PlateText(l.fps,0f,1f,Application.isPlaying?Mathf.RoundToInt(input.Fps)+" FPS":"FPS —",l.unit*0.03f,Application.isPlaying&&input.Fps<24f?new Color(1f,0.55f,0.45f,1f):muted);   // ниже 24 — красным: просадку видно сразу
                     Text(l.version,input.BuildText,l.unit*0.023f,cream);
                     Broadside guns=input.Guns();
                     if(guns!=null)
