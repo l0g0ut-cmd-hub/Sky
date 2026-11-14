@@ -1,0 +1,1578 @@
+== uname
+Linux runnervmccnms 7.0.0-1019-azure #20-Ubuntu SMP PREEMPT Mon Oct 19 22:41:16 UTC 2026 x86_64 GNU/Linux
+== df
+Filesystem      Size  Used Avail Use% Mounted on
+/dev/root       145G   58G   87G  40% /
+Filesystem      Size  Used Avail Use% Mounted on
+/dev/root       145G   36G  110G  25% /
+Downloading game-ci CLI v0.1.72 from https://github.com/game-ci/cli/releases/download/v0.1.72/game-ci-linux-x64.tar.gz
+Checksum verified (SHA256) for game-ci-linux-x64.tar.gz
+/home/runner/work/_temp/game-ci/bin/game-ci
+[INFO] Versioning strategy: None
+[INFO] Version of this build: none
+[INFO] Versioning strategy is set to none, so android version code should not be applied.
+[INFO] linux Android 6000.0.36f1
+::group::Unity build
+[WARN] running docker process for linux (linux)
+Unable to find image 'unityci/editor:ubuntu-6000.0.36f1-android-3' locally
+ubuntu-6000.0.36f1-android-3: Pulling from unityci/editor
+8d5d2a3e6b0f: Pulling fs layer
+e1e0763b8b7f: Pulling fs layer
+46805e80f2d7: Pulling fs layer
+4f4fb700ef54: Pulling fs layer
+4f4fb700ef54: Pulling fs layer
+4f4fb700ef54: Pulling fs layer
+dc7a969c82d9: Pulling fs layer
+4f4fb700ef54: Pulling fs layer
+bef3b93c3984: Pulling fs layer
+4f4fb700ef54: Pulling fs layer
+4f4fb700ef54: Pulling fs layer
+d3a5feebe29b: Pulling fs layer
+4f4fb700ef54: Pulling fs layer
+a636358af2c8: Pulling fs layer
+96c832531c38: Pulling fs layer
+4f4fb700ef54: Pulling fs layer
+8e578c7fd715: Pulling fs layer
+4f4fb700ef54: Pulling fs layer
+9a4d47d5aa13: Pulling fs layer
+4f4fb700ef54: Pulling fs layer
+4f4fb700ef54: Pulling fs layer
+39cd9db1617e: Pulling fs layer
+4f4fb700ef54: Pulling fs layer
+7bcf62982864: Pulling fs layer
+a1ff4bc3f481: Pulling fs layer
+4f4fb700ef54: Pulling fs layer
+4f4fb700ef54: Pulling fs layer
+4f4fb700ef54: Pulling fs layer
+96c832531c38: Download complete
+4f4fb700ef54: Download complete
+e1e0763b8b7f: Download complete
+dc7a969c82d9: Download complete
+8e578c7fd715: Download complete
+39cd9db1617e: Download complete
+7bcf62982864: Download complete
+a636358af2c8: Download complete
+bef3b93c3984: Download complete
+d3a5feebe29b: Download complete
+9a4d47d5aa13: Download complete
+a1ff4bc3f481: Download complete
+54e8aef068c6: Download complete
+96c832531c38: Pull complete
+46805e80f2d7: Download complete
+9a4d47d5aa13: Pull complete
+46805e80f2d7: Pull complete
+dc7a969c82d9: Pull complete
+a1ff4bc3f481: Pull complete
+a636358af2c8: Pull complete
+bef3b93c3984: Pull complete
+d3a5feebe29b: Pull complete
+8d5d2a3e6b0f: Download complete
+e1e0763b8b7f: Pull complete
+7bcf62982864: Pull complete
+8d5d2a3e6b0f: Pull complete
+8e578c7fd715: Pull complete
+39cd9db1617e: Pull complete
+4f4fb700ef54: Pull complete
+Digest: sha256:3c18892b45bbe8448d64330521b029a8bf7b733f2038ddf45b47440273c1f22a
+Status: Downloaded newer image for unityci/editor:ubuntu-6000.0.36f1-android-3
+Updating Android SDK with auto detected target API version
+grep: /github/workspace/./ProjectSettings/ProjectSettings.asset: No such file or directory
+Loading package information...                                                  
+Loading local repository...                                                     
+[                                       ] 3% Loading local repository...        
+[                                       ] 3% Fetch remote repository...         
+[=                                      ] 3% Fetch remote repository...         
+[=                                      ] 4% Fetch remote repository...         
+[=                                      ] 5% Fetch remote repository...         
+[==                                     ] 5% Fetch remote repository...         
+[==                                     ] 6% Fetch remote repository...         
+[==                                     ] 7% Fetch remote repository...         
+[==                                     ] 7% Computing updates...               
+[===                                    ] 8% Computing updates...               
+[===                                    ] 10% Computing updates...              
+Warning: Failed to find package 'platforms;android-'
+                                                                                
+[===                                    ] 10% Computing updates...              
+Updated Android SDK.
+Running as root
+GIT_CONFIG_EXTENSIONS unset skipping
+---------- git config --list -------------
+filter.lfs.clean=git-lfs clean -- %f
+filter.lfs.smudge=git-lfs smudge -- %f
+filter.lfs.process=git-lfs filter-process
+filter.lfs.required=true
+---------- git config --list --show-origin -------------
+file:/etc/gitconfig	filter.lfs.clean=git-lfs clean -- %f
+file:/etc/gitconfig	filter.lfs.smudge=git-lfs smudge -- %f
+file:/etc/gitconfig	filter.lfs.process=git-lfs filter-process
+file:/etc/gitconfig	filter.lfs.required=true
+GIT_PRIVATE_TOKEN unset skipping
+---------- git config --list -------------
+filter.lfs.clean=git-lfs clean -- %f
+filter.lfs.smudge=git-lfs smudge -- %f
+filter.lfs.process=git-lfs filter-process
+filter.lfs.required=true
+---------- git config --list --show-origin -------------
+file:/etc/gitconfig	filter.lfs.clean=git-lfs clean -- %f
+file:/etc/gitconfig	filter.lfs.smudge=git-lfs smudge -- %f
+file:/etc/gitconfig	filter.lfs.process=git-lfs filter-process
+file:/etc/gitconfig	filter.lfs.required=true
+Changing to "/github/workspace/_activate-license~" directory.
+/github/workspace/_activate-license~ /github/workspace
+Licensing method: personal
+Requesting activation (personal license via Unity account)
+Trying to activate all seats ...
+Activation processed successfully.
+
+Seat ID: 5774143681452-UnityPersonal
+Status: [200] ASSIGN_SEAT
+
+
+Trying to update entitlement license file ...
+Successfully updated UnityEntitlementLicense.xml!
+Activation complete.
+/github/workspace
+Using project path "/github/workspace/.".
+Using build name "SkyTide".
+Using build target "Android".
+Doing a default "Android" platform build.
+Using build path "build/Android" to save file "SkyTide.apk".
+Using build method "SkyTide.EditorTools.BuildScript.BuildAndroid".
+
+###########################
+#    Custom parameters    #
+###########################
+
+
+
+###########################
+#    Current build dir    #
+###########################
+
+Creating "/github/workspace/build/Android" if it does not exist.
+total 8.0K
+drwxr-xr-x 2 root root 4.0K Nov 14 06:47 .
+drwxr-xr-x 3 root root 4.0K Nov 14 06:47 ..
+
+###########################
+#    Project directory    #
+###########################
+
+total 228K
+drwxr-xr-x 10 1001 1001 4.0K Nov 14 06:47 .
+drwxr-xr-x  3 root root 4.0K Nov 14 06:47 ..
+drwxr-xr-x  8 1001 1001 4.0K Nov 14 06:41 .git
+drwxr-xr-x  3 1001 1001 4.0K Nov 14 06:41 .github
+-rw-r--r--  1 1001 1001  268 Nov 14 06:41 .gitignore
+drwxr-xr-x  3 1001 1001 4.0K Nov 14 06:41 Assets
+drwxr-xr-x 14 1001 1001 4.0K Nov 14 00:23 Library
+drwxr-xr-x  2 1001 1001 4.0K Nov 14 06:41 ProjectSettings
+-rw-r--r--  1 1001 1001 4.5K Nov 14 06:41 README.md
+drwxr-xr-x  2 root root 4.0K Nov 14 06:47 _activate-license~
+drwxr-xr-x  3 root root 4.0K Nov 14 06:47 build
+-rw-r--r--  1 1001 1001 175K Nov 14 06:41 sky-log.txt
+drwxr-xr-x  6 1001 1001 4.0K Nov 14 06:41 tools
+
+###########################
+#    Building project     #
+###########################
+
+[UnityConnectServicesConfig] Local config successfully read: "/usr/share/unity3d/config/services-config.json"
+[UnityConnectServicesConfig] "clientConnectTimeoutSec" was overridden with "5"
+[UnityConnectServicesConfig] "clientHandshakeTimeoutSec" was overridden with "10"
+[UnityConnectServicesConfig] Service configuration:
+    "servicesConfigBaseUrl": "",
+    "disableServicesWindow": false,
+    "disableUserLogin": false,
+    "entitlementCacheTimeoutInSeconds": 60,
+    "clientConnectTimeoutSec": 5,
+    "clientHandshakeTimeoutSec": 10,
+    "clientResolveEntitlementsTimeoutSec": 30,
+    "clientUpdateLicenseTimeoutSec": 30,
+    "licensingServiceBaseUrl": "",
+    "enableProxyAutoconfig": "false"
+
+Unity Editor version:    6000.0.36f1 (9fe3b5f71dbb)
+Branch:                  6000.0/staging
+Build type:              Release
+Batch mode:              YES
+System name:             Linux
+Distro version:          #20-Ubuntu SMP PREEMPT Mon Oct 19 22:41:16 UTC 2026
+Kernel version:          7.0.0-1019-azure
+Architecture:            x86_64
+Available memory:        15983 MB
+[Licensing::Module] Trying to connect to existing licensing client channel...
+[Licensing::IpcConnector] Connection attempt to the License Client on channel: "LicenseClient-root" failed because channel doesn't exist; code: "0x80000002"
+[Licensing::Module] Successfully launched the LicensingClient (PId: 166)
+[Licensing::IpcConnector] Successfully connected to the License Client on channel: "LicenseClient-root" at "2026-11-14T06:47:10.888367Z"
+[SignatureVerifier] Application signature verification not supported on this platform.
+[Licensing::Client] Handshaking with LicensingClient:
+  Version:                 1.16.2+bdef8f5
+  Session Id:              d3db85123a394e1ea48bdb4206754c35
+  Correlation Id:          cafb1501732f2372352742bd601c10db
+  External correlation Id: 9219549226475884657
+  Machine Id:              D7nTUnjNAmtsUMcnoyrqkgIbYdM=
+[Licensing::Module] Successfully connected to LicensingClient on channel: "LicenseClient-root" (connect: 0.57s, validation: 0.04s, handshake: 0.00s)
+[Licensing::IpcConnector] Successfully connected to the License Notification on channel: "LicenseClient-root-notifications" at "2026-11-14T06:47:10.932569Z"
+[Licensing::Module] Connected to LicensingClient (PId: 166, launch time: 0.00, total connection time: 0.61s)
+[Licensing::Module] Error: Access token is unavailable; failed to update
+[Licensing::Client] Error: Code 500 while processing request (status: Unable to update licenses. Errors: No ULF license found.,Token not found in cache)
+[Licensing::Client] Error: Code 500 while updating license in client (status: Unable to update licenses. Errors: No ULF license found.,Token not found in cache)
+[Licensing::Client] Successfully resolved entitlement details
+[Licensing::Module] Serial number assigned to: "5774143681452-UnityPersXXXX"
+Pro License: NO
+The selected window backend is (null) 
+Desktop is 1280 x 1024 @ 60 Hz
+Initialize udev device monitor.
+CreateDirectory '/root/.cache/unity3d' failed:  (current dir: /github/workspace)
+[Licensing::Client] Successfully resolved entitlement details
+
+COMMAND LINE ARGUMENTS:
+/opt/unity/Editor/Unity
+-batchmode
+-logfile
+/dev/stdout
+-quit
+-customBuildName
+SkyTide
+-projectPath
+/github/workspace/.
+-buildTarget
+Android
+-customBuildTarget
+Android
+-customBuildPath
+/github/workspace/build/Android/SkyTide.apk
+-customBuildProfile
+
+-executeMethod
+SkyTide.EditorTools.BuildScript.BuildAndroid
+-buildVersion
+none
+-androidVersionCode
+0
+-androidKeystoreName
+
+-androidKeystorePass
+
+-androidKeyaliasName
+
+-androidKeyaliasPass
+
+-androidTargetSdkVersion
+
+-androidExportType
+androidPackage
+-androidSymbolType
+none
+Successfully changed project path to: /github/workspace/.
+
+(Unity:160): Gtk-CRITICAL **: 06:47:11.224: gtk_label_set_text: assertion 'GTK_IS_LABEL (label)' failed
+
+(Unity:160): Gtk-CRITICAL **: 06:47:11.224: gtk_label_set_text: assertion 'GTK_IS_LABEL (label)' failed
+/github/workspace
+[UnityMemory] Configuration Parameters - Can be set up in boot.config
+    "memorysetup-bucket-allocator-granularity=16"
+    "memorysetup-bucket-allocator-bucket-count=8"
+    "memorysetup-bucket-allocator-block-size=33554432"
+    "memorysetup-bucket-allocator-block-count=8"
+    "memorysetup-main-allocator-block-size=16777216"
+    "memorysetup-thread-allocator-block-size=16777216"
+    "memorysetup-gfx-main-allocator-block-size=16777216"
+    "memorysetup-gfx-thread-allocator-block-size=16777216"
+    "memorysetup-cache-allocator-block-size=4194304"
+    "memorysetup-typetree-allocator-block-size=2097152"
+    "memorysetup-profiler-bucket-allocator-granularity=16"
+    "memorysetup-profiler-bucket-allocator-bucket-count=8"
+    "memorysetup-profiler-bucket-allocator-block-size=33554432"
+    "memorysetup-profiler-bucket-allocator-block-count=8"
+    "memorysetup-profiler-allocator-block-size=16777216"
+    "memorysetup-profiler-editor-allocator-block-size=1048576"
+    "memorysetup-temp-allocator-size-main=16777216"
+    "memorysetup-job-temp-allocator-block-size=2097152"
+    "memorysetup-job-temp-allocator-block-size-background=1048576"
+    "memorysetup-job-temp-allocator-reduction-small-platforms=262144"
+    "memorysetup-allocator-temp-initial-block-size-main=262144"
+    "memorysetup-allocator-temp-initial-block-size-worker=262144"
+    "memorysetup-temp-allocator-size-background-worker=32768"
+    "memorysetup-temp-allocator-size-job-worker=262144"
+    "memorysetup-temp-allocator-size-preload-manager=33554432"
+    "memorysetup-temp-allocator-size-nav-mesh-worker=65536"
+    "memorysetup-temp-allocator-size-audio-worker=65536"
+    "memorysetup-temp-allocator-size-cloud-worker=32768"
+    "memorysetup-temp-allocator-size-gi-baking-worker=262144"
+    "memorysetup-temp-allocator-size-gi-baking-worker=262144"
+    "memorysetup-temp-allocator-size-gi-baking-worker=262144"
+    "memorysetup-temp-allocator-size-gi-baking-worker=262144"
+    "memorysetup-temp-allocator-size-gi-baking-worker=262144"
+    "memorysetup-temp-allocator-size-gfx=262144"
+Player connection [125365093926208]  Target information:
+
+Player connection [125365093926208]  * "[IP] 172.17.0.2 [Port] 55504 [Flags] 2 [Guid] 3055975882 [EditorId] 3055975882 [Version] 1048832 [Id] LinuxEditor(16,172.17.0.2) [Debug] 1 [PackageName] LinuxEditor [ProjectName] Editor" 
+
+Player connection [125365093926208] Host joined multi-casting on [225.0.0.222:54997]...
+Player connection [125365093926208] Host joined alternative multi-casting on [225.0.0.222:34997]...
+Input System module state changed to: Initialized.
+[Physics::Module] Initialized fallback backend.
+[Physics::Module] Id: 0xdecafbad
+[Package Manager] Connected to IPC stream "Upm-160" after 0.1 seconds.
+Library Redirect Path: Library/
+[Package Manager] Restoring resolved packages state from cache
+[Licensing::Client] Successfully resolved entitlement details
+[Package Manager] Registered 35 packages:
+  Built-in packages:
+    com.unity.multiplayer.center@1.0.0 (location: /github/workspace/Library/PackageCache/com.unity.multiplayer.center@ffda662e48c2)
+    com.unity.modules.accessibility@1.0.0 (location: /opt/unity/Editor/Data/Resources/PackageManager/BuiltInPackages/com.unity.modules.accessibility)
+    com.unity.modules.ai@1.0.0 (location: /opt/unity/Editor/Data/Resources/PackageManager/BuiltInPackages/com.unity.modules.ai)
+    com.unity.modules.androidjni@1.0.0 (location: /opt/unity/Editor/Data/Resources/PackageManager/BuiltInPackages/com.unity.modules.androidjni)
+    com.unity.modules.animation@1.0.0 (location: /opt/unity/Editor/Data/Resources/PackageManager/BuiltInPackages/com.unity.modules.animation)
+    com.unity.modules.assetbundle@1.0.0 (location: /opt/unity/Editor/Data/Resources/PackageManager/BuiltInPackages/com.unity.modules.assetbundle)
+    com.unity.modules.audio@1.0.0 (location: /opt/unity/Editor/Data/Resources/PackageManager/BuiltInPackages/com.unity.modules.audio)
+    com.unity.modules.cloth@1.0.0 (location: /opt/unity/Editor/Data/Resources/PackageManager/BuiltInPackages/com.unity.modules.cloth)
+    com.unity.modules.director@1.0.0 (location: /opt/unity/Editor/Data/Resources/PackageManager/BuiltInPackages/com.unity.modules.director)
+    com.unity.modules.imageconversion@1.0.0 (location: /opt/unity/Editor/Data/Resources/PackageManager/BuiltInPackages/com.unity.modules.imageconversion)
+    com.unity.modules.imgui@1.0.0 (location: /opt/unity/Editor/Data/Resources/PackageManager/BuiltInPackages/com.unity.modules.imgui)
+    com.unity.modules.jsonserialize@1.0.0 (location: /opt/unity/Editor/Data/Resources/PackageManager/BuiltInPackages/com.unity.modules.jsonserialize)
+    com.unity.modules.particlesystem@1.0.0 (location: /opt/unity/Editor/Data/Resources/PackageManager/BuiltInPackages/com.unity.modules.particlesystem)
+    com.unity.modules.physics@1.0.0 (location: /opt/unity/Editor/Data/Resources/PackageManager/BuiltInPackages/com.unity.modules.physics)
+    com.unity.modules.physics2d@1.0.0 (location: /opt/unity/Editor/Data/Resources/PackageManager/BuiltInPackages/com.unity.modules.physics2d)
+    com.unity.modules.screencapture@1.0.0 (location: /opt/unity/Editor/Data/Resources/PackageManager/BuiltInPackages/com.unity.modules.screencapture)
+    com.unity.modules.terrain@1.0.0 (location: /opt/unity/Editor/Data/Resources/PackageManager/BuiltInPackages/com.unity.modules.terrain)
+    com.unity.modules.terrainphysics@1.0.0 (location: /opt/unity/Editor/Data/Resources/PackageManager/BuiltInPackages/com.unity.modules.terrainphysics)
+    com.unity.modules.tilemap@1.0.0 (location: /opt/unity/Editor/Data/Resources/PackageManager/BuiltInPackages/com.unity.modules.tilemap)
+    com.unity.modules.ui@1.0.0 (location: /opt/unity/Editor/Data/Resources/PackageManager/BuiltInPackages/com.unity.modules.ui)
+    com.unity.modules.uielements@1.0.0 (location: /opt/unity/Editor/Data/Resources/PackageManager/BuiltInPackages/com.unity.modules.uielements)
+    com.unity.modules.umbra@1.0.0 (location: /opt/unity/Editor/Data/Resources/PackageManager/BuiltInPackages/com.unity.modules.umbra)
+    com.unity.modules.unityanalytics@1.0.0 (location: /opt/unity/Editor/Data/Resources/PackageManager/BuiltInPackages/com.unity.modules.unityanalytics)
+    com.unity.modules.unitywebrequest@1.0.0 (location: /opt/unity/Editor/Data/Resources/PackageManager/BuiltInPackages/com.unity.modules.unitywebrequest)
+    com.unity.modules.unitywebrequestassetbundle@1.0.0 (location: /opt/unity/Editor/Data/Resources/PackageManager/BuiltInPackages/com.unity.modules.unitywebrequestassetbundle)
+    com.unity.modules.unitywebrequestaudio@1.0.0 (location: /opt/unity/Editor/Data/Resources/PackageManager/BuiltInPackages/com.unity.modules.unitywebrequestaudio)
+    com.unity.modules.unitywebrequesttexture@1.0.0 (location: /opt/unity/Editor/Data/Resources/PackageManager/BuiltInPackages/com.unity.modules.unitywebrequesttexture)
+    com.unity.modules.unitywebrequestwww@1.0.0 (location: /opt/unity/Editor/Data/Resources/PackageManager/BuiltInPackages/com.unity.modules.unitywebrequestwww)
+    com.unity.modules.vehicles@1.0.0 (location: /opt/unity/Editor/Data/Resources/PackageManager/BuiltInPackages/com.unity.modules.vehicles)
+    com.unity.modules.video@1.0.0 (location: /opt/unity/Editor/Data/Resources/PackageManager/BuiltInPackages/com.unity.modules.video)
+    com.unity.modules.vr@1.0.0 (location: /opt/unity/Editor/Data/Resources/PackageManager/BuiltInPackages/com.unity.modules.vr)
+    com.unity.modules.wind@1.0.0 (location: /opt/unity/Editor/Data/Resources/PackageManager/BuiltInPackages/com.unity.modules.wind)
+    com.unity.modules.xr@1.0.0 (location: /opt/unity/Editor/Data/Resources/PackageManager/BuiltInPackages/com.unity.modules.xr)
+    com.unity.modules.subsystems@1.0.0 (location: /opt/unity/Editor/Data/Resources/PackageManager/BuiltInPackages/com.unity.modules.subsystems)
+    com.unity.modules.hierarchycore@1.0.0 (location: /opt/unity/Editor/Data/Resources/PackageManager/BuiltInPackages/com.unity.modules.hierarchycore)
+[Physics::Module] Selected backend.
+[Physics::Module] Name: PhysX
+[Physics::Module] Id: 0xf2b8ea05
+[Physics::Module] SDK Version: 4.1.2
+[Physics::Module] Integration Version: 1.0.0
+[Physics::Module] Threading Mode: Multi-Threaded
+Unable to load player prefs
+[Subsystems] No new subsystems found in resolved package list.
+Package Manager log level set to [2]
+[Package Manager] Done registering packages in 0.16 seconds
+[Package Manager] Done resolving packages in 1.02 seconds
+[Package Manager] Lock file was modified
+[Package Manager] Registered 35 packages:
+  Built-in packages:
+    com.unity.multiplayer.center@1.0.0 (location: /github/workspace/Library/PackageCache/com.unity.multiplayer.center@ffda662e48c2)
+    com.unity.modules.accessibility@1.0.0 (location: /opt/unity/Editor/Data/Resources/PackageManager/BuiltInPackages/com.unity.modules.accessibility)
+    com.unity.modules.ai@1.0.0 (location: /opt/unity/Editor/Data/Resources/PackageManager/BuiltInPackages/com.unity.modules.ai)
+    com.unity.modules.androidjni@1.0.0 (location: /opt/unity/Editor/Data/Resources/PackageManager/BuiltInPackages/com.unity.modules.androidjni)
+    com.unity.modules.animation@1.0.0 (location: /opt/unity/Editor/Data/Resources/PackageManager/BuiltInPackages/com.unity.modules.animation)
+    com.unity.modules.assetbundle@1.0.0 (location: /opt/unity/Editor/Data/Resources/PackageManager/BuiltInPackages/com.unity.modules.assetbundle)
+    com.unity.modules.audio@1.0.0 (location: /opt/unity/Editor/Data/Resources/PackageManager/BuiltInPackages/com.unity.modules.audio)
+    com.unity.modules.cloth@1.0.0 (location: /opt/unity/Editor/Data/Resources/PackageManager/BuiltInPackages/com.unity.modules.cloth)
+    com.unity.modules.director@1.0.0 (location: /opt/unity/Editor/Data/Resources/PackageManager/BuiltInPackages/com.unity.modules.director)
+    com.unity.modules.imageconversion@1.0.0 (location: /opt/unity/Editor/Data/Resources/PackageManager/BuiltInPackages/com.unity.modules.imageconversion)
+    com.unity.modules.imgui@1.0.0 (location: /opt/unity/Editor/Data/Resources/PackageManager/BuiltInPackages/com.unity.modules.imgui)
+    com.unity.modules.jsonserialize@1.0.0 (location: /opt/unity/Editor/Data/Resources/PackageManager/BuiltInPackages/com.unity.modules.jsonserialize)
+    com.unity.modules.particlesystem@1.0.0 (location: /opt/unity/Editor/Data/Resources/PackageManager/BuiltInPackages/com.unity.modules.particlesystem)
+    com.unity.modules.physics@1.0.0 (location: /opt/unity/Editor/Data/Resources/PackageManager/BuiltInPackages/com.unity.modules.physics)
+    com.unity.modules.physics2d@1.0.0 (location: /opt/unity/Editor/Data/Resources/PackageManager/BuiltInPackages/com.unity.modules.physics2d)
+    com.unity.modules.screencapture@1.0.0 (location: /opt/unity/Editor/Data/Resources/PackageManager/BuiltInPackages/com.unity.modules.screencapture)
+    com.unity.modules.terrain@1.0.0 (location: /opt/unity/Editor/Data/Resources/PackageManager/BuiltInPackages/com.unity.modules.terrain)
+    com.unity.modules.terrainphysics@1.0.0 (location: /opt/unity/Editor/Data/Resources/PackageManager/BuiltInPackages/com.unity.modules.terrainphysics)
+    com.unity.modules.tilemap@1.0.0 (location: /opt/unity/Editor/Data/Resources/PackageManager/BuiltInPackages/com.unity.modules.tilemap)
+    com.unity.modules.ui@1.0.0 (location: /opt/unity/Editor/Data/Resources/PackageManager/BuiltInPackages/com.unity.modules.ui)
+    com.unity.modules.uielements@1.0.0 (location: /opt/unity/Editor/Data/Resources/PackageManager/BuiltInPackages/com.unity.modules.uielements)
+    com.unity.modules.umbra@1.0.0 (location: /opt/unity/Editor/Data/Resources/PackageManager/BuiltInPackages/com.unity.modules.umbra)
+    com.unity.modules.unityanalytics@1.0.0 (location: /opt/unity/Editor/Data/Resources/PackageManager/BuiltInPackages/com.unity.modules.unityanalytics)
+    com.unity.modules.unitywebrequest@1.0.0 (location: /opt/unity/Editor/Data/Resources/PackageManager/BuiltInPackages/com.unity.modules.unitywebrequest)
+    com.unity.modules.unitywebrequestassetbundle@1.0.0 (location: /opt/unity/Editor/Data/Resources/PackageManager/BuiltInPackages/com.unity.modules.unitywebrequestassetbundle)
+    com.unity.modules.unitywebrequestaudio@1.0.0 (location: /opt/unity/Editor/Data/Resources/PackageManager/BuiltInPackages/com.unity.modules.unitywebrequestaudio)
+    com.unity.modules.unitywebrequesttexture@1.0.0 (location: /opt/unity/Editor/Data/Resources/PackageManager/BuiltInPackages/com.unity.modules.unitywebrequesttexture)
+    com.unity.modules.unitywebrequestwww@1.0.0 (location: /opt/unity/Editor/Data/Resources/PackageManager/BuiltInPackages/com.unity.modules.unitywebrequestwww)
+    com.unity.modules.vehicles@1.0.0 (location: /opt/unity/Editor/Data/Resources/PackageManager/BuiltInPackages/com.unity.modules.vehicles)
+    com.unity.modules.video@1.0.0 (location: /opt/unity/Editor/Data/Resources/PackageManager/BuiltInPackages/com.unity.modules.video)
+    com.unity.modules.vr@1.0.0 (location: /opt/unity/Editor/Data/Resources/PackageManager/BuiltInPackages/com.unity.modules.vr)
+    com.unity.modules.wind@1.0.0 (location: /opt/unity/Editor/Data/Resources/PackageManager/BuiltInPackages/com.unity.modules.wind)
+    com.unity.modules.xr@1.0.0 (location: /opt/unity/Editor/Data/Resources/PackageManager/BuiltInPackages/com.unity.modules.xr)
+    com.unity.modules.subsystems@1.0.0 (location: /opt/unity/Editor/Data/Resources/PackageManager/BuiltInPackages/com.unity.modules.subsystems)
+    com.unity.modules.hierarchycore@1.0.0 (location: /opt/unity/Editor/Data/Resources/PackageManager/BuiltInPackages/com.unity.modules.hierarchycore)
+[Subsystems] No new subsystems found in resolved package list.
+[Package Manager] Done registering packages in 0.00 seconds
+Artifact Garbage Collection - Removed 84 unused hashed content files[Licensing::Client] Successfully resolved entitlement details
+Targeting platform: Android
+Refreshing native plugins compatible for Editor in 0.00 ms, found 0 plugins.
+Preloading 0 native plugins for Editor in 0.00 ms.
+Initialize engine version: 6000.0.36f1 (9fe3b5f71dbb)
+[Subsystems] Discovering subsystems at path /opt/unity/Editor/Data/Resources/UnitySubsystems
+[Subsystems] Discovering subsystems at path /github/workspace/Assets
+kGfxThreadingModeNonThreaded is not supported on OpenGL Core. Reverting to kGfxThreadingModeDirect instead.
+GfxDevice: creating device client; kGfxThreadingModeDirect
+GLX Extensions: GLX_ARB_context_flush_control GLX_ARB_create_context GLX_ARB_create_context_no_error GLX_ARB_create_context_profile GLX_ARB_fbconfig_float GLX_ARB_framebuffer_sRGB GLX_ARB_get_proc_address GLX_ARB_multisample GLX_EXT_create_context_es2_profile GLX_EXT_create_context_es_profile GLX_EXT_fbconfig_packed_float GLX_EXT_framebuffer_sRGB GLX_EXT_no_config_context GLX_EXT_texture_from_pixmap GLX_EXT_visual_info GLX_EXT_visual_rating GLX_MESA_copy_sub_buffer GLX_MESA_query_renderer GLX_OML_swap_method GLX_SGIS_multisample GLX_SGIX_fbconfig GLX_SGIX_pbuffer GLX_SGIX_visual_select_group GLX_SGI_make_current_read 
+Renderer: llvmpipe (LLVM 15.0.7, 256 bits)
+Vendor:   Mesa
+Version:  4.5 (Core Profile) Mesa 23.2.1-1ubuntu3.1~22.04.3
+GLES:     0
+ GL_3DFX_texture_compression_FXT1 GL_AMD_conservative_depth GL_AMD_draw_buffers_blend GL_AMD_gpu_shader_int64 GL_AMD_multi_draw_indirect GL_AMD_pinned_memory GL_AMD_query_buffer_object GL_AMD_seamless_cubemap_per_texture GL_AMD_shader_stencil_export GL_AMD_shader_trinary_minmax GL_AMD_texture_texture4 GL_AMD_vertex_shader_layer GL_AMD_vertex_shader_viewport_index GL_ANGLE_texture_compression_dxt3 GL_ANGLE_texture_compression_dxt5 GL_ARB_ES2_compatibility GL_ARB_ES3_1_compatibility GL_ARB_ES3_2_compatibility GL_ARB_ES3_compatibility GL_ARB_arrays_of_arrays GL_ARB_base_instance GL_ARB_blend_func_extended GL_ARB_buffer_storage GL_ARB_clear_buffer_object GL_ARB_clear_texture GL_ARB_clip_control GL_ARB_compressed_texture_pixel_storage GL_ARB_compute_shader GL_ARB_conditional_render_inverted GL_ARB_conservative_depth GL_ARB_copy_buffer GL_ARB_copy_image GL_ARB_cull_distance GL_ARB_debug_output GL_ARB_depth_buffer_float GL_ARB_depth_clamp GL_ARB_derivative_control GL_ARB_direct_state_access GL_ARB_draw_buffers GL_A
+RB_draw_buffers_blend GL_ARB_draw_elements_base_vertex GL_ARB_draw_indirect GL_ARB_draw_instanced GL_ARB_enhanced_layouts GL_ARB_explicit_attrib_location GL_ARB_explicit_uniform_location GL_ARB_fragment_coord_conventions GL_ARB_fragment_layer_viewport GL_ARB_fragment_shader GL_ARB_framebuffer_no_attachments GL_ARB_framebuffer_object GL_ARB_framebuffer_sRGB GL_ARB_get_program_binary GL_ARB_get_texture_sub_image GL_ARB_gl_spirv GL_ARB_gpu_shader5 GL_ARB_gpu_shader_fp64 GL_ARB_gpu_shader_int64 GL_ARB_half_float_pixel GL_ARB_half_float_vertex GL_ARB_indirect_parameters GL_ARB_instanced_arrays GL_ARB_internalformat_query GL_ARB_internalformat_query2 GL_ARB_invalidate_subdata GL_ARB_map_buffer_alignment GL_ARB_map_buffer_range GL_ARB_multi_bind GL_ARB_multi_draw_indirect GL_ARB_occlusion_query2 GL_ARB_parallel_shader_compile GL_ARB_pipeline_statistics_query GL_ARB_pixel_buffer_object GL_ARB_point_sprite GL_ARB_polygon_offset_clamp GL_ARB_post_depth_coverage GL_ARB_program_interface_query GL_ARB_provoking_vertex GL
+_ARB_query_buffer_object GL_ARB_robust_buffer_access_behavior GL_ARB_robustness GL_ARB_sample_shading GL_ARB_sampler_objects GL_ARB_seamless_cube_map GL_ARB_seamless_cubemap_per_texture GL_ARB_separate_shader_objects GL_ARB_shader_atomic_counter_ops GL_ARB_shader_atomic_counters GL_ARB_shader_ballot GL_ARB_shader_bit_encoding GL_ARB_shader_clock GL_ARB_shader_draw_parameters GL_ARB_shader_group_vote GL_ARB_shader_image_load_store GL_ARB_shader_image_size GL_ARB_shader_objects GL_ARB_shader_precision GL_ARB_shader_stencil_export GL_ARB_shader_storage_buffer_object GL_ARB_shader_subroutine GL_ARB_shader_texture_image_samples GL_ARB_shader_texture_lod GL_ARB_shader_viewport_layer_array GL_ARB_shading_language_420pack GL_ARB_shading_language_include GL_ARB_shading_language_packing GL_ARB_spirv_extensions GL_ARB_stencil_texturing GL_ARB_sync GL_ARB_tessellation_shader GL_ARB_texture_barrier GL_ARB_texture_buffer_object GL_ARB_texture_buffer_object_rgb32 GL_ARB_texture_buffer_range GL_ARB_texture_compression_bptc 
+GL_ARB_texture_compression_rgtc GL_ARB_texture_cube_map_array GL_ARB_texture_filter_anisotropic GL_ARB_texture_filter_minmax GL_ARB_texture_float GL_ARB_texture_gather GL_ARB_texture_mirror_clamp_to_edge GL_ARB_texture_multisample GL_ARB_texture_non_power_of_two GL_ARB_texture_query_levels GL_ARB_texture_query_lod GL_ARB_texture_rectangle GL_ARB_texture_rg GL_ARB_texture_rgb10_a2ui GL_ARB_texture_stencil8 GL_ARB_texture_storage GL_ARB_texture_storage_multisample GL_ARB_texture_swizzle GL_ARB_texture_view GL_ARB_timer_query GL_ARB_transform_feedback2 GL_ARB_transform_feedback3 GL_ARB_transform_feedback_instanced GL_ARB_transform_feedback_overflow_query GL_ARB_uniform_buffer_object GL_ARB_vertex_array_bgra GL_ARB_vertex_array_object GL_ARB_vertex_attrib_64bit GL_ARB_vertex_attrib_binding GL_ARB_vertex_buffer_object GL_ARB_vertex_shader GL_ARB_vertex_type_10f_11f_11f_rev GL_ARB_vertex_type_2_10_10_10_rev GL_ARB_viewport_array GL_ARM_shader_framebuffer_fetch_depth_stencil GL_ATI_blend_equation_separate GL_ATI_me
+minfo GL_ATI_texture_float GL_ATI_texture_mirror_once GL_EXT_EGL_image_storage GL_EXT_EGL_sync GL_EXT_abgr GL_EXT_blend_equation_separate GL_EXT_debug_label GL_EXT_draw_buffers2 GL_EXT_draw_instanced GL_EXT_framebuffer_blit GL_EXT_framebuffer_multisample GL_EXT_framebuffer_multisample_blit_scaled GL_EXT_framebuffer_object GL_EXT_framebuffer_sRGB GL_EXT_memory_object GL_EXT_memory_object_fd GL_EXT_packed_depth_stencil GL_EXT_packed_float GL_EXT_pixel_buffer_object GL_EXT_polygon_offset_clamp GL_EXT_provoking_vertex GL_EXT_shader_framebuffer_fetch GL_EXT_shader_framebuffer_fetch_non_coherent GL_EXT_shader_integer_mix GL_EXT_texture_array GL_EXT_texture_compression_dxt1 GL_EXT_texture_compression_rgtc GL_EXT_texture_compression_s3tc GL_EXT_texture_filter_anisotropic GL_EXT_texture_filter_minmax GL_EXT_texture_integer GL_EXT_texture_mirror_clamp GL_EXT_texture_sRGB GL_EXT_texture_sRGB_R8 GL_EXT_texture_sRGB_RG8 GL_EXT_texture_sRGB_decode GL_EXT_texture_shadow_lod GL_EXT_texture_shared_exponent GL_EXT_texture_sno
+rm GL_EXT_texture_swizzle GL_EXT_timer_query GL_EXT_transform_feedback GL_EXT_vertex_array_bgra GL_EXT_vertex_attrib_64bit GL_IBM_multimode_draw_arrays GL_INTEL_shader_atomic_float_minmax GL_KHR_blend_equation_advanced GL_KHR_blend_equation_advanced_coherent GL_KHR_context_flush_control GL_KHR_debug GL_KHR_no_error GL_KHR_parallel_shader_compile GL_KHR_robust_buffer_access_behavior GL_KHR_robustness GL_KHR_texture_compression_astc_ldr GL_KHR_texture_compression_astc_sliced_3d GL_MESA_framebuffer_flip_y GL_MESA_pack_invert GL_MESA_shader_integer_functions GL_MESA_texture_signed_rgba GL_MESA_ycbcr_texture GL_NVX_gpu_memory_info GL_NV_conditional_render GL_NV_copy_image GL_NV_depth_clamp GL_NV_packed_depth_stencil GL_NV_shader_atomic_float GL_NV_texture_barrier GL_OES_EGL_image GL_S3_s3tc
+OPENGL LOG: Creating OpenGL 4.5 graphics device ; Context level  <OpenGL 4.5> ; Context handle 915589920
+[Licensing::Client] Successfully resolved entitlement details
+Initialize mono
+Mono path[0] = '/opt/unity/Editor/Data/Managed'
+Mono path[1] = '/opt/unity/Editor/Data/MonoBleedingEdge/lib/mono/unityjit-linux'
+Mono config path = '/opt/unity/Editor/Data/MonoBleedingEdge/etc'
+Using monoOptions --debugger-agent=transport=dt_socket,embedding=1,server=y,suspend=n,address=127.0.0.1:56160
+Using cacheserver namespaces - metadata:defaultmetadata, artifacts:defaultartifacts
+Using cacheserver namespaces - metadata:defaultmetadata, artifacts:defaultartifacts
+ImportWorker Server TCP listen port: 0
+AcceleratorClientConnectionCallback - disconnected - :0
+Begin MonoManager ReloadAssembly
+Registering precompiled unity dll's ...
+Register platform support module: /opt/unity/Editor/Data/PlaybackEngines/AndroidPlayer/UnityEditor.Android.Extensions.dll
+Register platform support module: /opt/unity/Editor/Data/PlaybackEngines/LinuxStandaloneSupport/UnityEditor.LinuxStandalone.Extensions.dll
+Registered in 0.023875 seconds.
+- Loaded All Assemblies, in  0.536 seconds
+Native extension for LinuxStandalone target not found
+Native extension for Android target not found
+Android Extension - Scanning For ADB Devices 101 ms
+Mono: successfully reloaded assembly
+- Finished resetting the current domain, in  0.582 seconds
+Domain Reload Profiling: 1118ms
+	BeginReloadAssembly (179ms)
+		ExecutionOrderSort (0ms)
+		DisableScriptedObjects (0ms)
+		BackupInstance (0ms)
+		ReleaseScriptingObjects (0ms)
+		CreateAndSetChildDomain (1ms)
+	RebuildCommonClasses (42ms)
+	RebuildNativeTypeToScriptingClass (7ms)
+	initialDomainReloadingComplete (77ms)
+	LoadAllAssembliesAndSetupDomain (230ms)
+		LoadAssemblies (227ms)
+		RebuildTransferFunctionScriptingTraits (0ms)
+		AnalyzeDomain (178ms)
+			TypeCache.Refresh (177ms)
+				TypeCache.ScanAssembly (148ms)
+			BuildScriptInfoCaches (0ms)
+			ResolveRequiredComponents (1ms)
+	FinalizeReload (582ms)
+		ReleaseScriptCaches (0ms)
+		RebuildScriptCaches (0ms)
+		SetupLoadedEditorAssemblies (544ms)
+			LogAssemblyErrors (0ms)
+			InitializePlatformSupportModulesInManaged (231ms)
+			SetLoadedEditorAssemblies (4ms)
+			BeforeProcessingInitializeOnLoad (55ms)
+			ProcessInitializeOnLoadAttributes (194ms)
+			ProcessInitializeOnLoadMethodAttributes (60ms)
+			AfterProcessingInitializeOnLoad (0ms)
+			EditorAssembliesLoaded (0ms)
+		ExecutionOrderSort2 (0ms)
+		AwakeInstancesAfterBackupRestoration (0ms)
+[Licensing::Client] Successfully resolved entitlement details
+[Licensing::Client] Successfully resolved entitlement details
+Application.AssetDatabase Initial Refresh Start
+[ScriptCompilation] Requested script compilation because: Assetdatabase observed changes in script compilation related files
+[40m[32minfo[39m[22m[49m: Microsoft.Hosting.Lifetime[14]
+      Now listening on: http://unix:/tmp/ilpp.sock-f07a9074cf124f978827f2e08a2ba3a4
+[40m[32minfo[39m[22m[49m: Microsoft.Hosting.Lifetime[0]
+      Application started. Press Ctrl+C to shut down.
+[40m[32minfo[39m[22m[49m: Microsoft.Hosting.Lifetime[0]
+      Hosting environment: Production
+[40m[32minfo[39m[22m[49m: Microsoft.Hosting.Lifetime[0]
+      Content root path: /github/workspace/
+[40m[32minfo[39m[22m[49m: Microsoft.AspNetCore.Hosting.Diagnostics[1]
+      Request starting HTTP/2 POST http://ilpp/UnityILPP.PostProcessing/Ping application/grpc -
+[40m[32minfo[39m[22m[49m: Microsoft.AspNetCore.Routing.EndpointMiddleware[0]
+      Executing endpoint 'gRPC - /UnityILPP.PostProcessing/Ping'
+[40m[32minfo[39m[22m[49m: Microsoft.AspNetCore.Routing.EndpointMiddleware[1]
+      Executed endpoint 'gRPC - /UnityILPP.PostProcessing/Ping'
+[40m[32minfo[39m[22m[49m: Microsoft.AspNetCore.Hosting.Diagnostics[2]
+      Request finished HTTP/2 POST http://ilpp/UnityILPP.PostProcessing/Ping application/grpc - - 200 - application/grpc 48.0398ms
+Starting: /opt/unity/Editor/Data/bee_backend --dont-print-to-structured-log --ipc --defer-dag-verification --dagfile="Library/Bee/1300b0aE.dag" --continue-on-failure --profile="Library/Bee/backend1.traceevents" ScriptAssemblies
+WorkingDir: /github/workspace
+DisplayProgressbar: Compiling Scripts
+ExitCode: 4 Duration: 2s603ms
+Rebuilding DAG because FileSignature timestamp changed: Library/Bee/1300b0aE-inputdata.json
+*** Tundra requires additional run (2.58 seconds), 1 items updated, 151 evaluated
+Starting: /opt/unity/Editor/Data/Tools/netcorerun/netcorerun "/opt/unity/Editor/Data/Tools/BuildPipeline/ScriptCompilationBuildProgram.exe" "Library/Bee/1300b0aE.dag.json" "Library/Bee/1300b0aE-inputdata.json" "Library/Bee/buildprogram0.traceevents"
+WorkingDir: /github/workspace
+ExitCode: 0 Duration: 0s337ms
+Starting: /opt/unity/Editor/Data/bee_backend --dont-print-to-structured-log --ipc --defer-dag-verification --dagfile="Library/Bee/1300b0aE.dag" --continue-on-failure --dagfilejson="Library/Bee/1300b0aE.dag.json" --profile="Library/Bee/backend2.traceevents" ScriptAssemblies
+WorkingDir: /github/workspace
+ExitCode: 0 Duration: 1s301ms
+Finished compiling graph: 161 nodes, 849 flattened edges (817 ToBuild, 8 ToUse), maximum node priority 46
+[140/158    0s] WriteText Library/Bee/artifacts/1300b0aE.dag/Assembly-CSharp.rsp
+[152/158    0s] Csc Library/Bee/artifacts/1300b0aE.dag/Assembly-CSharp.dll (+2 others)
+Assets/_Project/Scripts/CameraRig/VolumetricClouds.cs(396,17): warning CS0219: The variable 'nx' is assigned but its value is never used
+Assets/_Project/Scripts/CameraRig/VolumetricClouds.cs(397,19): warning CS0219: The variable 'cx' is assigned but its value is never used
+[153/158    0s] CopyFiles Library/ScriptAssemblies/Assembly-CSharp.pdb
+[154/158    0s] CopyFiles Library/ScriptAssemblies/Assembly-CSharp.dll
+[155/158    0s] Csc Library/Bee/artifacts/1300b0aE.dag/Assembly-CSharp-Editor.dll (+2 others)
+[156/158    0s] CopyFiles Library/ScriptAssemblies/Assembly-CSharp-Editor.pdb
+[157/158    0s] CopyFiles Library/ScriptAssemblies/Assembly-CSharp-Editor.dll
+*** Tundra build success (1.28 seconds), 7 items updated, 158 evaluated
+Total cache size 0
+Assets/_Project/Scripts/CameraRig/VolumetricClouds.cs(396,17): warning CS0219: The variable 'nx' is assigned but its value is never used
+Assets/_Project/Scripts/CameraRig/VolumetricClouds.cs(397,19): warning CS0219: The variable 'cx' is assigned but its value is never used
+Total cache size after purge 0, took 00:00:00.0082777
+AssetDatabase: script compilation time: 4.659894s
+Begin MonoManager ReloadAssembly
+- Loaded All Assemblies, in  0.263 seconds
+Start importing ProjectSettings/ProjectSettings.asset using Guid(00000000000000004000000000000000) (LibraryAssetImporter) -> (artifact id: 'd3d76fa01547a4815982ed4e17d2f508') in 0.019770237 seconds
+Start importing ProjectSettings/QualitySettings.asset using Guid(00000000000000009000000000000000) (LibraryAssetImporter) -> (artifact id: 'd061689c56213398e4149c0e09cfc3a0') in 0.001096483 seconds
+Start importing ProjectSettings/EditorBuildSettings.asset using Guid(0000000000000000b000000000000000) (LibraryAssetImporter) -> (artifact id: '1923232d45cb936aef47cec131f33975') in 0.000849588 seconds
+Start importing ProjectSettings/GraphicsSettings.asset using Guid(00000000000000006100000000000000) (LibraryAssetImporter) -> (artifact id: '73a0d0504a18325c463e244f56ec4944') in 0.000889437 seconds
+Start importing Assets/_Project using Guid(b151919f7bc70cdbc8fadc12aed2fedc) (DefaultImporter) -> (artifact id: '02d83bf8bf812dbc8aaeff430029faf2') in 0.006348418 seconds
+Start importing Assets/_Project/Resources using Guid(748fed66fb9f43858a3f7c7dae8e665a) (DefaultImporter) -> (artifact id: '98f703647e0c1ba221be9c42aca896db') in 0.001005869 seconds
+Start importing Assets/_Project/Scripts using Guid(1884f6cff76b4f242a2cb0e047e3f3ab) (DefaultImporter) -> (artifact id: '1d628f517d82316a9a0015625cc52e02') in 0.00080333 seconds
+Start importing Assets/_Project/Shaders using Guid(1da2ee9192717f35092fe9b93e634e4d) (DefaultImporter) -> (artifact id: '03cda616d68d33534392591c872f2450') in 0.000884699 seconds
+Start importing Assets/_Project/Models using Guid(ade6faee5491f3aaa99521a76f69ac4c) (DefaultImporter) -> (artifact id: '84757b0caf4175d3e000f507b742af7a') in 0.000932921 seconds
+Start importing Assets/_Project/Art using Guid(3f971190b2852e15bab477fb88cbffdc) (DefaultImporter) -> (artifact id: '8c310a6c270016fbbee607a0480f9eda') in 0.000842927 seconds
+Start importing Assets/_Project/Scripts/Editor using Guid(a22812501d75b1a1fa73f193f229a573) (DefaultImporter) -> (artifact id: '8019d7e4d66af2b1daaac61d7771c454') in 0.001149401 seconds
+Start importing Assets/_Project/Scripts/Fx using Guid(a4b1aa40c73b933f2b5598bbcaec1432) (DefaultImporter) -> (artifact id: '87ec72a58422a5709a9d169307c0cdc9') in 0.001259945 seconds
+Start importing Assets/_Project/Resources/Audio using Guid(b4812d2db15542fc4bd59515aef9853f) (DefaultImporter) -> (artifact id: 'e9b7c1e60ea7e696696cce277b01ad6f') in 0.001181789 seconds
+Start importing Assets/_Project/Scripts/World using Guid(05a63f5c8f7371f96b48cf537b4742a6) (DefaultImporter) -> (artifact id: '4e8ad8d6aec0671542d375cbb8bbb7d0') in 0.001203682 seconds
+Start importing Assets/_Project/Art/Menu using Guid(7561efaafd1d02b3dabb13fdbf26b0a0) (DefaultImporter) -> (artifact id: '7f20704b156d34dee7319a5508ec3901') in 0.00075672 seconds
+Start importing Assets/_Project/Resources/UI using Guid(362a0095d995839bfaaba49e5c1c9547) (DefaultImporter) -> (artifact id: 'edce806f9ea16e7951776e9427d1e75d') in 0.001059708 seconds
+Start importing Assets/_Project/Models/Crew using Guid(5ba1f4d4d7f3cc98284d84d0a8a618b2) (DefaultImporter) -> (artifact id: '3d94c81e11591f3167d0f2f3f89bcb8b') in 0.001339984 seconds
+Start importing Assets/_Project/Resources/FX using Guid(cbb9525bc98da5301a6574e11b1610ec) (DefaultImporter) -> (artifact id: '0221fa7d79077efdd92df3fc70f0779f') in 0.001262929 seconds
+Start importing Assets/_Project/Scripts/Ship using Guid(0c3a6c1f19ffd3e3f8101a087c4f3fae) (DefaultImporter) -> (artifact id: 'f56b037b1f6bc249b4a09e917fad1ada') in 0.001218524 seconds
+Start importing Assets/_Project/Scripts/Core using Guid(6e4c2a49ad8d13398adc94297dab69bf) (DefaultImporter) -> (artifact id: 'd19d1c6663a1f888fab0a2bdefddd1a5') in 0.001227637 seconds
+Start importing Assets/_Project/Scripts/CameraRig using Guid(2f2429c315c423bd78f987b824cd7f8c) (DefaultImporter) -> (artifact id: '990817b2c322ff7ae767f83b60d8bb00') in 0.001148661 seconds
+Start importing Assets/_Project/Scripts/Input using Guid(3f5dd00ab7c1897e6a3e09433d7c4720) (DefaultImporter) -> (artifact id: 'a69bdecdf56d9c22bafcb5e53ebf7c3e') in 0.001244673 seconds
+Refreshing native plugins compatible for Editor in 0.00 ms, found 0 plugins.
+Native extension for LinuxStandalone target not found
+Native extension for Android target not found
+Mono: successfully reloaded assembly
+- Finished resetting the current domain, in  0.711 seconds
+Domain Reload Profiling: 975ms
+	BeginReloadAssembly (149ms)
+		ExecutionOrderSort (0ms)
+		DisableScriptedObjects (10ms)
+		BackupInstance (0ms)
+		ReleaseScriptingObjects (0ms)
+		CreateAndSetChildDomain (44ms)
+	RebuildCommonClasses (40ms)
+	RebuildNativeTypeToScriptingClass (11ms)
+	initialDomainReloadingComplete (31ms)
+	LoadAllAssembliesAndSetupDomain (31ms)
+		LoadAssemblies (69ms)
+		RebuildTransferFunctionScriptingTraits (0ms)
+		AnalyzeDomain (25ms)
+			TypeCache.Refresh (21ms)
+				TypeCache.ScanAssembly (14ms)
+			BuildScriptInfoCaches (2ms)
+			ResolveRequiredComponents (1ms)
+	FinalizeReload (712ms)
+		ReleaseScriptCaches (0ms)
+		RebuildScriptCaches (0ms)
+		SetupLoadedEditorAssemblies (477ms)
+			LogAssemblyErrors (0ms)
+			InitializePlatformSupportModulesInManaged (38ms)
+			SetLoadedEditorAssemblies (4ms)
+			BeforeProcessingInitializeOnLoad (159ms)
+			ProcessInitializeOnLoadAttributes (246ms)
+			ProcessInitializeOnLoadMethodAttributes (22ms)
+			AfterProcessingInitializeOnLoad (8ms)
+			EditorAssembliesLoaded (0ms)
+		ExecutionOrderSort2 (0ms)
+		AwakeInstancesAfterBackupRestoration (11ms)
+Start importing Assets/_Project/Models/SkyFortress_Rock.png using Guid(009cf3a13159075728b47b5a2642932f) (TextureImporter) -> (artifact id: '403ea3a0bd9ba0e1cba12c5cab59c2df') in 0.834327012 seconds
+Start importing Assets/_Project/Resources/UI/icons.png using Guid(b0d3a80cdcc464ca992d2f2f1fa44387) (TextureImporter) -> (artifact id: 'b8f21f6100b1f5fe022a64991ba3911f') in 1.920206419 seconds
+Start importing Assets/_Project/Resources/UI/radar_enemy.png using Guid(e0a111c6d81e6471eba21e173b7a7ca9) (TextureImporter) -> (artifact id: '4a41e3c39aa1e8946b84129f7a4d1798') in 0.032103635 seconds
+Start importing Assets/_Project/Resources/UI/vignette_damage.png using Guid(318c0ca18137ed7ac8e462d78588a60b) (TextureImporter) -> (artifact id: 'd6eed04fc537a2149ff9ffaaf388e2c4') in 0.715429486 seconds
+Start importing Assets/_Project/Resources/UI/radar_ship.png using Guid(d1e37c0d84b0d35f0a949c9014f9892d) (TextureImporter) -> (artifact id: '71b1fbdd32b554944df93ad332f6fbf1') in 0.03358645 seconds
+Start importing Assets/_Project/Resources/UI/main_menu.jpg using Guid(f102aeec59b7cd454ab27d844b0f8f38) (TextureImporter) -> (artifact id: '6964547d8aad3b2bef82474c95ab3277') in 0.882533916 seconds
+Start importing Assets/_Project/Art/Menu/menu_bg.jpg using Guid(3418d1056bc0e8d69ba343f3e5b997e6) (TextureImporter) -> (artifact id: '8fbf935f30a6c098364cd9743ac389d3') in 0.78533017 seconds
+Start importing Assets/_Project/Resources/UI/aim_kit.png using Guid(e53897dba0b8208d5975726a0418e653) (TextureImporter) -> (artifact id: 'ac9a25787644b45262c94e69a2ef6eec') in 1.26263589 seconds
+Start importing Assets/_Project/Models/SkyFortress_Deck.png using Guid(e53e4ca0b272916a8b70a2084b20cc73) (TextureImporter) -> (artifact id: '15e3c0bd2d2aedc8908e0ba6d50e911f') in 0.398555802 seconds
+Start importing Assets/_Project/Resources/UI/radar_face.png using Guid(d6e196fecba7367f4913394f76ccd7eb) (TextureImporter) -> (artifact id: '5208a0aab5743c1072f501ec81f355c6') in 1.027799136 seconds
+Start importing Assets/_Project/Resources/UI/splash_studio.jpg using Guid(179b3eb7068266fb2b2b0162695386e0) (TextureImporter) -> (artifact id: '4b0cffc8dfcfbe4a72038a5704a9ec2b') in 0.745336139 seconds
+Start importing Assets/_Project/Models/SkyFortress_Albedo.jpg using Guid(48f18ba78549e1bb2a6a2accb1e15f2f) (TextureImporter) -> (artifact id: '3764453938cb7ee6474bb8cc23dd61c8') in 1.90022646 seconds
+Start importing Assets/_Project/Models/Crew/Captain_Albedo.jpg using Guid(d845079251dda577fbb23ddaad0bd083) (TextureImporter) -> (artifact id: '51aac3565eed9732786965d09f66ccd0') in 1.592018446 seconds
+Start importing Assets/_Project/Resources/UI/radar_enemy_far.png using Guid(f8f12ee7753d88e52a6b44626a779118) (TextureImporter) -> (artifact id: '126020a336fc06f07341754d2cc06c75') in 0.030935882 seconds
+Start importing Assets/_Project/Resources/UI/hud_kit.png using Guid(796661829b6299357a57ebfecf6d3555) (TextureImporter) -> (artifact id: '560a738d7e53c7a9923f5fe171fdbe87') in 1.198147323 seconds
+Start importing Assets/_Project/Resources/UI/plate_notice.png using Guid(99247c9e84b597774ab2973183880c9c) (TextureImporter) -> (artifact id: 'b036160000abcffca299a07749b09c9c') in 0.249140403 seconds
+Start importing Assets/_Project/Resources/UI/radar_frame.png using Guid(3b730491db81a15fb9c8c6895057228c) (TextureImporter) -> (artifact id: '3b470da359996cfdd23d0ff6bb9e0ae6') in 1.122497851 seconds
+Start importing Assets/_Project/Resources/FX/fx_flipbooks.png using Guid(6bbf0675ef75b22848fe9f6a34e10336) (TextureImporter) -> (artifact id: '70cea88150b790eb759009375edae1c5') in 2.872397543 seconds
+Start importing Assets/_Project/Models/SkyFortress_Emission.png using Guid(bbe2c279fa110c4569c15cf24410bf0f) (TextureImporter) -> (artifact id: '44b795f04bd124dc964f02692ccdb0f9') in 1.435568573 seconds
+Start importing Assets/_Project/Resources/UI/banner_defeat.png using Guid(0c79c744e9e1ae889af69e415388cc55) (TextureImporter) -> (artifact id: '46db3005f307d4205b39c9f98666621e') in 0.946475047 seconds
+Start importing Assets/_Project/Resources/FX/hull_decals.png using Guid(8d4edd33af1d19be3848f7289805e516) (TextureImporter) -> (artifact id: '8669a12330ce8c5255875a252c6958a1') in 2.279654307 seconds
+Start importing Assets/_Project/Resources/UI/radar_sweep.png using Guid(9d4664b32bf4c362c928ff5657b7b837) (TextureImporter) -> (artifact id: 'bf954c3ad6d483981adba0f43a387d10') in 1.103019059 seconds
+Start importing Assets/_Project/Resources/UI/banner_victory.png using Guid(bd7dea5fe19386d2db985a27cba29134) (TextureImporter) -> (artifact id: 'ca4e20579ddd18a48c03f6662e83ee2a') in 0.943013699 seconds
+Start importing Assets/_Project/Models/SkyFortress_Wall.png using Guid(ce48aa617235387ee8df578f61cc453c) (TextureImporter) -> (artifact id: '10ea01ec80d56af3cc01af76dc4679b7') in 0.436232743 seconds
+Start importing Assets/_Project/Shaders/ShipGunRecoil.cginc using Guid(797dc3680f35efd058056ec171dfa967) (ShaderIncludeImporter) -> (artifact id: 'aa023cbf480c955ff348b1b271e19aca') in 0.001526359 seconds
+Start importing Assets/_Project/Shaders/SkyTide.cginc using Guid(3dc517f6e94e10350822301d1dc67978) (ShaderIncludeImporter) -> (artifact id: '4b03273b1be36e0b95c74a9d0958d7a5') in 0.001157123 seconds
+Start importing Assets/_Project/Shaders/CloudSea.shader using Guid(c06343cbcf031975ca441fb3f9e375ec) (ShaderImporter)Launched and connected shader compiler UnityShaderCompiler after 0.01 seconds
+ -> (artifact id: '73c8923183ab13a97c3e80cca327ffcd') in 0.149963937 seconds
+Start importing Assets/_Project/Shaders/CloudSprite.shader using Guid(f05fec3da59260d02bcd76cb72ea3bbc) (ShaderImporter) -> (artifact id: '0ae567bd01425b4ee373353b2f38c0f1') in 0.003590856 seconds
+Start importing Assets/_Project/Shaders/Hud.shader using Guid(71f414b4dad826835961a4a106afe201) (ShaderImporter) -> (artifact id: '8fe351faeac2c5aa4999a4862a97f3bb') in 0.003869939 seconds
+Start importing Assets/_Project/Shaders/ShipIron.shader using Guid(c3c1a7610dca4e9e19ba8a7c6b48b766) (ShaderImporter) -> (artifact id: 'a9db802dda4c9bfc95a119e4483cebef') in 0.023746884 seconds
+Start importing Assets/_Project/Shaders/CloudImpostor.shader using Guid(d61c3a1bf4b0f21329d8c646211ccf49) (ShaderImporter) -> (artifact id: 'b056b1067805fd480e54c95db4c3faca') in 0.003679057 seconds
+Start importing Assets/_Project/Shaders/ShipCloth.shader using Guid(5b6acd05834b088cc8ad44deb2fdf09e) (ShaderImporter) -> (artifact id: '0434397b03c9d866fef3ace9afef1fe7') in 0.227486472 seconds
+Start importing Assets/_Project/Shaders/Fx.shader using Guid(6b10c327333b2a96580212082cd429cf) (ShaderImporter) -> (artifact id: '502348a8fb0337feb06f909156ad3ca6') in 0.004155462 seconds
+Start importing Assets/_Project/Shaders/PostFX.shader using Guid(0e1ca70648827530cae43a1981698397) (ShaderImporter) -> (artifact id: 'ae71eb7a7639ec7fdb710a6fe6f58bbd') in 0.006775951 seconds
+Start importing Assets/_Project/Shaders/VolumetricClouds.shader using Guid(2f2ce40a3f9fe07f486d915105ed8b37) (ShaderImporter) -> (artifact id: '70dc8464e20f44de1f70d87331b0eb5b') in 0.017469211 seconds
+Start importing Assets/_Project/Shaders/Fortress.shader using Guid(9f3c37c492d769f338933aef5e97084b) (ShaderImporter) -> (artifact id: '59650bf279766a052dbdfcbda9b3a5c1') in 0.427930837 seconds
+Start importing Assets/_Project/Shaders/HullDecal.shader using Guid(cf9cdad4cd3e5e098b14909e00999171) (ShaderImporter) -> (artifact id: '1196475466e31ad489f8e318faa361b1') in 0.003841938 seconds
+Start importing Assets/_Project/Models/SkyFortress.bytes using Guid(f0b7f285863ac7427b65a75a5a0ec695) (TextScriptImporter) -> (artifact id: 'fcce3215a7fc1b0c88023935230c1413') in 0.00345154 seconds
+Start importing Assets/_Project/Models/Corsair_lod.bytes using Guid(51af938a9bcb92a81a62f3b0620ef00f) (TextScriptImporter) -> (artifact id: '997b3379380e8c8042cc1e49365d0be5') in 0.007916515 seconds
+Start importing Assets/_Project/Models/CorsairRepaired_shadow_src.bytes using Guid(454fa31a1c6c32e88957c90d28dde30d) (TextScriptImporter) -> (artifact id: 'ddc95e8d76840a0b3ce5f61aac7413f1') in 0.001474243 seconds
+Start importing Assets/_Project/Models/Corsair_lod_src.bytes using Guid(06541879d5fea805381c272ab7b03fd2) (TextScriptImporter) -> (artifact id: '00586cb0d3b208d5717d4551e7bc5593') in 0.001524237 seconds
+Start importing Assets/_Project/Models/CorsairRepaired_wind.json using Guid(b848a45cf7bc20742a1c504f94ea9b7d) (TextScriptImporter) -> (artifact id: 'dd9f9ab77c58e6b7de25c9d63961e548') in 0.001183552 seconds
+Start importing Assets/_Project/Models/CorsairRepaired_recoil.json using Guid(1ae8e140a87cccaf38bfe14c451a516f) (TextScriptImporter) -> (artifact id: '56f99fb02f6c6dfd0dbec8895d902b70') in 0.001164984 seconds
+Start importing Assets/_Project/Shaders/UnityShaderLicense.txt using Guid(9bfe620a145586c6ebb8a1eefbcfef45) (TextScriptImporter) -> (artifact id: '617c14a94ed0da5946362d30d8bc7479') in 0.001116693 seconds
+Start importing Assets/_Project/Resources/BuildNumber.txt using Guid(1c02be432eeddebc48829532d75bae1b) (TextScriptImporter) -> (artifact id: '8fb95fb2770bd9a89dce6c0ab0fd6ee9') in 0.001164815 seconds
+Start importing Assets/_Project/Resources/Audio/CREDITS.txt using Guid(cc8d7537ca1310649adc2ce9fdc3aaad) (TextScriptImporter) -> (artifact id: '0baf6eb419322022f4e6664c685f4d7e') in 0.001138786 seconds
+Start importing Assets/_Project/Models/CorsairRepaired_shadow.bytes using Guid(0e1e4c0b2a00337be93bb738998d6663) (TextScriptImporter) -> (artifact id: 'a77957f31fa90f00350437f9aa8bb5a6') in 0.002457298 seconds
+Start importing Assets/_Project/Models/SkyFortress_data.json using Guid(efb7b0843fa98f70899b4bed3516be48) (TextScriptImporter) -> (artifact id: 'ccbb3b6ebd9186dd198f9d601de8f74a') in 0.001289209 seconds
+Start importing Assets/_Project/Resources/Audio/hit_metal.ogg using Guid(111914aeaf8e1d43e97763ae6dfadcc7) (AudioImporter) -> (artifact id: 'cb0bad958c3804b76ed87f83bf7a367e') in 0.09876616 seconds
+Start importing Assets/_Project/Resources/Audio/sail_loop.ogg using Guid(11ff2e6f7d8618be0a5270a464a35fdf) (AudioImporter) -> (artifact id: '0de6bd752031f9f38bb234bf48a57948') in 0.168986211 seconds
+Start importing Assets/_Project/Resources/Audio/reload_clank.ogg using Guid(14efe01fdef918110b7fe9655bbf8907) (AudioImporter) -> (artifact id: 'b34675925b6af84d2ce019ecf8f529fb') in 0.046941861 seconds
+Start importing Assets/_Project/Resources/Audio/explosion_crunch_3.ogg using Guid(24853f346724aa74b81c4c482909bb69) (AudioImporter) -> (artifact id: 'ab826bb1bb1feb3151e866401b93e110') in 0.048707635 seconds
+Start importing Assets/_Project/Resources/Audio/hit_ship.ogg using Guid(74072ea99ddcfc129b6ce1873756cb96) (AudioImporter) -> (artifact id: 'e5bb5d073b6396feb6f0fcf8b4ffdb86') in 0.124078391 seconds
+Start importing Assets/_Project/Resources/Audio/hit_ship_heavy.ogg using Guid(b404550ed98fbafbf9ace013076a31bb) (AudioImporter) -> (artifact id: '157c3589b479b2e1c1a808a6bd7d740c') in 0.165125446 seconds
+Start importing Assets/_Project/Resources/Audio/explosion_crunch_4.ogg using Guid(f4bf35f4129bffa5ca7e198fc67c4e2b) (AudioImporter) -> (artifact id: '71808a14c796470f9fef3ec97610d411') in 0.062597962 seconds
+Start importing Assets/_Project/Resources/Audio/cannon_miss.ogg using Guid(56fe7b710899fe51a86af66e5298d41a) (AudioImporter) -> (artifact id: 'e13ceff518271ed44f5de6c82b612f00') in 0.060968826 seconds
+Start importing Assets/_Project/Resources/Audio/explosion_low_1.ogg using Guid(072505aa9826a5d0e9059b416e89aa2c) (AudioImporter) -> (artifact id: '8ad0122db6cdb07e5064df86277ea5dd') in 0.044063696 seconds
+Start importing Assets/_Project/Resources/Audio/explosion_crunch_1.ogg using Guid(47015fcfe2c89ba00a76a6d779f895db) (AudioImporter) -> (artifact id: '2e5dc454d7dff8601f18ef81e979e297') in 0.048550342 seconds
+Start importing Assets/_Project/Resources/Audio/cannon_fire.ogg using Guid(a81da01bd36cb6c59b68647c476f6d0f) (AudioImporter) -> (artifact id: '8298797949f9cc18116e7524426cf391') in 0.093080246 seconds
+Start importing Assets/_Project/Resources/Audio/ship_destroyed.ogg using Guid(e984e0c181c592cf89e427f8af2710bd) (AudioImporter) -> (artifact id: 'b2a72f29a3ee4f27e52406adc14662d3') in 0.266961109 seconds
+Start importing Assets/_Project/Resources/Audio/creak_1.ogg using Guid(ea69929029d236062ae81abf25438663) (AudioImporter) -> (artifact id: '16633408429d959a914f8b03837eaddc') in 0.06423035 seconds
+Start importing Assets/_Project/Resources/Audio/creak_2.ogg using Guid(7d841b37e84f7ca0aafb4edf0aec95a8) (AudioImporter) -> (artifact id: '14150959158e8a742489182e62faa9ac') in 0.062987203 seconds
+Start importing Assets/_Project/Resources/Audio/explosion_crunch_2.ogg using Guid(8fe5b79e507656f2ea658110d244c407) (AudioImporter) -> (artifact id: 'b8721028089c96453bbfc8f129d70136') in 0.047162298 seconds
+Start importing Assets/_Project/Resources/Audio/explosion_low_0.ogg using Guid(cfbddb26b305c25c5b165f2b06f0eb62) (AudioImporter) -> (artifact id: '07b3a46776c6ffb22afdf235d14840ec') in 0.050615299 seconds
+Start importing Assets/_Project/Resources/Audio/explosion_crunch_0.ogg using Guid(efe06f71df1d5385796f410de0463db5) (AudioImporter) -> (artifact id: '931918e044ac30e7d0afb6fda34e7854') in 0.041818286 seconds
+Refreshing native plugins compatible for Editor in 0.00 ms, found 0 plugins.
+Preloading 0 native plugins for Editor in 0.00 ms.
+Asset Pipeline Refresh (id=42f73e9640021e7cf9bbbccc943f21b1): Total: 33.263 seconds - Initiated by InitialRefreshV2(ForceSynchronousImport)
+	Summary:
+		Imports: total=139 (actual=87, local cache=52, cache server=0)
+		Asset DB Process Time: managed=14 ms, native=28123 ms
+		Asset DB Callback time: managed=55 ms, native=120 ms
+		Scripting: domain reloads=1, domain reload time=274 ms, compile time=4665 ms, other=8 ms
+		Project Asset Count: scripts=126, non-scripts=173
+		Asset File Changes: new=1, changed=129, moved=0, deleted=29
+		Scan Filter Count: 1
+	InvokeCustomDependenciesCallbacks: 0.004ms
+	InvokePackagesCallback: 0.905ms
+	ApplyChangesToAssetFolders: 0.266ms
+	Scan: 117.279ms
+	OnSourceAssetsModified: 10.046ms
+	CategorizeAssetsWithTransientArtifact: 0.572ms
+	ProcessAssetsWithTransientArtifactChanges: 2.845ms
+	UnregisterDeletedAssets: 0.018ms
+	CategorizeAssets: 5.418ms
+	ImportOutOfDateAssets: 27956.171ms (-3957.186ms without children)
+		ImportManagerImport: 27237.468ms (17.120ms without children)
+			ImportInProcess: 27219.905ms
+			UpdateCategorizedAssets: 0.443ms
+		CompileScripts: 4665.156ms
+		ReloadNativeAssets: 0.001ms
+		UnloadImportedAssets: 1.856ms
+		ReloadImportedAssets: 8.516ms
+		EnsureUptoDateAssetsAreRegisteredWithGuidPM: 0.105ms
+		InitializingProgressBar: 0.007ms
+		PostProcessAllAssetNotificationsAddChangedAssets: 0.000ms
+		OnDemandSchedulerStart: 0.249ms
+	PostProcessAllAssets: 165.878ms
+	Hotreload: 0.826ms
+	GatherAllCurrentPrimaryArtifactRevisions: 0.000ms
+	UnloadStreamsBegin: 0.374ms
+	PersistCurrentRevisions: 0.178ms
+	UnloadStreamsEnd: 0.000ms
+	GenerateScriptTypeHashes: 0.268ms
+	Untracked: 5001.968ms
+
+Application.AssetDatabase Initial Refresh End
+Scanning for USB devices : 0.132ms
+Initializing Unity extensions:
+[Licensing::Client] Successfully resolved entitlement details
+UpdateMenuTitleForLanguage: 10
+[MODES] ModeService[none].Initialize
+[MODES] ModeService[none].LoadModes
+[MODES] Loading mode Default (0) for mode-current-id-workspace
+Unloading 3 Unused Serialized files (Serialized files now loaded: 0)
+Unloading 135 unused Assets / (2.9 MB). Loaded Objects now: 642.
+Memory consumption went from 81.2 MB to 78.3 MB.
+Total: 318.061473 ms (FindLiveObjects: 0.094150 ms CreateObjectMapping: 0.010085 ms MarkObjects: 8.070473 ms  DeleteObjects: 309.885684 ms)
+
+SkyTide: сборка APK → /github/workspace/build/Android/SkyTide.apk
+UnityEngine.Debug:ExtractStackTraceNoAlloc (byte*,int,string)
+UnityEngine.StackTraceUtility:ExtractStackTrace () (at /home/bokken/build/output/unity/unity/Runtime/Export/Scripting/StackTrace.cs:37)
+UnityEngine.DebugLogHandler:Internal_Log (UnityEngine.LogType,UnityEngine.LogOption,string,UnityEngine.Object)
+UnityEngine.DebugLogHandler:LogFormat (UnityEngine.LogType,UnityEngine.Object,string,object[])
+UnityEngine.Logger:Log (UnityEngine.LogType,object)
+UnityEngine.Debug:Log (object)
+SkyTide.EditorTools.BuildScript:BuildAndroid () (at Assets/_Project/Scripts/Editor/BuildScript.cs:33)
+
+(Filename: Assets/_Project/Scripts/Editor/BuildScript.cs Line: 33)
+
+Start importing Assets/_Project/Models/SkyFortress_Rock.png using Guid(009cf3a13159075728b47b5a2642932f) (TextureImporter) -> (artifact id: 'a9bee33e75ec492a063ad8a329b7b118') in 0.919804499 seconds
+Start importing Assets/_Project/Resources/UI/icons.png using Guid(b0d3a80cdcc464ca992d2f2f1fa44387) (TextureImporter) -> (artifact id: '72bc575272784bcd8a605ac09947510a') in 1.262717592 seconds
+Start importing Assets/_Project/Resources/UI/radar_enemy.png using Guid(e0a111c6d81e6471eba21e173b7a7ca9) (TextureImporter) -> (artifact id: '7a8c251380549d676e44cc639a9bb004') in 0.027717142 seconds
+Start importing Assets/_Project/Resources/UI/vignette_damage.png using Guid(318c0ca18137ed7ac8e462d78588a60b) (TextureImporter) -> (artifact id: '0e5449bf099075ba3bb5fc51ceec4d25') in 0.591606026 seconds
+Start importing Assets/_Project/Resources/UI/radar_ship.png using Guid(d1e37c0d84b0d35f0a949c9014f9892d) (TextureImporter) -> (artifact id: '23dceeda894e48748906f970d65598cf') in 0.025172349 seconds
+Start importing Assets/_Project/Resources/UI/main_menu.jpg using Guid(f102aeec59b7cd454ab27d844b0f8f38) (TextureImporter) -> (artifact id: '63cc89eaf0802606b0cccc954f5a32a8') in 1.612585017 seconds
+Start importing Assets/_Project/Resources/UI/aim_kit.png using Guid(e53897dba0b8208d5975726a0418e653) (TextureImporter) -> (artifact id: '28d891365607d12421b4d637c2314cc8') in 1.245571823 seconds
+Start importing Assets/_Project/Models/SkyFortress_Deck.png using Guid(e53e4ca0b272916a8b70a2084b20cc73) (TextureImporter) -> (artifact id: '6b56e6adf77e546499fb06f42b1b5cf0') in 0.784679066 seconds
+Start importing Assets/_Project/Resources/UI/radar_face.png using Guid(d6e196fecba7367f4913394f76ccd7eb) (TextureImporter) -> (artifact id: '832da3992dfde6603d3cd7d2ac3b7977') in 1.0853721 seconds
+Start importing Assets/_Project/Resources/UI/splash_studio.jpg using Guid(179b3eb7068266fb2b2b0162695386e0) (TextureImporter) -> (artifact id: 'b96a1ca0527e03cf76888c029605f64f') in 2.104620142 seconds
+Start importing Assets/_Project/Models/SkyFortress_Albedo.jpg using Guid(48f18ba78549e1bb2a6a2accb1e15f2f) (TextureImporter) -> (artifact id: 'f8bf669354409452f010fbed72dfed58') in 3.642125921 seconds
+Start importing Assets/_Project/Models/Crew/Captain_Albedo.jpg using Guid(d845079251dda577fbb23ddaad0bd083) (TextureImporter) -> (artifact id: '7e1c7479fad08ee95eda7d97df983575') in 3.358096189 seconds
+Start importing Assets/_Project/Resources/UI/radar_enemy_far.png using Guid(f8f12ee7753d88e52a6b44626a779118) (TextureImporter) -> (artifact id: '2a077adc17958afd4025dd28471bf780') in 0.029166366 seconds
+Start importing Assets/_Project/Resources/UI/hud_kit.png using Guid(796661829b6299357a57ebfecf6d3555) (TextureImporter) -> (artifact id: 'd82253bd4eee915229f82e8137c0e5fa') in 1.133464239 seconds
+Start importing Assets/_Project/Resources/UI/plate_notice.png using Guid(99247c9e84b597774ab2973183880c9c) (TextureImporter) -> (artifact id: 'fbc96d9ac199c7e990112a382ecfc117') in 0.255654942 seconds
+Start importing Assets/_Project/Resources/UI/radar_frame.png using Guid(3b730491db81a15fb9c8c6895057228c) (TextureImporter) -> (artifact id: 'c9d471d4d1929e8567c68df8bcd23890') in 1.098815116 seconds
+Start importing Assets/_Project/Resources/FX/fx_flipbooks.png using Guid(6bbf0675ef75b22848fe9f6a34e10336) (TextureImporter) -> (artifact id: 'a3a801443c954aa3971d9e6f083f4b79') in 2.826634687 seconds
+Start importing Assets/_Project/Models/SkyFortress_Emission.png using Guid(bbe2c279fa110c4569c15cf24410bf0f) (TextureImporter) -> (artifact id: '99563e654887c61e3b87c7f76777461b') in 4.122138193 seconds
+Start importing Assets/_Project/Resources/UI/banner_defeat.png using Guid(0c79c744e9e1ae889af69e415388cc55) (TextureImporter) -> (artifact id: '655127045586cf3e5239474c83381bf3') in 0.960781692 seconds
+Start importing Assets/_Project/Resources/FX/hull_decals.png using Guid(8d4edd33af1d19be3848f7289805e516) (TextureImporter) -> (artifact id: '8f6b2d69db6e4f6946d498534dcaad40') in 2.274786741 seconds
+Start importing Assets/_Project/Resources/UI/radar_sweep.png using Guid(9d4664b32bf4c362c928ff5657b7b837) (TextureImporter) -> (artifact id: 'ed6a20a26f140cd8eb3e4121695ca4a7') in 1.142068721 seconds
+Start importing Assets/_Project/Resources/UI/banner_victory.png using Guid(bd7dea5fe19386d2db985a27cba29134) (TextureImporter) -> (artifact id: 'd29f892978df35df9a7cf8f358c39641') in 1.013133682 seconds
+Start importing Assets/_Project/Models/SkyFortress_Wall.png using Guid(ce48aa617235387ee8df578f61cc453c) (TextureImporter) -> (artifact id: 'd789e2c0f7bc38f5526c862c14f9ae0b') in 0.875937901 seconds
+Refreshing native plugins compatible for Editor in 0.00 ms, found 0 plugins.
+Preloading 0 native plugins for Editor in 0.00 ms.
+Asset Pipeline Refresh (id=ae12df3382a27e06ea8957777dd8cd4f): Total: 32.447 seconds - Initiated by RefreshV2(NoUpdateAssetOptions)
+	Summary:
+		Imports: total=129 (actual=23, local cache=106, cache server=0)
+		Asset DB Process Time: managed=3 ms, native=32438 ms
+		Asset DB Callback time: managed=4 ms, native=0 ms
+		Scripting: domain reloads=0, domain reload time=0 ms, compile time=0 ms, other=0 ms
+		Project Asset Count: scripts=126, non-scripts=173
+		Asset File Changes: new=0, changed=0, moved=0, deleted=0
+		Scan Filter Count: 1
+	InvokeCustomDependenciesCallbacks: 0.005ms
+	InvokePackagesCallback: 0.001ms
+	ApplyChangesToAssetFolders: 0.237ms
+	Scan: 27.567ms
+	OnSourceAssetsModified: 0.001ms
+	CategorizeAssetsWithTransientArtifact: 0.001ms
+	ProcessAssetsWithTransientArtifactChanges: 0.013ms
+	CategorizeAssets: 1.753ms
+	ImportOutOfDateAssets: 32403.844ms (0.133ms without children)
+		ImportManagerImport: 32403.221ms (0.991ms without children)
+			ImportInProcess: 32402.052ms
+			UpdateCategorizedAssets: 0.178ms
+		ReloadNativeAssets: 0.001ms
+		UnloadImportedAssets: 0.111ms
+		ReloadImportedAssets: 0.006ms
+		EnsureUptoDateAssetsAreRegisteredWithGuidPM: 0.163ms
+		InitializingProgressBar: 0.013ms
+		PostProcessAllAssetNotificationsAddChangedAssets: 0.005ms
+		OnDemandSchedulerStart: 0.191ms
+	PostProcessAllAssets: 3.947ms
+	Hotreload: 0.875ms
+	GatherAllCurrentPrimaryArtifactRevisions: 0.072ms
+	UnloadStreamsBegin: 1.465ms
+	PersistCurrentRevisions: 0.134ms
+	UnloadStreamsEnd: 0.000ms
+	Untracked: 6.870ms
+
+Start importing Assets/_Project/Scenes using Guid(8286acd379dc1e645a7e4f74fb0c152b) (DefaultImporter) -> (artifact id: '7e48a654a0f242aba2b24b7eb256884a') in 0.001056174 seconds
+Refreshing native plugins compatible for Editor in 0.00 ms, found 0 plugins.
+Preloading 0 native plugins for Editor in 0.00 ms.
+Asset Pipeline Refresh (id=86f04d7d20c58d8f19a28fa6f8a4a063): Total: 0.008 seconds - Initiated by StopAssetImportingV2(NoUpdateAssetOptions)
+Start importing Assets/_Project/Materials using Guid(cb93b899987e4c1d2886e20c9271d253) (DefaultImporter) -> (artifact id: 'c74149cdee4a8ca88c25ee1775195dda') in 0.00108746 seconds
+Refreshing native plugins compatible for Editor in 0.00 ms, found 0 plugins.
+Preloading 0 native plugins for Editor in 0.00 ms.
+Asset Pipeline Refresh (id=dd654ffa4ddb07b18917363866b031cb): Total: 0.007 seconds - Initiated by StopAssetImportingV2(NoUpdateAssetOptions)
+Unloading 0 Unused Serialized files (Serialized files now loaded: 0)
+Unloading 1 unused Assets / (0.8 KB). Loaded Objects now: 679.
+Memory consumption went from 78.3 MB to 78.3 MB.
+Total: 5.933664 ms (FindLiveObjects: 0.071175 ms CreateObjectMapping: 0.005999 ms MarkObjects: 5.836280 ms  DeleteObjects: 0.019408 ms)
+
+Start importing Assets/_Project/Resources/Audio/cannon_fire.ogg using Guid(a81da01bd36cb6c59b68647c476f6d0f) (AudioImporter) -> (artifact id: '07c27f422ae9602f3b308e36a6f7ed37') in 0.080071345 seconds
+Refreshing native plugins compatible for Editor in 0.00 ms, found 0 plugins.
+Preloading 0 native plugins for Editor in 0.00 ms.
+Asset Pipeline Refresh (id=3a580ba5f1300c57280571ba0ba2fc0d): Total: 0.092 seconds - Initiated by StopAssetImportingV2(NoUpdateAssetOptions)
+Start importing Assets/_Project/Resources/Audio/cannon_miss.ogg using Guid(56fe7b710899fe51a86af66e5298d41a) (AudioImporter) -> (artifact id: '6cb1940d4ce0d31c729bd89621c5aa0f') in 0.062053241 seconds
+Refreshing native plugins compatible for Editor in 0.00 ms, found 0 plugins.
+Preloading 0 native plugins for Editor in 0.00 ms.
+Asset Pipeline Refresh (id=3b21813fe20ccd9a4a859f85aa6f442c): Total: 0.071 seconds - Initiated by StopAssetImportingV2(NoUpdateAssetOptions)
+Start importing Assets/_Project/Resources/Audio/creak_1.ogg using Guid(ea69929029d236062ae81abf25438663) (AudioImporter) -> (artifact id: 'e21c4da263cff66a004314ec6968c604') in 0.074708505 seconds
+Refreshing native plugins compatible for Editor in 0.00 ms, found 0 plugins.
+Preloading 0 native plugins for Editor in 0.00 ms.
+Asset Pipeline Refresh (id=84abab5bad8db7c91ba89b825859b681): Total: 0.084 seconds - Initiated by StopAssetImportingV2(NoUpdateAssetOptions)
+Start importing Assets/_Project/Resources/Audio/creak_2.ogg using Guid(7d841b37e84f7ca0aafb4edf0aec95a8) (AudioImporter) -> (artifact id: '60b9d45a76016a84a0dc1e4e45a2f31b') in 0.076202938 seconds
+Refreshing native plugins compatible for Editor in 0.00 ms, found 0 plugins.
+Preloading 0 native plugins for Editor in 0.00 ms.
+Asset Pipeline Refresh (id=02f45c670272fa90aa84b34bfb8bf2dd): Total: 0.086 seconds - Initiated by StopAssetImportingV2(NoUpdateAssetOptions)
+Start importing Assets/_Project/Resources/Audio/explosion_crunch_0.ogg using Guid(efe06f71df1d5385796f410de0463db5) (AudioImporter) -> (artifact id: '1106e1931a9150497f97622803df541a') in 0.053938128 seconds
+Refreshing native plugins compatible for Editor in 0.00 ms, found 0 plugins.
+Preloading 0 native plugins for Editor in 0.00 ms.
+Asset Pipeline Refresh (id=27220b7970208f50c828c5e178e0e31e): Total: 0.063 seconds - Initiated by StopAssetImportingV2(NoUpdateAssetOptions)
+Start importing Assets/_Project/Resources/Audio/explosion_crunch_1.ogg using Guid(47015fcfe2c89ba00a76a6d779f895db) (AudioImporter) -> (artifact id: '9182c97fb1191aba30e1d62c89cc14fb') in 0.059188845 seconds
+Refreshing native plugins compatible for Editor in 0.00 ms, found 0 plugins.
+Preloading 0 native plugins for Editor in 0.00 ms.
+Asset Pipeline Refresh (id=e2506dedf3f825f40b699f3dff4f3f24): Total: 0.068 seconds - Initiated by StopAssetImportingV2(NoUpdateAssetOptions)
+Start importing Assets/_Project/Resources/Audio/explosion_crunch_2.ogg using Guid(8fe5b79e507656f2ea658110d244c407) (AudioImporter) -> (artifact id: 'c95790c83e8435111d2b14a900119423') in 0.062904452 seconds
+Refreshing native plugins compatible for Editor in 0.00 ms, found 0 plugins.
+Preloading 0 native plugins for Editor in 0.00 ms.
+Asset Pipeline Refresh (id=aa27d89143e9c86bd981ede4b3ef209e): Total: 0.075 seconds - Initiated by StopAssetImportingV2(NoUpdateAssetOptions)
+Start importing Assets/_Project/Resources/Audio/explosion_crunch_3.ogg using Guid(24853f346724aa74b81c4c482909bb69) (AudioImporter) -> (artifact id: '9ecfdf089e49f5dc2fdc7a95f8a67035') in 0.065368669 seconds
+Refreshing native plugins compatible for Editor in 0.00 ms, found 0 plugins.
+Preloading 0 native plugins for Editor in 0.00 ms.
+Asset Pipeline Refresh (id=7703f5544b838994e813f9f959d61bc4): Total: 0.076 seconds - Initiated by StopAssetImportingV2(NoUpdateAssetOptions)
+Start importing Assets/_Project/Resources/Audio/explosion_crunch_4.ogg using Guid(f4bf35f4129bffa5ca7e198fc67c4e2b) (AudioImporter) -> (artifact id: '152a3d857ebc6cbfe33508dbdaebcc26') in 0.076723799 seconds
+Refreshing native plugins compatible for Editor in 0.00 ms, found 0 plugins.
+Preloading 0 native plugins for Editor in 0.00 ms.
+Asset Pipeline Refresh (id=484304ad8ac6ab68686cad1a0da9782c): Total: 0.088 seconds - Initiated by StopAssetImportingV2(NoUpdateAssetOptions)
+Start importing Assets/_Project/Resources/Audio/explosion_low_0.ogg using Guid(cfbddb26b305c25c5b165f2b06f0eb62) (AudioImporter) -> (artifact id: 'bf0f3d1039710afdf5abeb5707c6f21b') in 0.062853356 seconds
+Refreshing native plugins compatible for Editor in 0.00 ms, found 0 plugins.
+Preloading 0 native plugins for Editor in 0.00 ms.
+Asset Pipeline Refresh (id=a23bf391ae11dfc08ad98a188b63cd64): Total: 0.073 seconds - Initiated by StopAssetImportingV2(NoUpdateAssetOptions)
+Start importing Assets/_Project/Resources/Audio/explosion_low_1.ogg using Guid(072505aa9826a5d0e9059b416e89aa2c) (AudioImporter) -> (artifact id: '81ec31192721dc4475150899864acfe7') in 0.056439861 seconds
+Refreshing native plugins compatible for Editor in 0.00 ms, found 0 plugins.
+Preloading 0 native plugins for Editor in 0.00 ms.
+Asset Pipeline Refresh (id=bbcc5d918bddbfe2ca20936283581183): Total: 0.067 seconds - Initiated by StopAssetImportingV2(NoUpdateAssetOptions)
+Start importing Assets/_Project/Resources/Audio/hit_metal.ogg using Guid(111914aeaf8e1d43e97763ae6dfadcc7) (AudioImporter) -> (artifact id: 'df6993b8bea91d5c54c1e85a480dc1a5') in 0.083176337 seconds
+Refreshing native plugins compatible for Editor in 0.00 ms, found 0 plugins.
+Preloading 0 native plugins for Editor in 0.00 ms.
+Asset Pipeline Refresh (id=3874bed7a69540dbcbdc009124833585): Total: 0.094 seconds - Initiated by StopAssetImportingV2(NoUpdateAssetOptions)
+Start importing Assets/_Project/Resources/Audio/hit_ship.ogg using Guid(74072ea99ddcfc129b6ce1873756cb96) (AudioImporter) -> (artifact id: '3514057017ff4da29d70163bb3071970') in 0.086371521 seconds
+Refreshing native plugins compatible for Editor in 0.00 ms, found 0 plugins.
+Preloading 0 native plugins for Editor in 0.00 ms.
+Asset Pipeline Refresh (id=3c7948706a313ecf7a461650b5a951dd): Total: 0.095 seconds - Initiated by StopAssetImportingV2(NoUpdateAssetOptions)
+Start importing Assets/_Project/Resources/Audio/hit_ship_heavy.ogg using Guid(b404550ed98fbafbf9ace013076a31bb) (AudioImporter) -> (artifact id: 'f36aad3b2ad2b4c5cccfd1248f4c6fe4') in 0.098045113 seconds
+Refreshing native plugins compatible for Editor in 0.00 ms, found 0 plugins.
+Preloading 0 native plugins for Editor in 0.00 ms.
+Asset Pipeline Refresh (id=c0b8608afad8a25bea28d37d196e010e): Total: 0.107 seconds - Initiated by StopAssetImportingV2(NoUpdateAssetOptions)
+Start importing Assets/_Project/Resources/Audio/reload_clank.ogg using Guid(14efe01fdef918110b7fe9655bbf8907) (AudioImporter) -> (artifact id: '45abfa21bc08c4ac94b07ac88bb0e132') in 0.058190614 seconds
+Refreshing native plugins compatible for Editor in 0.00 ms, found 0 plugins.
+Preloading 0 native plugins for Editor in 0.00 ms.
+Asset Pipeline Refresh (id=704a229723f03ffd1b1a52027c3690a3): Total: 0.067 seconds - Initiated by StopAssetImportingV2(NoUpdateAssetOptions)
+Start importing Assets/_Project/Resources/Audio/sail_loop.ogg using Guid(11ff2e6f7d8618be0a5270a464a35fdf) (AudioImporter) -> (artifact id: '6b024ab6159d27956d0cb58dde6c6e53') in 0.190839311 seconds
+Refreshing native plugins compatible for Editor in 0.00 ms, found 0 plugins.
+Preloading 0 native plugins for Editor in 0.00 ms.
+Asset Pipeline Refresh (id=b39cf54e7ca577db3b48f1341fe7cf26): Total: 0.200 seconds - Initiated by StopAssetImportingV2(NoUpdateAssetOptions)
+Start importing Assets/_Project/Resources/Audio/ship_destroyed.ogg using Guid(e984e0c181c592cf89e427f8af2710bd) (AudioImporter) -> (artifact id: 'b085bf75c9aaca1a49227d6cd472cf87') in 0.159631814 seconds
+Refreshing native plugins compatible for Editor in 0.00 ms, found 0 plugins.
+Preloading 0 native plugins for Editor in 0.00 ms.
+Asset Pipeline Refresh (id=803ec8ea6c1846b38ba0918abec311c4): Total: 0.169 seconds - Initiated by StopAssetImportingV2(NoUpdateAssetOptions)
+Start importing Assets/_Project/Resources/UI/hud_kit.png using Guid(796661829b6299357a57ebfecf6d3555) (TextureImporter) -> (artifact id: '524b2069c2f79690815398c5811650c6') in 0.060379784 seconds
+Refreshing native plugins compatible for Editor in 0.00 ms, found 0 plugins.
+Preloading 0 native plugins for Editor in 0.00 ms.
+Asset Pipeline Refresh (id=cb180fa4c3a983be7ad171b89ebb4f77): Total: 0.070 seconds - Initiated by StopAssetImportingV2(NoUpdateAssetOptions)
+Start importing Assets/_Project/Resources/UI/hud_kit.png using Guid(796661829b6299357a57ebfecf6d3555) (TextureImporter) -> (artifact id: '542c2671f79402f6150b6d0e68fe6253') in 1.03127342 seconds
+Refreshing native plugins compatible for Editor in 0.00 ms, found 0 plugins.
+Preloading 0 native plugins for Editor in 0.00 ms.
+Asset Pipeline Refresh (id=380b47e3e5e4bfe2f974aa8e2fb1ebd6): Total: 1.040 seconds - Initiated by StopAssetImportingV2(NoUpdateAssetOptions)
+	Summary:
+		Imports: total=1 (actual=1, local cache=0, cache server=0)
+		Asset DB Process Time: managed=0 ms, native=1038 ms
+		Asset DB Callback time: managed=0 ms, native=0 ms
+		Scripting: domain reloads=0, domain reload time=0 ms, compile time=0 ms, other=0 ms
+		Project Asset Count: scripts=128, non-scripts=173
+		Asset File Changes: new=0, changed=1, moved=0, deleted=0
+		Scan Filter Count: 5
+	InvokeCustomDependenciesCallbacks: 0.001ms
+	InvokePackagesCallback: 0.001ms
+	ApplyChangesToAssetFolders: 0.087ms
+	Scan: 4.757ms
+	OnSourceAssetsModified: 0.024ms
+	CategorizeAssetsWithTransientArtifact: 0.005ms
+	ProcessAssetsWithTransientArtifactChanges: 0.005ms
+	CategorizeAssets: 0.230ms
+	ImportOutOfDateAssets: 1032.217ms (-0.146ms without children)
+		ImportManagerImport: 1031.855ms (0.355ms without children)
+			ImportInProcess: 1031.474ms
+			UpdateCategorizedAssets: 0.026ms
+		ReloadNativeAssets: 0.000ms
+		UnloadImportedAssets: 0.080ms
+		ReloadImportedAssets: 0.216ms
+		EnsureUptoDateAssetsAreRegisteredWithGuidPM: 0.025ms
+		InitializingProgressBar: 0.002ms
+		PostProcessAllAssetNotificationsAddChangedAssets: 0.001ms
+		OnDemandSchedulerStart: 0.185ms
+	PostProcessAllAssets: 0.624ms
+	Hotreload: 0.177ms
+	GatherAllCurrentPrimaryArtifactRevisions: 0.013ms
+	UnloadStreamsBegin: 0.001ms
+	PersistCurrentRevisions: 0.039ms
+	UnloadStreamsEnd: 0.000ms
+	Untracked: 1.430ms
+
+Start importing Assets/_Project/Resources/UI/aim_kit.png using Guid(e53897dba0b8208d5975726a0418e653) (TextureImporter) -> (artifact id: 'a1b682733f3cc61fb5a491160fbf089a') in 0.065947907 seconds
+Refreshing native plugins compatible for Editor in 0.00 ms, found 0 plugins.
+Preloading 0 native plugins for Editor in 0.00 ms.
+Asset Pipeline Refresh (id=780cf7defe3ba90a2ab60bae258af7b6): Total: 0.075 seconds - Initiated by StopAssetImportingV2(NoUpdateAssetOptions)
+Start importing Assets/_Project/Resources/UI/aim_kit.png using Guid(e53897dba0b8208d5975726a0418e653) (TextureImporter) -> (artifact id: '25409cb7d5deaacd74a74609d5151699') in 1.157708644 seconds
+Refreshing native plugins compatible for Editor in 0.00 ms, found 0 plugins.
+Preloading 0 native plugins for Editor in 0.00 ms.
+Asset Pipeline Refresh (id=2a3e14a79cd075cd9b89fee3ff946988): Total: 1.166 seconds - Initiated by StopAssetImportingV2(NoUpdateAssetOptions)
+	Summary:
+		Imports: total=1 (actual=1, local cache=0, cache server=0)
+		Asset DB Process Time: managed=0 ms, native=1165 ms
+		Asset DB Callback time: managed=0 ms, native=0 ms
+		Scripting: domain reloads=0, domain reload time=0 ms, compile time=0 ms, other=0 ms
+		Project Asset Count: scripts=128, non-scripts=173
+		Asset File Changes: new=0, changed=1, moved=0, deleted=0
+		Scan Filter Count: 5
+	InvokeCustomDependenciesCallbacks: 0.001ms
+	InvokePackagesCallback: 0.001ms
+	ApplyChangesToAssetFolders: 0.119ms
+	Scan: 4.808ms
+	OnSourceAssetsModified: 0.027ms
+	CategorizeAssetsWithTransientArtifact: 0.005ms
+	ProcessAssetsWithTransientArtifactChanges: 0.005ms
+	CategorizeAssets: 0.212ms
+	ImportOutOfDateAssets: 1158.635ms (-0.174ms without children)
+		ImportManagerImport: 1158.291ms (0.351ms without children)
+			ImportInProcess: 1157.916ms
+			UpdateCategorizedAssets: 0.024ms
+		ReloadNativeAssets: 0.000ms
+		UnloadImportedAssets: 0.090ms
+		ReloadImportedAssets: 0.247ms
+		EnsureUptoDateAssetsAreRegisteredWithGuidPM: 0.024ms
+		InitializingProgressBar: 0.003ms
+		PostProcessAllAssetNotificationsAddChangedAssets: 0.001ms
+		OnDemandSchedulerStart: 0.154ms
+	PostProcessAllAssets: 0.488ms
+	Hotreload: 0.166ms
+	GatherAllCurrentPrimaryArtifactRevisions: 0.013ms
+	UnloadStreamsBegin: 0.001ms
+	PersistCurrentRevisions: 0.038ms
+	UnloadStreamsEnd: 0.000ms
+	Untracked: 1.519ms
+
+Start importing Assets/_Project/Resources/UI/radar_frame.png using Guid(3b730491db81a15fb9c8c6895057228c) (TextureImporter) -> (artifact id: '18f4d25645388da3c324660f1d86776e') in 0.029583795 seconds
+Refreshing native plugins compatible for Editor in 0.00 ms, found 0 plugins.
+Preloading 0 native plugins for Editor in 0.00 ms.
+Asset Pipeline Refresh (id=4894f157ed8ef71dc8e445396d03983f): Total: 0.038 seconds - Initiated by StopAssetImportingV2(NoUpdateAssetOptions)
+Start importing Assets/_Project/Resources/UI/radar_frame.png using Guid(3b730491db81a15fb9c8c6895057228c) (TextureImporter) -> (artifact id: '04c526b91e3985bd4a312ef693b7301a') in 0.607002574 seconds
+Refreshing native plugins compatible for Editor in 0.00 ms, found 0 plugins.
+Preloading 0 native plugins for Editor in 0.00 ms.
+Asset Pipeline Refresh (id=04ca35f2cdc38f3ee87b0ae187bbdf72): Total: 0.617 seconds - Initiated by StopAssetImportingV2(NoUpdateAssetOptions)
+	Summary:
+		Imports: total=1 (actual=1, local cache=0, cache server=0)
+		Asset DB Process Time: managed=0 ms, native=615 ms
+		Asset DB Callback time: managed=0 ms, native=0 ms
+		Scripting: domain reloads=0, domain reload time=0 ms, compile time=0 ms, other=0 ms
+		Project Asset Count: scripts=128, non-scripts=173
+		Asset File Changes: new=0, changed=1, moved=0, deleted=0
+		Scan Filter Count: 5
+	InvokeCustomDependenciesCallbacks: 0.001ms
+	InvokePackagesCallback: 0.001ms
+	ApplyChangesToAssetFolders: 0.129ms
+	Scan: 5.744ms
+	OnSourceAssetsModified: 0.032ms
+	CategorizeAssetsWithTransientArtifact: 0.005ms
+	ProcessAssetsWithTransientArtifactChanges: 0.007ms
+	CategorizeAssets: 0.277ms
+	ImportOutOfDateAssets: 608.013ms (-0.129ms without children)
+		ImportManagerImport: 607.545ms (0.314ms without children)
+			ImportInProcess: 607.206ms
+			UpdateCategorizedAssets: 0.025ms
+		ReloadNativeAssets: 0.001ms
+		UnloadImportedAssets: 0.107ms
+		ReloadImportedAssets: 0.200ms
+		EnsureUptoDateAssetsAreRegisteredWithGuidPM: 0.025ms
+		InitializingProgressBar: 0.003ms
+		PostProcessAllAssetNotificationsAddChangedAssets: 0.001ms
+		OnDemandSchedulerStart: 0.260ms
+	PostProcessAllAssets: 0.430ms
+	Hotreload: 0.164ms
+	GatherAllCurrentPrimaryArtifactRevisions: 0.011ms
+	UnloadStreamsBegin: 0.001ms
+	PersistCurrentRevisions: 0.040ms
+	UnloadStreamsEnd: 0.001ms
+	Untracked: 1.724ms
+
+Start importing Assets/_Project/Resources/UI/radar_face.png using Guid(d6e196fecba7367f4913394f76ccd7eb) (TextureImporter) -> (artifact id: '72bd25721ce4a0c63b36c2157a9265bf') in 0.027603152 seconds
+Refreshing native plugins compatible for Editor in 0.00 ms, found 0 plugins.
+Preloading 0 native plugins for Editor in 0.00 ms.
+Asset Pipeline Refresh (id=bae9f130c4db7c7c098ff7b635fca57d): Total: 0.036 seconds - Initiated by StopAssetImportingV2(NoUpdateAssetOptions)
+Start importing Assets/_Project/Resources/UI/radar_face.png using Guid(d6e196fecba7367f4913394f76ccd7eb) (TextureImporter) -> (artifact id: 'c9544bad0cfe835b18b4cc2eeeeb0c2b') in 0.331432951 seconds
+Refreshing native plugins compatible for Editor in 0.00 ms, found 0 plugins.
+Preloading 0 native plugins for Editor in 0.00 ms.
+Asset Pipeline Refresh (id=308e29b6f9b13e7c883cc2e4dd567217): Total: 0.340 seconds - Initiated by StopAssetImportingV2(NoUpdateAssetOptions)
+	Summary:
+		Imports: total=1 (actual=1, local cache=0, cache server=0)
+		Asset DB Process Time: managed=0 ms, native=339 ms
+		Asset DB Callback time: managed=0 ms, native=0 ms
+		Scripting: domain reloads=0, domain reload time=0 ms, compile time=0 ms, other=0 ms
+		Project Asset Count: scripts=128, non-scripts=173
+		Asset File Changes: new=0, changed=1, moved=0, deleted=0
+		Scan Filter Count: 5
+	InvokeCustomDependenciesCallbacks: 0.001ms
+	InvokePackagesCallback: 0.001ms
+	ApplyChangesToAssetFolders: 0.100ms
+	Scan: 4.857ms
+	OnSourceAssetsModified: 0.028ms
+	CategorizeAssetsWithTransientArtifact: 0.005ms
+	ProcessAssetsWithTransientArtifactChanges: 0.005ms
+	CategorizeAssets: 0.235ms
+	ImportOutOfDateAssets: 332.943ms (-0.186ms without children)
+		ImportManagerImport: 332.054ms (0.402ms without children)
+			ImportInProcess: 331.631ms
+			UpdateCategorizedAssets: 0.022ms
+		ReloadNativeAssets: 0.001ms
+		UnloadImportedAssets: 0.092ms
+		ReloadImportedAssets: 0.258ms
+		EnsureUptoDateAssetsAreRegisteredWithGuidPM: 0.024ms
+		InitializingProgressBar: 0.002ms
+		PostProcessAllAssetNotificationsAddChangedAssets: 0.001ms
+		OnDemandSchedulerStart: 0.697ms
+	PostProcessAllAssets: 0.674ms
+	Hotreload: 0.161ms
+	GatherAllCurrentPrimaryArtifactRevisions: 0.011ms
+	UnloadStreamsBegin: 0.000ms
+	PersistCurrentRevisions: 0.037ms
+	UnloadStreamsEnd: 0.000ms
+	Untracked: 1.421ms
+
+Start importing Assets/_Project/Resources/UI/radar_sweep.png using Guid(9d4664b32bf4c362c928ff5657b7b837) (TextureImporter) -> (artifact id: '8536d4b396acb97266afea411943bc62') in 0.028907233 seconds
+Refreshing native plugins compatible for Editor in 0.00 ms, found 0 plugins.
+Preloading 0 native plugins for Editor in 0.00 ms.
+Asset Pipeline Refresh (id=6c627672a93f8c42c92293bba25f43fb): Total: 0.040 seconds - Initiated by StopAssetImportingV2(NoUpdateAssetOptions)
+Start importing Assets/_Project/Resources/UI/radar_sweep.png using Guid(9d4664b32bf4c362c928ff5657b7b837) (TextureImporter) -> (artifact id: '8e5d1800638b6627b7cc0af2066c6e2e') in 0.031303621 seconds
+Refreshing native plugins compatible for Editor in 0.00 ms, found 0 plugins.
+Preloading 0 native plugins for Editor in 0.00 ms.
+Asset Pipeline Refresh (id=c95812f4a7bf674d39132ad4b070ed50): Total: 0.039 seconds - Initiated by StopAssetImportingV2(NoUpdateAssetOptions)
+Start importing Assets/_Project/Resources/UI/radar_ship.png using Guid(d1e37c0d84b0d35f0a949c9014f9892d) (TextureImporter) -> (artifact id: '6e58aa8104eff9497caec44a3469fe06') in 0.001876869 seconds
+Refreshing native plugins compatible for Editor in 0.00 ms, found 0 plugins.
+Preloading 0 native plugins for Editor in 0.00 ms.
+Asset Pipeline Refresh (id=1b3825abfbe5f6db3801ee4e30d24702): Total: 0.010 seconds - Initiated by StopAssetImportingV2(NoUpdateAssetOptions)
+Start importing Assets/_Project/Resources/UI/radar_ship.png using Guid(d1e37c0d84b0d35f0a949c9014f9892d) (TextureImporter) -> (artifact id: 'a82b52997296c38b8d8dd3da256cba1c') in 0.020619655 seconds
+Refreshing native plugins compatible for Editor in 0.00 ms, found 0 plugins.
+Preloading 0 native plugins for Editor in 0.00 ms.
+Asset Pipeline Refresh (id=1dbbb745314d70398be0018f14277a25): Total: 0.030 seconds - Initiated by StopAssetImportingV2(NoUpdateAssetOptions)
+Start importing Assets/_Project/Resources/UI/radar_enemy.png using Guid(e0a111c6d81e6471eba21e173b7a7ca9) (TextureImporter) -> (artifact id: '22e6bfe334c015c2aa886036218b26cf') in 0.001969846 seconds
+Refreshing native plugins compatible for Editor in 0.00 ms, found 0 plugins.
+Preloading 0 native plugins for Editor in 0.00 ms.
+Asset Pipeline Refresh (id=203f6ca0f7d51718d9f654c70d1f167e): Total: 0.009 seconds - Initiated by StopAssetImportingV2(NoUpdateAssetOptions)
+Start importing Assets/_Project/Resources/UI/radar_enemy.png using Guid(e0a111c6d81e6471eba21e173b7a7ca9) (TextureImporter) -> (artifact id: '0a4dfe2813057549e4bb06484a319753') in 0.034865083 seconds
+Refreshing native plugins compatible for Editor in 0.00 ms, found 0 plugins.
+Preloading 0 native plugins for Editor in 0.00 ms.
+Asset Pipeline Refresh (id=475618c2de1025c7dbdd22a0ed087685): Total: 0.058 seconds - Initiated by StopAssetImportingV2(NoUpdateAssetOptions)
+Start importing Assets/_Project/Resources/UI/radar_enemy_far.png using Guid(f8f12ee7753d88e52a6b44626a779118) (TextureImporter) -> (artifact id: '621dd146addaf517929c8f1dbe28904c') in 0.002010857 seconds
+Refreshing native plugins compatible for Editor in 0.00 ms, found 0 plugins.
+Preloading 0 native plugins for Editor in 0.00 ms.
+Asset Pipeline Refresh (id=c09fa12078dfdaf938b8e1dec44641ec): Total: 0.010 seconds - Initiated by StopAssetImportingV2(NoUpdateAssetOptions)
+Start importing Assets/_Project/Resources/UI/radar_enemy_far.png using Guid(f8f12ee7753d88e52a6b44626a779118) (TextureImporter) -> (artifact id: '6923e75e6cb5741585f042775510184d') in 0.035960024 seconds
+Refreshing native plugins compatible for Editor in 0.00 ms, found 0 plugins.
+Preloading 0 native plugins for Editor in 0.00 ms.
+Asset Pipeline Refresh (id=ee952b9eea34747fc875997d80be86ad): Total: 0.044 seconds - Initiated by StopAssetImportingV2(NoUpdateAssetOptions)
+Start importing Assets/_Project/Resources/UI/main_menu.jpg using Guid(f102aeec59b7cd454ab27d844b0f8f38) (TextureImporter) -> (artifact id: '6339037c80e6356017d05ae87d035101') in 0.056064506 seconds
+Refreshing native plugins compatible for Editor in 0.00 ms, found 0 plugins.
+Preloading 0 native plugins for Editor in 0.00 ms.
+Asset Pipeline Refresh (id=80771056739024c57b0cf6fc3c953522): Total: 0.064 seconds - Initiated by StopAssetImportingV2(NoUpdateAssetOptions)
+Start importing Assets/_Project/Resources/UI/main_menu.jpg using Guid(f102aeec59b7cd454ab27d844b0f8f38) (TextureImporter) -> (artifact id: 'b1c41ab6c8b33d96d78c6a6f171b524a') in 3.658835346 seconds
+Refreshing native plugins compatible for Editor in 0.00 ms, found 0 plugins.
+Preloading 0 native plugins for Editor in 0.00 ms.
+Asset Pipeline Refresh (id=56ec739a5aa7e10eba7451df0c086f9b): Total: 3.667 seconds - Initiated by StopAssetImportingV2(NoUpdateAssetOptions)
+	Summary:
+		Imports: total=1 (actual=1, local cache=0, cache server=0)
+		Asset DB Process Time: managed=0 ms, native=3666 ms
+		Asset DB Callback time: managed=0 ms, native=0 ms
+		Scripting: domain reloads=0, domain reload time=0 ms, compile time=0 ms, other=0 ms
+		Project Asset Count: scripts=128, non-scripts=173
+		Asset File Changes: new=0, changed=1, moved=0, deleted=0
+		Scan Filter Count: 5
+	InvokeCustomDependenciesCallbacks: 0.001ms
+	InvokePackagesCallback: 0.001ms
+	ApplyChangesToAssetFolders: 0.112ms
+	Scan: 4.740ms
+	OnSourceAssetsModified: 0.024ms
+	CategorizeAssetsWithTransientArtifact: 0.005ms
+	ProcessAssetsWithTransientArtifactChanges: 0.005ms
+	CategorizeAssets: 0.222ms
+	ImportOutOfDateAssets: 3659.865ms (-0.151ms without children)
+		ImportManagerImport: 3659.445ms (0.321ms without children)
+			ImportInProcess: 3659.101ms
+			UpdateCategorizedAssets: 0.023ms
+		ReloadNativeAssets: 0.001ms
+		UnloadImportedAssets: 0.088ms
+		ReloadImportedAssets: 0.216ms
+		EnsureUptoDateAssetsAreRegisteredWithGuidPM: 0.025ms
+		InitializingProgressBar: 0.002ms
+		PostProcessAllAssetNotificationsAddChangedAssets: 0.001ms
+		OnDemandSchedulerStart: 0.238ms
+	PostProcessAllAssets: 0.427ms
+	Hotreload: 0.158ms
+	GatherAllCurrentPrimaryArtifactRevisions: 0.012ms
+	UnloadStreamsBegin: 0.001ms
+	PersistCurrentRevisions: 0.041ms
+	UnloadStreamsEnd: 0.001ms
+	Untracked: 1.403ms
+
+Start importing Assets/_Project/Resources/UI/splash_studio.jpg using Guid(179b3eb7068266fb2b2b0162695386e0) (TextureImporter) -> (artifact id: '043725c181f9ed9498f59dc25a4f6368') in 0.051955573 seconds
+Refreshing native plugins compatible for Editor in 0.00 ms, found 0 plugins.
+Preloading 0 native plugins for Editor in 0.00 ms.
+Asset Pipeline Refresh (id=2ad24793458618b47a2e32f36a739f02): Total: 0.061 seconds - Initiated by StopAssetImportingV2(NoUpdateAssetOptions)
+Start importing Assets/_Project/Resources/UI/splash_studio.jpg using Guid(179b3eb7068266fb2b2b0162695386e0) (TextureImporter) -> (artifact id: 'e8932407b4f867c0968d4462ff70e1c8') in 1.05561258 seconds
+Refreshing native plugins compatible for Editor in 0.00 ms, found 0 plugins.
+Preloading 0 native plugins for Editor in 0.00 ms.
+Asset Pipeline Refresh (id=c5d309383daadb2aea1a41e2db210664): Total: 1.064 seconds - Initiated by StopAssetImportingV2(NoUpdateAssetOptions)
+	Summary:
+		Imports: total=1 (actual=1, local cache=0, cache server=0)
+		Asset DB Process Time: managed=0 ms, native=1062 ms
+		Asset DB Callback time: managed=0 ms, native=0 ms
+		Scripting: domain reloads=0, domain reload time=0 ms, compile time=0 ms, other=0 ms
+		Project Asset Count: scripts=128, non-scripts=173
+		Asset File Changes: new=0, changed=1, moved=0, deleted=0
+		Scan Filter Count: 5
+	InvokeCustomDependenciesCallbacks: 0.001ms
+	InvokePackagesCallback: 0.001ms
+	ApplyChangesToAssetFolders: 0.106ms
+	Scan: 4.621ms
+	OnSourceAssetsModified: 0.024ms
+	CategorizeAssetsWithTransientArtifact: 0.005ms
+	ProcessAssetsWithTransientArtifactChanges: 0.005ms
+	CategorizeAssets: 0.220ms
+	ImportOutOfDateAssets: 1056.543ms (-0.150ms without children)
+		ImportManagerImport: 1056.192ms (0.307ms without children)
+			ImportInProcess: 1055.864ms
+			UpdateCategorizedAssets: 0.020ms
+		ReloadNativeAssets: 0.000ms
+		UnloadImportedAssets: 0.068ms
+		ReloadImportedAssets: 0.215ms
+		EnsureUptoDateAssetsAreRegisteredWithGuidPM: 0.025ms
+		InitializingProgressBar: 0.002ms
+		PostProcessAllAssetNotificationsAddChangedAssets: 0.000ms
+		OnDemandSchedulerStart: 0.192ms
+	PostProcessAllAssets: 0.451ms
+	Hotreload: 0.225ms
+	GatherAllCurrentPrimaryArtifactRevisions: 0.012ms
+	UnloadStreamsBegin: 0.001ms
+	PersistCurrentRevisions: 0.039ms
+	UnloadStreamsEnd: 0.001ms
+	Untracked: 1.427ms
+
+Start importing Assets/_Project/Resources/UI/banner_victory.png using Guid(bd7dea5fe19386d2db985a27cba29134) (TextureImporter) -> (artifact id: '4d01f580ce040d72590b78c55fd5a45c') in 0.022498676 seconds
+Refreshing native plugins compatible for Editor in 0.00 ms, found 0 plugins.
+Preloading 0 native plugins for Editor in 0.00 ms.
+Asset Pipeline Refresh (id=18eee9d1b7e2a639c8d944a044590204): Total: 0.031 seconds - Initiated by StopAssetImportingV2(NoUpdateAssetOptions)
+Start importing Assets/_Project/Resources/UI/banner_victory.png using Guid(bd7dea5fe19386d2db985a27cba29134) (TextureImporter) -> (artifact id: '835dda5ae8c8224f8ff1a26479b2e524') in 0.874036802 seconds
+Refreshing native plugins compatible for Editor in 0.00 ms, found 0 plugins.
+Preloading 0 native plugins for Editor in 0.00 ms.
+Asset Pipeline Refresh (id=f33b75f409d4fd54fb2a7f8f6df4a5a5): Total: 0.882 seconds - Initiated by StopAssetImportingV2(NoUpdateAssetOptions)
+	Summary:
+		Imports: total=1 (actual=1, local cache=0, cache server=0)
+		Asset DB Process Time: managed=0 ms, native=881 ms
+		Asset DB Callback time: managed=0 ms, native=0 ms
+		Scripting: domain reloads=0, domain reload time=0 ms, compile time=0 ms, other=0 ms
+		Project Asset Count: scripts=128, non-scripts=173
+		Asset File Changes: new=0, changed=1, moved=0, deleted=0
+		Scan Filter Count: 5
+	InvokeCustomDependenciesCallbacks: 0.001ms
+	InvokePackagesCallback: 0.001ms
+	ApplyChangesToAssetFolders: 0.110ms
+	Scan: 4.720ms
+	OnSourceAssetsModified: 0.026ms
+	CategorizeAssetsWithTransientArtifact: 0.005ms
+	ProcessAssetsWithTransientArtifactChanges: 0.005ms
+	CategorizeAssets: 0.207ms
+	ImportOutOfDateAssets: 875.080ms (-0.148ms without children)
+		ImportManagerImport: 874.672ms (0.331ms without children)
+			ImportInProcess: 874.317ms
+			UpdateCategorizedAssets: 0.024ms
+		ReloadNativeAssets: 0.000ms
+		UnloadImportedAssets: 0.080ms
+		ReloadImportedAssets: 0.222ms
+		EnsureUptoDateAssetsAreRegisteredWithGuidPM: 0.027ms
+		InitializingProgressBar: 0.002ms
+		PostProcessAllAssetNotificationsAddChangedAssets: 0.001ms
+		OnDemandSchedulerStart: 0.224ms
+	PostProcessAllAssets: 0.456ms
+	Hotreload: 0.244ms
+	GatherAllCurrentPrimaryArtifactRevisions: 0.012ms
+	UnloadStreamsBegin: 0.001ms
+	PersistCurrentRevisions: 0.048ms
+	UnloadStreamsEnd: 0.001ms
+	Untracked: 1.414ms
+
+Start importing Assets/_Project/Resources/UI/banner_defeat.png using Guid(0c79c744e9e1ae889af69e415388cc55) (TextureImporter) -> (artifact id: 'c886e1ad9510ff88461d2e9ca3ad9376') in 0.020865488 seconds
+Refreshing native plugins compatible for Editor in 0.00 ms, found 0 plugins.
+Preloading 0 native plugins for Editor in 0.00 ms.
+Asset Pipeline Refresh (id=d18188f5772f3ddf3adab0a5e60eda25): Total: 0.052 seconds - Initiated by StopAssetImportingV2(NoUpdateAssetOptions)
+Start importing Assets/_Project/Resources/UI/banner_defeat.png using Guid(0c79c744e9e1ae889af69e415388cc55) (TextureImporter) -> (artifact id: '8e8e0477c66e040923b8ea099bbbe9da') in 0.574194486 seconds
+Refreshing native plugins compatible for Editor in 0.00 ms, found 0 plugins.
+Preloading 0 native plugins for Editor in 0.00 ms.
+Asset Pipeline Refresh (id=01f81ca1123b5699281897db29a2360c): Total: 0.583 seconds - Initiated by StopAssetImportingV2(NoUpdateAssetOptions)
+	Summary:
+		Imports: total=1 (actual=1, local cache=0, cache server=0)
+		Asset DB Process Time: managed=0 ms, native=581 ms
+		Asset DB Callback time: managed=0 ms, native=0 ms
+		Scripting: domain reloads=0, domain reload time=0 ms, compile time=0 ms, other=0 ms
+		Project Asset Count: scripts=128, non-scripts=173
+		Asset File Changes: new=0, changed=1, moved=0, deleted=0
+		Scan Filter Count: 5
+	InvokeCustomDependenciesCallbacks: 0.001ms
+	InvokePackagesCallback: 0.001ms
+	ApplyChangesToAssetFolders: 0.110ms
+	Scan: 4.693ms
+	OnSourceAssetsModified: 0.025ms
+	CategorizeAssetsWithTransientArtifact: 0.005ms
+	ProcessAssetsWithTransientArtifactChanges: 0.005ms
+	CategorizeAssets: 0.213ms
+	ImportOutOfDateAssets: 575.156ms (-0.156ms without children)
+		ImportManagerImport: 574.769ms (0.341ms without children)
+			ImportInProcess: 574.404ms
+			UpdateCategorizedAssets: 0.024ms
+		ReloadNativeAssets: 0.000ms
+		UnloadImportedAssets: 0.089ms
+		ReloadImportedAssets: 0.235ms
+		EnsureUptoDateAssetsAreRegisteredWithGuidPM: 0.024ms
+		InitializingProgressBar: 0.002ms
+		PostProcessAllAssetNotificationsAddChangedAssets: 0.001ms
+		OnDemandSchedulerStart: 0.191ms
+	PostProcessAllAssets: 0.450ms
+	Hotreload: 0.621ms
+	GatherAllCurrentPrimaryArtifactRevisions: 0.012ms
+	UnloadStreamsBegin: 0.001ms
+	PersistCurrentRevisions: 0.037ms
+	UnloadStreamsEnd: 0.000ms
+	Untracked: 1.417ms
+
+Start importing Assets/_Project/Resources/UI/plate_notice.png using Guid(99247c9e84b597774ab2973183880c9c) (TextureImporter) -> (artifact id: 'df39c3d74428ddbe182fbc97ef1353fd') in 0.009870752 seconds
+Refreshing native plugins compatible for Editor in 0.00 ms, found 0 plugins.
+Preloading 0 native plugins for Editor in 0.00 ms.
+Asset Pipeline Refresh (id=a4b54ec60077171d482fc6f0001b68ae): Total: 0.074 seconds - Initiated by StopAssetImportingV2(NoUpdateAssetOptions)
+Start importing Assets/_Project/Resources/UI/plate_notice.png using Guid(99247c9e84b597774ab2973183880c9c) (TextureImporter) -> (artifact id: 'e4623bebad8818cbb185b63644fd9f65') in 0.32459282 seconds
+Refreshing native plugins compatible for Editor in 0.00 ms, found 0 plugins.
+Preloading 0 native plugins for Editor in 0.00 ms.
+Asset Pipeline Refresh (id=f986a5607b3c1dbb9821737440472efa): Total: 0.335 seconds - Initiated by StopAssetImportingV2(NoUpdateAssetOptions)
+	Summary:
+		Imports: total=1 (actual=1, local cache=0, cache server=0)
+		Asset DB Process Time: managed=0 ms, native=333 ms
+		Asset DB Callback time: managed=0 ms, native=0 ms
+		Scripting: domain reloads=0, domain reload time=0 ms, compile time=0 ms, other=0 ms
+		Project Asset Count: scripts=128, non-scripts=173
+		Asset File Changes: new=0, changed=1, moved=0, deleted=0
+		Scan Filter Count: 5
+	InvokeCustomDependenciesCallbacks: 0.001ms
+	InvokePackagesCallback: 0.001ms
+	ApplyChangesToAssetFolders: 0.118ms
+	Scan: 5.905ms
+	OnSourceAssetsModified: 0.030ms
+	CategorizeAssetsWithTransientArtifact: 0.006ms
+	ProcessAssetsWithTransientArtifactChanges: 0.006ms
+	CategorizeAssets: 0.296ms
+	ImportOutOfDateAssets: 325.994ms (-0.105ms without children)
+		ImportManagerImport: 325.078ms (0.277ms without children)
+			ImportInProcess: 324.782ms
+			UpdateCategorizedAssets: 0.019ms
+		ReloadNativeAssets: 0.000ms
+		UnloadImportedAssets: 0.127ms
+		ReloadImportedAssets: 0.179ms
+		EnsureUptoDateAssetsAreRegisteredWithGuidPM: 0.029ms
+		InitializingProgressBar: 0.003ms
+		PostProcessAllAssetNotificationsAddChangedAssets: 0.001ms
+		OnDemandSchedulerStart: 0.683ms
+	PostProcessAllAssets: 0.410ms
+	Hotreload: 0.773ms
+	GatherAllCurrentPrimaryArtifactRevisions: 0.012ms
+	UnloadStreamsBegin: 0.001ms
+	PersistCurrentRevisions: 0.042ms
+	UnloadStreamsEnd: 0.001ms
+	Untracked: 1.632ms
+
+Start importing Assets/_Project/Resources/UI/vignette_damage.png using Guid(318c0ca18137ed7ac8e462d78588a60b) (TextureImporter) -> (artifact id: '3a8af355295259d1b5a1accd0903a16a') in 0.01738731 seconds
+Refreshing native plugins compatible for Editor in 0.00 ms, found 0 plugins.
+Preloading 0 native plugins for Editor in 0.00 ms.
+Asset Pipeline Refresh (id=cf1d27cdb3a88f8fcb3745edab345a07): Total: 0.028 seconds - Initiated by StopAssetImportingV2(NoUpdateAssetOptions)
+Start importing Assets/_Project/Resources/UI/vignette_damage.png using Guid(318c0ca18137ed7ac8e462d78588a60b) (TextureImporter) -> (artifact id: '26969b4fa1649c20b34ae8062904a09b') in 0.514049721 seconds
+Refreshing native plugins compatible for Editor in 0.00 ms, found 0 plugins.
+Preloading 0 native plugins for Editor in 0.00 ms.
+Asset Pipeline Refresh (id=4e7ab03060c22f6c5b0065097172645a): Total: 0.525 seconds - Initiated by StopAssetImportingV2(NoUpdateAssetOptions)
+	Summary:
+		Imports: total=1 (actual=1, local cache=0, cache server=0)
+		Asset DB Process Time: managed=0 ms, native=524 ms
+		Asset DB Callback time: managed=0 ms, native=0 ms
+		Scripting: domain reloads=0, domain reload time=0 ms, compile time=0 ms, other=0 ms
+		Project Asset Count: scripts=128, non-scripts=173
+		Asset File Changes: new=0, changed=1, moved=0, deleted=0
+		Scan Filter Count: 5
+	InvokeCustomDependenciesCallbacks: 0.001ms
+	InvokePackagesCallback: 0.007ms
+	ApplyChangesToAssetFolders: 0.126ms
+	Scan: 6.052ms
+	OnSourceAssetsModified: 0.049ms
+	CategorizeAssetsWithTransientArtifact: 0.005ms
+	ProcessAssetsWithTransientArtifactChanges: 0.006ms
+	CategorizeAssets: 0.302ms
+	ImportOutOfDateAssets: 515.528ms (0.061ms without children)
+		ImportManagerImport: 514.689ms (0.323ms without children)
+			ImportInProcess: 514.344ms
+			UpdateCategorizedAssets: 0.022ms
+		ReloadNativeAssets: 0.000ms
+		UnloadImportedAssets: 0.159ms
+		ReloadImportedAssets: 0.214ms
+		EnsureUptoDateAssetsAreRegisteredWithGuidPM: 0.030ms
+		InitializingProgressBar: 0.003ms
+		PostProcessAllAssetNotificationsAddChangedAssets: 0.001ms
+		OnDemandSchedulerStart: 0.373ms
+	PostProcessAllAssets: 0.441ms
+	Hotreload: 0.195ms
+	GatherAllCurrentPrimaryArtifactRevisions: 0.047ms
+	UnloadStreamsBegin: 0.000ms
+	PersistCurrentRevisions: 0.040ms
+	UnloadStreamsEnd: 0.001ms
+	Untracked: 2.007ms
+
+Start importing Assets/_Project/Resources/UI/icons.png using Guid(b0d3a80cdcc464ca992d2f2f1fa44387) (TextureImporter) -> (artifact id: '0eb7cc8201b95cd3de3a0315360e3164') in 0.076259091 seconds
+Refreshing native plugins compatible for Editor in 0.00 ms, found 0 plugins.
+Preloading 0 native plugins for Editor in 0.00 ms.
+Asset Pipeline Refresh (id=42231a195285a6aa8bc86b25dfcc70c5): Total: 0.084 seconds - Initiated by StopAssetImportingV2(NoUpdateAssetOptions)
+Start importing Assets/_Project/Resources/UI/icons.png using Guid(b0d3a80cdcc464ca992d2f2f1fa44387) (TextureImporter) -> (artifact id: '123de0f1fe62bd8198ccbe393433b9d5') in 1.878276843 seconds
+Refreshing native plugins compatible for Editor in 0.00 ms, found 0 plugins.
+Preloading 0 native plugins for Editor in 0.00 ms.
+Asset Pipeline Refresh (id=c110c5b59dac4c6238af24c57a70fa93): Total: 1.889 seconds - Initiated by StopAssetImportingV2(NoUpdateAssetOptions)
+	Summary:
+		Imports: total=1 (actual=1, local cache=0, cache server=0)
+		Asset DB Process Time: managed=0 ms, native=1888 ms
+		Asset DB Callback time: managed=0 ms, native=0 ms
+		Scripting: domain reloads=0, domain reload time=0 ms, compile time=0 ms, other=0 ms
+		Project Asset Count: scripts=128, non-scripts=173
+		Asset File Changes: new=0, changed=1, moved=0, deleted=0
+		Scan Filter Count: 5
+	InvokeCustomDependenciesCallbacks: 0.001ms
+	InvokePackagesCallback: 0.001ms
+	ApplyChangesToAssetFolders: 0.131ms
+	Scan: 6.427ms
+	OnSourceAssetsModified: 0.025ms
+	CategorizeAssetsWithTransientArtifact: 0.005ms
+	ProcessAssetsWithTransientArtifactChanges: 0.006ms
+	CategorizeAssets: 0.556ms
+	ImportOutOfDateAssets: 1879.972ms (-0.153ms without children)
+		ImportManagerImport: 1879.565ms (0.986ms without children)
+			ImportInProcess: 1878.558ms
+			UpdateCategorizedAssets: 0.022ms
+		ReloadNativeAssets: 0.001ms
+		UnloadImportedAssets: 0.086ms
+		ReloadImportedAssets: 0.218ms
+		EnsureUptoDateAssetsAreRegisteredWithGuidPM: 0.024ms
+		InitializingProgressBar: 0.002ms
+		PostProcessAllAssetNotificationsAddChangedAssets: 0.001ms
+		OnDemandSchedulerStart: 0.229ms
+	PostProcessAllAssets: 0.464ms
+	Hotreload: 0.253ms
+	GatherAllCurrentPrimaryArtifactRevisions: 0.012ms
+	UnloadStreamsBegin: 0.001ms
+	PersistCurrentRevisions: 0.049ms
+	UnloadStreamsEnd: 0.000ms
+	Untracked: 1.431ms
+
+Start importing Assets/_Project/Resources/FX/fx_flipbooks.png using Guid(6bbf0675ef75b22848fe9f6a34e10336) (TextureImporter) -> (artifact id: '594acccbffacf23182a96a2e76b61d31') in 10.055116393 seconds
+Refreshing native plugins compatible for Editor in 0.00 ms, found 0 plugins.
+Preloading 0 native plugins for Editor in 0.00 ms.
+Asset Pipeline Refresh (id=8094b486c1d6a8e408bcefcc7b33bf3c): Total: 10.064 seconds - Initiated by StopAssetImportingV2(NoUpdateAssetOptions)
+	Summary:
+		Imports: total=1 (actual=1, local cache=0, cache server=0)
+		Asset DB Process Time: managed=0 ms, native=10062 ms
+		Asset DB Callback time: managed=1 ms, native=0 ms
+		Scripting: domain reloads=0, domain reload time=0 ms, compile time=0 ms, other=0 ms
+		Project Asset Count: scripts=128, non-scripts=173
+		Asset File Changes: new=0, changed=1, moved=0, deleted=0
+		Scan Filter Count: 5
+	InvokeCustomDependenciesCallbacks: 0.001ms
+	InvokePackagesCallback: 0.001ms
+	ApplyChangesToAssetFolders: 0.109ms
+	Scan: 4.624ms
+	OnSourceAssetsModified: 0.046ms
+	CategorizeAssetsWithTransientArtifact: 0.006ms
+	ProcessAssetsWithTransientArtifactChanges: 0.006ms
+	CategorizeAssets: 0.233ms
+	ImportOutOfDateAssets: 10056.373ms (-0.171ms without children)
+		ImportManagerImport: 10055.935ms (0.356ms without children)
+			ImportInProcess: 10055.555ms
+			UpdateCategorizedAssets: 0.024ms
+		ReloadNativeAssets: 0.000ms
+		UnloadImportedAssets: 0.087ms
+		ReloadImportedAssets: 0.248ms
+		EnsureUptoDateAssetsAreRegisteredWithGuidPM: 0.025ms
+		InitializingProgressBar: 0.003ms
+		PostProcessAllAssetNotificationsAddChangedAssets: 0.001ms
+		OnDemandSchedulerStart: 0.244ms
+	PostProcessAllAssets: 0.461ms
+	Hotreload: 0.767ms
+	GatherAllCurrentPrimaryArtifactRevisions: 0.013ms
+	UnloadStreamsBegin: 0.027ms
+	PersistCurrentRevisions: 0.044ms
+	UnloadStreamsEnd: 0.000ms
+	Untracked: 1.547ms
+
+Start importing Assets/_Project/Resources/FX/hull_decals.png using Guid(8d4edd33af1d19be3848f7289805e516) (TextureImporter) -> (artifact id: '3b192c307fd18e7c1953ae7dbf0494dc') in 2.251278946 seconds
+Refreshing native plugins compatible for Editor in 0.00 ms, found 0 plugins.
+Preloading 0 native plugins for Editor in 0.00 ms.
+Asset Pipeline Refresh (id=de45a4cc15114c0db956c44c872def64): Total: 2.259 seconds - Initiated by StopAssetImportingV2(NoUpdateAssetOptions)
+	Summary:
+		Imports: total=1 (actual=1, local cache=0, cache server=0)
+		Asset DB Process Time: managed=0 ms, native=2258 ms
+		Asset DB Callback time: managed=0 ms, native=0 ms
+		Scripting: domain reloads=0, domain reload time=0 ms, compile time=0 ms, other=0 ms
+		Project Asset Count: scripts=128, non-scripts=173
+		Asset File Changes: new=0, changed=1, moved=0, deleted=0
+		Scan Filter Count: 5
+	InvokeCustomDependenciesCallbacks: 0.001ms
+	InvokePackagesCallback: 0.001ms
+	ApplyChangesToAssetFolders: 0.102ms
+	Scan: 4.493ms
+	OnSourceAssetsModified: 0.028ms
+	CategorizeAssetsWithTransientArtifact: 0.005ms
+	ProcessAssetsWithTransientArtifactChanges: 0.005ms
+	CategorizeAssets: 0.213ms
+	ImportOutOfDateAssets: 2252.271ms (-0.097ms without children)
+		ImportManagerImport: 2251.818ms (0.260ms without children)
+			ImportInProcess: 2251.544ms
+			UpdateCategorizedAssets: 0.014ms
+		ReloadNativeAssets: 0.000ms
+		UnloadImportedAssets: 0.078ms
+		ReloadImportedAssets: 0.168ms
+		EnsureUptoDateAssetsAreRegisteredWithGuidPM: 0.025ms
+		InitializingProgressBar: 0.002ms
+		PostProcessAllAssetNotificationsAddChangedAssets: 0.000ms
+		OnDemandSchedulerStart: 0.277ms
+	PostProcessAllAssets: 0.452ms
+	Hotreload: 0.160ms
+	GatherAllCurrentPrimaryArtifactRevisions: 0.012ms
+	UnloadStreamsBegin: 0.024ms
+	PersistCurrentRevisions: 0.049ms
+	UnloadStreamsEnd: 0.001ms
+	Untracked: 1.467ms
+
+Refreshing native plugins compatible for Editor in 0.00 ms, found 0 plugins.
+Preloading 0 native plugins for Editor in 0.00 ms.
+Asset Pipeline Refresh (id=076003da4760d11818087bd80e480d75): Total: 0.007 seconds - Initiated by StopAssetImportingV2(NoUpdateAssetOptions)
+Refreshing native plugins compatible for Editor in 0.00 ms, found 0 plugins.
+Preloading 0 native plugins for Editor in 0.00 ms.
+Asset Pipeline Refresh (id=3885c17365b7615be9f759f8368b157e): Total: 0.005 seconds - Initiated by StopAssetImportingV2(NoUpdateAssetOptions)
+Refreshing native plugins compatible for Editor in 0.00 ms, found 0 plugins.
+Preloading 0 native plugins for Editor in 0.00 ms.
+Asset Pipeline Refresh (id=3459c7f2cc7f2f445802f37b370e3d32): Total: 0.005 seconds - Initiated by StopAssetImportingV2(NoUpdateAssetOptions)
+Refreshing native plugins compatible for Editor in 0.00 ms, found 0 plugins.
+Preloading 0 native plugins for Editor in 0.00 ms.
+Asset Pipeline Refresh (id=aa5dc2f274409c0bb8ed8ae442dcbbb4): Total: 0.005 seconds - Initiated by StopAssetImportingV2(NoUpdateAssetOptions)
+Refreshing native plugins compatible for Editor in 0.00 ms, found 0 plugins.
+Preloading 0 native plugins for Editor in 0.00 ms.
+Asset Pipeline Refresh (id=14e9b6f4d8066a7858127d2b13e466db): Total: 0.005 seconds - Initiated by StopAssetImportingV2(NoUpdateAssetOptions)
+Refreshing native plugins compatible for Editor in 0.00 ms, found 0 plugins.
+Preloading 0 native plugins for Editor in 0.00 ms.
+Asset Pipeline Refresh (id=b8d2c9e797619c42d94581e062157c1d): Total: 0.005 seconds - Initiated by StopAssetImportingV2(NoUpdateAssetOptions)
+Refreshing native plugins compatible for Editor in 0.00 ms, found 0 plugins.
+Preloading 0 native plugins for Editor in 0.00 ms.
+Asset Pipeline Refresh (id=8a2ef2663246f0408ad8678af173371c): Total: 0.005 seconds - Initiated by StopAssetImportingV2(NoUpdateAssetOptions)
+Refreshing native plugins compatible for Editor in 0.00 ms, found 0 plugins.
+Preloading 0 native plugins for Editor in 0.00 ms.
+Asset Pipeline Refresh (id=e04702ec105394b068f9b22e9ad8e61b): Total: 0.005 seconds - Initiated by StopAssetImportingV2(NoUpdateAssetOptions)
+Refreshing native plugins compatible for Editor in 0.00 ms, found 0 plugins.
+Preloading 0 native plugins for Editor in 0.00 ms.
+Asset Pipeline Refresh (id=1ad1fa12b916b966cb0e55a783cd9a13): Total: 0.005 seconds - Initiated by StopAssetImportingV2(NoUpdateAssetOptions)
+Refreshing native plugins compatible for Editor in 0.00 ms, found 0 plugins.
+Preloading 0 native plugins for Editor in 0.00 ms.
+Asset Pipeline Refresh (id=57b83386d79aa0a08a3d0a637cf702ec): Total: 0.004 seconds - Initiated by StopAssetImportingV2(NoUpdateAssetOptions)
+Refreshing native plugins compatible for Editor in 0.00 ms, found 0 plugins.
+Preloading 0 native plugins for Editor in 0.00 ms.
+Asset Pipeline Refresh (id=6b45681595566b53fa37cc86328b4ce3): Total: 0.005 seconds - Initiated by StopAssetImportingV2(NoUpdateAssetOptions)
+Refreshing native plugins compatible for Editor in 0.00 ms, found 0 plugins.
+Preloading 0 native plugins for Editor in 0.00 ms.
+Asset Pipeline Refresh (id=b4ed24e24430b7429b7e4410a7baaea2): Total: 0.004 seconds - Initiated by StopAssetImportingV2(NoUpdateAssetOptions)
+Refreshing native plugins compatible for Editor in 0.00 ms, found 0 plugins.
+Preloading 0 native plugins for Editor in 0.00 ms.
+Asset Pipeline Refresh (id=6f2d53eb411527dc7919dfa55d43eced): Total: 0.005 seconds - Initiated by StopAssetImportingV2(NoUpdateAssetOptions)
+Refreshing native plugins compatible for Editor in 0.00 ms, found 0 plugins.
+Preloading 0 native plugins for Editor in 0.00 ms.
+Asset Pipeline Refresh (id=fd08b2edb3b9641aaa8ce6eacce57f23): Total: 0.005 seconds - Initiated by StopAssetImportingV2(NoUpdateAssetOptions)
+Start importing ProjectSettings/ProjectSettings.asset using Guid(00000000000000004000000000000000) (LibraryAssetImporter) -> (artifact id: 'c4977107c3036de8bb285e8ef0eeb7ab') in 0.00162778 seconds
+Refreshing native plugins compatible for Editor in 0.00 ms, found 0 plugins.
+Preloading 0 native plugins for Editor in 0.00 ms.
+Asset Pipeline Refresh (id=bc6798c00f382b815b8682645f120d7c): Total: 0.006 seconds - Initiated by StopAssetImportingV2(NoUpdateAssetOptions)
+Refreshing native plugins compatible for Editor in 0.00 ms, found 0 plugins.
+Preloading 0 native plugins for Editor in 0.00 ms.
+Asset Pipeline Refresh (id=aa5cf7a7601ab9a139303af70c0b389f): Total: 0.005 seconds - Initiated by StopAssetImportingV2(NoUpdateAssetOptions)
+Refreshing native plugins compatible for Editor in 0.00 ms, found 0 plugins.
+Preloading 0 native plugins for Editor in 0.00 ms.
+Asset Pipeline Refresh (id=63e45b28ffe23d5968420a82305c9545): Total: 0.005 seconds - Initiated by StopAssetImportingV2(NoUpdateAssetOptions)
+Refreshing native plugins compatible for Editor in 0.00 ms, found 0 plugins.
+Preloading 0 native plugins for Editor in 0.00 ms.
+Asset Pipeline Refresh (id=946ef9940074bd7febbf3db92e8ef7a3): Total: 0.005 seconds - Initiated by StopAssetImportingV2(NoUpdateAssetOptions)
+Refreshing native plugins compatible for Editor in 0.00 ms, found 0 plugins.
+Preloading 0 native plugins for Editor in 0.00 ms.
+Asset Pipeline Refresh (id=6442f29c31f8572e7ac155bec25b305d): Total: 0.005 seconds - Initiated by StopAssetImportingV2(NoUpdateAssetOptions)
+Refreshing native plugins compatible for Editor in 0.00 ms, found 0 plugins.
+Preloading 0 native plugins for Editor in 0.00 ms.
+Asset Pipeline Refresh (id=95d2763a5eac78857be85accc8e0eee5): Total: 0.005 seconds - Initiated by StopAssetImportingV2(NoUpdateAssetOptions)
+Refreshing native plugins compatible for Editor in 0.00 ms, found 0 plugins.
+Preloading 0 native plugins for Editor in 0.00 ms.
+Asset Pipeline Refresh (id=a3f09c014c256e2ca88f80cfa370684c): Total: 0.005 seconds - Initiated by StopAssetImportingV2(NoUpdateAssetOptions)
+Refreshing native plugins compatible for Editor in 0.00 ms, found 0 plugins.
+Preloading 0 native plugins for Editor in 0.00 ms.
+Asset Pipeline Refresh (id=693d6c1620eddf6fc959ef5b2b6cfdf4): Total: 0.005 seconds - Initiated by StopAssetImportingV2(NoUpdateAssetOptions)
+Refreshing native plugins compatible for Editor in 0.00 ms, found 0 plugins.
+Preloading 0 native plugins for Editor in 0.00 ms.
+Asset Pipeline Refresh (id=9b9905fb03e1e02ba9aed986d0d9d3d0): Total: 0.005 seconds - Initiated by StopAssetImportingV2(NoUpdateAssetOptions)
+Refreshing native plugins compatible for Editor in 0.00 ms, found 0 plugins.
+Preloading 0 native plugins for Editor in 0.00 ms.
+Asset Pipeline Refresh (id=5d6b1a58d10760677ab933a8198227aa): Total: 0.005 seconds - Initiated by StopAssetImportingV2(NoUpdateAssetOptions)
+SkyTide: материалы корабля — дерево/металл PBR, ткань двухсторонняя с просветом; слотов=9
+UnityEngine.Debug:ExtractStackTraceNoAlloc (byte*,int,string)
+UnityEngine.StackTraceUtility:ExtractStackTrace () (at /home/bokken/build/output/unity/unity/Runtime/Export/Scripting/StackTrace.cs:37)
+UnityEngine.DebugLogHandler:Internal_Log (UnityEngine.LogType,UnityEngine.LogOption,string,UnityEngine.Object)
+UnityEngine.DebugLogHandler:LogFormat (UnityEngine.LogType,UnityEngine.Object,string,object[])
+UnityEngine.Logger:Log (UnityEngine.LogType,object)
+UnityEngine.Debug:Log (object)
+SkyTide.EditorTools.SceneBuilder:SceneVariant (string,string) (at Assets/_Project/Scripts/Editor/SceneBuilder.cs:322)
+SkyTide.EditorTools.SceneBuilder:BuildShipVariants (SkyTide.GameMaterials) (at Assets/_Project/Scripts/Editor/SceneBuilder.cs:230)
+SkyTide.EditorTools.SceneBuilder:Build () (at Assets/_Project/Scripts/Editor/SceneBuilder.cs:74)
+SkyTide.EditorTools.BuildScript:BuildAndroid () (at Assets/_Project/Scripts/Editor/BuildScript.cs:39)
+
+(Filename: Assets/_Project/Scripts/Editor/SceneBuilder.cs Line: 322)
+
+Refreshing native plugins compatible for Editor in 0.00 ms, found 0 plugins.
+Preloading 0 native plugins for Editor in 0.00 ms.
+Asset Pipeline Refresh (id=b38eb0e84a28cf83590e0588ef6ecb1b): Total: 0.006 seconds - Initiated by StopAssetImportingV2(NoUpdateAssetOptions)
+Start importing Assets/_Project/Models/Crew/Captain_Albedo.jpg using Guid(d845079251dda577fbb23ddaad0bd083) (TextureImporter) -> (artifact id: 'e95935fac9c8da4fb6052acbb43f9c9c') in 147.963185353 seconds
+Refreshing native plugins compatible for Editor in 0.00 ms, found 0 plugins.
+Preloading 0 native plugins for Editor in 0.00 ms.
+Asset Pipeline Refresh (id=4fab9b9becc1fe3929d4f6e6c7104d92): Total: 148.033 seconds - Initiated by StopAssetImportingV2(NoUpdateAssetOptions)
+	Summary:
+		Imports: total=1 (actual=1, local cache=0, cache server=0)
+		Asset DB Process Time: managed=0 ms, native=148032 ms
+		Asset DB Callback time: managed=0 ms, native=0 ms
+		Scripting: domain reloads=0, domain reload time=0 ms, compile time=0 ms, other=0 ms
+		Project Asset Count: scripts=128, non-scripts=197
+		Asset File Changes: new=0, changed=1, moved=0, deleted=0
+		Scan Filter Count: 5
+	InvokeCustomDependenciesCallbacks: 0.001ms
+	InvokePackagesCallback: 0.001ms
+	ApplyChangesToAssetFolders: 0.104ms
+	Scan: 5.099ms
+	OnSourceAssetsModified: 0.038ms
+	CategorizeAssetsWithTransientArtifact: 0.005ms
+	ProcessAssetsWithTransientArtifactChanges: 0.006ms
+	CategorizeAssets: 0.244ms
+	ImportOutOfDateAssets: 147964.174ms (-0.121ms without children)
+		ImportManagerImport: 147963.714ms (0.297ms without children)
+			ImportInProcess: 147963.395ms
+			UpdateCategorizedAssets: 0.021ms
+		ReloadNativeAssets: 0.022ms
+		UnloadImportedAssets: 0.132ms
+		ReloadImportedAssets: 0.198ms
+		EnsureUptoDateAssetsAreRegisteredWithGuidPM: 0.026ms
+		InitializingProgressBar: 0.004ms
+		PostProcessAllAssetNotificationsAddChangedAssets: 0.000ms
+		OnDemandSchedulerStart: 0.198ms
+	PostProcessAllAssets: 0.496ms
+	Hotreload: 0.172ms
+	GatherAllCurrentPrimaryArtifactRevisions: 0.010ms
+	UnloadStreamsBegin: 0.031ms
+	PersistCurrentRevisions: 0.045ms
+	UnloadStreamsEnd: 0.016ms
+	Untracked: 62.586ms
+
+Start importing Assets/_Project/Models/SkyFortress_Albedo.jpg using Guid(48f18ba78549e1bb2a6a2accb1e15f2f) (TextureImporter)
