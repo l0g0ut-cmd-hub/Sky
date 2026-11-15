@@ -10,11 +10,11 @@ namespace SkyTide
     /// отмахивает рукой на каждый залп врага.
     /// Координаты — в пространстве модели врага, по профилю высот из журнала сборки 105: главная палуба y 6.1
     /// при |x| ≤ 3.2 и z −8…+8, ют y 9.1 при z −12…−16, нос в +Z.
-    /// Матросы рисуются только ближе 280 м (дальше это пара пикселей, а позы и скиннинг стоят кадра) и без теней.
+    /// Матросы рисуются только ближе 170 м (дальше это пара пикселей, а позы и скиннинг стоят кадра) и без теней.
     /// </summary>
     public class EnemyCrew : MonoBehaviour
     {
-        const float MainDeck = 6.1f, Poop = 9.1f, ShowRange = 280f, HideRange = 300f;
+        const float MainDeck = 6.1f, Poop = 9.1f, ShowRange = 170f, HideRange = 190f;   // было 280: провалы FPS 15.11 — экипажи 52 рендерера · 139k треуг.
         readonly List<CrewActor> actors = new List<CrewActor>();
         TargetShip target;
         Transform group;
