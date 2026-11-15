@@ -31,11 +31,11 @@ Shader "SkyTide/ZoneMist"
                 float h = i.uv.y / max(top, 0.05);
                 float body = saturate(1.0 - h);
                 body = body * body * (0.6 + 0.4 * noise1(x * 14.0 + i.uv.y * 3.0 + t * 0.6));
-                float line = exp(-i.uv.y * 38.0) * 1.6;                       // тонкая нить у облаков
+                float thread = exp(-i.uv.y * 38.0) * 1.6;                       // тонкая нить у облаков
                 float nearCam = saturate((i.camDist - 25.0) / 120.0);         // вблизи не заливает экран
                 float farFade = 1.0 - saturate((i.camDist - 2600.0) / 1800.0);
-                float a = (body * 0.55 + line) * nearCam * farFade * _Color.a;
-                return fixed4(_Color.rgb * (0.8 + line * 0.6), saturate(a));
+                float a = (body * 0.55 + thread) * nearCam * farFade * _Color.a;
+                return fixed4(_Color.rgb * (0.8 + thread * 0.6), saturate(a));
             }
             ENDCG
         }
