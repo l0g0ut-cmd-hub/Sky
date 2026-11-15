@@ -243,6 +243,8 @@ namespace SkyTide
         bool offSolved; int offSide; Vector3 offAim, offVel; TargetShip offTarget;
         /// <summary>Борт, противоположный прицельному, и ляжет ли его залп в корпус своей цели.</summary>
         public int OffSide { get { return offSide; } }
+        /// <summary>Цель прицельного борта (радар выделяет её).</summary>
+        public TargetShip AimTargetShip { get { return aimTarget; } }
         public bool OffOnTarget { get; private set; }
         // Сглаженная точка наводки: стволы доворачиваются, а не прыгают за каждым кадром решения (владелец 15.11: «прицел дёргается»).
         Vector3 aimSmooth; TargetShip aimSmoothFor; float aimSmoothAt = -1f;

@@ -13,6 +13,7 @@ namespace SkyTide
     public class SkyFortress : MonoBehaviour
     {
         public static SkyFortress Instance { get; private set; }
+        ZoneMist zoneMist; bool zoneMistTried;
 
         // Размеры — под крепость втрое крупнее исходной модели (1490×1000×1380 м): причал в ~880 м от центра.
         public float safeRadius = 1400f;
@@ -167,18 +168,12 @@ namespace SkyTide
                     fx.SetLamp(1 + i, lp, Mathf.Clamp(ld * 0.014f, 5f, 42f), warm);
                 }
             }
-            // Граница безопасной зоны видна в мире: кольцо сигнальных огней над облаками (56 огней, шаг ~157 м), при тревоге красные.
-            const int ring = 56;
-            Color zoneLight = alarm ? new Color(1f, 0.3f, 0.2f) : new Color(0.55f, 1f, 0.7f);
+            // Граница безопасной зоны — стена зелёного тумана (ZoneMist), при тревоге красная. Кольцо из 56 огоньков убрано
+            // (владелец 15.11: «не эти огоньки, а что-нибудь красивое» — выбран вариант 4, зелёный).
             Vector3 centre = transform.position;
-            for (int i = 0; i < ring; i++)
-            {
-                float a = i * Mathf.PI * 2f / ring;
-                Vector3 rp = new Vector3(centre.x + Mathf.Cos(a) * safeRadius, fx.deckTop + 12f, centre.z + Mathf.Sin(a) * safeRadius);
-                float rd = Vector3.Distance(eye, rp);
-                zoneLight.a = rd < 3000f ? 0.07f * (0.7f + 0.3f * Mathf.Sin(time * 2.4f + i * 0.9f)) : 0f;
-                fx.SetLamp(40 + i, rp, Mathf.Clamp(rd * 0.012f, 3f, 30f), zoneLight);
-            }
+            for (int i = 0; i < 56; i++) fx.SetLamp(40 + i, centre, 1f, new Color(0f, 0f, 0f, 0f));
+            if (zoneMist == null && !zoneMistTried) { zoneMistTried = true; zoneMist = ZoneMist.Create(this, fx.deckTop + 1f); }
+            if (zoneMist != null) zoneMist.Tick(alarm, centre, fx.deckTop + 1f);
             if (alarm) { fx.ClearBeacon(); return; }
             float dist = Vector3.Distance(eye, beaconPos);
             float pulse = Mathf.Pow(Mathf.Max(0f, Mathf.Sin(time * 2.2f)), 4f);

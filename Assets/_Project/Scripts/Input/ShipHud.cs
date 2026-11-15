@@ -157,7 +157,7 @@ namespace SkyTide
             Image(rFace, c, size, -hdg, Color.white);
             {
                 string[] cards = { "С", "В", "Ю", "З" };
-                for (int k = 0; k < 4; k++)
+                for (int k = 0; k < 1; k++)   // только «С» (владелец 15.11: каша) — остальные стороны света видны по компасу курса
                 {
                     Vector3 wd = Quaternion.Euler(0f, k * 90f, 0f) * Vector3.forward;
                     Vector3 ld = input.ship.transform.InverseTransformDirection(wd);
@@ -189,13 +189,15 @@ namespace SkyTide
                 float beta = Mathf.Atan2(dir.y, dir.x);
                 float since = Mathf.Repeat(edge0 + sweep - beta, Mathf.PI * 2f) / (Mathf.PI * 2f) * SweepPeriod;
                 float glow = 0.55f + 0.45f * Mathf.Exp(-since * 1.6f);
-                float g = R * (outside ? 0.26f : 0.24f) * (0.9f + 0.15f * Mathf.Exp(-since * 3f));
+                bool isTarget = input.Guns() != null && input.Guns().AimTargetShip == ts;
+                // Мельче (было 0.24 R): при 18 врагах отметки сливались; цель борта — крупнее, с курсом.
+                float g = R * (outside ? 0.2f : isTarget ? 0.2f : 0.13f) * (0.9f + 0.15f * Mathf.Exp(-since * 3f));
                 if (outside && rFar != null) Image(rFar, p, g, beta + 45f * Mathf.Deg2Rad, new Color(1f, 1f, 1f, glow));
                 else if (rEnemy != null) Image(rEnemy, p, g, 0f, new Color(1f, 1f, 1f, glow));
                 // Курс врага: чёрточка от отметки в сторону его хода (вверх — наш нос). Дальность — строкой под радаром.
                 float rel = (ts.transform.eulerAngles.y - input.ship.transform.eulerAngles.y) * Mathf.Deg2Rad;
                 Vector2 hd = new Vector2(Mathf.Sin(rel), -Mathf.Cos(rel));
-                if (!outside) Line(p + hd * g * 0.35f, p + hd * g * 1.05f, Mathf.Max(1.5f, R * 0.035f), new Color(1f, 0.42f, 0.26f, glow));
+                if (!outside && isTarget) Line(p + hd * g * 0.35f, p + hd * g * 1.2f, Mathf.Max(1.5f, R * 0.035f), new Color(1f, 0.42f, 0.26f, glow));
             }
             // Союзники (сторожевой крепости): зелёная отметка-кораблик, за краем радара — у обода.
             if (rShip != null) foreach (AllyShip ally in AllyShip.All)
@@ -210,7 +212,7 @@ namespace SkyTide
                 Color ac = ally.role == AllyShip.Role.Merchant ? new Color(1f, 0.92f, 0.45f) : new Color(0.55f, 1f, 0.65f);
                 if (ally.UnderAttack && Mathf.Repeat(Time.unscaledTime * 3f, 1f) < 0.5f) ac = new Color(1f, 0.35f, 0.25f);   // под огнём — мигает красным
                 ac.a = ad > range ? 0.6f : 1f;
-                Image(rShip, c + adir * Mathf.Min(ad / range, 1f) * face * 0.9f, R * 0.2f, arel, ac);
+                Image(rShip, c + adir * Mathf.Min(ad / range, 1f) * face * 0.9f, R * 0.14f, arel, ac);
             }
             // Крепость-причал: значок «ангар» (лист иконок), за краем радара — прижат к ободу.
             SkyFortress fort = SkyFortress.Instance;
@@ -227,7 +229,8 @@ namespace SkyTide
                 Vector2 zc = c + new Vector2(zl.x, -zl.z) * zk; float zr = fort.safeRadius * zk, lim = face * 0.94f;
                 Color zcol = fort.Hostile ? new Color(1f, 0.45f, 0.35f, 0.8f) : new Color(0.62f, 0.88f, 0.69f, 0.75f);
                 const int zn = 72;
-                for (int i = 0; i < zn; i += 2)
+                // Граница зоны на радаре — только при тревоге (в мире её теперь видно зелёным туманом).
+                for (int i = 0; i < (fort.Hostile ? zn : 0); i += 2)
                 {
                     float a0 = i * Mathf.PI * 2f / zn, a1 = (i + 1) * Mathf.PI * 2f / zn;
                     Vector2 q0 = zc + new Vector2(Mathf.Cos(a0), Mathf.Sin(a0)) * zr, q1 = zc + new Vector2(Mathf.Cos(a1), Mathf.Sin(a1)) * zr;
