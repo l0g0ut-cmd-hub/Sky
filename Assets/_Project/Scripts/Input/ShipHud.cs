@@ -315,7 +315,7 @@ namespace SkyTide
             int vk=side<0?0:1; float vNow=Time.unscaledTime;
             if(ready&&!volleyWasReady[vk]&&Application.isPlaying)volleyReadyAt[vk]=vNow;
             volleyWasReady[vk]=ready;
-            Rect body=new Rect(r.x+r.height*0.1f,r.y+r.height*0.13f,r.width-r.height*0.2f,r.height*0.74f);
+            Rect body=Content(r); body=new Rect(body.x-r.height*0.12f,body.y,body.width+r.height*0.24f,body.height);   // только поле плашки: раньше заливка ложилась прямоугольником поверх рамки и орнаментов
             if(!ready)Solid(new Rect(body.x,body.y,body.width*Mathf.Clamp01(readiness),body.height),new Color(1f,0.6f,0.18f,0.3f));
             float pop=Mathf.Clamp01(1f-(vNow-volleyReadyAt[vk])/0.45f);
             if(ready&&pop>0f)Solid(body,new Color(1f,0.9f,0.6f,0.55f*pop));
@@ -372,7 +372,9 @@ namespace SkyTide
             }
             SkyFortress fort = SkyFortress.Instance;
             int rows = 1 + (best < float.MaxValue ? 1 : 0) + (fort != null ? 1 : 0);
-            Box(new Rect(r.x, y - l.unit * 0.003f, r.width, lh * rows + l.unit * 0.006f), new Color(0.02f, 0.025f, 0.035f, 0.78f));   // плотнее: на светлых облаках подложка была серой, текст терялся
+            { Rect pr = new Rect(r.x, y - l.unit * 0.003f, r.width, lh * rows + l.unit * 0.006f); float bt = Mathf.Max(1f, l.unit * 0.002f);
+              Solid(pr, new Color(0.02f, 0.025f, 0.035f, 0.82f));   // Box брал альфу из атласа шрифта — подложка выходила полупрозрачной, текст терялся на светлых облаках
+              Solid(new Rect(pr.x, pr.y, pr.width, bt), new Color(gold.r, gold.g, gold.b, 0.7f)); Solid(new Rect(pr.x, pr.yMax - bt, pr.width, bt), new Color(gold.r, gold.g, gold.b, 0.7f)); }   // плотнее: на светлых облаках подложка была серой, текст терялся
             Text(new Rect(r.x, y, r.width, lh), "РАДАР " + Range(input.RadarRange), fs, new Color(Mathf.Lerp(muted.r, 1f, 0.4f), Mathf.Lerp(muted.g, 1f, 0.4f), Mathf.Lerp(muted.b, 1f, 0.4f), 1f)); y += lh;
             if (best < float.MaxValue) { Text(new Rect(r.x, y, r.width, lh), "ВРАГ " + Range(best) + (bestHealth < 0.995f ? " · " + Mathf.RoundToInt(bestHealth * 100f) + "%" : ""), fs, best <= GunRange(input) ? new Color(1f, 0.72f, 0.55f, 1f) : new Color(0.72f, 0.74f, 0.78f, 1f)); y += lh; }   // серым — дальше, чем достают свои пушки
             if (fort != null)
@@ -395,12 +397,12 @@ namespace SkyTide
                 float off = Mathf.DeltaAngle(heading, d);
                 if (Mathf.Abs(off) > span * 0.5f) continue;
                 float x = c.center.x + off * perDeg;
-                if (d % 45 == 0)
+                float edgeA = Mathf.Clamp01((span * 0.5f - Mathf.Abs(off)) / 12f);   // к краям шкала гаснет, а не обрывается
+                if (d % 45 == 0 && x - lw * 0.5f >= c.x && x + lw * 0.5f <= c.xMax)
                 {
-                    if (x - lw * 0.5f < c.x || x + lw * 0.5f > c.xMax) continue;
                     Text(new Rect(x - lw * 0.5f, c.y, lw, c.height * 0.74f), Cardinals[d / 45], l.unit * 0.032f, d % 90 == 0 ? cream : muted);
                 }
-                else Solid(new Rect(x - tick * 0.5f, c.yMax - c.height * 0.3f, tick, c.height * 0.22f), new Color(gold.r, gold.g, gold.b, 0.8f));
+                else Solid(new Rect(x - tick * 0.5f, c.yMax - c.height * 0.3f, tick, c.height * (d % 45 == 0 ? 0.3f : 0.22f)), new Color(gold.r, gold.g, gold.b, 0.8f * edgeA));   // у края вместо буквы — длинная риска: шаг шкалы ровный, без дыр
             }
             Solid(new Rect(c.center.x - tick, c.yMax - c.height * 0.24f, tick * 2f, c.height * 0.32f), new Color(1f, 0.86f, 0.5f, 1f));
         }
@@ -432,7 +434,9 @@ namespace SkyTide
             if (HasKit) SpriteRot(t.center, new Vector2(t.height, t.width), Mathf.PI * 0.5f, KGroove, Color.white);
             else Box(t, new Color(0.015f, 0.02f, 0.026f, 0.9f));
             // Подложка под подписями ступеней: на ярком море облаков серые подписи пропадали (видео сборки 102).
-            Solid(new Rect(t.xMax + l.unit * 0.02f, t.y - step * 0.05f, l.unit * 0.14f, t.height + step * 0.1f), new Color(0.015f, 0.02f, 0.026f, 0.5f));
+            { Rect gp = new Rect(t.xMax + l.unit * 0.02f, t.y - step * 0.05f, l.unit * 0.14f, t.height + step * 0.1f); float bt = Mathf.Max(1f, l.unit * 0.002f);
+              Solid(gp, new Color(0.015f, 0.02f, 0.026f, 0.8f));   // была 0,5 — на светлом облаке подписи терялись (снимки 15.11)
+              Solid(new Rect(gp.x, gp.y, gp.width, bt), new Color(gold.r, gold.g, gold.b, 0.7f)); Solid(new Rect(gp.x, gp.yMax - bt, gp.width, bt), new Color(gold.r, gold.g, gold.b, 0.7f)); }
             for (int i = 0; i < n; i++)
             {
                 float cy = t.yMax - (i + 0.5f) * step; bool on = i == input.Gear;
@@ -643,14 +647,23 @@ namespace SkyTide
                 Rect r = new Rect(l.safe.center.x - pw * 0.5f, l.safe.y + l.safe.height * 0.235f, pw, ph);   // ниже подписи «КОРПУС»: на 0.2 плашка при появлении наезжала на неё
                 if (corner)
                 {
-                    pw = Mathf.Min(l.safe.width * 0.2f, l.safe.height * 0.8f); ph = pw * 192f / 1024f;
+                    ph = Mathf.Min(l.safe.width * 0.2f, l.safe.height * 0.8f) * 192f / 1024f; pw = ph * 1024f / 192f * 1.25f;
+                    // Шрифт один для всех оповещений, плашка растягивается под текст: длинное «УХОДИМ ИЗ-ПОД ПУШЕК КРЕПОСТИ»
+                    // раньше ужималось в нечитаемую мелочь, а «ТРЕВОГА» была крупной.
+                    float need = noteText.Length * ph * 0.34f * 0.64f + ph * 2.5f;   // текст + значок + поля под углы
+                    pw = Mathf.Min(Mathf.Max(pw, need), l.pause.x - l.safe.x - l.unit * 0.6f);
                     r = new Rect(l.pause.x - pw - l.unit * 0.015f, cornerTop, pw, ph);   // левее кнопки паузы
                 }
-                ImageRect(bPlate, r, Whole, new Color(1f, 1f, 1f, note));
-                Rect inner = Inner(r, 1024f, 192f, 150f, 48f, 874f, 144f);
+                {   // три части: углы плашки не растягиваются, тянется только середина
+                    Color pc = new Color(1f, 1f, 1f, note); float capU = 0.16f, capW = r.height * capU * 1024f / 192f;
+                    ImageRect(bPlate, new Rect(r.x, r.y, capW, r.height), new Rect(0f, 0f, capU, 1f), pc);
+                    ImageRect(bPlate, new Rect(r.x + capW, r.y, r.width - capW * 2f, r.height), new Rect(capU, 0f, 1f - capU * 2f, 1f), pc);
+                    ImageRect(bPlate, new Rect(r.xMax - capW, r.y, capW, r.height), new Rect(1f - capU, 0f, capU, 1f), pc);
+                }
+                Rect inner = new Rect(r.x + r.height * 150f / 192f, r.y + r.height * 0.25f, r.width - r.height * 300f / 192f, r.height * 0.5f);   // поля по высоте плашки — одинаковые при любой ширине
                 float ic = inner.height * 1.05f;
                 Icon(noteIcon, new Rect(inner.x, inner.center.y - ic * 0.5f, ic, ic), new Color(1f, 1f, 1f, note));
-                Text(new Rect(inner.x + ic * 1.1f, inner.y, inner.width - ic * 1.1f, inner.height), noteText, ph * 0.4f, dead ? new Color(cream.r, cream.g, cream.b, note) : new Color(1f, 0.72f, 0.5f, note));
+                Text(new Rect(inner.x + ic * 1.1f, inner.y, inner.width - ic * 1.1f, inner.height), noteText, corner ? ph * 0.34f : ph * 0.4f, dead ? new Color(cream.r, cream.g, cream.b, note) : new Color(1f, 0.72f, 0.5f, note));
             }
         }
 
@@ -690,7 +703,8 @@ namespace SkyTide
             // Подпись — на тёмной подложке (на светлых облаках терялась); ниже 30% подложка пульсирует красным.
             Rect cap = new Rect(bar.center.x - l.unit * 0.105f, bar.yMax + l.unit * 0.002f, l.unit * 0.21f, l.unit * 0.036f);
             float alarm = f < 0.3f && f > 0f ? 0.5f + 0.5f * Mathf.Sin(Time.unscaledTime * 6f) : 0f;
-            Solid(cap, Color.Lerp(new Color(0.02f, 0.025f, 0.035f, 0.62f), new Color(0.55f, 0.06f, 0.04f, 0.8f), alarm));
+            Solid(cap, Color.Lerp(new Color(0.02f, 0.025f, 0.035f, 0.82f), new Color(0.55f, 0.06f, 0.04f, 0.85f), alarm));
+            { float bt = Mathf.Max(1f, l.unit * 0.002f); Solid(new Rect(cap.x, cap.yMax - bt, cap.width, bt), new Color(gold.r, gold.g, gold.b, 0.7f)); }   // как у плашки радара
             Text(new Rect(bar.x, bar.yMax, bar.width, l.unit * 0.038f), Cached(1, Mathf.RoundToInt(f * 100f), v => "КОРПУС " + v + "%"), l.unit * 0.03f, f < 0.3f ? new Color(1f, 0.7f, 0.6f) : cream);
         }
 
@@ -766,7 +780,7 @@ namespace SkyTide
                             if(pb.Active)Solid(new Rect(l.board.x+l.board.height*0.12f,l.board.yMax-l.board.height*0.22f,(l.board.width-l.board.height*0.24f)*pb.Progress01,l.board.height*0.1f),gold);
                             PlateText(l.board,0f,1f,pb.Active?Cached(4,Mathf.RoundToInt(pb.Progress01*100f),v=>"АБОРДАЖ · "+v+"%"):"НА АБОРДАЖ",l.unit*0.036f,new Color(1f,0.88f,0.55f,pulse));
                         }
-                        if(Application.isPlaying){string autoText=input.AutoBattle?(string.IsNullOrEmpty(input.AutoState)?"АВТОБОЙ · ВКЛ":input.AutoState):"АВТОБОЙ";Panel(l.auto,l.unit,input.AutoBattle,input.Pressed(l.auto));PlateText(l.auto,0f,1f,autoText,l.unit*(autoText.Length>20?0.026f:0.032f),input.AutoBattle?new Color(1f,0.88f,0.55f):cream);}
+                        if(Application.isPlaying){string autoText=input.AutoBattle?(string.IsNullOrEmpty(input.AutoState)?"АВТОБОЙ · ВКЛ":input.AutoState):"АВТОБОЙ";Panel(l.auto,l.unit,input.AutoBattle,input.Pressed(l.auto));PlateText(l.auto,0f,1f,autoText,l.unit*0.028f,input.AutoBattle?new Color(1f,0.88f,0.55f):cream);}
                     }
                     Vector2 home=input.StickActive?l.ClampWheel(input.StickOrigin):l.wheel;
                     float r=l.radius, a=input.StickActive?0.85f:0.45f;
@@ -820,7 +834,7 @@ namespace SkyTide
                 finally {GL.End();}
                 FlushSprites();
                 // Все размеры запрашиваются до чтения UV: перестройка атласа не портит уже собранные буквы.
-                for(int i=0;i<labels.Count;i++) font.RequestCharactersInTexture(labels[i].text,labels[i].size,FontStyle.Normal);
+                for(int i=0;i<labels.Count;i++) {font.RequestCharactersInTexture(labels[i].text,labels[i].size,FontStyle.Normal);font.RequestCharactersInTexture("Н",labels[i].size,FontStyle.Normal);}
                 material.SetTexture("_MainTex",font.material.mainTexture);
                 if(!material.SetPass(1))throw new System.InvalidOperationException("HUD text pass failed");
                 GL.Begin(GL.TRIANGLES);
@@ -841,6 +855,10 @@ namespace SkyTide
                 width+=c.advance; if(label.text[i]!=' ') {minY=Mathf.Min(minY,c.minY);maxY=Mathf.Max(maxY,c.maxY);}
             }
             if(width<=0f||maxY<minY)return;
+            // По вертикали — по высоте заглавной «Н», а не по рамке букв строки: иначе хвосты «Д», «Щ», «Ц» поднимали
+            // всю надпись («ЯДРА» стояла выше «ВОЛНОЙ» на соседней кнопке).
+            CharacterInfo cap;
+            if(font.GetCharacterInfo('Н',out cap,label.size,FontStyle.Normal)&&cap.maxY>cap.minY){minY=cap.minY;maxY=cap.maxY;}
             // Текст никогда не выходит за свою плашку: поля по бокам под угловой орнамент, по высоте — 80% плашки.
             float side=Mathf.Max(6f,label.rect.height*0.3f);
             float scale=Mathf.Clamp01((label.rect.width-side*2f)/width);

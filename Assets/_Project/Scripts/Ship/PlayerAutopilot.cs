@@ -152,7 +152,7 @@ namespace SkyTide
                 {
                     bold = false; fleeUntil = Time.time + 25f;
                     DebugReport.Event("автобой: сваливаем из порта (" + Mathf.RoundToInt(hull.Health01 * 100f) + "%)");
-                    HudNotice.Show("АВТОБОЙ · УХОДИМ ИЗ-ПОД ПУШЕК КРЕПОСТИ", 0, 3f);
+                    HudNotice.Show("АВТОБОЙ · ПРОЧЬ ОТ КРЕПОСТИ", 0, 3f);
                 }
                 return bold;
             }
