@@ -467,9 +467,8 @@ namespace SkyTide
             {
                 Vector3 d = aim - from;
                 float x = new Vector2(d.x, d.z).magnitude, y = d.y, v = muzzleSpeed, g = gravity;
-                float disc = v * v * v * v - g * (g * x * x + 2f * y * v * v);
-                if (disc < 0f || x < 1f) return false;
-                float theta = Mathf.Atan((v * v - Mathf.Sqrt(disc)) / (g * x));
+                float theta = Ballistics.LowAngle(x, y, v, g);
+                if (float.IsNaN(theta)) return false;
                 float tFlight = x / (v * Mathf.Cos(theta));
                 Vector3 h = new Vector3(d.x, 0f, d.z).normalized;
                 dir = h * Mathf.Cos(theta) + Vector3.up * Mathf.Sin(theta);

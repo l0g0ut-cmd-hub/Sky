@@ -11,6 +11,11 @@ namespace SkyTide
     /// </summary>
     public class PerfPanel : MonoBehaviour
     {
+        public static PerfPanel Instance { get; private set; }
+        /// <summary>Автозамер (кнопка, удалённая команда bench, первый запуск новой сборки).</summary>
+        public void StartBench() { if (game == null) game = FindFirstObjectByType<SkyTideBootstrap>(); if (!benchRunning && game != null) StartCoroutine(Bench()); }
+        void Awake() { Instance = this; }
+        public bool BenchRunning { get { return benchRunning; } }
         public static bool Open { get; internal set; }
         /// <summary>Касание плашки FPS в HUD.</summary>
         public static void Toggle() { Open = !Open; }
@@ -338,7 +343,26 @@ namespace SkyTide
             foreach (BenchRow b in bench) log.AppendFormat("{0}: FPS {1:F1}, ВК {2:F1} мс, кадр {3:F1} мс, игра {4:F1} мс\n", b.name, b.fps, b.gpu, b.frame, b.main);
             Debug.Log(log.ToString());
             DebugReport.LastBench = log.ToString();
-            benchRunning = false; benchShow = true; Open = true;
+            benchRunning = false;
+            if (AutoRun) { AutoRun = false; HudNotice.Show("АВТОЗАМЕР ГОТОВ — ушёл в отчёт", 0, 3f); BenchHistory(); }
+            else { benchShow = true; Open = true; }
+        }
+
+        /// <summary>Автозамер при первом запуске новой сборки — без панели; история по сборкам → Sky-reports/reports/bench.txt.</summary>
+        public bool AutoRun;
+        void BenchHistory()
+        {
+            System.Text.StringBuilder line = new System.Text.StringBuilder("сборка " + DebugReport.BuildNo + " · " + System.DateTime.Now.ToString("MM-dd HH:mm") + ":");
+            foreach (BenchRow b in bench) line.AppendFormat(" {0} {1:F0}/{2:F0}мс;", b.name, b.fps, b.gpu);
+            string hist = PlayerPrefs.GetString("SkyTide.BenchHistory", "");
+            System.Collections.Generic.List<string> rows = new System.Collections.Generic.List<string>(hist.Split(new[] { '\n' }, System.StringSplitOptions.RemoveEmptyEntries));
+            rows.Add(line.ToString());
+            while (rows.Count > 25) rows.RemoveAt(0);
+            hist = string.Join("\n", rows);
+            PlayerPrefs.SetString("SkyTide.BenchHistory", hist); PlayerPrefs.Save();
+            DebugReport.Event("автозамер новой сборки готов");
+            if (ReportUploader.Instance != null)
+                ReportUploader.Instance.Put("reports/bench.txt", System.Text.Encoding.UTF8.GetBytes("автозамеры по сборкам (FPS/ВК мс по режимам, телефон " + SystemInfo.deviceModel + "):\n" + hist + "\n\nпоследний подробно:\n" + DebugReport.LastBench));
         }
 
         void SetScale(int i)
@@ -394,50 +418,33 @@ namespace SkyTide
         }
 
         // ---------- меню тестера ----------
-        float timeScaleBeforeTest = 1f; bool fast;
+        // ---------- меню тестера: те же команды, что и удалённые (DevCommands) ----------
+        static readonly string[][] TestButtons =
+        {
+            new[] { "враг рядом (450 м, траверз)", "near" }, new[] { "ближнему врагу 15% (абордаж)", "enemy15" },
+            new[] { "бессмертие", "god" }, new[] { "время ×3 / ×1", "time*" },
+            new[] { "к причалу крепости", "berth" }, new[] { "починить флагман", "repair" },
+            new[] { "флагману 25%", "hurt 25" }, new[] { "погода: гроза", "weather storm" },
+            new[] { "погода: дымка", "weather haze" }, new[] { "погода: ясно", "weather clear" },
+            new[] { "враг к торговцу", "merchant" }, new[] { "все враги в 1 км", "all1km" },
+            new[] { "конфиг заново с GitHub", "config" }, new[] { "отчёт на GitHub сейчас", "report" },
+        };
         void TestCells(float x, float y, float w, float h)
         {
             float u = Mathf.Min(Screen.width, Screen.height);
             float cw = (w - u * 0.02f) * 0.5f; int col = 0;
-            PlayerHull ph = PlayerHull.Instance;
-            Transform me = game != null && game.Ship != null ? game.Ship.transform : null;
-            TargetShip near = null; float nd = float.MaxValue;
-            if (me != null) foreach (TargetShip t in TargetShip.All) { if (t == null || !t.Alive) continue; float d = Vector3.Distance(t.transform.position, me.position); if (d < nd) { nd = d; near = t; } }
-            if (Cell(x, ref y, cw, h, ref col, "враг рядом (450 м, на траверз)", false) && me != null && near != null)
+            foreach (string[] t in TestButtons)
             {
-                near.transform.SetPositionAndRotation(me.position + me.right * 450f + me.forward * 60f, me.rotation);
-                Test("враг рядом: " + near.name);
+                bool on = t[1] == "god" ? PlayerHull.God : t[1] == "time*" ? Time.timeScale > 1.5f : false;
+                if (!Cell(x, ref y, cw, h, ref col, t[0], on)) continue;
+                DevCommands.Run(t[1] == "time*" ? (Time.timeScale > 1.5f ? "time 1" : "time 3") : t[1]);
             }
-            if (Cell(x, ref y, cw, h, ref col, "ближнему врагу 15% (абордаж)", false) && near != null) { near.SetHealth01(0.15f); Test(near.name + " → 15%"); }
-            if (Cell(x, ref y, cw, h, ref col, "бессмертие", PlayerHull.God)) { PlayerHull.God = !PlayerHull.God; Test("бессмертие " + PlayerHull.God); }
-            if (Cell(x, ref y, cw, h, ref col, "время ×3", fast)) { fast = !fast; if (fast) { timeScaleBeforeTest = Time.timeScale; Time.timeScale = 3f; } else Time.timeScale = 1f; Test("время ×" + (fast ? 3 : 1)); }
-            if (Cell(x, ref y, cw, h, ref col, "к причалу крепости", false) && me != null && SkyFortress.Instance != null)
-            {
-                SkyFortress f = SkyFortress.Instance; Vector3 o = f.BerthWorld - f.Center; o.y = 0f; o = o.sqrMagnitude > 1f ? o.normalized : Vector3.forward;
-                Vector3 at = f.BerthWorld + o * 30f; at.y = me.position.y; me.SetPositionAndRotation(at, Quaternion.LookRotation(o, Vector3.up)); Test("телепорт к причалу");
-            }
-            if (Cell(x, ref y, cw, h, ref col, "починить флагман", false) && ph != null) { ph.Repair(ph.maxHealth); Test("флагман починен"); }
-            if (Cell(x, ref y, cw, h, ref col, "флагману 25%", false) && ph != null) { ph.OnHitDamageOnly(ph.Health - ph.maxHealth * 0.25f); Test("флагман → 25%"); }
-            WeatherSystem ws = WeatherSystem.Instance;
-            if (ws != null)
-            {
-                if (Cell(x, ref y, cw, h, ref col, "погода: гроза", ws.Current == WeatherSystem.Kind.Storm)) ws.Force(WeatherSystem.Kind.Storm);
-                if (Cell(x, ref y, cw, h, ref col, "погода: дымка", ws.Current == WeatherSystem.Kind.Haze)) ws.Force(WeatherSystem.Kind.Haze);
-                if (Cell(x, ref y, cw, h, ref col, "погода: ясно", ws.Current == WeatherSystem.Kind.Clear)) ws.Force(WeatherSystem.Kind.Clear);
-            }
-            if (Cell(x, ref y, cw, h, ref col, "атаковать торговца (враг к нему)", false) && near != null)
-                foreach (AllyShip a in AllyShip.All) if (a != null && a.Alive && a.role == AllyShip.Role.Merchant) { near.transform.position = a.transform.position + a.transform.right * 350f; Test(near.name + " у торговца"); break; }
-            if (Cell(x, ref y, cw, h, ref col, "все враги в 1 км", false) && me != null)
-            {
-                int k = 0; foreach (TargetShip t in TargetShip.All) { if (t == null || !t.Alive) continue; float a = k++ * 1.1f; t.transform.position = me.position + new Vector3(Mathf.Cos(a), 0f, Mathf.Sin(a)) * 1000f; }
-                Test("все враги в 1 км: " + k);
-            }
-            if (Cell(x, ref y, cw, h, ref col, "конфиг заново с GitHub", false) && RemoteConfig.Instance != null) { RemoteConfig.Instance.StartCoroutine("Start"); Test("перечитать конфиг"); }
-            GUI.Label(new Rect(x, y + h * 0.2f, w, h), RemoteConfig.Status, small != null ? small : label);
+            if (col == 1) { y += h; col = 0; }
+            GUI.Label(new Rect(x, y + h * 0.1f, w, h), RemoteConfig.Status + " · " + RemoteCommands.Status, small != null ? small : label);
             y += h;
-            if (GUI.Button(new Rect(x, y + h * 0.2f, w, h), "Закрыть", button)) Open = false;
+            if (UpdateCheck.Available && GUI.Button(new Rect(x, y + h * 0.1f, w, h), "СКАЧАТЬ НОВУЮ СБОРКУ " + UpdateCheck.LatestBuild, button)) UpdateCheck.Download();
+            else if (GUI.Button(new Rect(x, y + h * 0.1f, w, h), "Закрыть", button)) Open = false;
         }
-        static void Test(string what) { DebugReport.Event("ТЕСТ: " + what); DebugReport.Count("тест-команд"); HudNotice.Show("ТЕСТ: " + what, 0, 2f); }
 
         bool Cell(float x, ref float y, float cw, float h, ref int col, string name, bool on)
         {

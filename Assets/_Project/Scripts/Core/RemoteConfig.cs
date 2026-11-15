@@ -51,6 +51,14 @@ namespace SkyTide
         {
             yield return null; yield return null;   // корабли уже созданы
             Apply();
+            yield return Fetch();
+        }
+
+        /// <summary>Перечитать config.json с GitHub (меню тестера, удалённая команда config).</summary>
+        public void Reload() { StartCoroutine(Fetch()); }
+
+        IEnumerator Fetch()
+        {
             TextAsset t = Resources.Load<TextAsset>("ReportToken");
             string token = t != null ? t.text.Trim() : null;
             if (string.IsNullOrEmpty(token)) yield break;

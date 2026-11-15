@@ -98,6 +98,30 @@ jobs:
             --versioning-strategy None \
             --build-method SkyTide.EditorTools.BuildScript.BuildAndroid 2>&1 | tee -a "$RUNNER_TEMP/ci.log"
 
+      # Прогон боя (automated playtest): Linux-сборка игры с ключом -skysim — автобой 240 с игрового времени,
+      # снимки и итог в лог. Провал прогона сборку не валит — его читает ассистент (SIM| в ci-logs, кадры shots/sim_*).
+      - name: Battle sim
+        if: success()
+        timeout-minutes: 25
+        run: |
+          sudo chmod -R a+rwX build 2>/dev/null || true
+          if [ ! -x build/Linux/SkyTide.x86_64 ]; then echo "SIM| Linux-сборки нет — прогон пропущен" | tee -a "$RUNNER_TEMP/ci.log"; exit 0; fi
+          command -v xvfb-run >/dev/null || sudo apt-get install -y -qq xvfb >/dev/null
+          sudo apt-get install -y -qq libgl1 libglu1-mesa >/dev/null 2>&1 || true
+          mkdir -p build/sim
+          set +e
+          timeout 1300 xvfb-run -a -s "-screen 0 1280x720x24" build/Linux/SkyTide.x86_64 -skysim -simSeconds 240 -simOut "$PWD/build/sim" \
+            -screen-fullscreen 0 -screen-width 960 -screen-height 456 -logFile "$PWD/build/sim/player.log"
+          code=$?
+          set -e
+          {
+            echo "== ПРОГОН БОЯ: код $code (0 прошёл, 2 провалы, 124 время вышло)"
+            grep -E "SIM\||Exception|error CS|NullReference" build/sim/player.log | head -150 || true
+            echo "== вердикт"; cat build/sim/verdict.txt 2>/dev/null || echo "(нет)"
+            echo "== отчёт прогона"; cat build/sim/report.txt 2>/dev/null | head -400 || true
+          } | tee -a "$RUNNER_TEMP/ci.log"
+          mkdir -p build/shots; cp build/sim/*.jpg build/shots/ 2>/dev/null || true
+
       - name: Upload APK
         if: always()
         uses: actions/upload-artifact@v4
@@ -135,6 +159,20 @@ jobs:
           git -c user.name=ci -c user.email=ci@local add -A
           git -c user.name=ci -c user.email=ci@local commit -qm "apk run ${GITHUB_RUN_NUMBER}"
           git push -q -f "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" apk-latest
+
+      # APK в релиз «apk» репозитория Sky-reports — игра видит новую сборку и качает её кнопкой (UpdateCheck).
+      - name: Publish APK to Sky-reports release
+        if: success()
+        env:
+          GH_TOKEN: ${{ secrets.REPORT_TOKEN }}
+        run: |
+          [ -n "$GH_TOKEN" ] || { echo "нет REPORT_TOKEN — релиз пропущен"; exit 0; }
+          R=l0g0ut-cmd-hub/Sky-reports
+          sudo cp build/Android/*.apk "$RUNNER_TEMP/SkyTide.apk"; sudo chown "$(id -u)" "$RUNNER_TEMP/SkyTide.apk"
+          gh release view apk -R "$R" >/dev/null 2>&1 || gh release create apk -R "$R" --title "build ${GITHUB_RUN_NUMBER}" --notes "Небесный прилив, последняя сборка"
+          gh release upload apk "$RUNNER_TEMP/SkyTide.apk" --clobber -R "$R"
+          gh release edit apk -R "$R" --title "build ${GITHUB_RUN_NUMBER}" --notes "Небесный прилив · сборка ${GITHUB_RUN_NUMBER} · ${GITHUB_SHA}"
+          echo "релиз: build ${GITHUB_RUN_NUMBER}" | tee -a "$RUNNER_TEMP/ci.log" || true
 
       # Лог в ветку ci-logs (секреты Unity вырезаются) — чтобы разбирать ошибки без доступа к логам Actions.
       - name: Publish scrubbed log to ci-logs branch

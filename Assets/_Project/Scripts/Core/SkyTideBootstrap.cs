@@ -83,7 +83,7 @@ namespace SkyTide
             if (Application.isPlaying) volumetricClouds = PlayerPrefs.GetInt(VolumetricKey, 0) == 1;
             QualitySettings.vSyncCount = 0;
             Screen.sleepTimeout = SleepTimeout.NeverSleep;
-            if (Application.isPlaying) { DebugReport.Hook(); if (GetComponent<DebugRecorder>() == null) gameObject.AddComponent<DebugRecorder>(); if (GetComponent<ReportUploader>() == null) gameObject.AddComponent<ReportUploader>(); if (GetComponent<RemoteConfig>() == null) gameObject.AddComponent<RemoteConfig>(); }
+            if (Application.isPlaying) { DebugReport.Hook(); if (GetComponent<DebugRecorder>() == null) gameObject.AddComponent<DebugRecorder>(); if (GetComponent<ReportUploader>() == null) gameObject.AddComponent<ReportUploader>(); if (GetComponent<RemoteConfig>() == null) gameObject.AddComponent<RemoteConfig>(); AddOnce<RemoteCommands>(); AddOnce<CrashWatch>(); AddOnce<UpdateCheck>(); AddOnce<ReplayRecorder>(); if (CiBattle.Active) AddOnce<CiBattle>(); }
             if (Application.isPlaying)
             {
                 // Физики в игре нет (столкновения и попадания считаются своим кодом) — её шаг каждый кадр не нужен.
@@ -288,6 +288,7 @@ namespace SkyTide
 
         /// <summary>Объёмные облака вкл/выкл: спрайты на высоте полёта показываются, только когда объёма нет.</summary>
         static void FreeMemory() { Resources.UnloadUnusedAssets(); System.GC.Collect(); }
+        void AddOnce<T>() where T : Component { if (GetComponent<T>() == null) gameObject.AddComponent<T>(); }
         public const string VolumetricKey = "SkyTide.Volumetric", Fps60Key = "SkyTide.Fps60";
         /// <summary>Выбор игрока (меню паузы, панель FPS): переключает и запоминает между запусками.</summary>
         public void ChooseVolumetric(bool on)

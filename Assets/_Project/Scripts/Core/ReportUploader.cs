@@ -37,6 +37,7 @@ namespace SkyTide
             Instance = this;
             TextAsset t = Resources.Load<TextAsset>("ReportToken");
             token = t != null ? t.text.Trim() : null;
+            if (CiBattle.Active) token = null;   // прогон в CI не трогает отчёты игрока
             if (!Ready) return;
             LastStatus = "отправка отчётов: готово";
             int session = PlayerPrefs.GetInt("SkyTide.ReportSession", -1) + 1;
@@ -56,7 +57,9 @@ namespace SkyTide
         void Update()
         {
             if (!Ready) return;
-            if (Time.realtimeSinceStartup >= nextUpload) { nextUpload = Time.realtimeSinceStartup + 300f; UploadReport(); }
+            if (Time.realtimeSinceStartup >= nextOutbox) { nextOutbox = Time.realtimeSinceStartup + 60f; RetryOutbox(); }
+            if (Time.realtimeSinceStartup >= nextUpload) { nextUpload = Time.realtimeSinceStartup + (Time.realtimeSinceStartup < RemoteCommands.LiveUntil ? 30f : 300f); UploadReport(); }
+            else if (Time.realtimeSinceStartup < RemoteCommands.LiveUntil && nextUpload - Time.realtimeSinceStartup > 30f) nextUpload = Time.realtimeSinceStartup + 30f;
             // ---------- автометки ----------
             float fps = 1f / Mathf.Max(1e-3f, Time.unscaledDeltaTime);
             lowFpsFor = fps < 15f && Time.timeSinceLevelLoad > 20f ? lowFpsFor + Time.unscaledDeltaTime : 0f;
@@ -153,13 +156,64 @@ namespace SkyTide
             if (!busy) StartCoroutine(Pump());
         }
 
+        // ---------- без сети: исходящие ждут на телефоне ----------
+        // Неотправленное (нет сети, ошибка сервера) кладётся в persistentDataPath/outbox — один файл на путь в репозитории
+        // (новый отчёт заменяет старый неотправленный, ничего не копится). Сеть появилась — отправка раз в 60 с.
+        // Переживает перезапуск игры. Предел 25 МБ: сверх — старые снимки удаляются первыми.
+        static string OutboxDir { get { return System.IO.Path.Combine(Application.persistentDataPath, "outbox"); } }
+        float nextOutbox = 30f;
+        static string OutName(string path) { return path.Replace('/', '~'); }
+
+        void SaveOutbox(string path, byte[] data)
+        {
+            try
+            {
+                System.IO.Directory.CreateDirectory(OutboxDir);
+                System.IO.File.WriteAllBytes(System.IO.Path.Combine(OutboxDir, OutName(path)), data);
+                long total = 0; System.IO.FileInfo[] files = new System.IO.DirectoryInfo(OutboxDir).GetFiles();
+                System.Array.Sort(files, (a, b) => a.LastWriteTimeUtc.CompareTo(b.LastWriteTimeUtc));
+                foreach (System.IO.FileInfo f in files) total += f.Length;
+                for (int i = 0; i < files.Length && total > 25L * 1024 * 1024; i++) { total -= files[i].Length; files[i].Delete(); }
+            }
+            catch (System.Exception) { }
+        }
+
+        public static int OutboxCount
+        {
+            get { try { return System.IO.Directory.Exists(OutboxDir) ? System.IO.Directory.GetFiles(OutboxDir).Length : 0; } catch (System.Exception) { return 0; } }
+        }
+
+        void RetryOutbox()
+        {
+            if (busy || Application.internetReachability == NetworkReachability.NotReachable) return;
+            try
+            {
+                if (!System.IO.Directory.Exists(OutboxDir)) return;
+                foreach (string f in System.IO.Directory.GetFiles(OutboxDir))
+                {
+                    string path = System.IO.Path.GetFileName(f).Replace('~', '/');
+                    byte[] data = System.IO.File.ReadAllBytes(f);
+                    System.IO.File.Delete(f);   // не ушло — PutRoutine положит обратно
+                    queue.Enqueue(new KeyValuePair<string, byte[]>(path, data));
+                }
+            }
+            catch (System.Exception) { }
+            if (queue.Count > 0 && !busy) StartCoroutine(Pump());
+        }
+
         IEnumerator Pump()
         {
             busy = true;
             while (queue.Count > 0)
             {
                 KeyValuePair<string, byte[]> job = queue.Dequeue();
-                yield return Put(job.Key, job.Value);
+                if (Application.internetReachability == NetworkReachability.NotReachable)
+                {
+                    SaveOutbox(job.Key, job.Value);
+                    LastStatus = "нет сети: ждут отправки " + OutboxCount + " · " + System.DateTime.Now.ToString("HH:mm:ss");
+                    continue;
+                }
+                yield return PutRoutine(job.Key, job.Value);
             }
             busy = false;
         }
@@ -175,7 +229,10 @@ namespace SkyTide
             return req;
         }
 
-        IEnumerator Put(string path, byte[] data)
+        /// <summary>Перезаписать файл в Sky-reports (в очередь).</summary>
+        public void Put(string path, byte[] data) { if (Ready) Enqueue(path, data); }
+
+        IEnumerator PutRoutine(string path, byte[] data)
         {
             string url = "https://api.github.com/repos/" + Repo + "/contents/" + path;
             // sha старого файла — без него GitHub не даст перезаписать.
@@ -197,7 +254,11 @@ namespace SkyTide
                 put.SetRequestHeader("Content-Type", "application/json");
                 yield return put.SendWebRequest();
                 bool ok = put.result == UnityWebRequest.Result.Success;
-                LastStatus = (ok ? "отправлено: " : "ошибка отправки (" + put.responseCode + "): ") + path + " · " + System.DateTime.Now.ToString("HH:mm:ss");
+                // Сеть пропала или сервер упал (не 4xx от GitHub) — подождёт в outbox.
+                if (!ok && (put.result == UnityWebRequest.Result.ConnectionError || put.responseCode == 0 || put.responseCode >= 500 || put.responseCode == 409))
+                    SaveOutbox(path, data);
+                int wait = OutboxCount;
+                LastStatus = (ok ? "отправлено: " : "ошибка отправки (" + put.responseCode + "): ") + path + " · " + System.DateTime.Now.ToString("HH:mm:ss") + (wait > 0 ? " · ждут " + wait : "");
             }
         }
     }

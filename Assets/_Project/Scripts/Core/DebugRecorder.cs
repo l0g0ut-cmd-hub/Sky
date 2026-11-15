@@ -15,6 +15,8 @@ namespace SkyTide
         public static DebugRecorder Instance { get; private set; }
         readonly Queue<string> chronicle = new Queue<string>();
         readonly Queue<string> spikes = new Queue<string>();
+        readonly Queue<string> track = new Queue<string>();
+        float nextTrack; bool benchChecked;
         float nextSnap, nextTemp, nextSave = 60f;
         int gcAtFrame;
         ProfilerRecorder drawCalls, batches, setPass, triangles, gcAlloc, usedMemory;
@@ -68,6 +70,19 @@ namespace SkyTide
             }
             gcAtFrame = gc;
             if (Time.time >= nextSnap) { nextSnap = Time.time + 10f; Snapshot(); }
+            if (Time.time >= nextTrack) { nextTrack = Time.time + 2f; Track(); }
+            // Первый запуск новой сборки: автозамер сам, через 40 с боя (не в меню, не на паузе).
+            if (!benchChecked && Time.timeSinceLevelLoad > 40f && !MainMenu.Active && Time.timeScale > 0.5f && !CiBattle.Active && PerfPanel.Instance != null)
+            {
+                benchChecked = true;
+                int bn = DebugReport.BuildNo;
+                if (bn > 0 && PlayerPrefs.GetInt("SkyTide.BenchedBuild", 0) != bn)
+                {
+                    PlayerPrefs.SetInt("SkyTide.BenchedBuild", bn); PlayerPrefs.Save();
+                    HudNotice.Show("НОВАЯ СБОРКА: АВТОЗАМЕР ~30 с, не трогай", 0, 4f);
+                    PerfPanel.Instance.AutoRun = true; PerfPanel.Instance.StartBench();
+                }
+            }
             if (Time.realtimeSinceStartup >= nextTemp) { nextTemp = Time.realtimeSinceStartup + 30f; ReadBattery(); }
             if (Time.realtimeSinceStartup >= nextSave) { nextSave = Time.realtimeSinceStartup + 60f; Save(); }
         }
@@ -93,6 +108,83 @@ namespace SkyTide
                 b.Append(" | " + AllyShip.RoleNames[(int)a.role].Substring(0, 3) + (a.Alive ? " " + Pos(a.transform.position) + " " + Mathf.RoundToInt(a.Health01 * 100f) + "% " + a.AiState : " ✝"));
             }
             Push(chronicle, 18, b.ToString());
+        }
+
+        /// <summary>Карта боя: каждые 2 с позиции всех кораблей (10 мин). Формат строки:
+        /// «t F x,z,курс,%[,А] | E<i>[T] x,z,% | A<роль> x,z,%», x/z — десятки метров, курс — градусы/10.
+        /// Рисует tools/battlemap.py (картинка траекторий).</summary>
+        void Track()
+        {
+            StringBuilder b = new StringBuilder(160);
+            b.Append(Mathf.RoundToInt(Time.timeSinceLevelLoad));
+            PlayerHull ph = PlayerHull.Instance;
+            SkyTideBootstrap g = SkyTideBootstrap.Instance;
+            if (ph != null)
+            {
+                TouchControls tc = g != null ? g.GetComponent<TouchControls>() : null;
+                b.Append(" F ").Append(P(ph.transform.position)).Append(',').Append(Mathf.RoundToInt(ph.transform.eulerAngles.y / 10f)).Append(',').Append(Mathf.RoundToInt(ph.Health01 * 100f));
+                if (tc != null && tc.AutoBattle) b.Append(",А");
+            }
+            int i = 0;
+            foreach (TargetShip t in TargetShip.All)
+            {
+                i++;
+                if (t == null || !t.gameObject.activeInHierarchy) continue;
+                b.Append(" | E").Append(i).Append(t.Heavy ? "T" : "").Append(' ');
+                if (t.Alive) b.Append(P(t.transform.position)).Append(',').Append(Mathf.RoundToInt(t.Health01 * 100f)); else b.Append('x');
+            }
+            foreach (AllyShip a in AllyShip.All)
+            {
+                if (a == null || !a.gameObject.activeInHierarchy) continue;
+                b.Append(" | A").Append("GWM"[(int)a.role]).Append(' ');
+                if (a.Alive) b.Append(P(a.transform.position)).Append(',').Append(Mathf.RoundToInt(a.Health01 * 100f)); else b.Append('x');
+            }
+            Push(track, 300, b.ToString());
+        }
+        static string P(Vector3 p) { return Mathf.RoundToInt(p.x / 10f) + "," + Mathf.RoundToInt(p.z / 10f); }
+
+        public void AppendTrack(StringBuilder b)
+        {
+            b.AppendLine("КАРТА БОЯ (каждые 2 с; x,z — десятки м; F флагман курс/10 %, E враг [T тяжёлый], A свой G/W/M; x — потоплен):");
+            SkyFortress f = SkyFortress.Instance;
+            if (f != null) b.AppendLine(" крепость " + P(f.Center));
+            foreach (string s in track) b.AppendLine(" " + s);
+        }
+
+        /// <summary>Что рисуется: видимые рендереры по группам — штук, тыс. треугольников, отбрасывающих тень.
+        /// Помогает решить, что резать на видеокарте (корабли/экипаж/облака/крепость/эффекты).</summary>
+        public void AppendGpu(StringBuilder b)
+        {
+            string[] names = { "корабли", "экипаж", "облака", "крепость", "эффекты", "прочее" };
+            int[] n = new int[6], sh = new int[6]; long[] tri = new long[6];
+            foreach (Renderer r in Object.FindObjectsByType<Renderer>(FindObjectsSortMode.None))
+            {
+                if (r == null || !r.enabled || !r.isVisible) continue;
+                int k = Group(r.transform);
+                n[k]++; if (r.shadowCastingMode != UnityEngine.Rendering.ShadowCastingMode.Off) sh[k]++;
+                Mesh m = null;
+                if (r is SkinnedMeshRenderer smr) m = smr.sharedMesh;
+                else { MeshFilter mf = r.GetComponent<MeshFilter>(); if (mf != null) m = mf.sharedMesh; }
+                if (m != null) for (int s = 0; s < m.subMeshCount; s++) tri[k] += m.GetIndexCount(s) / 3;
+            }
+            b.Append("видеокарта по группам (видимых · тыс.треуг · с тенью):");
+            for (int k = 0; k < 6; k++) if (n[k] > 0) b.Append(" " + names[k] + " " + n[k] + "·" + (tri[k] / 1000) + "k·" + sh[k] + ";");
+            b.AppendLine();
+            b.AppendLine(RenderLine());
+        }
+
+        static int Group(Transform t)
+        {
+            for (Transform p = t; p != null; p = p.parent)
+            {
+                string nm = p.name;
+                if (nm.Contains("Crew") || nm.Contains("crew")) return 1;
+                if (p.GetComponent<ShipController>() != null) return 0;
+                if (p.GetComponent<SkyFortress>() != null) return 3;
+                if (p.GetComponent<CloudSea>() != null || nm.Contains("Cloud")) return 2;
+                if (p.GetComponent<FxSystem>() != null) return 4;
+            }
+            return 5;
         }
 
         static string Short(string n) { return n.Replace(" Ship", "").Replace("Enemy ", "в").Replace("Target", "в1").Replace("Raider", "в2").Replace("Scout", "разв"); }

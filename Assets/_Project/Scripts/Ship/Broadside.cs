@@ -246,9 +246,7 @@ namespace SkyTide
 
         float LowAngle(float x, float y, float g)
         {
-            float v = ShotSpeed, disc = v * v * v * v - g * (g * x * x + 2f * y * v * v);
-            float theta = disc < 0f || x < 1f ? maxElevationDeg * Mathf.Deg2Rad : Mathf.Atan((v * v - Mathf.Sqrt(disc)) / (g * x));
-            return Mathf.Clamp(theta, minElevationDeg * Mathf.Deg2Rad, maxElevationDeg * Mathf.Deg2Rad);
+            return Ballistics.ClampedLowAngle(x, y, ShotSpeed, g, minElevationDeg * Mathf.Deg2Rad, maxElevationDeg * Mathf.Deg2Rad);
         }
 
         void Solve(TargetShip best, CannonMount mid, float side, float g)
@@ -259,14 +257,8 @@ namespace SkyTide
             Vector3 tpos = best.Center;
             targetVel = best.Controller != null ? best.transform.forward * best.Controller.Speed : Vector3.zero;
             Vector3 rel = targetVel - own;   // в системе своего корабля: его ход ядро уносит с собой
-            float t = 0f;
-            for (int it = 0; it < 4; it++)
-            {
-                Vector3 d = tpos + rel * t - muzzle;
-                float x = new Vector2(d.x, d.z).magnitude;
-                float theta = LowAngle(x, d.y, g);
-                t = x / Mathf.Max(1f, ShotSpeed * Mathf.Cos(theta));
-            }
+            Vector3 d0 = tpos - muzzle;
+            float t = Ballistics.Lead(d0.x, d0.y, d0.z, rel.x, rel.y, rel.z, ShotSpeed, g, minElevationDeg * Mathf.Deg2Rad, maxElevationDeg * Mathf.Deg2Rad, out _, out _, out _);
             aimPoint = tpos + rel * t; flightTime = t; solvedSide = side > 0f ? 1 : -1; solved = true;
         }
 

@@ -60,6 +60,7 @@ namespace SkyTide.EditorTools
                 }
                 if (sum.result == BuildResult.Succeeded)
                 {
+                    BuildLinuxSim();
                     Debug.Log("Build succeeded!");
                     if (Application.isBatchMode) EditorApplication.Exit(0);
                 }
@@ -74,6 +75,40 @@ namespace SkyTide.EditorTools
                 Debug.LogError("SkyTide: исключение в сборке: " + e);
                 if (Application.isBatchMode) EditorApplication.Exit(1);
             }
+        }
+
+        /// <summary>
+        /// Linux-сборка той же игры для прогона боя в CI (-skysim, см. CiBattle): Mono (быстро), только OpenGLCore.
+        /// Провал этой сборки APK не трогает — только строка в логе, шаг прогона тогда пропускается.
+        /// SKYTIDE_NO_SIM=1 — не собирать.
+        /// </summary>
+        static void BuildLinuxSim()
+        {
+            if (System.Environment.GetEnvironmentVariable("SKYTIDE_NO_SIM") == "1") { Debug.Log("SkyTide: прогон боя отключён"); return; }
+            float t0 = Time.realtimeSinceStartup;
+            try
+            {
+                PlayerSettings.SetScriptingBackend(NamedBuildTarget.Standalone, ScriptingImplementation.Mono2x);
+                PlayerSettings.SetUseDefaultGraphicsAPIs(BuildTarget.StandaloneLinux64, false);
+                PlayerSettings.SetGraphicsAPIs(BuildTarget.StandaloneLinux64, new[] { GraphicsDeviceType.OpenGLCore });
+                PlayerSettings.fullScreenMode = FullScreenMode.Windowed;
+                PlayerSettings.defaultScreenWidth = 960; PlayerSettings.defaultScreenHeight = 456;
+                PlayerSettings.runInBackground = true;
+                PlayerSettings.usePlayerLog = true;
+                BuildPlayerOptions o = new BuildPlayerOptions
+                {
+                    scenes = new[] { SceneBuilder.ScenePath },
+                    locationPathName = "build/Linux/SkyTide.x86_64",
+                    target = BuildTarget.StandaloneLinux64,
+                    targetGroup = BuildTargetGroup.Standalone,
+                    options = BuildOptions.None
+                };
+                BuildReport r = BuildPipeline.BuildPlayer(o);
+                Debug.Log("SkyTide: Linux-сборка для прогона боя — " + r.summary.result + ", " + Mathf.RoundToInt(Time.realtimeSinceStartup - t0) + " с");
+            }
+            catch (Exception e) { Debug.LogWarning("SkyTide: Linux-сборка для прогона не удалась: " + e.Message); }
+            // Вернуть Android активной платформой — кэш Library уйдёт в CI под Android, следующая сборка без переимпорта.
+            try { EditorUserBuildSettings.SwitchActiveBuildTarget(BuildTargetGroup.Android, BuildTarget.Android); } catch (Exception) { }
         }
 
         /// <summary>Значок игры: Art/AppIcon.png — как значок по умолчанию и для Android (обычный и круглый).</summary>
@@ -114,6 +149,8 @@ namespace SkyTide.EditorTools
             PlayerSettings.enableFrameTimingStats = true;   // время кадра видеокарты для отладочной панели
             PlayerSettings.Android.targetArchitectures = AndroidArchitecture.ARM64;
             PlayerSettings.Android.minSdkVersion = AndroidSdkVersions.AndroidApiLevel26;
+            // Отчёты, конфиг, команды, проверка обновлений идут в сеть: INTERNET явно, а не «авто» (Unity может не заметить UnityWebRequest).
+            PlayerSettings.Android.forceInternetPermission = true;
 
             // Горизонтальная ориентация
             PlayerSettings.defaultInterfaceOrientation = UIOrientation.AutoRotation;

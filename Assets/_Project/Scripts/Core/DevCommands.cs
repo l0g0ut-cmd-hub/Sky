@@ -1,0 +1,171 @@
+using System.Text;
+using UnityEngine;
+
+namespace SkyTide
+{
+    /// <summary>
+    /// Команды отладки — одни и те же для меню тестера (панель FPS → «Тест») и для удалённых команд
+    /// (Sky-reports/config/commands.json, см. RemoteCommands). Каждая — событие отчёта «ТЕСТ: …» и счётчик «тест-команд».
+    /// Строка: «имя [аргументы]». help — список.
+    /// </summary>
+    public static class DevCommands
+    {
+        public const string Help =
+            "near — ближний враг на траверз 450 м · enemy15 — ближнему врагу 15% · god on|off · time 1|3|0.5 · berth — к причалу · " +
+            "repair · hurt 25 — флагману 25% · weather storm|haze|clear · merchant — враг к торговцу · all1km — все враги в 1 км · " +
+            "auto on|off — автобой · config — перечитать config.json · cfg поле число — правка баланса на лету · " +
+            "shot [почему] — метка со снимком · report — отчёт сейчас · bench — автозамер · " +
+            "set clouds 0|1 · set fps60 0|1 · set shadows 0|1|2 · set post 0|1 · set crew 0|1 · say текст — надпись на экране";
+
+        public static float TimeScaleSet = 1f;
+
+        /// <summary>Выполнить команду; вернуть короткий итог для отчёта.</summary>
+        public static string Run(string line)
+        {
+            if (string.IsNullOrEmpty(line)) return "пусто";
+            line = line.Trim();
+            string[] a = line.Split(new[] { ' ' }, System.StringSplitOptions.RemoveEmptyEntries);
+            string cmd = a[0].ToLowerInvariant();
+            string arg = a.Length > 1 ? a[1].ToLowerInvariant() : "";
+            string result;
+            try { result = Exec(cmd, arg, a, line); }
+            catch (System.Exception e) { result = "ошибка: " + e.GetType().Name + " " + e.Message; }
+            DebugReport.Event("ТЕСТ: " + line + " → " + result);
+            DebugReport.Count("тест-команд");
+            HudNotice.Show("ТЕСТ: " + line, 0, 2f);
+            return result;
+        }
+
+        static TargetShip Nearest(Transform me)
+        {
+            TargetShip near = null; float nd = float.MaxValue;
+            if (me == null) return null;
+            foreach (TargetShip t in TargetShip.All)
+            {
+                if (t == null || !t.Alive || !t.gameObject.activeInHierarchy) continue;
+                float d = Vector3.Distance(t.transform.position, me.position);
+                if (d < nd) { nd = d; near = t; }
+            }
+            return near;
+        }
+
+        static string Exec(string cmd, string arg, string[] a, string line)
+        {
+            SkyTideBootstrap g = SkyTideBootstrap.Instance;
+            Transform me = g != null && g.Ship != null ? g.Ship.transform : null;
+            PlayerHull ph = PlayerHull.Instance;
+            TargetShip near = Nearest(me);
+            WeatherSystem ws = WeatherSystem.Instance;
+            switch (cmd)
+            {
+                case "help": return Help;
+                case "near":
+                    if (me == null || near == null) return "нет врага";
+                    near.transform.SetPositionAndRotation(me.position + me.right * 450f + me.forward * 60f, me.rotation);
+                    return near.name + " на траверзе";
+                case "enemy15":
+                    if (near == null) return "нет врага";
+                    near.SetHealth01(0.15f); return near.name + " 15%";
+                case "god": PlayerHull.God = arg != "off" && arg != "0" && (arg != "" || !PlayerHull.God); return "бессмертие " + (PlayerHull.God ? "вкл" : "выкл");
+                case "time":
+                    {
+                        float k = 1f; float.TryParse(arg, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out k);
+                        k = Mathf.Clamp(k <= 0f ? 1f : k, 0.1f, 5f); TimeScaleSet = k; Time.timeScale = k; return "время ×" + k;
+                    }
+                case "berth":
+                    {
+                        SkyFortress f = SkyFortress.Instance;
+                        if (me == null || f == null) return "нет крепости";
+                        Vector3 o = f.BerthWorld - f.Center; o.y = 0f; o = o.sqrMagnitude > 1f ? o.normalized : Vector3.forward;
+                        Vector3 at = f.BerthWorld + o * 30f; at.y = me.position.y; me.SetPositionAndRotation(at, Quaternion.LookRotation(o, Vector3.up));
+                        return "у причала";
+                    }
+                case "repair": if (ph == null) return "нет флагмана"; ph.Repair(ph.maxHealth); return "флагман 100%";
+                case "hurt":
+                    {
+                        if (ph == null) return "нет флагмана";
+                        float p = 25f; float.TryParse(arg, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out p);
+                        ph.OnHitDamageOnly(ph.Health - ph.maxHealth * Mathf.Clamp01(p / 100f)); return "флагман " + Mathf.RoundToInt(ph.Health01 * 100f) + "%";
+                    }
+                case "weather":
+                    if (ws == null) return "нет погоды";
+                    ws.Force(arg == "storm" ? WeatherSystem.Kind.Storm : arg == "haze" ? WeatherSystem.Kind.Haze : WeatherSystem.Kind.Clear);
+                    return "погода " + WeatherSystem.Names[(int)ws.Current];
+                case "merchant":
+                    if (near == null) return "нет врага";
+                    foreach (AllyShip al in AllyShip.All)
+                        if (al != null && al.Alive && al.role == AllyShip.Role.Merchant) { near.transform.position = al.transform.position + al.transform.right * 350f; return near.name + " у торговца"; }
+                    return "нет торговца";
+                case "all1km":
+                    {
+                        if (me == null) return "нет флагмана";
+                        int k = 0;
+                        foreach (TargetShip t in TargetShip.All)
+                        {
+                            if (t == null || !t.Alive || !t.gameObject.activeInHierarchy) continue;
+                            float ang = k++ * 1.1f; t.transform.position = me.position + new Vector3(Mathf.Cos(ang), 0f, Mathf.Sin(ang)) * 1000f;
+                        }
+                        return "врагов в 1 км: " + k;
+                    }
+                case "auto":
+                    {
+                        TouchControls tc = g != null ? g.GetComponent<TouchControls>() : null;
+                        if (tc == null) return "нет управления";
+                        tc.SetAutoBattle(arg != "off" && arg != "0"); return "автобой " + (tc.AutoBattle ? "вкл" : "выкл");
+                    }
+                case "config": if (RemoteConfig.Instance == null) return "нет конфига"; RemoteConfig.Instance.Reload(); return "перечитываю";
+                case "cfg":
+                    {
+                        if (a.Length < 3) return "cfg поле число";
+                        var f = typeof(RemoteConfig.Data).GetField(a[1]);
+                        if (f == null) return "нет поля " + a[1];
+                        object v;
+                        if (f.FieldType == typeof(int)) v = int.Parse(a[2]);
+                        else if (f.FieldType == typeof(float)) v = float.Parse(a[2], System.Globalization.CultureInfo.InvariantCulture);
+                        else if (f.FieldType == typeof(bool)) v = a[2] == "1" || a[2].ToLowerInvariant() == "true";
+                        else v = a[2];
+                        f.SetValue(RemoteConfig.Current, v); RemoteConfig.Apply();
+                        RemoteConfig.Status = "конфиг: версия " + RemoteConfig.Current.version + " + правки на лету";
+                        return a[1] + " = " + v;
+                    }
+                case "shot": case "mark":
+                    if (ReportUploader.Instance == null) return "нет отправки";
+                    ReportUploader.Instance.Mark(line.Length > cmd.Length ? "команда: " + line.Substring(cmd.Length).Trim() : "удалённая команда"); return "метка";
+                case "report": if (ReportUploader.Instance == null) return "нет отправки"; ReportUploader.Instance.UploadReport(); return "отчёт отправлен";
+                case "bench": if (PerfPanel.Instance == null) return "нет панели"; PerfPanel.Instance.StartBench(); return "автозамер";
+                case "say": HudNotice.Show(line.Substring(3).Trim(), 0, 6f); return "показано";
+                case "set": return Set(arg, a.Length > 2 ? a[2] : "1", g);
+            }
+            return "нет команды " + cmd;
+        }
+
+        static string Set(string what, string val, SkyTideBootstrap g)
+        {
+            bool on = val != "0" && val != "off";
+            switch (what)
+            {
+                case "clouds": if (g == null) return "нет игры"; g.ChooseVolumetric(on); return "объёмные облака " + on;
+                case "fps60": SkyTideBootstrap.ChooseFps60(on); return "60 кадров " + on;
+                case "shadows":
+                    QualitySettings.shadows = val == "0" ? ShadowQuality.Disable : val == "1" ? ShadowQuality.HardOnly : ShadowQuality.All; return "тени " + QualitySettings.shadows;
+                case "post":
+                    {
+                        SkyTidePost p = Camera.main != null ? Camera.main.GetComponent<SkyTidePost>() : null;
+                        if (p == null) return "нет поста"; p.enabled = on; return "пост " + on;
+                    }
+                case "crew":
+                    {
+                        ShipCrew c = g != null && g.Ship != null ? g.Ship.GetComponent<ShipCrew>() : null;
+                        if (c == null) return "нет экипажа"; c.SetVisible(on); return "экипаж " + on;
+                    }
+            }
+            return "нет настройки " + what;
+        }
+
+        public static string List()
+        {
+            StringBuilder b = new StringBuilder("команды: ");
+            b.Append(Help); return b.ToString();
+        }
+    }
+}

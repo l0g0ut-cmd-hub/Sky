@@ -200,13 +200,37 @@ namespace SkyTide
         public static string Stamp() { float t = Time.timeSinceLevelLoad; return ((int)(t / 60f)).ToString("00") + ":" + ((int)(t % 60f)).ToString("00"); }
         static string Trim(string s, int n) { return s == null ? "" : s.Length > n ? s.Substring(0, n) + "…" : s; }
 
+        /// <summary>Номер сборки CI (0.1.N → N).</summary>
+        public static int BuildNo
+        {
+            get
+            {
+                string v = Application.version; int i = v.LastIndexOf('.');
+                int n; return i >= 0 && int.TryParse(v.Substring(i + 1), out n) ? n : 0;
+            }
+        }
+
+        /// <summary>Сердцебиение: игра запущена прямо сейчас (reports/alive.txt).</summary>
+        public static string AliveLine()
+        {
+            PlayerHull ph = PlayerHull.Instance;
+            SkyTideBootstrap g = SkyTideBootstrap.Instance;
+            TouchControls tc = g != null ? g.GetComponent<TouchControls>() : null;
+            return System.DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss") + " · сборка " + BuildNo + " · в бою " + Stamp()
+                + " · FPS " + (1f / Mathf.Max(1e-3f, Time.smoothDeltaTime)).ToString("F0")
+                + (ph != null ? " · корпус " + Mathf.RoundToInt(ph.Health01 * 100f) + "%" : "")
+                + (tc != null ? " · автобой " + (tc.AutoBattle ? tc.AutoState : "выкл") : "")
+                + " · пауза " + (Time.timeScale < 0.01f) + " · " + RemoteCommands.Status + "\n";
+        }
+
         public static string Build(float fps, string timers, bool full = true)
         {
             StringBuilder b = new StringBuilder(4096);
             b.AppendLine("=== Небесный прилив · отладочный отчёт · " + (full ? "ПОЛНЫЙ" : "КОРОТКИЙ") + " ===");
             b.AppendLine("сборка " + Application.version + " · " + SystemInfo.deviceModel + " · " + SystemInfo.graphicsDeviceName + " · " + SystemInfo.graphicsDeviceType
                 + " · " + Screen.width + "×" + Screen.height + " · ОЗУ " + SystemInfo.systemMemorySize + " МБ · Android " + SystemInfo.operatingSystem);
-            b.AppendLine(ReportUploader.LastStatus + " · " + RemoteConfig.Status);
+            b.AppendLine(ReportUploader.LastStatus + " · " + RemoteConfig.Status + " · " + RemoteCommands.Status + " · " + UpdateCheck.Status);
+            if (!string.IsNullOrEmpty(CrashWatch.Summary)) b.AppendLine(CrashWatch.Summary);
             b.AppendLine("время в бою " + Stamp() + " · FPS " + fps.ToString("F1") + " · потолок " + Application.targetFrameRate + " · ошибок " + errorCount + " · предупреждений " + warningCount);
             FrameTiming[] ft = new FrameTiming[1];
             FrameTimingManager.CaptureFrameTimings();
@@ -282,7 +306,8 @@ namespace SkyTide
             LightInfo(b);
             Hud(b);
             Settings(b);
-            if (DebugRecorder.Instance != null) { DebugRecorder.Instance.AppendChronicle(b); DebugRecorder.Instance.AppendSpikes(b); }
+            if (DebugRecorder.Instance != null) { DebugRecorder.Instance.AppendGpu(b); DebugRecorder.Instance.AppendChronicle(b); DebugRecorder.Instance.AppendSpikes(b); DebugRecorder.Instance.AppendTrack(b); }
+            if (!string.IsNullOrEmpty(CrashWatch.Details)) { b.AppendLine("прошлые завершения процесса (Android):"); b.AppendLine(CrashWatch.Details); }
             b.AppendLine("решения ИИ (последние 40):"); foreach (string e in ai) b.AppendLine("  " + e);
             b.AppendLine("залпы (последние 25):"); foreach (string e in volleys) b.AppendLine("  " + e);
             b.AppendLine("касания (последние 20):"); foreach (string e in touches) b.AppendLine("  " + e);

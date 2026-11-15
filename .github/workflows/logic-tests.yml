@@ -1,0 +1,24 @@
+name: Logic tests
+
+# Быстрая проверка (1–2 мин, без Unity): компиляция скриптов игры против UnityEngine.*Module и тесты чистой логики
+# (баллистика, упреждение). Запускается на каждый push в main и apk-build — ошибки видны до 40-минутной сборки.
+on:
+  push:
+    branches: [main, apk-build]
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+      - name: Compile check
+        run: |
+          out=$(tools/compilecheck/run.sh); echo "$out"
+          echo "$out" | grep -q " 0 Error(s)"
+      - name: Logic tests
+        run: tools/logictests/run.sh
