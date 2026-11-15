@@ -1,0 +1,70 @@
+== uname
+Linux runnervmccnms 7.0.0-1019-azure #20-Ubuntu SMP PREEMPT Mon Oct 19 22:41:16 UTC 2026 x86_64 GNU/Linux
+== df
+Filesystem      Size  Used Avail Use% Mounted on
+/dev/root       145G   58G   87G  40% /
+Filesystem      Size  Used Avail Use% Mounted on
+/dev/root       145G   36G  109G  25% /
+флаги сборки: нет (быстрая)
+Downloading game-ci CLI v0.1.72 from https://github.com/game-ci/cli/releases/download/v0.1.72/game-ci-linux-x64.tar.gz
+Checksum verified (SHA256) for game-ci-linux-x64.tar.gz
+/home/runner/work/_temp/game-ci/bin/game-ci
+[INFO] Versioning strategy: None
+[INFO] Version of this build: none
+[INFO] Versioning strategy is set to none, so android version code should not be applied.
+[INFO] linux Android 6000.0.36f1
+::group::Unity build
+[WARN] running docker process for linux (linux)
+Unable to find image 'unityci/editor:ubuntu-6000.0.36f1-android-3' locally
+ubuntu-6000.0.36f1-android-3: Pulling from unityci/editor
+96c832531c38: Pulling fs layer
+dc7a969c82d9: Pulling fs layer
+9a4d47d5aa13: Pulling fs layer
+e1e0763b8b7f: Pulling fs layer
+46805e80f2d7: Pulling fs layer
+a1ff4bc3f481: Pulling fs layer
+4f4fb700ef54: Pulling fs layer
+a636358af2c8: Pulling fs layer
+4f4fb700ef54: Pulling fs layer
+bef3b93c3984: Pulling fs layer
+4f4fb700ef54: Pulling fs layer
+d3a5feebe29b: Pulling fs layer
+8d5d2a3e6b0f: Pulling fs layer
+4f4fb700ef54: Pulling fs layer
+39cd9db1617e: Pulling fs layer
+4f4fb700ef54: Pulling fs layer
+7bcf62982864: Pulling fs layer
+8e578c7fd715: Pulling fs layer
+4f4fb700ef54: Pulling fs layer
+4f4fb700ef54: Pulling fs layer
+4f4fb700ef54: Pulling fs layer
+4f4fb700ef54: Pulling fs layer
+4f4fb700ef54: Pulling fs layer
+4f4fb700ef54: Pulling fs layer
+4f4fb700ef54: Pulling fs layer
+4f4fb700ef54: Pulling fs layer
+4f4fb700ef54: Pulling fs layer
+4f4fb700ef54: Pulling fs layer
+9a4d47d5aa13: Download complete
+a1ff4bc3f481: Download complete
+bef3b93c3984: Download complete
+39cd9db1617e: Download complete
+8e578c7fd715: Download complete
+7bcf62982864: Download complete
+4f4fb700ef54: Download complete
+d3a5feebe29b: Download complete
+e1e0763b8b7f: Download complete
+96c832531c38: Download complete
+dc7a969c82d9: Download complete
+54e8aef068c6: Download complete
+a636358af2c8: Download complete
+96c832531c38: Pull complete
+46805e80f2d7: Download complete
+9a4d47d5aa13: Pull complete
+46805e80f2d7: Pull complete
+dc7a969c82d9: Pull complete
+a1ff4bc3f481: Pull complete
+bef3b93c3984: Pull complete
+d3a5feebe29b: Pull complete
+a636358af2c8: Pull complete
+8d5d2a3e6b0f: Download complete
