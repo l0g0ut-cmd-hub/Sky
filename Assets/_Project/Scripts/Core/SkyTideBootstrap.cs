@@ -200,6 +200,7 @@ namespace SkyTide
                 // Ещё трое по углам карты (2 рядовых, 1 разведчик): бродят своими курсами, в бой — когда увидят.
                 Vector3[] extra = { new Vector3(-2200f, 0f, -1600f), new Vector3(2400f, 0f, 1500f), new Vector3(-600f, 0f, -2600f) };
                 for (int k = 0; k < extra.Length; k++) SpawnEnemy("Enemy " + (k + 4), spawnPosition + extra[k], Random.Range(0f, 360f), k == 2, crewFrom2);
+                EnsureEnemies(RemoteConfig.Current != null ? RemoteConfig.Current.enemyCount : 18);
                 ShipVariant crewFrom = CurrentShip;
                 if (crewFrom != null && crewFrom.crew != null && crewFrom.crew.IsValid) s.gameObject.AddComponent<EnemyCrew>().Setup(Scout, crewFrom.crew);
             }
@@ -269,6 +270,30 @@ namespace SkyTide
         public AllyShip Ally { get; private set; }
         public TargetShip Scout { get; private set; }
         public TargetShip Raider { get; private set; }
+
+        /// <summary>Довести число врагов до total (конфиг enemyCount; по умолчанию 18 — владелец 15.11: «врагов ×3»).
+        /// Новые — по кольцу 1.8–3.8 км от старта, не ближе 900 м к флагману, каждый третий — разведчик. Команда экипажа —
+        /// только у первых 9 (палубные фигуры дальше 280 м всё равно не рисуются).</summary>
+        public int EnsureEnemies(int total)
+        {
+            if (!Application.isPlaying || Ship == null || targetShip == null) return 0;
+            TargetShip.Created.RemoveAll(x => x == null);
+            int have = TargetShip.Created.Count;
+            int added = 0;
+            for (int k = have; k < Mathf.Min(total, 30); k++)
+            {
+                Vector3 at = spawnPosition;
+                for (int tries = 0; tries < 12; tries++)
+                {
+                    float a = Random.Range(0f, Mathf.PI * 2f), r = Random.Range(1800f, 3800f);
+                    at = spawnPosition + new Vector3(Mathf.Cos(a) * r, 0f, Mathf.Sin(a) * r);
+                    if ((at - Ship.transform.position).sqrMagnitude > 900f * 900f) break;
+                }
+                SpawnEnemy("Enemy " + (k + 1), at, Random.Range(0f, 360f), k % 3 == 2, k < 9 ? CurrentShip : null);
+                added++;
+            }
+            return added;
+        }
 
         /// <summary>Враг на карте (только в игре): рядовой (может выйти тяжёлым) или разведчик (корпус ×0.72).</summary>
         TargetShip SpawnEnemy(string name, Vector3 at, float heading, bool scout, ShipVariant crewFrom)

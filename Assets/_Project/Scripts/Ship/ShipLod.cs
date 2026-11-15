@@ -56,7 +56,7 @@ namespace SkyTide
             r.receiveShadows = full.receiveShadows;
             ShipLod l = full.gameObject.AddComponent<ShipLod>();
             l.full = full; l.lite = r; l.lodDistance = lodDistance;
-            l.Apply(false);
+            l.Apply(false, false, true);
         }
 
         void OnEnable() { all.Add(this); if (all.Count == 1) Camera.onPreCull += PreCull; }
@@ -70,24 +70,37 @@ namespace SkyTide
             {
                 ShipLod l = all[i];
                 if (l == null || l.full == null) continue;
-                bool far = l.lodDistance > 0f && (l.transform.position - c).sqrMagnitude > l.lodDistance * l.lodDistance;
-                l.Apply(far);
+                float d2 = (l.transform.position - c).sqrMagnitude;
+                bool far = l.lodDistance > 0f && d2 > l.lodDistance * l.lodDistance;
+                float sd = QualitySettings.shadowDistance + 60f;
+                l.Apply(far, d2 > CullDistance * CullDistance, d2 < sd * sd);
             }
         }
 
-        void Apply(bool far)
+        /// <summary>Дальше этого корабль не рисуется вовсе (в дымке дальше 2.2 км — точка в пару пикселей, а лёгкая модель —
+        /// 60 тыс. треугольников). На радаре и в логике он есть. Владелец 15.11 поднял врагов до 18 — без этого дальние ели ВК.</summary>
+        public static float CullDistance = 2200f;
+
+        void Apply(bool far, bool cull, bool shadowNear)
         {
             if (lite == null) return;
+            if (cull)
+            {
+                full.forceRenderingOff = true; lite.forceRenderingOff = true;
+                return;
+            }
+            lite.forceRenderingOff = false;
             if (!Enabled)
             {
-                full.forceRenderingOff = false; full.shadowCastingMode = ShadowCastingMode.On; lite.enabled = false;
+                full.forceRenderingOff = cull; full.shadowCastingMode = ShadowCastingMode.On; lite.enabled = false;
                 return;
             }
             lite.enabled = true;
             // forceRenderingOff, а не enabled: границы полной модели (по ним ShipDamageVisual ловит уход под облака) остаются живыми
             full.forceRenderingOff = far;
             full.shadowCastingMode = ShadowCastingMode.Off;
-            lite.shadowCastingMode = far ? ShadowCastingMode.On : ShadowCastingMode.ShadowsOnly;
+            // Тень дальше дальности теней не попадает ни в один каскад — но объект всё равно проходит отбор теней. Выключаем.
+            lite.shadowCastingMode = far ? (shadowNear ? ShadowCastingMode.On : ShadowCastingMode.Off) : ShadowCastingMode.ShadowsOnly;
         }
 
         /// <summary>Карта исходных вершин (int32 подряд) из tools/decimate_ship.py.</summary>

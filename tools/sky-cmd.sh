@@ -10,5 +10,6 @@ python3 - "$ID" "$@" > "$F" <<'PY'
 import json, sys, time
 print(json.dumps({"id": int(sys.argv[1]), "expires": int(time.time()) + 600, "cmds": sys.argv[2:]}, ensure_ascii=False))
 PY
-git add "$F"; git commit -qm "команды #$ID: $*"; git push -q
+git add "$F"; git commit -qm "команды #$ID: $*"
+for i in 1 2 3 4 5; do git push -q 2>/dev/null && break; git pull -q --rebase; done   # игра пушит отчёты постоянно — гонка
 echo "команды #$ID отправлены: $*"

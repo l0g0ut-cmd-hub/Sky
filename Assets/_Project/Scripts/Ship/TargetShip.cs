@@ -248,6 +248,7 @@ namespace SkyTide
             }
             // OnEnable в редакторе (кадры CI) не вызывается — регистрируемся сами, иначе попадания и доклад впередсмотрящего не видят мишень.
             if (!All.Contains(this)) All.Add(this);
+            if (!Created.Contains(this)) Created.Add(this);
             ctrl = c;
             this.player = player;
             Transform v = c.visual;
@@ -260,6 +261,8 @@ namespace SkyTide
             Pick();
         }
 
+        /// <summary>Все враги в порядке создания (и выключенные конфигом).</summary>
+        public static readonly List<TargetShip> Created = new List<TargetShip>();
         void OnEnable() { if (!All.Contains(this)) All.Add(this); }
         void OnDisable() { All.Remove(this); }
 

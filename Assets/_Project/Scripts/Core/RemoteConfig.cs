@@ -20,7 +20,8 @@ namespace SkyTide
             // свой корабль
             public float playerSpeed = 40f, playerYaw = 50f, playerHealth = 540f, playerShellSpeed = 125f, playerElevation = 14f, playerCooldown = 2.2f;
             // враги
-            public int enemyCount = 6;
+            public int enemyCount = 18;
+            public float cullDistance = 2200f;
             public float enemySpeed = 20f, enemyYaw = 24f, enemyRange = 420f, enemyError = 0.11f, enemySideError = 0.04f, enemyCooldown = 6f;
             public int enemyHits = 30, scoutHits = 16;
             public float scoutSpeed = 27f, scoutRange = 360f, heavyChance = 0.22f, aggroRange = 1300f, enemyDamage = 6f;
@@ -98,8 +99,12 @@ namespace SkyTide
             if (ph != null) ph.SetMaxHealth(c.playerHealth);
             Broadside b = g.Ship.GetComponent<Broadside>();
             if (b != null) { b.muzzleSpeed = c.playerShellSpeed; b.maxElevationDeg = c.playerElevation; b.cooldown = c.playerCooldown; }
+            ShipLod.CullDistance = Mathf.Max(600f, c.cullDistance);
+            SkyTideBootstrap boot = SkyTideBootstrap.Instance;
+            if (boot != null) boot.EnsureEnemies(c.enemyCount);
             int enemies = 0;
-            foreach (TargetShip t in TargetShip.All.ToArray())
+            TargetShip.Created.RemoveAll(x => x == null);
+            foreach (TargetShip t in TargetShip.Created.ToArray())
             {
                 if (t == null) continue;
                 bool scout = t.transform.lossyScale.x < 0.9f;

@@ -69,6 +69,7 @@ namespace SkyTide
                 Push(spikes, 12, DebugReport.Stamp() + " " + Mathf.RoundToInt(ms) + " мс" + (gc != gcAtFrame ? " +сборка мусора" : "") + (fx != null ? " частиц " + fx.ParticleCount : "") + " · " + DebugReport.LastEventText);
             }
             gcAtFrame = gc;
+            Sag();
             if (Time.time >= nextSnap) { nextSnap = Time.time + 10f; Snapshot(); }
             if (Time.time >= nextTrack) { nextTrack = Time.time + 2f; Track(); }
             // Первый запуск новой сборки: автозамер сам, через 40 с боя (не в меню, не на паузе).
@@ -221,8 +222,70 @@ namespace SkyTide
             b.AppendLine("хроника каждые 10 с (x/z — мир в десятках м; состояния: БОЙ, ПОРТ, БЕГ, ДОЗОР, ИДЁТ, ПОМОЩЬ, РЕМОНТ):");
             foreach (string s in chronicle) b.AppendLine(" " + s);
         }
+        // ---------- провалы: устойчиво тяжёлые 2 с (не единичный рывок) ----------
+        // A/B 15.11 13:02: в спокойном бою всё у потолка 30 и переключатели не дают разницы, а провалы до 12–17 FPS
+        // (ВК ~60 мс) короткие — нужно поймать, ЧТО в кадре в этот момент. Раз в 20 с максимум, последние 10.
+        readonly Queue<string> sags = new Queue<string>();
+        readonly FrameTiming[] sagFt = new FrameTiming[1];
+        float sagAcc, sagGpu, sagT0, nextSag;
+        int sagN, sagGpuN;
+        void Sag()
+        {
+            if (Time.timeScale < 0.01f || Time.timeSinceLevelLoad < 20f) return;
+            if (sagN == 0) sagT0 = Time.unscaledTime;
+            sagAcc += Time.unscaledDeltaTime; sagN++;
+            FrameTimingManager.CaptureFrameTimings();
+            if (FrameTimingManager.GetLatestTimings(1, sagFt) > 0 && sagFt[0].gpuFrameTime > 0) { sagGpu += (float)sagFt[0].gpuFrameTime; sagGpuN++; }
+            if (Time.unscaledTime - sagT0 < 2f) return;
+            float fps = sagN / Mathf.Max(1e-3f, sagAcc), gpu = sagGpuN > 0 ? sagGpu / sagGpuN : 0f;
+            sagAcc = 0f; sagN = 0; sagGpu = 0f; sagGpuN = 0;
+            if (fps > 22f || Time.unscaledTime < nextSag) return;
+            nextSag = Time.unscaledTime + 20f;
+            FxSystem fx = FxSystem.Instance;
+            SkyTideBootstrap g = SkyTideBootstrap.Instance;
+            int near = 0, onScreen = 0; Camera cam = Camera.main;
+            foreach (ShipController s in ShipController.All)
+            {
+                if (s == null || !s.gameObject.activeInHierarchy || cam == null) continue;
+                Vector3 v = cam.WorldToViewportPoint(s.transform.position);
+                if (v.z > 0f && v.x > -0.1f && v.x < 1.1f && v.y > -0.1f && v.y < 1.1f) onScreen++;
+                if (v.z > 0f && v.z < 400f) near++;
+            }
+            StringBuilder b = new StringBuilder(220);
+            b.Append(DebugReport.Stamp()).Append(" FPS ").Append(fps.ToString("F0")).Append(" ВК ").Append(gpu.ToString("F0")).Append(" мс");
+            if (fx != null) b.Append(" · частиц ").Append(fx.ParticleCount).Append(" огней ").Append(fx.LampCount);
+            b.Append(" · кораблей в кадре ").Append(onScreen).Append(", ближе 400 м ").Append(near);
+            if (cam != null) b.Append(" · обзор ").Append(cam.fieldOfView.ToString("F0"));
+            WeatherSystem ws = WeatherSystem.Instance; if (ws != null) b.Append(" · ").Append(WeatherSystem.Names[(int)ws.Current]);
+            b.Append(" · ").Append(Groups());
+            b.Append(" · ").Append(DebugReport.LastEventText);
+            Push(sags, 10, b.ToString());
+            DebugReport.Count("провалов FPS");
+        }
+
+        /// <summary>Коротко: видимые группы (штук·тыс.треуг).</summary>
+        string Groups()
+        {
+            string[] names = { "кор", "экип", "обл", "креп", "эфф", "проч" };
+            int[] n = new int[6]; long[] tri = new long[6];
+            foreach (Renderer r in Object.FindObjectsByType<Renderer>(FindObjectsSortMode.None))
+            {
+                if (r == null || !r.enabled || !r.isVisible) continue;
+                int k = Group(r.transform); n[k]++;
+                Mesh m = null;
+                if (r is SkinnedMeshRenderer smr) m = smr.sharedMesh; else { MeshFilter mf = r.GetComponent<MeshFilter>(); if (mf != null) m = mf.sharedMesh; }
+                if (m != null) for (int s = 0; s < m.subMeshCount; s++) tri[k] += m.GetIndexCount(s) / 3;
+            }
+            StringBuilder b = new StringBuilder();
+            for (int k = 0; k < 6; k++) if (n[k] > 0) b.Append(names[k]).Append(' ').Append(n[k]).Append('·').Append(tri[k] / 1000).Append("k ");
+            return b.ToString().TrimEnd();
+        }
+
         public void AppendSpikes(StringBuilder b)
         {
+            b.AppendLine("провалы FPS < 22 дольше 2 с (последние 10):");
+            if (sags.Count == 0) b.AppendLine(" нет");
+            foreach (string s in sags) b.AppendLine(" " + s);
             b.AppendLine("рывки > 60 мс (последние 12):");
             if (spikes.Count == 0) b.AppendLine(" нет");
             foreach (string s in spikes) b.AppendLine(" " + s);
