@@ -55,15 +55,18 @@ namespace SkyTide
             Vector3 lastC = Vector3.zero, lastDir = Vector3.forward, lastSide = Vector3.right; float lastHalf = 3f;
             for (int i = 0; i <= N; i++)
             {
-                float t = i / (float)N * 0.92f;   // последние 8% — под наконечник
+                // Начало — на 6% пути от борта (у самого борта широкая лента торчала «плавником» над кораблём, снимки 15.11).
+                float t = 0.06f + i / (float)N * 0.86f;   // последние 8% — под наконечник
                 Vector3 pa = Sample(a, t), pb = Sample(b, t);
                 Vector3 centre = (pa + pb) * 0.5f;
                 Vector3 side = pb - pa; side.y = 0f;
-                float half = Mathf.Max(minWidth * 0.5f, side.magnitude * 0.5f + 2f);
+                float y0 = (t - 0.06f) / 0.86f;
+                // Сужение у борта: от 1.5 м до полного накрытия к трети пути — стрелка «вырастает» из борта.
+                float half = Mathf.Lerp(1.5f, Mathf.Max(minWidth * 0.5f, side.magnitude * 0.5f + 2f), Mathf.SmoothStep(0f, 1f, y0 / 0.35f));
                 side = side.sqrMagnitude > 0.01f ? side.normalized : lastSide;
                 Vector3 ahead = Sample(a, t + 0.02f) + Sample(b, t + 0.02f); ahead = ahead * 0.5f - centre;
                 if (ahead.sqrMagnitude > 1e-4f) lastDir = ahead.normalized;
-                float y = t / 0.92f;
+                float y = y0;
                 v.Add(centre - side * half); uv.Add(new Vector2(0f, y)); col.Add(c);
                 v.Add(centre + side * half); uv.Add(new Vector2(1f, y)); col.Add(c);
                 // «Стенка» под лентой — объём: узкая вертикальная полоса по центру, бледнее.

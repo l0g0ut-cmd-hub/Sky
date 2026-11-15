@@ -9,7 +9,8 @@ namespace SkyTide
     public class ControlBanner : MonoBehaviour
     {
         public static float BusyUntil = -1f;
-        public static bool HiddenForShot;
+        public static int HiddenCount;
+        public static bool HiddenForShot { get { return HiddenCount > 0; } set { HiddenCount = Mathf.Max(0, HiddenCount + (value ? 1 : -1)); } }
         public static bool Cancelled;
         GUIStyle big, small; Texture2D bg;
 
