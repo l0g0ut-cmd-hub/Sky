@@ -87,7 +87,7 @@ namespace SkyTide
             model = v != null && v.childCount > 0 ? v.GetChild(0) : v;
             MeshFilter mf = model != null ? model.GetComponent<MeshFilter>() : null;
             box = mf != null && mf.sharedMesh != null ? mf.sharedMesh.bounds : new Bounds(Vector3.up * 8f, new Vector3(10f, 14f, 36f));
-            if (geometry != null) surface = new ShipHitSurface(geometry);
+            if (geometry != null) surface = ShipHitSurface.For(geometry);
             damage = gameObject.AddComponent<ShipDamageVisual>();
             damage.Configure(model, box, wood, surface);
             // Свои — светлее и холоднее врага (боевые голубоватые, торговец — светлое дерево с зеленцой).

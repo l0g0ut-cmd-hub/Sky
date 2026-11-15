@@ -287,7 +287,7 @@ namespace SkyTide
             MeshFilter mf = model != null ? model.GetComponent<MeshFilter>() : null;
             box = mf != null && mf.sharedMesh != null ? mf.sharedMesh.bounds : new Bounds(Vector3.up * 8f, new Vector3(10f, 14f, 36f));
             damageVisual = gameObject.AddComponent<ShipDamageVisual>();
-            if(geometry!=null)surface=new ShipHitSurface(geometry);
+            if(geometry!=null)surface=ShipHitSurface.For(geometry);
             damageVisual.Configure(model, box, debrisWood,surface);
             Pick();
         }

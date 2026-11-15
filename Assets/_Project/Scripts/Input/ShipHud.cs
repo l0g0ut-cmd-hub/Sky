@@ -332,7 +332,7 @@ namespace SkyTide
             if(ready&&!volleyWasReady[vk]&&Application.isPlaying)volleyReadyAt[vk]=vNow;
             volleyWasReady[vk]=ready;
             Rect body=Content(r); body=new Rect(body.x-r.height*0.12f,body.y,body.width+r.height*0.24f,body.height);   // только поле плашки: раньше заливка ложилась прямоугольником поверх рамки и орнаментов
-            if(!ready){LoadBanners();float f0=Mathf.Clamp01(readiness);Rect fr=new Rect(body.x,body.y+body.height*0.08f,body.width*f0,body.height*0.84f);if(tFill!=null)ImageRect(tFill,fr,new Rect(0f,0f,f0,1f),new Color(1f,1f,1f,0.42f));else Solid(fr,new Color(1f,0.6f,0.18f,0.3f));}   // раскалённая заливка слева направо (ui_fill)
+            if(!ready)Solid(new Rect(body.x,body.y,body.width,body.height),new Color(0.02f,0.015f,0.01f,0.35f));   // перезарядка: кнопка приглушена, заряд — только в полосе снизу (сплошная заливка поверх кнопки выглядела убого, владелец 15.11)
             float pop=Mathf.Clamp01(1f-(vNow-volleyReadyAt[vk])/0.45f);
             if(ready&&pop>0f)Solid(body,new Color(1f,0.9f,0.6f,0.28f*pop));   // вспышка готовности слабее: на 0,55 выбеливала надпись
             if(aimed)Solid(body,new Color(1f,0.82f,0.4f,(ready?0.2f:0.1f)+0.08f*Mathf.Sin(vNow*6f)));
@@ -349,13 +349,18 @@ namespace SkyTide
                 row=side<0?new Rect(row.x+iw+gapX,row.y,row.width-iw-gapX,row.height):new Rect(row.x,row.y,row.width-iw-gapX,row.height);
             }
             Text(row,ready?(aimed?"В ПРИЦЕЛЕ":idle):((1f-readiness)*cooldown).ToString("F1")+" с",l.unit*0.03f,ready?(aimed?new Color(1f,0.88f,0.55f):gold):cream);   // секунды — светлым: на раскалённой заливке серые не читались
-            float bh=Mathf.Max(2f,c.height*0.1f);
+            float bh=Mathf.Max(3f,c.height*0.13f);   // полоса заряда толще: в ней теперь вся индикация перезарядки
             Rect bar=new Rect(c.x,c.yMax-bh,c.width,bh);
             if(HasKit)
             {
                 Sprite(bar,KGroove,Color.white);
                 float f=Mathf.Clamp01(readiness);
-                if(f>0.001f) Sprite(new Rect(bar.x,bar.y,bar.width*f,bar.height),new Rect(KFill.x,KFill.y,KFill.width*f,KFill.height),ready?Color.white:new Color(0.75f,0.8f,0.85f,0.8f));
+                if(f>0.001f)
+                {
+                    LoadBanners();
+                    if(!ready&&tFill!=null){Rect fb=new Rect(bar.x+bar.height*0.35f,bar.y+bar.height*0.2f,(bar.width-bar.height*0.7f)*f,bar.height*0.6f);ImageRect(tFill,fb,new Rect(0f,0f,f,1f),Color.white);}   // раскалённый заряд в канавке полосы
+                    else Sprite(new Rect(bar.x,bar.y,bar.width*f,bar.height),new Rect(KFill.x,KFill.y,KFill.width*f,KFill.height),Color.white);
+                }
             }
             else
             {
@@ -388,7 +393,7 @@ namespace SkyTide
             }
             SkyFortress fort = SkyFortress.Instance;
             int rows = 1 + (best < float.MaxValue ? 1 : 0) + (fort != null ? 1 : 0);
-            InfoPlate(new Rect(r.x - l.unit * 0.01f, y - l.unit * 0.008f, r.width + l.unit * 0.02f, lh * rows + l.unit * 0.016f), lh, Color.white);   // латунная плашка (plate_info)
+            InfoPlate(new Rect(r.x, y - l.unit * 0.008f, r.width, lh * rows + l.unit * 0.016f), lh, Color.white);   // ровно по радару: левый край — общий с FPS и плашкой хода   // латунная плашка (plate_info)
             Text(new Rect(r.x, y, r.width, lh), "РАДАР " + Range(input.RadarRange), fs, new Color(Mathf.Lerp(muted.r, 1f, 0.4f), Mathf.Lerp(muted.g, 1f, 0.4f), Mathf.Lerp(muted.b, 1f, 0.4f), 1f)); y += lh;
             if (best < float.MaxValue) { Text(new Rect(r.x, y, r.width, lh), "ВРАГ " + Range(best) + (bestHealth < 0.995f ? " · " + Mathf.RoundToInt(bestHealth * 100f) + "%" : ""), fs, best <= GunRange(input) ? new Color(1f, 0.72f, 0.55f, 1f) : new Color(0.72f, 0.74f, 0.78f, 1f)); y += lh; }   // серым — дальше, чем достают свои пушки
             if (fort != null)

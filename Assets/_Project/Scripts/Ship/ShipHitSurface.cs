@@ -23,6 +23,16 @@ namespace SkyTide
         public int TriangleCount {get {return faces.Length;}}
         public Bounds Bounds {get;private set;}
 
+        // Одна поверхность на модель: дерево попаданий по 207 тыс. треугольников строилось заново для каждого корабля
+        // (10 кораблей при запуске — основная часть 6,9 с серого экрана, замер 15.11). Данные только читаются, запросы
+        // идут из главного потока по очереди — общий экземпляр безопасен.
+        static readonly Dictionary<TextAsset, ShipHitSurface> shared = new Dictionary<TextAsset, ShipHitSurface>();
+        public static ShipHitSurface For(TextAsset source)
+        {
+            if (source == null) return null;
+            ShipHitSurface s; if (shared.TryGetValue(source, out s) && s != null) return s;
+            s = new ShipHitSurface(source); shared[source] = s; return s;
+        }
         public ShipHitSurface(TextAsset source)
         {
             float started=Time.realtimeSinceStartup;
