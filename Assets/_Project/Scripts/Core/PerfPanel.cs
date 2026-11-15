@@ -47,7 +47,7 @@ namespace SkyTide
         // (от начала отсечения до конца сцены) и счётчики Unity (ProfilerRecorder — доступны и в релизной сборке).
         bool details;
         readonly List<KeyValuePair<string, float>> top = new List<KeyValuePair<string, float>>();
-        float copiedAt = -10f;
+        float copiedAt = -10f; bool copiedFull;
         ProfilerRecorder drawCalls, setPass, batches, tris, shadowCasters, gcAlloc, mainThread, renderThread;
         bool recorders;
         long camStart; float camMs;
@@ -182,17 +182,19 @@ namespace SkyTide
             GUI.Label(new Rect(x, y, w, h), string.Format("10 с: средний {0:F0}   худший 1% {1:F0}   макс. кадр {2:F0} мс", avgFps, lowFps, worstMs), label); y += h;
             if (small == null) { small = new GUIStyle(label) { fontSize = Mathf.RoundToInt(label.fontSize * 0.8f) }; }
             GUI.Label(new Rect(x, y, w, h * 0.62f), string.Format("работа: игра {0:F1} · отрисовка {1:F1} · ВК {2:F1} мс   → {3}", mainWork, renderWork, gpu, Bottleneck()), small); y += h * 0.7f;
-            float hw = (w - u * 0.04f) / 3f;
-            if (GUI.Button(new Rect(x, y, hw, h * 0.9f), details ? "← Переключатели" : "Замер по частям →", button)) { details = !details; PerfTimers.Reset(); camMs = 0f; }
-            if (GUI.Button(new Rect(x + hw + u * 0.02f, y, hw, h * 0.9f), "АВТОЗАМЕР ▶", button) && game != null) StartCoroutine(Bench());
-            // Отчёт для разработчика: состояние, корабли, события, ошибки, автозамер — в буфер обмена (вставить в чат).
-            if (GUI.Button(new Rect(x + (hw + u * 0.02f) * 2f, y, hw, h * 0.9f), Time.unscaledTime - copiedAt < 2f ? "СКОПИРОВАНО ✓" : "КОПИРОВАТЬ ОТЧЁТ", button))
-            {
-                System.Text.StringBuilder tm = new System.Text.StringBuilder();
-                if (PerfTimers.Enabled) foreach (KeyValuePair<string, float> kv in PerfTimers.Sorted(top)) if (kv.Value > 0.05f) tm.AppendLine("  " + kv.Key + " " + kv.Value.ToString("F2"));
-                GUIUtility.systemCopyBuffer = DebugReport.Build(fps, tm.ToString());
-                copiedAt = Time.unscaledTime;
-            }
+            float hw = (w - u * 0.06f) / 4f, gx = u * 0.02f;
+            if (GUI.Button(new Rect(x, y, hw, h * 0.9f), details ? "← Назад" : "Части →", button)) { details = !details; PerfTimers.Reset(); camMs = 0f; }
+            if (GUI.Button(new Rect(x + (hw + gx), y, hw, h * 0.9f), "АВТОЗАМЕР", button) && game != null) StartCoroutine(Bench());
+            // Отчёт для разработчика в буфер обмена (вставить в чат): короткий (~2 тыс. знаков) и полный.
+            bool justCopied = Time.unscaledTime - copiedAt < 2f;
+            for (int k = 0; k < 2; k++)
+                if (GUI.Button(new Rect(x + (hw + gx) * (2 + k), y, hw, h * 0.9f), justCopied && copiedFull == (k == 1) ? "СКОПИРОВАНО ✓" : k == 0 ? "ОТЧЁТ КРАТКО" : "ОТЧЁТ ПОЛНО", button))
+                {
+                    System.Text.StringBuilder tm = new System.Text.StringBuilder();
+                    if (PerfTimers.Enabled) foreach (KeyValuePair<string, float> kv in PerfTimers.Sorted(top)) if (kv.Value > 0.05f) tm.AppendLine("  " + kv.Key + " " + kv.Value.ToString("F2"));
+                    GUIUtility.systemCopyBuffer = DebugReport.Build(fps, tm.ToString(), k == 1);
+                    copiedAt = Time.unscaledTime; copiedFull = k == 1;
+                }
             y += h;
             if (details) { Details(x, y, w, h); return; }
             if (game == null) return;
@@ -220,6 +222,7 @@ namespace SkyTide
             if (Cell(x, ref y, cw, h, ref col, "Сумерки", SkyTidePost.DuskOn)) SkyTidePost.DuskOn = !SkyTidePost.DuskOn;
             if (Cell(x, ref y, cw, h, ref col, "Новые эффекты", FxSystem.Extras)) FxSystem.Extras = !FxSystem.Extras;
             if (Cell(x, ref y, cw, h, ref col, "60 кадров (иначе 30)", SkyTideBootstrap.Fps60)) SkyTideBootstrap.ChooseFps60(!SkyTideBootstrap.Fps60);
+            if (!string.IsNullOrEmpty(DebugRecorder.PreviousSession) && Cell(x, ref y, cw, h, ref col, "отчёт прошлой сессии → буфер", false)) { GUIUtility.systemCopyBuffer = DebugRecorder.PreviousSession; copiedAt = Time.unscaledTime; }
             if (nativeW == 0) { nativeW = Screen.width; nativeH = Screen.height; }
             // Кнопка по кругу: 100% → 85% → 70% → авто (держит ~30 FPS) → 100%.
             if (GUI.Button(new Rect(x + col * (cw + u * 0.02f), y, cw, h * 0.9f), (autoScale ? "Сцена авто · " : "Сцена ") + Mathf.RoundToInt(sceneScale * 100f) + "%", button))

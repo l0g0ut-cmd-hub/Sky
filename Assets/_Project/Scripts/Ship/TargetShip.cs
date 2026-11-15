@@ -48,6 +48,14 @@ namespace SkyTide
         public bool Outlaw { get { return Time.time < OutlawUntil; } }
         public bool InPort { get { return mode == Mode.ToPort || mode == Mode.InPort; } }
         EnemyGunner gunner; bool captainRolled;
+        /// <summary>Поведение сейчас (для хроники и журнала решений ИИ отладочного отчёта).</summary>
+        public string AiState { get; private set; } = "";
+        void Ai(string s, string why = "")
+        {
+            if (s == AiState) return;
+            if (Application.isPlaying) DebugReport.Ai(name.Replace(" Ship", "") + ": " + (AiState.Length > 0 ? AiState : "старт") + " → " + s + (why.Length > 0 ? " (" + why + ")" : ""));
+            AiState = s;
+        }
         /// <summary>Залп игрока: сколько ядер подряд легло в корпус (HUD показывает итог).</summary>
         public static int Tally; public static float TallyAt = -100f;
 
@@ -152,6 +160,7 @@ namespace SkyTide
             outDir = outDir.sqrMagnitude > 1f ? outDir.normalized : Vector3.forward;
             if (mode == Mode.Flee)
             {
+                Ai("БЕГ", Outlaw ? "крепость бьёт" : "из зоны");
                 Vector3 off = transform.position - f.Center; off.y = 0f;
                 if (!Outlaw && off.magnitude > f.safeRadius + 200f) { mode = Mode.Fight; Pick(); return false; }
                 SteerTo(transform.position + (off.sqrMagnitude > 1f ? off.normalized : outDir) * 600f, 1f);
@@ -171,10 +180,12 @@ namespace SkyTide
             }
             if (mode == Mode.ToPort)
             {
+                Ai("В ПОРТ", Mathf.RoundToInt(Health01 * 100f) + "%");
                 if (d < 45f) { mode = Mode.InPort; portUntil = Time.time + Random.Range(18f, 35f); }
                 else SteerTo(spot, d > 320f ? 0.75f : d > 120f ? 0.4f : 0.2f);
                 return true;
             }
+            Ai("ПОРТ");
             // У причала: стоит, чинится (попадание в 1.5 с), потом уходит обратно в бой.
             ctrl.throttle = 0f; ctrl.turn = 0f;
             if (Time.time >= nextPortRepair && hits > 0)
@@ -270,7 +281,7 @@ namespace SkyTide
         {
             if (ctrl == null) return;
             if (!captainRolled && Application.isPlaying) { RollCaptain(); captainRolled = true; }
-            if (BeingBoarded && Alive) { ctrl.throttle = 0f; ctrl.turn = 0f; return; }
+            if (BeingBoarded && Alive) { Ai("АБОРДАЖ"); ctrl.throttle = 0f; ctrl.turn = 0f; return; }
             Lamps();
             if (!Alive)
             {
@@ -294,7 +305,7 @@ namespace SkyTide
                 dazeTurn = Random.value < 0.5f ? 0f : Random.Range(-0.8f, 0.8f);
                 nextDaze = dazeUntil + Random.Range(10f, 22f) * dazeScale;
             }
-            if (Dazed) { ctrl.turn = dazeTurn; ctrl.throttle = 0.08f; return; }
+            if (Dazed) { Ai("ТУПИТ"); ctrl.turn = dazeTurn; ctrl.throttle = 0.08f; return; }
             Vector3 toPlayer = player != null ? player.position - transform.position : Vector3.zero;
             toPlayer.y = 0f;
             PlayerHull playerHull = PlayerHull.Instance;
@@ -310,12 +321,13 @@ namespace SkyTide
                 float d = ta.magnitude * (al.role == AllyShip.Role.Merchant ? 0.6f : 1f);
                 if (d < preyD && ta.magnitude < aggro) { preyD = d; prey = al; }
             }
-            if (prey != null) { Vector3 tp = prey.transform.position - transform.position; tp.y = 0f; Engage(tp); return; }
-            if (playerFair) { Engage(toPlayer); return; }
+            if (prey != null) { Vector3 tp = prey.transform.position - transform.position; tp.y = 0f; Ai("БОЙ-" + AllyShip.RoleNames[(int)prey.role].Substring(0, 4), Mathf.RoundToInt(tp.magnitude) + " м"); Engage(tp); return; }
+            if (playerFair) { Ai(Health01 < 0.3f ? "ОТХОД" : "БОЙ", "флагман " + Mathf.RoundToInt(toPlayer.magnitude) + " м"); Engage(toPlayer); return; }
             fightSide = 0f;
             if (!Application.isPlaying && player != null && toPlayer.magnitude > leash && !SkyFortress.InSafeZone(player.position)) { waypoint = player.position; nextPick = Time.time + 8f; }
             Vector3 to = waypoint - transform.position;
             to.y = 0f;
+            Ai("ДОЗОР");
             if (to.magnitude < 40f || Time.time > nextPick) Pick();
             float ang = Vector3.SignedAngle(transform.forward, to, Vector3.up);
             ctrl.turn = Mathf.Clamp(ang / 35f, -1f, 1f);

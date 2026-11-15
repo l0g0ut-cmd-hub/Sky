@@ -211,6 +211,7 @@ namespace SkyTide
             {
                 touchedOnce = true;
                 HudLayout hl = Layout(ViewWidth, ViewHeight);
+                if (Application.isPlaying) DebugReport.Touch(Mathf.RoundToInt(p.x) + "," + Mathf.RoundToInt(p.y) + " → " + TouchTarget(hl, p));
                 if (Paused)
                 {
                     owners[id] = Owner.Button; lastPos[id] = p;
@@ -478,6 +479,16 @@ namespace SkyTide
 #endif
                 return Screen.height;
             }
+        }
+        string TouchTarget(HudLayout l, Vector2 p)
+        {
+            if (Paused) return "меню паузы";
+            if (l.pause.Contains(p)) return "пауза"; if (l.radar.Contains(p)) return "радар"; if (l.spy.Contains(p)) return "труба";
+            if (FpsButtonRect().Contains(p)) return "FPS"; if (PerfPanel.Open && PerfPanel.Area.Contains(p)) return "панель FPS";
+            if (l.port.Contains(p)) return "левый борт"; if (l.starboard.Contains(p)) return "правый борт"; if (l.mode.Contains(p)) return "режим залпа";
+            if (l.ammo.Contains(p)) return "заряд"; if (l.auto.Contains(p)) return "автобой"; if (l.board.Contains(p)) return "абордаж (кнопка " + (Boarding() != null && Boarding().Candidate != null ? "есть" : "скрыта") + ")";
+            if (new Rect(l.telegraph.x - l.unit * 0.03f, l.telegraph.y, l.telegraph.width + l.unit * 0.2f, l.telegraph.height).Contains(p)) return "рукоять хода";
+            return p.x < ViewWidth * 0.5f ? (stickId == int.MinValue ? "штурвал" : "камера (штурвал занят)") : "камера";
         }
         public HudLayout Layout(int width,int height)
         {

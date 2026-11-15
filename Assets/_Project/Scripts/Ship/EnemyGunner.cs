@@ -92,6 +92,7 @@ namespace SkyTide
             pendingAt = Time.time;
             LastVolleyTime = Time.time;
             DebugReport.Count(victimAlly != null ? "залпов врага по своим" : "залпов врага по флагману");
+            DebugReport.Volley(name.Replace(" Ship", "") + " → " + (victimAlly != null ? AllyShip.RoleNames[(int)victimAlly.role].ToLower() : "флагман") + " " + Mathf.RoundToInt(dist) + " м, борт " + (pendingSide > 0 ? "прав" : "лев") + ", ошибка ×" + (errScale * skillError).ToString("F2"));
             ready = Time.time + (cooldown + Random.Range(0f, 1.5f)) * skillCooldown * (hurt > 1.4f ? 1.3f : 1f);
         }
 

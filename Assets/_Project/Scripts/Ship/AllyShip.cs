@@ -37,6 +37,13 @@ namespace SkyTide
         Vector3 merchantFrom;
 
         public ShipController Controller { get { return ctrl; } }
+        public string AiState { get; private set; } = "";
+        void Ai(string st, string why = "")
+        {
+            if (st == AiState) return;
+            if (Application.isPlaying) DebugReport.Ai(RoleNames[(int)role].ToLower() + " " + name.Replace("Guard Ship ", "") + ": " + (AiState.Length > 0 ? AiState : "старт") + " → " + st + (why.Length > 0 ? " (" + why + ")" : ""));
+            AiState = st;
+        }
         public bool Alive { get { return deadUntil < 0f; } }
         public bool Fighting { get { return foe != null; } }
         public float Health01 { get { return Mathf.Clamp01(1f - hits / (float)Mathf.Max(1, hitsToSink)); } }
@@ -187,9 +194,9 @@ namespace SkyTide
             selfVel = Vector3.Lerp(selfVel, (transform.position - lastPos) / dt, 0.2f); lastPos = transform.position;
             ctrl.SetDamage(Health01);
             SkyFortress f = SkyFortress.Instance;
-            if (role == Role.Merchant) { Merchant(f); return; }
+            if (role == Role.Merchant) { Ai(leg == Leg.Inbound ? "ИДЁТ" : leg == Leg.Docked ? "ПОРТ" : "УХОДИТ"); Merchant(f); return; }
             if (Health01 < 0.35f) repairing = true;
-            if (repairing && f != null) { foe = null; pendingLeft = 0; GoRepair(f); return; }
+            if (repairing && f != null) { Ai("РЕМОНТ", Mathf.RoundToInt(Health01 * 100f) + "%"); foe = null; pendingLeft = 0; GoRepair(f); return; }
             foe = PickFoe(f);
             // Свой под огнём в 2.5 км — идём на помощь и бьём того, кто его атакует (торговец сам не воюет).
             if (foe == null)
@@ -200,6 +207,7 @@ namespace SkyTide
             if (foe == null)
             {
                 announced = false; pendingLeft = 0;
+                Ai(role == Role.Wingman ? "СТРОЙ" : "ДОЗОР");
                 if (role == Role.Wingman) Follow(); else Patrol(f);
                 return;
             }
@@ -210,6 +218,7 @@ namespace SkyTide
                 if (ph != null && (ph.transform.position - transform.position).sqrMagnitude < 1500f * 1500f)
                     HudNotice.Show(role == Role.Wingman ? "ВЕДОМЫЙ АТАКУЕТ" : "СТОРОЖЕВОЙ ИДЁТ НА ВРАГА", 0, 3f);
             }
+            Ai("БОЙ", foe.name.Replace(" Ship", "") + " " + Mathf.RoundToInt(Vector3.Distance(foe.transform.position, transform.position)) + " м");
             Engage(foe);
             Gunnery(foe);
         }
@@ -383,6 +392,7 @@ namespace SkyTide
             Vector3 fwd = rel / Mathf.Max(dist, 1f), side = Vector3.Cross(Vector3.up, fwd);
             aimErr = fwd * Gauss() * rangeError * dist + side * Gauss() * sideError * dist;
             pendingLeft = gunsPerSide; pendingAt = Time.time;
+            DebugReport.Volley(RoleNames[(int)role].ToLower() + " → " + t.name.Replace(" Ship", "") + " " + Mathf.RoundToInt(dist) + " м");
             ready = Time.time + cooldown + Random.Range(0f, 2f);
         }
 

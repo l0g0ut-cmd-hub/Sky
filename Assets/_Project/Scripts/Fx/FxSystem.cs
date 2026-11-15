@@ -81,9 +81,12 @@ namespace SkyTide
         /// <summary>Выстрел из ствола: точка дула и направление ствола — в мире; скорость корабля добавляется к ядру и дыму.
         /// caliber — калибр относительно корабельной пушки: во столько раз крупнее ядро, вспышка и дым,
         /// и во столько же раз сильнее попадание (орудия крепости — 3).</summary>
+        /// <summary>Чьё ядро — для счёта точности по сторонам: Ф флагман, В враг, С свои, К крепость.</summary>
+        static int Shooter(bool hostile, float caliber, bool fromPlayer) { return fromPlayer ? 0 : caliber > 1.5f ? 3 : hostile ? 1 : 2; }
         public void Fire(Vector3 muzzle, Vector3 dir, Vector3 shipVel, float muzzleSpeed, bool hostile = false, float shellLife = 7f, float caliber = 1f, bool chain = false, bool fromPlayer = false)
         {
             if (fromPlayer) DebugReport.Count("ядер флагмана выпущено");
+            if (Application.isPlaying) DebugReport.Shot(Shooter(hostile, caliber, fromPlayer));
             dir.Normalize();
             caliber = Mathf.Max(1f, caliber);
             int firstParticle = ps.Count;
@@ -370,6 +373,8 @@ namespace SkyTide
         public const int MaxLamps = 96;   // 40–95 — кольцо сигнальных огней безопасной зоны
         readonly P[] lamps = new P[MaxLamps];
         readonly bool[] lampOn = new bool[MaxLamps];
+        public int ParticleCount { get { return ps.Count; } }
+        public int LampCount { get { int n = 0; for (int i = 0; i < lampOn.Length; i++) if (lampOn[i]) n++; return n; } }
         public void SetLamp(int slot, Vector3 pos, float size, Color c)
         {
             if (slot < 0 || slot >= MaxLamps) return;
@@ -592,12 +597,12 @@ namespace SkyTide
                         if (p.hostile)
                         {
                             Vector3 hp; PlayerHull ph = PlayerHull.Instance;
-                            if (ph != null && ph.TryHit(prev, end, out hp)) { end = hp; hit = true; ph.OnHit(hp, Mathf.Max(1f, p.caliber)); }
+                            if (ph != null && ph.TryHit(prev, end, out hp)) { end = hp; hit = true; DebugReport.Hit(Shooter(p.hostile, p.caliber, p.fromPlayer)); ph.OnHit(hp, Mathf.Max(1f, p.caliber)); }
                             // Ядра врага бьют и по своим кораблям (сторожевой, ведомый, торговец).
                             else for (int j = 0; j < AllyShip.All.Count; j++)
                             {
                                 AllyShip al = AllyShip.All[j];
-                                if (al != null && (al.transform.position - p.pos).sqrMagnitude < 60f * 60f && al.TryHit(prev, end, out hp)) { end = hp; hit = true; al.OnHit(hp, Mathf.Max(1f, p.caliber)); break; }
+                                if (al != null && (al.transform.position - p.pos).sqrMagnitude < 60f * 60f && al.TryHit(prev, end, out hp)) { end = hp; hit = true; DebugReport.Hit(Shooter(p.hostile, p.caliber, p.fromPlayer)); al.OnHit(hp, Mathf.Max(1f, p.caliber)); break; }
                             }
                         }
                         else for (int j = 0; j < TargetShip.All.Count; j++)
@@ -610,7 +615,7 @@ namespace SkyTide
                                 target = TargetShip.All[j];
                             }
                         }
-                        if (target != null) { end = hitPoint; hit = true; if (p.fromPlayer) DebugReport.Count("попаданий флагмана"); target.OnHit(hitPoint, p.chain); }
+                        if (target != null) { end = hitPoint; hit = true; if (p.fromPlayer) DebugReport.Count("попаданий флагмана"); DebugReport.Hit(Shooter(p.hostile, p.caliber, p.fromPlayer)); target.OnHit(hitPoint, p.chain); }
                         // Крепость: ядро не пролетает сквозь стены. Своё ядро крепости первую секунду не проверяется (дуло на башне).
                         SkyFortress fort = SkyFortress.Instance;
                         Vector3 fp;

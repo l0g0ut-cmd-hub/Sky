@@ -330,6 +330,19 @@ namespace SkyTide
             }
         }
 
+        /// <summary>Сколько включённых облаков-спрайтов стоит внутри круга крепости (для проверки пересечений).</summary>
+        public int CloudsInFortress(SkyFortress f)
+        {
+            int n = 0; Vector3 fc = f.Center; float r = f.BoundRadius;
+            foreach (Cloud c in clouds)
+            {
+                if (c.t == null || !c.t.gameObject.activeInHierarchy) continue;
+                float dx = c.t.position.x - fc.x, dz = c.t.position.z - fc.z;
+                if (dx * dx + dz * dz < r * r) n++;
+            }
+            return n;
+        }
+
         // ---------- утилиты ----------
 
         static float Range(System.Random r, float a, float b)

@@ -172,7 +172,13 @@ namespace SkyTide
             float now = Application.isPlaying ? Time.time : 0f;
             if (now < ready[k]) return false;
             ready[k] = now + cooldown;
-            if (Application.isPlaying) DebugReport.Count(AimOnTarget ? "залпов флагмана" : "залпов флагмана вне прицела");
+            if (Application.isPlaying)
+            {
+                DebugReport.Count(AimOnTarget ? "залпов флагмана" : "залпов флагмана вне прицела");
+                TargetShip nearestFoe = null; float nf = float.MaxValue;
+                foreach (TargetShip t in TargetShip.All) { if (t == null || !t.Alive) continue; float d = Vector3.Distance(t.transform.position, transform.position); if (d < nf) { nf = d; nearestFoe = t; } }
+                if (GetComponent<PlayerHull>() != null) DebugReport.Volley("флагман " + (side < 0 ? "лев" : "прав") + (nearestFoe != null ? " → " + nearestFoe.name.Replace(" Ship", "") + " " + Mathf.RoundToInt(nf) + " м, угол " + Mathf.RoundToInt(Vector3.SignedAngle(transform.forward, nearestFoe.transform.position - transform.position, Vector3.up)) + "°" : " (врагов нет)") + (AimOnTarget ? ", в прицеле" : ", ВНЕ прицела") + (chainShot ? ", книппели" : ""));
+            }
             if (Application.isPlaying) SkyFortress.NotifyPlayerFired(transform.position);   // залп в безопасной зоне — крепость откроет огонь
             if(Application.isPlaying&&Camera.main!=null)
             {
