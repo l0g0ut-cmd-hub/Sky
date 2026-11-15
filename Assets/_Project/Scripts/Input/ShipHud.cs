@@ -37,10 +37,13 @@ namespace SkyTide
         /// <summary>Надпись со значком (icons2) слева в поле плашки; текст — по центру оставшегося места.</summary>
         void IconText(Rect plate, int icon, string text, float size, Color color)
         {
-            Rect c = Content(plate); float ic = Mathf.Min(c.height * 1.25f, plate.height * 0.9f);
-            ic = Mathf.Min(ic, c.height * 1.05f);   // значок — внутри поля, не на угловом орнаменте (снимки 155)
-            Icon2(icon, new Rect(c.x, plate.center.y - ic * 0.5f, ic, ic), Color.white);
-            Text(new Rect(c.x + ic * 1.05f, c.y, c.width - ic * 1.05f, c.height), text, size, color);
+            // Значок и текст — строго в поле между угловыми орнаментами; размер текста — от высоты плашки (снимок 167:
+            // значок лежал на орнаменте, «ВОЛНОЙ»/«ЯДРА» упирались в правый угол).
+            Rect c = Content(plate); float h = plate.height, ic = c.height * 0.9f;
+            float x0 = c.x + h * 0.12f, x1 = c.xMax - h * 0.12f;
+            Icon2(icon, new Rect(x0, plate.center.y - ic * 0.5f, ic, ic), Color.white);
+            Rect tr = new Rect(x0 + ic * 1.1f, c.y, x1 - x0 - ic * 1.1f, c.height);
+            Text(tr, text, Mathf.Min(size, c.height * 0.62f), color);
         }
         void Tint(Color c) { GL.Color(QualitySettings.activeColorSpace == ColorSpace.Linear ? c.linear : c); }
         static void Vertex(Vector2 p, Vector2 uv) { GL.TexCoord2(uv.x, uv.y); GL.Vertex3(p.x, p.y, 0f); }
@@ -378,10 +381,17 @@ namespace SkyTide
             if(!ready)Solid(new Rect(body.x,body.y,body.width,body.height),new Color(0.02f,0.015f,0.01f,0.35f));   // перезарядка: кнопка приглушена, заряд — только в полосе снизу (сплошная заливка поверх кнопки выглядела убого, владелец 15.11)
             float pop=Mathf.Clamp01(1f-(vNow-volleyReadyAt[vk])/0.45f);
             if(ready&&pop>0f)Solid(body,new Color(1f,0.9f,0.6f,0.28f*pop));   // вспышка готовности слабее: на 0,55 выбеливала надпись
-            if(aimed)Solid(body,new Color(1f,0.82f,0.4f,(ready?0.2f:0.1f)+0.08f*Mathf.Sin(vNow*6f)));
+            if(aimed)   // «В ПРИЦЕЛЕ» — пульсирующий огненный кант по полю кнопки, без заливки (заливка выглядела плоской бежевой плашкой, владелец 16.11)
+            {
+                float ga=(ready?0.85f:0.45f)*(0.65f+0.35f*Mathf.Sin(vNow*6f)), gw=Mathf.Max(2f,r.height*0.035f);
+                Color gc=new Color(1f,0.55f,0.18f,ga), gs=new Color(1f,0.55f,0.18f,ga*0.25f);
+                Solid(new Rect(body.x,body.y,body.width,gw),gc); Solid(new Rect(body.x,body.yMax-gw,body.width,gw),gc);
+                Solid(new Rect(body.x,body.y,gw,body.height),gc); Solid(new Rect(body.xMax-gw,body.y,gw,body.height),gc);
+                Solid(new Rect(body.x+gw,body.y+gw,body.width-gw*2f,gw*1.6f),gs); Solid(new Rect(body.x+gw,body.yMax-gw*2.6f,body.width-gw*2f,gw*1.6f),gs);
+            }
             Rect c=Content(r);
             Rect title=new Rect(c.x,c.y,c.width,c.height*0.36f);
-            Text(title,side<0?"ЛЕВЫЙ БОРТ":"ПРАВЫЙ БОРТ",l.unit*0.03f,cream);
+            Text(title,side<0?"ЛЕВЫЙ БОРТ":"ПРАВЫЙ БОРТ",c.height*0.3f,cream);   // размер — от кнопки (кнопки стали меньше)
             Rect row=new Rect(c.x,c.y+c.height*0.38f,c.width,c.height*0.5f);
             if(HasKit)
             {
@@ -391,7 +401,7 @@ namespace SkyTide
                 float gapX=ih*0.15f;
                 row=side<0?new Rect(row.x+iw+gapX,row.y,row.width-iw-gapX,row.height):new Rect(row.x,row.y,row.width-iw-gapX,row.height);
             }
-            Text(row,ready?(aimed?"В ПРИЦЕЛЕ":idle):((1f-readiness)*cooldown).ToString("F1")+" с",l.unit*0.03f,ready?(aimed?new Color(1f,0.88f,0.55f):gold):cream);   // секунды — светлым: на раскалённой заливке серые не читались
+            Text(row,ready?(aimed?"В ПРИЦЕЛЕ":idle):((1f-readiness)*cooldown).ToString("F1")+" с",c.height*0.3f,ready?(aimed?new Color(1f,0.72f,0.35f):gold):cream);   // секунды — светлым: на раскалённой заливке серые не читались
             float bh=Mathf.Max(3f,c.height*0.13f);   // полоса заряда толще: в ней теперь вся индикация перезарядки
             Rect bar=new Rect(c.x,c.yMax-bh,c.width,bh);
             if(HasKit)
