@@ -415,7 +415,9 @@ namespace SkyTide
             ImageRect(tCompass, new Rect(strip.x, strip.y, capW, sh), new Rect(0f, 0f, CAP / TW, 1f), Color.white);
             ImageRect(tCompass, new Rect(x1, strip.y, capW, sh), new Rect(1f - CAP / TW, 0f, CAP / TW, 1f), Color.white);
             float cx = strip.center.x;
+            if (!(periodPx > 0.5f) || float.IsInfinity(degPx) || float.IsNaN(heading) || x1 <= x0) return;   // пока экран не размечен (unit = 0) — иначе цикл ниже уходил в миллиарды шагов и игра висела на сером экране
             int dFirst = Mathf.FloorToInt((heading - (cx - x0) * degPx) / 45f) - 1, dLast = Mathf.CeilToInt((heading + (x1 - cx) * degPx) / 45f) + 1;
+            if (dLast - dFirst > 24) dLast = dFirst + 24;
             for (int n = dFirst; n <= dLast; n++)
             {
                 float xs = cx + (n * 45f - heading) / degPx, xe = xs + periodPx;
