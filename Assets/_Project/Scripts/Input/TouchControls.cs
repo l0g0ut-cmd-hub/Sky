@@ -367,7 +367,8 @@ namespace SkyTide
                 ship.turn = Mathf.Clamp(stickValue.x + kx, -1f, 1f);
                 ship.throttle = GearThrottle[gear];
                 PlayerBoarding pbs = Application.isPlaying ? Boarding() : null;
-                if (pbs != null && pbs.Active) { ship.turn = 0f; ship.throttle = 0f; }
+                if (RemotePilot.Active && Application.isPlaying) RemotePilot.Drive(ship);
+                else if (pbs != null && pbs.Active) { ship.turn = 0f; ship.throttle = 0f; }
                 else if (AutoBattle && Application.isPlaying)
                 {
                     if (autopilot == null || autopilot.gameObject != ship.gameObject)
@@ -500,9 +501,11 @@ namespace SkyTide
             Rect safe=new Rect(s.x/sw*width,(sh-s.yMax)/sh*height,s.width/sw*width,s.height/sh*height);
             return HudLayout.Build(width,height,safe,stickRadius);
         }
+        /// <summary>Скрыть HUD (удалённая команда hud 0 — чистые кадры).</summary>
+        public static bool HideHud;
         public void DrawHud(RenderTexture destination,int width,int height)
         {
-            if(!isActiveAndEnabled||game==null||ship==null)return;
+            if(!isActiveAndEnabled||game==null||ship==null||HideHud)return;
 #if UNITY_EDITOR
             if(!Application.isPlaying&&!captureVisible)return;
 #endif

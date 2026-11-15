@@ -128,10 +128,10 @@ namespace SkyTide
             int slot = markSlot; markSlot = (markSlot + 1) % 10;
             PlayerPrefs.SetInt("SkyTide.ReportMark", markSlot);
             bool wasOpen = PerfPanel.Open;
-            PerfPanel.Open = false;
+            PerfPanel.Open = false; ControlBanner.HiddenForShot = true;
             yield return null; yield return new WaitForEndOfFrame();
             Texture2D shot = ScreenCapture.CaptureScreenshotAsTexture();
-            PerfPanel.Open = wasOpen;
+            PerfPanel.Open = wasOpen; ControlBanner.HiddenForShot = false;
             if (shot != null)
             {
                 int w = shot.width / 2, h = shot.height / 2;
@@ -149,6 +149,41 @@ namespace SkyTide
             Enqueue("reports/mark" + slot + ".txt", bytes);
             Enqueue("reports/latest.txt", bytes);
         }
+
+        // ---------- снимки ракурсов для ассистента (команда photo) ----------
+        // reports/photo0..19.jpg по кругу + reports/photos.txt — подпись, время, поза камеры. Без отчёта, без ограничения частоты.
+        int photoSlot = -1;
+        readonly System.Collections.Generic.Queue<string> photoIndex = new System.Collections.Generic.Queue<string>();
+        public void Photo(string label, bool full)
+        {
+            if (!Ready) return;
+            StartCoroutine(PhotoRoutine(label, full));
+        }
+        IEnumerator PhotoRoutine(string label, bool full)
+        {
+            if (photoSlot < 0) photoSlot = 0;
+            int slot = photoSlot; photoSlot = (photoSlot + 1) % 20;
+            bool wasOpen = PerfPanel.Open; PerfPanel.Open = false; ControlBanner.HiddenForShot = true;
+            yield return null; yield return new WaitForEndOfFrame();
+            Texture2D shot = ScreenCapture.CaptureScreenshotAsTexture();
+            PerfPanel.Open = wasOpen; ControlBanner.HiddenForShot = false;
+            if (shot == null) yield break;
+            int w = full ? shot.width : shot.width / 2, h = full ? shot.height : shot.height / 2;
+            RenderTexture rt = RenderTexture.GetTemporary(w, h, 0);
+            Graphics.Blit(shot, rt);
+            RenderTexture prev = RenderTexture.active; RenderTexture.active = rt;
+            Texture2D small = new Texture2D(w, h, TextureFormat.RGB24, false);
+            small.ReadPixels(new Rect(0, 0, w, h), 0, 0); small.Apply();
+            RenderTexture.active = prev; RenderTexture.ReleaseTemporary(rt);
+            Enqueue("reports/photo" + slot + ".jpg", small.EncodeToJPG(full ? 88 : 80));
+            Destroy(shot); Destroy(small);
+            Camera cam = Camera.main;
+            string pose = cam != null ? " · кам " + Vec(cam.transform.position) + " курс " + Mathf.RoundToInt(cam.transform.eulerAngles.y) + " накл " + Mathf.RoundToInt(Mathf.DeltaAngle(0f, cam.transform.eulerAngles.x)) + " обзор " + Mathf.RoundToInt(cam.fieldOfView) : "";
+            photoIndex.Enqueue("photo" + slot + " · " + System.DateTime.Now.ToString("HH:mm:ss") + " · " + label + pose + " · FPS " + (1f / Mathf.Max(1e-3f, Time.smoothDeltaTime)).ToString("F0"));
+            while (photoIndex.Count > 20) photoIndex.Dequeue();
+            Enqueue("reports/photos.txt", Encoding.UTF8.GetBytes(string.Join("\n", photoIndex.ToArray()) + "\n"));
+        }
+        static string Vec(Vector3 v) { return Mathf.RoundToInt(v.x) + "," + Mathf.RoundToInt(v.y) + "," + Mathf.RoundToInt(v.z); }
 
         void Enqueue(string path, byte[] data)
         {

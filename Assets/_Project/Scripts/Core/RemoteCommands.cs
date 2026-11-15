@@ -63,10 +63,26 @@ namespace SkyTide
                 if (b.id <= last || b.cmds.Length == 0) { Status = "команды: последняя #" + Mathf.Max(last, b.id); if (b.id > last) { PlayerPrefs.SetInt(LastKey, b.id); PlayerPrefs.Save(); } yield break; }
                 PlayerPrefs.SetInt(LastKey, b.id); PlayerPrefs.Save();
                 if (b.expires > 0 && now > b.expires) { Status = "команды: #" + b.id + " просрочена"; DebugReport.Event("команды #" + b.id + " просрочены — пропущены"); yield break; }
+                // Оценка длительности партии — для таблички «УПРАВЛЯЕТ CLAUDE · ЖДИ M:SS».
+                float est = 1f; bool hold = false;
+                foreach (string c0 in b.cmds)
+                {
+                    if (string.IsNullOrEmpty(c0)) continue;
+                    string[] p = c0.Split(' ');
+                    float n = 0f; if (p.Length > 1) float.TryParse(p[1], System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out n);
+                    if (p[0] == "wait") est += Mathf.Clamp(n, 0.1f, 60f);
+                    else if (p[0] == "fps") est += 1f;   // замер идёт параллельно — время даёт следующий wait
+                    else if (p[0] == "photo" || p[0] == "shot") est += 0.5f;
+                    else if (p[0] == "hold") hold = true;
+                    else est += 0.05f;
+                }
+                ControlBanner.BusyUntil = Time.realtimeSinceStartup + est; ControlBanner.Cancelled = false;
                 StringBuilder ack = new StringBuilder("команды #" + b.id + " · " + System.DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss") + " · сборка " + DebugReport.BuildNo + "\n");
                 foreach (string c in b.cmds)
                 {
                     if (string.IsNullOrEmpty(c)) continue;
+                    if (ControlBanner.Cancelled) { ack.AppendLine("ОТМЕНЕНО владельцем на: " + c); break; }
+                    if (c == "hold") { ack.AppendLine("hold → управление остаётся"); continue; }
                     if (c.StartsWith("wait"))
                     {
                         float s = 2f; float.TryParse(c.Substring(4).Trim(), System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out s);
@@ -76,6 +92,9 @@ namespace SkyTide
                     ack.AppendLine(c + " → " + DevCommands.Run(c));
                     yield return null;
                 }
+                // Конец партии — управление владельцу (кроме hold).
+                ControlBanner.BusyUntil = -1f;
+                if (!hold) { RemotePilot.Release(); RemoteCam.Off(); TouchControls.HideHud = false; }
                 Status = "команды: выполнена #" + b.id;
                 LiveUntil = Time.realtimeSinceStartup + 600f;
                 ReportUploader u = ReportUploader.Instance;

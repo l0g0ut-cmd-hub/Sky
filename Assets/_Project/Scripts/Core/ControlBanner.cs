@@ -1,0 +1,49 @@
+using UnityEngine;
+
+namespace SkyTide
+{
+    /// <summary>
+    /// Табличка на время удалённой проверки: «УПРАВЛЯЕТ CLAUDE · ЖДИ M:SS» и «коснись экрана — отменить».
+    /// Время — оценка партии команд (сумма wait/fps/…). На снимках (photo/shot) табличка прячется.
+    /// </summary>
+    public class ControlBanner : MonoBehaviour
+    {
+        public static float BusyUntil = -1f;
+        public static bool HiddenForShot;
+        public static bool Cancelled;
+        GUIStyle big, small; Texture2D bg;
+
+        public static bool Busy { get { return Time.realtimeSinceStartup < BusyUntil || RemotePilot.Active || RemoteCam.M != RemoteCam.Mode.Off; } }
+
+        void Update()
+        {
+            if (Busy && Input.touchCount > 0 && Time.realtimeSinceStartup < BusyUntil)
+            {
+                Cancelled = true; BusyUntil = -1f; RemotePilot.Release(); RemoteCam.Off(); TouchControls.HideHud = false;
+                DebugReport.Event("удалённая проверка отменена касанием владельца");
+            }
+        }
+
+        void OnGUI()
+        {
+            if (!Busy || HiddenForShot) return;
+            float u = Mathf.Min(Screen.width, Screen.height);
+            if (big == null)
+            {
+                bg = new Texture2D(1, 1); bg.SetPixel(0, 0, new Color(0.08f, 0.05f, 0.02f, 0.72f)); bg.Apply();
+                big = new GUIStyle(GUI.skin.label) { alignment = TextAnchor.MiddleCenter, fontStyle = FontStyle.Bold, fontSize = Mathf.RoundToInt(u * 0.075f) };
+                big.normal.textColor = new Color(1f, 0.85f, 0.45f);
+                small = new GUIStyle(big) { fontSize = Mathf.RoundToInt(u * 0.042f), fontStyle = FontStyle.Normal };
+                small.normal.textColor = Color.white;
+            }
+            float w = Screen.width * 0.62f, h = u * 0.30f;
+            Rect r = new Rect((Screen.width - w) * 0.5f, Screen.height * 0.18f, w, h);
+            GUI.DrawTexture(r, bg);
+            GUI.Label(new Rect(r.x, r.y + h * 0.04f, w, h * 0.42f), "УПРАВЛЯЕТ CLAUDE", big);
+            float left = BusyUntil - Time.realtimeSinceStartup;
+            string t = left > 0f ? "ЖДИ " + Mathf.FloorToInt(left / 60f) + ":" + Mathf.FloorToInt(left % 60f).ToString("00") : "ИДЁТ ПРОВЕРКА";
+            GUI.Label(new Rect(r.x, r.y + h * 0.46f, w, h * 0.28f), t, small);
+            GUI.Label(new Rect(r.x, r.y + h * 0.72f, w, h * 0.24f), "коснись экрана — отменить", small);
+        }
+    }
+}

@@ -15,7 +15,9 @@ namespace SkyTide
             "repair · hurt 25 — флагману 25% · weather storm|haze|clear · merchant — враг к торговцу · all1km — все враги в 1 км · " +
             "auto on|off — автобой · config — перечитать config.json · cfg поле число — правка баланса на лету · " +
             "shot [почему] — метка со снимком · report — отчёт сейчас · bench — автозамер · " +
-            "set clouds|fps60|post|crew|sharpen|fortress|fortshadow|lod|fx 0|1 · set shadows 0|1|2 · fps N — замер N с (в отчёт) · say текст — надпись на экране";
+            "where — координаты всех · pilot goto x z [ход]|heading град|speed|stop|release · go цель [N] [ход] · tp x z [курс] · " +
+            "cam orbit цель [N] угол наклон дист|at x y z курс наклон|look x y z цель [N]|fov N|height N|off · hud 0|1 · photo [full] подпись · " +
+            "цели: me fortress berth near enemy N ally N merchant · set clouds|fps60|post|crew|sharpen|fortress|fortshadow|lod|fx 0|1 · set shadows 0|1|2 · fps N — замер N с (в отчёт) · say текст — надпись на экране";
 
         public static float TimeScaleSet = 1f;
         static readonly StringBuilder measures = new StringBuilder();
@@ -41,7 +43,7 @@ namespace SkyTide
             catch (System.Exception e) { result = "ошибка: " + e.GetType().Name + " " + e.Message; }
             DebugReport.Event("ТЕСТ: " + line + " → " + result);
             DebugReport.Count("тест-команд");
-            HudNotice.Show("ТЕСТ: " + line, 0, 2f);
+            if (!ControlBanner.Busy) HudNotice.Show("ТЕСТ: " + line, 0, 2f);   // во время удалённой проверки — табличка, без надписей в кадре
             return result;
         }
 
@@ -143,6 +145,29 @@ namespace SkyTide
                 case "report": if (ReportUploader.Instance == null) return "нет отправки"; ReportUploader.Instance.UploadReport(); return "отчёт отправлен";
                 case "bench": if (PerfPanel.Instance == null) return "нет панели"; PerfPanel.Instance.StartBench(); return "автозамер";
                 case "fps": if (PerfPanel.Instance == null) return "нет панели"; PerfPanel.Instance.StartCoroutine(Measure(arg)); return "замер";
+                case "where": return Where(me);
+                case "pilot": return Pilot(arg, a);
+                case "go":
+                    {
+                        Transform t = Find(arg, a.Length > 2 ? a[2] : null);
+                        if (t == null) return "не нашёл " + arg;
+                        RemotePilot.GoTo(t, Num(a, a.Length > 3 ? 3 : 99, 0.7f), arg); return RemotePilot.State;
+                    }
+                case "tp":
+                    {
+                        if (me == null || a.Length < 3) return "tp x z [курс]";
+                        Vector3 p = new Vector3(Num(a, 1, 0f), me.position.y, Num(a, 2, 0f));
+                        me.SetPositionAndRotation(p, Quaternion.Euler(0f, Num(a, 3, me.eulerAngles.y), 0f)); return "флагман в " + p.x + "," + p.z;
+                    }
+                case "cam": return Cam(arg, a);
+                case "hud": TouchControls.HideHud = arg == "0" || arg == "off"; return "HUD " + (TouchControls.HideHud ? "скрыт" : "виден");
+                case "photo":
+                    {
+                        if (ReportUploader.Instance == null) return "нет отправки";
+                        bool full = arg == "full";
+                        string label = line.Length > 5 ? line.Substring(5).Trim() : "снимок";
+                        ReportUploader.Instance.Photo(label, full); return "снимок";
+                    }
                 case "say": HudNotice.Show(line.Substring(3).Trim(), 0, 6f); return "показано";
                 case "set": return Set(arg, a.Length > 2 ? a[2] : "1", g);
             }
@@ -196,6 +221,101 @@ namespace SkyTide
             DebugReport.Event(r);
             measures.AppendLine(System.DateTime.Now.ToString("HH:mm:ss") + " " + r + " · " + Settings());
             if (ReportUploader.Instance != null) ReportUploader.Instance.Put("reports/ab.txt", System.Text.Encoding.UTF8.GetBytes("замеры этой сессии (сборка " + DebugReport.BuildNo + "):\n" + measures));
+        }
+
+        static float Num(string[] a, int i, float def)
+        {
+            float v; return i < a.Length && float.TryParse(a[i], System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out v) ? v : def;
+        }
+
+        /// <summary>Объект по имени: me, fortress, berth, near (ближний враг), enemy N, ally N, merchant.</summary>
+        static Transform Find(string what, string n)
+        {
+            SkyTideBootstrap g = SkyTideBootstrap.Instance;
+            Transform me = g != null && g.Ship != null ? g.Ship.transform : null;
+            int k; int.TryParse(n, out k);
+            switch (what)
+            {
+                case "me": case "flagship": return me;
+                case "fortress": case "berth":
+                    {
+                        SkyFortress f = SkyFortress.Instance; if (f == null) return null;
+                        GameObject marker = GameObject.Find(what == "berth" ? "SkyTide.BerthMarker" : "SkyTide.FortressMarker");
+                        if (marker == null) marker = new GameObject(what == "berth" ? "SkyTide.BerthMarker" : "SkyTide.FortressMarker");
+                        marker.transform.position = what == "berth" ? f.BerthWorld : f.Center;
+                        return marker.transform;
+                    }
+                case "near": { TargetShip t = Nearest(me); return t != null ? t.transform : null; }
+                case "enemy": { TargetShip.Created.RemoveAll(x => x == null); return k >= 1 && k <= TargetShip.Created.Count ? TargetShip.Created[k - 1].transform : null; }
+                case "ally": { int i = 0; foreach (AllyShip al in AllyShip.All) if (al != null && ++i == k) return al.transform; return null; }
+                case "merchant": foreach (AllyShip al in AllyShip.All) if (al != null && al.role == AllyShip.Role.Merchant) return al.transform; return null;
+            }
+            return null;
+        }
+
+        static string Where(Transform me)
+        {
+            StringBuilder b = new StringBuilder();
+            if (me != null) b.Append("флагман ").Append(V(me.position)).Append(" курс ").Append(Mathf.RoundToInt(me.eulerAngles.y));
+            SkyFortress f = SkyFortress.Instance;
+            if (f != null) b.Append(" · крепость ").Append(V(f.Center)).Append(" причал ").Append(V(f.BerthWorld));
+            int i = 0;
+            foreach (TargetShip t in TargetShip.Created) { i++; if (t != null && t.gameObject.activeInHierarchy) b.Append(" · враг ").Append(i).Append(t.Alive ? " " + V(t.transform.position) : " потоплен"); }
+            i = 0;
+            foreach (AllyShip al in AllyShip.All) { i++; if (al != null) b.Append(" · свой ").Append(i).Append(' ').Append(al.role).Append(' ').Append(V(al.transform.position)); }
+            Camera cam = Camera.main;
+            if (cam != null) b.Append(" · камера ").Append(V(cam.transform.position)).Append(" (").Append(RemoteCam.State).Append(")");
+            return b.ToString();
+        }
+        static string V(Vector3 p) { return Mathf.RoundToInt(p.x) + "," + Mathf.RoundToInt(p.y) + "," + Mathf.RoundToInt(p.z); }
+
+        static string Pilot(string arg, string[] a)
+        {
+            switch (arg)
+            {
+                case "goto": if (a.Length < 4) return "pilot goto x z [ход]"; RemotePilot.GoTo(new Vector3(Num(a, 2, 0f), 0f, Num(a, 3, 0f)), Num(a, 4, 0.7f)); return RemotePilot.State;
+                case "heading": RemotePilot.Heading(Num(a, 2, 0f), Num(a, 3, 0.6f)); return RemotePilot.State;
+                case "speed": RemotePilot.Speed(Num(a, 2, 0.6f)); return "ход " + Num(a, 2, 0.6f);
+                case "stop": RemotePilot.Stop(); return "стоп";
+                case "release": case "off": RemotePilot.Release(); return "управление владельцу";
+            }
+            return "pilot goto x z [ход] | heading град [ход] | speed 0..1 | stop | release";
+        }
+
+        static string Cam(string arg, string[] a)
+        {
+            EnsureCam();
+            switch (arg)
+            {
+                case "orbit":   // cam orbit цель [N] угол наклон дистанция
+                    {
+                        int o = 3; string n = null;
+                        if (a.Length > 3 && (a[2] == "enemy" || a[2] == "ally")) { n = a[3]; o = 4; }
+                        Transform t = Find(a.Length > 2 ? a[2] : "me", n);
+                        if (t == null) return "не нашёл цель";
+                        RemoteCam.Target = t; RemoteCam.Yaw = Num(a, o, 200f); RemoteCam.Pitch = Num(a, o + 1, 15f); RemoteCam.Dist = Num(a, o + 2, 120f);
+                        RemoteCam.M = RemoteCam.Mode.Orbit; RemoteCam.State = "орбита " + a[2]; return RemoteCam.State;
+                    }
+                case "at":      // cam at x y z курс наклон
+                    RemoteCam.Pos = new Vector3(Num(a, 2, 0f), Num(a, 3, 80f), Num(a, 4, 0f)); RemoteCam.Yaw = Num(a, 5, 0f); RemoteCam.Pitch = Num(a, 6, 10f);
+                    RemoteCam.M = RemoteCam.Mode.At; RemoteCam.State = "точка"; return RemoteCam.State;
+                case "look":    // cam look x y z цель [N]
+                    {
+                        RemoteCam.Pos = new Vector3(Num(a, 2, 0f), Num(a, 3, 80f), Num(a, 4, 0f));
+                        RemoteCam.Target = Find(a.Length > 5 ? a[5] : "me", a.Length > 6 ? a[6] : null);
+                        RemoteCam.M = RemoteCam.Mode.Look; RemoteCam.State = "взгляд"; return RemoteCam.State;
+                    }
+                case "fov": RemoteCam.Fov = Mathf.Clamp(Num(a, 2, 0f), 0f, 120f); return "обзор " + RemoteCam.Fov;
+                case "height": RemoteCam.Height = Num(a, 2, 10f); return "высота взгляда " + RemoteCam.Height;
+                case "off": case "follow": RemoteCam.Off(); return "камера обычная";
+            }
+            return "cam orbit цель угол наклон дист | at x y z курс наклон | look x y z цель | fov N | off";
+        }
+
+        static void EnsureCam()
+        {
+            Camera c = Camera.main;
+            if (c != null && c.GetComponent<RemoteCam>() == null) c.gameObject.AddComponent<RemoteCam>();
         }
 
         public static string List()

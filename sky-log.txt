@@ -1993,3 +1993,9 @@ Core/ReportUploader: полный отчёт раз в 5 мин и при сво
   разведчик, экипаж у первых 9), TargetShip.Created — порядок создания. Sky-reports config v2: 18.
   ShipLod: дальше CullDistance (2200 м, конфиг cullDistance, команда set cull N) корабль не рисуется; тень лёгкой модели
   дальше дальности теней выключена. tools/sky-cmd.sh — повтор push при гонке с отчётами игры.
+- Удалённое управление (владелец 15.11: «направлять корабль, двигать камеру, скриншоты нужных ракурсов»):
+  Core/RemotePilot (pilot goto x z|heading|speed|stop|release, go цель, tp x z), CameraRig/RemoteCam (cam orbit цель угол
+  наклон дист | at x y z курс наклон | look x y z цель | fov | height | off), hud 0|1, photo [full] подпись →
+  reports/photo0..19.jpg + photos.txt (поза камеры, FPS), where — координаты всех. Цели: me fortress berth near enemy N
+  ally N merchant. Табличка Core/ControlBanner «УПРАВЛЯЕТ CLAUDE · ЖДИ M:SS» (оценка партии), касание — отмена; на снимках
+  табличка и надписи «ТЕСТ» скрыты. Конец партии — управление, камера, HUD возвращаются (кроме команды hold).
