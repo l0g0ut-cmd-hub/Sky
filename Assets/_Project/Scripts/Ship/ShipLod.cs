@@ -21,16 +21,21 @@ namespace SkyTide
         MeshRenderer full, lite;
         float lodDistance;
 
+        /// <summary>Цвета вершин полной модели, снятые до UploadMeshData (сетка потом нечитаема).</summary>
+        public static readonly Dictionary<Mesh, Color32[]> SourceColors = new Dictionary<Mesh, Color32[]>();
+
         public static void Attach(MeshRenderer full, Mesh fullMesh, Mesh liteMesh, int[] src, Material[] materials, float lodDistance)
         {
             if (full == null || fullMesh == null || liteMesh == null) return;
-            if (src != null && src.Length == liteMesh.vertexCount && fullMesh.colors32 != null && fullMesh.colors32.Length == fullMesh.vertexCount)
+            Color32[] fc;
+            if (!SourceColors.TryGetValue(fullMesh, out fc)) fc = fullMesh.isReadable ? fullMesh.colors32 : null;
+            if (src != null && src.Length == liteMesh.vertexCount && fc != null && fc.Length == fullMesh.vertexCount)
             {
-                Color32[] fc = fullMesh.colors32, lc = new Color32[src.Length];
+                Color32[] lc = new Color32[src.Length];
                 for (int i = 0; i < src.Length; i++) { int s = src[i]; lc[i] = (uint)s < (uint)fc.Length ? fc[s] : new Color32(0, 128, 128, 0); }
                 liteMesh.colors32 = lc;
             }
-            else if (fullMesh.colors32 != null && fullMesh.colors32.Length > 0)
+            else if (fc != null && fc.Length > 0)
             {
                 // без карты — нейтральные цвета (без ветра и отката), иначе шейдер ткани качал бы весь корпус
                 Color32[] lc = new Color32[liteMesh.vertexCount];

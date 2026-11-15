@@ -15,9 +15,18 @@ namespace SkyTide
             "repair · hurt 25 — флагману 25% · weather storm|haze|clear · merchant — враг к торговцу · all1km — все враги в 1 км · " +
             "auto on|off — автобой · config — перечитать config.json · cfg поле число — правка баланса на лету · " +
             "shot [почему] — метка со снимком · report — отчёт сейчас · bench — автозамер · " +
-            "set clouds 0|1 · set fps60 0|1 · set shadows 0|1|2 · set post 0|1 · set crew 0|1 · say текст — надпись на экране";
+            "set clouds|fps60|post|crew|sharpen|fortress|fortshadow|lod|fx 0|1 · set shadows 0|1|2 · fps N — замер N с (в отчёт) · say текст — надпись на экране";
 
         public static float TimeScaleSet = 1f;
+        static readonly StringBuilder measures = new StringBuilder();
+        static string Settings()
+        {
+            SkyTideBootstrap g = SkyTideBootstrap.Instance;
+            SkyTidePost p = Camera.main != null ? Camera.main.GetComponent<SkyTidePost>() : null;
+            return "облака " + (g != null && g.volumetricClouds ? "об" : "рис") + " тени " + QualitySettings.shadows + " пост " + (p != null && p.enabled)
+                + " резк " + SkyTidePost.Sharpen + " крепость " + (g != null && g.Fortress != null && g.Fortress.Visible) + " LOD " + ShipLod.Enabled
+                + " темп " + (DebugRecorder.Instance != null ? DebugRecorder.Instance.BatteryTemp.ToString("F1") : "?");
+        }
 
         /// <summary>Выполнить команду; вернуть короткий итог для отчёта.</summary>
         public static string Run(string line)
@@ -133,6 +142,7 @@ namespace SkyTide
                     ReportUploader.Instance.Mark(line.Length > cmd.Length ? "команда: " + line.Substring(cmd.Length).Trim() : "удалённая команда"); return "метка";
                 case "report": if (ReportUploader.Instance == null) return "нет отправки"; ReportUploader.Instance.UploadReport(); return "отчёт отправлен";
                 case "bench": if (PerfPanel.Instance == null) return "нет панели"; PerfPanel.Instance.StartBench(); return "автозамер";
+                case "fps": if (PerfPanel.Instance == null) return "нет панели"; PerfPanel.Instance.StartCoroutine(Measure(arg)); return "замер";
                 case "say": HudNotice.Show(line.Substring(3).Trim(), 0, 6f); return "показано";
                 case "set": return Set(arg, a.Length > 2 ? a[2] : "1", g);
             }
@@ -153,6 +163,11 @@ namespace SkyTide
                         SkyTidePost p = Camera.main != null ? Camera.main.GetComponent<SkyTidePost>() : null;
                         if (p == null) return "нет поста"; p.enabled = on; return "пост " + on;
                     }
+                case "sharpen": SkyTidePost.Sharpen = on; return "резкость " + on;
+                case "fortress": if (g == null || g.Fortress == null) return "нет крепости"; g.Fortress.Visible = on; return "крепость видна " + on;
+                case "fortshadow": SkyFortress.ShadowsFar = on; return "тень крепости издалека " + on;
+                case "lod": ShipLod.Enabled = on; return "лёгкие модели " + on;
+                case "fx": if (g == null || g.Fx == null) return "нет эффектов"; g.Fx.debugHidden = !on; return "эффекты " + on;
                 case "crew":
                     {
                         ShipCrew c = g != null && g.Ship != null ? g.Ship.GetComponent<ShipCrew>() : null;
@@ -160,6 +175,26 @@ namespace SkyTide
                     }
             }
             return "нет настройки " + what;
+        }
+
+        /// <summary>Замер FPS и ВК за N секунд (для A/B удалённо: set … → wait → fps 8).</summary>
+        static System.Collections.IEnumerator Measure(string arg)
+        {
+            float s = 8f; float.TryParse(arg, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out s);
+            s = Mathf.Clamp(s <= 0f ? 8f : s, 2f, 60f);
+            yield return new WaitForSecondsRealtime(1f);
+            float t0 = Time.realtimeSinceStartup; int frames = 0; double gpu = 0; int gpuN = 0;
+            FrameTiming[] ft = new FrameTiming[1];
+            while (Time.realtimeSinceStartup - t0 < s)
+            {
+                yield return null; frames++;
+                FrameTimingManager.CaptureFrameTimings();
+                if (FrameTimingManager.GetLatestTimings(1, ft) > 0 && ft[0].gpuFrameTime > 0) { gpu += ft[0].gpuFrameTime; gpuN++; }
+            }
+            string r = "ЗАМЕР " + s.ToString("F0") + " с: FPS " + (frames / (Time.realtimeSinceStartup - t0)).ToString("F1") + " · ВК " + (gpuN > 0 ? (gpu / gpuN).ToString("F1") : "н/д") + " мс";
+            DebugReport.Event(r);
+            measures.AppendLine(System.DateTime.Now.ToString("HH:mm:ss") + " " + r + " · " + Settings());
+            if (ReportUploader.Instance != null) ReportUploader.Instance.Put("reports/ab.txt", System.Text.Encoding.UTF8.GetBytes("замеры этой сессии (сборка " + DebugReport.BuildNo + "):\n" + measures));
         }
 
         public static string List()

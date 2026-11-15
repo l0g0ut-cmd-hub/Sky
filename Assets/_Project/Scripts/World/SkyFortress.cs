@@ -292,10 +292,27 @@ namespace SkyTide
         /// <summary>Радиус описанного круга крепости в плане (м, с учётом масштаба).</summary>
         public float BoundRadius { get { return boundRadius; } }
 
+        /// <summary>Тень крепости (139 тыс. треугольников в карту теней каждый кадр) — только когда камера ближе
+        /// дальности теней к её габариту. Издалека тени крепости на корабли всё равно не падают. ShadowsFar — переключатель для A/B.</summary>
+        public static bool ShadowsFar;
+        MeshRenderer modelRenderer;
+        void FarShadows()
+        {
+            if (model == null) return;
+            if (modelRenderer == null) modelRenderer = model.GetComponent<MeshRenderer>();
+            Camera cam = Camera.main;
+            if (modelRenderer == null || cam == null) return;
+            float sd = QualitySettings.shadowDistance + 50f;
+            bool near = ShadowsFar || modelRenderer.bounds.SqrDistance(cam.transform.position) < sd * sd;
+            UnityEngine.Rendering.ShadowCastingMode want = near ? UnityEngine.Rendering.ShadowCastingMode.On : UnityEngine.Rendering.ShadowCastingMode.Off;
+            if (modelRenderer.shadowCastingMode != want) modelRenderer.shadowCastingMode = want;
+        }
+
         void Update()
         {
             long pt = PerfTimers.Start();
             Tick(Time.deltaTime);
+            FarShadows();
             PerfTimers.Stop("Крепость", pt);
         }
 

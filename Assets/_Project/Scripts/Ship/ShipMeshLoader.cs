@@ -82,6 +82,9 @@ namespace SkyTide
             ShipWindWeights.Apply(mesh, b, wind);
             ShipGunWeights.Apply(mesh, b, recoil);
             sail=ShipSteeringSail.Split(mesh,b,steering);
+            // Цвета вершин (ветер/откат) нужны лёгкой модели LOD, а после UploadMeshData(true) сетка не читается —
+            // раньше ShipLod читал их у нечитаемой сетки: 46 ошибок «Not allowed to access colors» и лёгкая модель без весов.
+            ShipLod.SourceColors[mesh] = mesh.colors32;
             mesh.UploadMeshData(true);
             return mesh;
         }

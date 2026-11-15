@@ -60,7 +60,7 @@ namespace SkyTide
                 if (b == null || b.cmds == null) { Status = "команды: файл не разобран"; yield break; }
                 int last = PlayerPrefs.GetInt(LastKey, -1);
                 long now = System.DateTimeOffset.UtcNow.ToUnixTimeSeconds();
-                if (b.id <= last) { Status = "команды: последняя #" + last; yield break; }
+                if (b.id <= last || b.cmds.Length == 0) { Status = "команды: последняя #" + Mathf.Max(last, b.id); if (b.id > last) { PlayerPrefs.SetInt(LastKey, b.id); PlayerPrefs.Save(); } yield break; }
                 PlayerPrefs.SetInt(LastKey, b.id); PlayerPrefs.Save();
                 if (b.expires > 0 && now > b.expires) { Status = "команды: #" + b.id + " просрочена"; DebugReport.Event("команды #" + b.id + " просрочены — пропущены"); yield break; }
                 StringBuilder ack = new StringBuilder("команды #" + b.id + " · " + System.DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss") + " · сборка " + DebugReport.BuildNo + "\n");
