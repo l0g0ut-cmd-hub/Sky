@@ -158,6 +158,12 @@ namespace SkyTide
                         if (t == null) return "не нашёл " + arg;
                         RemotePilot.GoTo(t, Num(a, a.Length > 3 ? 3 : 99, 0.7f), arg); return RemotePilot.State;
                     }
+                case "duel":
+                    {
+                        Transform t = Find(arg == "" ? "near" : arg, a.Length > 2 ? a[2] : null);
+                        if (t == null) return "нет цели";
+                        RemotePilot.Duel(t, arg == "" ? "near" : arg); return RemotePilot.State;
+                    }
                 case "tp":
                     {
                         if (me == null || a.Length < 3) return "tp x z [курс]";

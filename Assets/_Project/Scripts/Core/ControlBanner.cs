@@ -14,6 +14,10 @@ namespace SkyTide
         GUIStyle big, small; Texture2D bg;
 
         public static bool Busy { get { return Time.realtimeSinceStartup < BusyUntil || RemotePilot.Active || RemoteCam.M != RemoteCam.Mode.Off; } }
+        /// <summary>Партия закончилась, но снимки ещё уходят: «ОТПРАВКА N» → «ГОТОВО — МОЖНО СВОРАЧИВАТЬ» (15.11: владелец уходил
+        /// в чат раньше, игра вставала на паузу, отправка обрывалась).</summary>
+        public static bool AwaitUpload;
+        float doneUntil;
 
         void Update()
         {
@@ -26,7 +30,23 @@ namespace SkyTide
 
         void OnGUI()
         {
-            if (!Busy || HiddenForShot) return;
+            if (HiddenForShot) return;
+            ReportUploader up = ReportUploader.Instance;
+            if (!Busy && (AwaitUpload || Time.realtimeSinceStartup < doneUntil))
+            {
+                int n = up != null ? up.Pending : 0;
+                if (AwaitUpload && n == 0) { AwaitUpload = false; doneUntil = Time.realtimeSinceStartup + 8f; }
+                Strip(AwaitUpload ? "ОТПРАВКА СНИМКОВ: " + n + " · НЕ СВОРАЧИВАЙ" : "ГОТОВО — МОЖНО СВОРАЧИВАТЬ", "");
+                return;
+            }
+            if (!Busy) return;
+            float left = BusyUntil - Time.realtimeSinceStartup;
+            string t = left > 0f ? "ЖДИ " + Mathf.FloorToInt(left / 60f) + ":" + Mathf.FloorToInt(left % 60f).ToString("00") : "ИДЁТ ПРОВЕРКА";
+            Strip("УПРАВЛЯЕТ CLAUDE · " + t, "коснись — отменить");
+        }
+
+        void Strip(string main, string hint)
+        {
             float u = Mathf.Min(Screen.width, Screen.height);
             if (big == null)
             {
@@ -41,10 +61,8 @@ namespace SkyTide
             // Под полосой корпуса (на 21% высоты): у края она закрывала компас курса (скриншот владельца 15.11).
             Rect r = new Rect((Screen.width - w) * 0.5f, Screen.height * 0.21f, w, h);
             GUI.DrawTexture(r, bg);
-            float left = BusyUntil - Time.realtimeSinceStartup;
-            string t = left > 0f ? "ЖДИ " + Mathf.FloorToInt(left / 60f) + ":" + Mathf.FloorToInt(left % 60f).ToString("00") : "ИДЁТ ПРОВЕРКА";
-            GUI.Label(new Rect(r.x, r.y, w * 0.62f, h), "УПРАВЛЯЕТ CLAUDE · " + t, big);
-            GUI.Label(new Rect(r.x + w * 0.62f, r.y, w * 0.38f, h), "коснись — отменить", small);
+            GUI.Label(new Rect(r.x, r.y, hint == "" ? w : w * 0.62f, h), main, big);
+            if (hint != "") GUI.Label(new Rect(r.x + w * 0.62f, r.y, w * 0.38f, h), hint, small);
         }
     }
 }

@@ -100,7 +100,7 @@ namespace SkyTide
                     // Нажатие: касание-отпускание занимает кадр.
                     if (c.StartsWith("tap")) { yield return null; yield return null; }
                 }
-                Running = false; ReportUploader.SnapEvery = 0f;
+                Running = false; ReportUploader.SnapEvery = 0f; ControlBanner.AwaitUpload = true;
                 // Конец партии — управление владельцу (кроме hold).
                 ControlBanner.BusyUntil = -1f;
                 if (!hold) { RemotePilot.Release(); RemoteCam.Off(); TouchControls.HideHud = false; }

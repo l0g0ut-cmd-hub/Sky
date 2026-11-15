@@ -240,6 +240,9 @@ namespace SkyTide
             catch (System.Exception) { }
         }
 
+        /// <summary>Сколько файлов ещё в очереди на отправку (для таблички «отправка…»).</summary>
+        public int Pending { get { return queue.Count + (busy ? 1 : 0); } }
+
         public static int OutboxCount
         {
             get { try { return System.IO.Directory.Exists(OutboxDir) ? System.IO.Directory.GetFiles(OutboxDir).Length : 0; } catch (System.Exception) { return 0; } }
