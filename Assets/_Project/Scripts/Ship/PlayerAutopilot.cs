@@ -3,49 +3,131 @@ using UnityEngine;
 namespace SkyTide
 {
     /// <summary>
-    /// Автобой своего корабля (кнопка «АВТОБОЙ»): дозор, бой и ремонт без игрока.
-    /// • Бой: держит врага на траверзе на дистанции ДАЛЬШЕ предела его пушек (свои достают вдвое дальше) — бьёт сам,
-    ///   под ответный огонь не подставляется; сближается — отворачивает и уходит полным ходом.
-    /// • Стреляет, как только расчёт борта говорит «в прицеле» и борт заряжен. В зоне крепости огня не открывает
-    ///   (кроме случая, когда крепость сама бьёт по врагу-нарушителю), по мирно стоящим в порту — тоже.
-    /// • Корпус ниже 35% — выходит из боя и идёт к причалу в обход камня крепости, встаёт на «СТОП» и чинится до целого.
-    /// • Врагов нет — дозор по кругу за краем безопасной зоны.
-    /// Любое касание джойстика или рукояти хода возвращает управление игроку.
+    /// Автобой своего корабля (кнопка «АВТОБОЙ»): дозор, бой, абордаж и ремонт без игрока.
+    /// Как ведёт бой:
+    /// • Цель: не просто ближайший враг, а самый выгодный — тот, кто бьёт торговца или ведомого, подбитый (добить),
+    ///   ближний; тяжёлого — в последнюю очередь, если есть другие.
+    /// • Дистанция: за пределом пушек цели (её предел + 120 м), но не дальше 80% своего — бьёт, а в ответ не достают.
+    ///   Если в цели 2+ врага рядом — держится ещё дальше от ближнего.
+    /// • Положение: ставит цель точно на траверз БОРТА, КОТОРЫЙ ЗАРЯЖЕН (второй перезаряжается — разворачивается
+    ///   другим бортом), курс — по касательной к окружности нужного радиуса с поправкой по дальности.
+    /// • Ход: подстраивается, чтобы цель не уходила с траверза — цель впереди траверза — прибавляет, позади — сбавляет.
+    /// • Залп: когда расчёт борта говорит «в прицеле» и борт заряжен; держит залп, пока цель уклоняется (крутит руль).
+    /// • Заряд: убегающую или быструю цель (разведчик, уходящий в порт) — книппелями, чтобы остановить; остальных — ядрами.
+    /// • Уклонение: после залпа врага в нашу сторону на 4 с меняет ход (сбивает его пристрелку).
+    /// • Абордаж: подбитый ниже 20% враг рядом и нет других угроз ближе 500 м — идёт на абордаж.
+    /// • Ремонт: ниже 35% — к причалу в обход крепости, чинится до 98%; врагов нет — дозор за краем зоны.
+    /// Любое касание штурвала или рукояти хода возвращает управление игроку.
     /// </summary>
     public class PlayerAutopilot : MonoBehaviour
     {
         public float repairBelow = 0.35f, repairUntil = 0.98f;
-        ShipController ship; PlayerHull hull; Broadside guns;
-        bool repairing; float fightSide; string state = "";
-        /// <summary>Что корабль делает сейчас — для плашки HUD.</summary>
+        ShipController ship; PlayerHull hull; Broadside guns; PlayerBoarding boarding;
+        bool repairing; int wantSide; string state = "";
+        float dodgeUntil, dodgeThrottle, lastVolleySeen = -100f, nextTargetPick;
+        TargetShip foe;
         public string State { get { return state; } }
+        const float RadarRange = 1500f;
+        Vector3 lastSeen; float lastSeenAt = -100f; Vector3 searchPoint; float nextSearch;
+        static bool SeenByAllies(TargetShip t)
+        {
+            foreach (AllyShip al in AllyShip.All)
+                if (al != null && al.Alive && (al.transform.position - t.transform.position).sqrMagnitude < 1000f * 1000f) return true;
+            return false;
+        }
         public float Throttle { get; private set; }
 
+        string loggedState = "";
         public void Tick()
         {
-            if (ship == null) { ship = GetComponent<ShipController>(); hull = GetComponent<PlayerHull>(); guns = GetComponent<Broadside>(); }
+            TickInner();
+            DebugReport.StateTick(state, Time.deltaTime);
+            if (state != loggedState) { loggedState = state; if (state.Length > 0) DebugReport.Event(state + (foe != null ? " → " + foe.name + " " + Mathf.RoundToInt(Vector3.Distance(foe.transform.position, transform.position)) + " м" : "")); }
+        }
+        void TickInner()
+        {
+            if (ship == null) { ship = GetComponent<ShipController>(); hull = GetComponent<PlayerHull>(); guns = GetComponent<Broadside>(); boarding = GetComponent<PlayerBoarding>(); }
             if (ship == null || hull == null || !hull.Alive) { state = ""; return; }
             SkyFortress fort = SkyFortress.Instance;
             if (hull.Health01 < repairBelow) repairing = true;
             else if (hull.Health01 >= repairUntil) repairing = false;
-            if (repairing && fort != null) { Repair(fort); return; }
-
-            TargetShip foe = PickFoe();
-            if (foe == null) { Patrol(fort); return; }
+            if (repairing && fort != null) { foe = null; Repair(fort); return; }
+            if (foe == null || !foe.Alive || (foe.InPort && !foe.Outlaw) || Time.time >= nextTargetPick) { foe = PickFoe(); nextTargetPick = Time.time + 3f; }
+            if (foe == null) { if (!Hunt()) Patrol(fort); return; }
+            if (TryBoard()) return;
             Fight(foe, fort);
         }
 
+        /// <summary>Оценка цели: меньше — лучше. Расстояние, со скидками за угрозу своим и за низкую прочность.</summary>
         TargetShip PickFoe()
         {
-            TargetShip best = null; float bestD = float.MaxValue;
+            TargetShip best = null; float bestScore = float.MaxValue;
+            int count = 0;
+            foreach (TargetShip t in TargetShip.All) if (t != null && t.Alive && !(t.InPort && !t.Outlaw)) count++;
             foreach (TargetShip t in TargetShip.All)
             {
                 if (t == null || !t.Alive) continue;
                 if (t.InPort && !t.Outlaw) continue;   // гость порта — не цель
-                float d = (t.transform.position - transform.position).sqrMagnitude;
-                if (d < bestD) { bestD = d; best = t; }
+                float d = Vector3.Distance(t.transform.position, transform.position);
+                // Видим только то, что на радаре (1.5 км) или что заметили свои корабли (у них свои глаза — 1 км).
+                if (d > RadarRange && !SeenByAllies(t)) continue;
+                lastSeen = t.transform.position; lastSeenAt = Time.time;
+                float score = d;
+                // Бьёт своих (торговца, ведомого, сторожевого) — в приоритет.
+                foreach (AllyShip al in AllyShip.All)
+                    if (al != null && al.Alive && (al.transform.position - t.transform.position).sqrMagnitude < 450f * 450f) { score *= al.role == AllyShip.Role.Merchant ? 0.45f : 0.7f; break; }
+                score *= Mathf.Lerp(0.55f, 1f, t.Health01);   // подбитого — добить
+                if (t.Heavy && count > 1) score *= 1.8f;      // тяжёлого — последним
+                if (t == foe) score *= 0.8f;                  // не мечется между целями
+                if (score < bestScore) { bestScore = score; best = t; }
             }
             return best;
+        }
+
+        /// <summary>Врагов на радаре нет: идём туда, где видели последнего (до 90 с назад), иначе прочёсываем карту
+        /// — точки в 1.5–2.5 км в стороне от уже осмотренного, вне зоны крепости. false — нечего искать (дозор).</summary>
+        bool Hunt()
+        {
+            bool any = false;
+            foreach (TargetShip t in TargetShip.All) if (t != null && t.Alive && !(t.InPort && !t.Outlaw)) { any = true; break; }
+            if (!any) return false;
+            Vector3 goal;
+            if (Time.time - lastSeenAt < 90f && (lastSeen - transform.position).sqrMagnitude > 150f * 150f) { goal = lastSeen; state = "АВТОБОЙ · ПРЕСЛЕДОВАНИЕ"; }
+            else
+            {
+                if (Time.time >= nextSearch || (searchPoint - transform.position).sqrMagnitude < 250f * 250f)
+                {
+                    nextSearch = Time.time + 45f;
+                    float a = Random.Range(0f, Mathf.PI * 2f);
+                    searchPoint = transform.position + new Vector3(Mathf.Cos(a), 0f, Mathf.Sin(a)) * Random.Range(1500f, 2500f);
+                    Vector2 flat = new Vector2(searchPoint.x, searchPoint.z);
+                    if (flat.magnitude > 3000f) { flat = flat.normalized * 2600f; searchPoint.x = flat.x; searchPoint.z = flat.y; }
+                    SkyFortress f = SkyFortress.Instance;
+                    if (f != null)
+                    {
+                        Vector3 off = searchPoint - f.Center; off.y = 0f;
+                        float r = f.safeRadius + 200f;
+                        if (off.sqrMagnitude < r * r) searchPoint = f.Center + (off.sqrMagnitude > 1f ? off.normalized : Vector3.forward) * r;
+                    }
+                }
+                goal = searchPoint; state = "АВТОБОЙ · ПОИСК ВРАГА";
+            }
+            Vector3 to = goal - transform.position; to.y = 0f;
+            Steer(to, 1f);
+            return true;
+        }
+
+        bool TryBoard()
+        {
+            if (boarding == null) boarding = GetComponent<PlayerBoarding>();
+            if (boarding == null) return false;
+            if (boarding.Active) { state = "АВТОБОЙ · АБОРДАЖ"; Throttle = 0f; return true; }
+            TargetShip c = boarding.Candidate;
+            if (c == null) return false;
+            foreach (TargetShip t in TargetShip.All)
+                if (t != null && t.Alive && t != c && Vector3.Distance(t.transform.position, transform.position) < 500f) return false;
+            boarding.Begin();
+            return boarding.Active;
         }
 
         void Fight(TargetShip foe, SkyFortress fort)
@@ -54,43 +136,87 @@ namespace SkyTide
             Vector3 to = foe.transform.position - transform.position; to.y = 0f;
             float dist = to.magnitude;
             Vector3 dir = dist > 1f ? to / dist : transform.forward;
-            // Своя дистанция: за пределом пушек врага, но уверенно в пределах своих.
-            EnemyGunner eg = foe.GetComponentInParent<EnemyGunner>();
+            EnemyGunner eg = foe.GetComponent<EnemyGunner>();
             float enemyReach = eg != null ? eg.maxRange : 420f;
             float own = guns != null ? guns.MaxRange : 600f;
-            float want = Mathf.Clamp(enemyReach + 90f, 250f, Mathf.Max(260f, own * 0.7f));
+            float want = Mathf.Clamp(enemyReach + 120f, 260f, Mathf.Max(280f, own * 0.8f));
+            // Ещё один враг ближе 700 м — держимся дальше и от него.
+            foreach (TargetShip t in TargetShip.All)
+            {
+                if (t == null || t == foe || !t.Alive) continue;
+                float d2 = Vector3.Distance(t.transform.position, transform.position);
+                if (d2 < 700f) { want = Mathf.Min(own * 0.85f, want + 60f); break; }
+            }
+
+            // Борт, которым бьём: заряженный; оба заряжены — тот, что ближе к цели сейчас.
             float localX = Vector3.Dot(transform.right, dir);
-            if (fightSide == 0f) fightSide = localX >= 0f ? 1f : -1f;
-            else if (Mathf.Sign(localX) != fightSide && Mathf.Abs(localX) > 0.35f) fightSide = -fightSide;
-            bool far = dist > want + 350f;
-            // Курсовой угол на врага: 90° на своей дистанции; ближе — отворачиваем от него (до 135°), дальше — доворачиваем.
-            float bearing = far ? 12f : 90f + Mathf.Clamp((want - dist) / 80f, -1f, 1f) * 45f;
-            Vector3 heading = Quaternion.Euler(0f, -fightSide * bearing, 0f) * dir;
-            // В зоне крепости бой не ведём — курс не заводит внутрь (кроме охоты на нарушителя).
-            if (fort != null && !foe.Outlaw)
+            if (guns != null)
+            {
+                bool portReady = guns.Readiness(-1) >= 0.999f, stbdReady = guns.Readiness(1) >= 0.999f;
+                if (portReady && !stbdReady) wantSide = -1;
+                else if (stbdReady && !portReady) wantSide = 1;
+                else if (wantSide == 0 || (portReady && stbdReady && Mathf.Abs(localX) > 0.6f)) wantSide = localX >= 0f ? 1 : -1;
+            }
+            else wantSide = localX >= 0f ? 1 : -1;
+
+            bool far = dist > want + 400f;
+            Vector3 heading;
+            if (far)
+            {
+                // Перехват, а не погоня: точка встречи с упреждением по ходу цели, и заход с её кормы — там её пушки
+                // не достают (враг бьёт только бортом, 55–125° от носа).
+                ShipController tc = foe.Controller;
+                Vector3 tv = tc != null ? foe.transform.forward * tc.Speed : Vector3.zero;
+                float closing = Mathf.Max(8f, ship.maxSpeed - Vector3.Dot(tv, dir));
+                float t = Mathf.Min(40f, dist / closing);
+                Vector3 meet = foe.transform.position + tv * t - foe.transform.forward * Mathf.Min(320f, want * 0.6f);
+                Vector3 toMeet = meet - transform.position; toMeet.y = 0f;
+                heading = toMeet.sqrMagnitude > 1f ? toMeet.normalized : dir;
+                state = "АВТОБОЙ · ПЕРЕХВАТ";
+            }
+            else
+            {
+                // Касательная: цель на траверзе нужного борта; ближе нужного — отворот наружу, дальше — внутрь (до 40°).
+                float radial = Mathf.Clamp((want - dist) / 120f, -1f, 1f) * 40f;
+                heading = Quaternion.Euler(0f, -wantSide * (90f + radial), 0f) * dir;
+            }
+            // Курс не заводит в зону крепости (кроме охоты на нарушителя) и не идёт в камень.
+            if (fort != null)
             {
                 Vector3 off = transform.position - fort.Center; off.y = 0f;
-                float edge = fort.safeRadius + 120f;
+                float edge = foe.Outlaw ? fort.BoundRadius + 150f : fort.safeRadius + 120f;
                 if (off.sqrMagnitude < edge * edge && off.sqrMagnitude > 1f)
                 {
                     Vector3 outward = off.normalized; float inward = Vector3.Dot(heading, outward);
                     if (inward < 0.2f) heading = (heading - outward * inward + outward * 0.4f).normalized;
                 }
             }
-            Steer(heading, far || dist < want - 60f ? 1f : 0.68f);
+
+            // Ход: держим цель на траверзе — впереди траверза прибавляем, позади сбавляем.
+            float bearing = Vector3.SignedAngle(transform.forward, dir, Vector3.up) * wantSide;   // 90 — ровно на траверзе нужного борта
+            float throttle = far ? 1f : Mathf.Clamp(0.6f + (90f - bearing) / 70f, 0.25f, 1f);
+            if (!far && dist < want - 120f) throttle = 1f;   // слишком близко — уходим полным
+            // Уклонение: враг дал залп — 4 с другим ходом (его пристрелка сбивается при смене хода).
+            if (EnemyGunner.LastVolleyTime > lastVolleySeen + 0.1f && dist < enemyReach + 150f)
+            {
+                lastVolleySeen = EnemyGunner.LastVolleyTime;
+                dodgeUntil = Time.time + 4f;
+                dodgeThrottle = throttle > 0.6f ? 0.3f : 1f;
+            }
+            if (Time.time < dodgeUntil) throttle = dodgeThrottle;
+            Steer(heading, throttle);
 
             if (guns == null) return;
+            // Заряд: цель быстрая или уходит — книппели (остановить), иначе ядра.
+            ShipController fc = foe.Controller;
+            float foeSpeed = fc != null ? Mathf.Abs(fc.Speed) : 0f;
+            bool runner = (foeSpeed > 23f || foe.InPort || (foe.Health01 < 0.3f && Vector3.Dot(foe.transform.forward, dir) > 0.5f)) && !fc.BalloonHit && dist < own * 0.7f;
+            guns.chainShot = runner;
+
             bool zone = SkyFortress.InSafeZone(transform.position);
             if (zone && !foe.Outlaw) return;
-            // Расчёт борта наводится на БЛИЖАЙШЕГО живого врага — стреляем, только если это и есть наша цель.
-            TargetShip nearest = null; float nd = float.MaxValue;
-            foreach (TargetShip t in TargetShip.All)
-            {
-                if (t == null || !t.Alive) continue;
-                float d = Vector3.Distance(t.transform.position, transform.position);
-                if (d < nd) { nd = d; nearest = t; }
-            }
-            if (nearest == foe && guns.AimOnTarget && guns.Readiness(guns.AimSide) >= 0.999f) guns.Fire(guns.AimSide);
+            // Расчёт борта наводится на ближайшего врага — стреляем, когда это и есть цель (или любой враг в прицеле: не жалеем ядер).
+            if (guns.AimOnTarget && guns.Readiness(guns.AimSide) >= 0.999f) guns.Fire(guns.AimSide);
         }
 
         void Repair(SkyFortress fort)
@@ -102,12 +228,13 @@ namespace SkyTide
             float dist = to.magnitude;
             if (fort.PlayerDocked || dist < fort.berthRadius * 0.6f)
             {
-                // У причала: «СТОП» — крепость сама подтянет к месту и чинит.
                 state = fort.Hostile ? "АВТОБОЙ · ЖДЁМ ОТБОЯ ТРЕВОГИ" : "АВТОБОЙ · РЕМОНТ";
                 ship.turn = 0f; Throttle = 0f; ship.throttle = 0f;
                 return;
             }
             state = "АВТОБОЙ · К ПРИЧАЛУ";
+            // По пути отстреливаемся: враг в прицеле и борт заряжен — залп (вне зоны крепости).
+            if (guns != null && !SkyFortress.InSafeZone(transform.position) && guns.AimOnTarget && guns.Readiness(guns.AimSide) >= 0.999f) guns.Fire(guns.AimSide);
             Vector3 heading = to / Mathf.Max(dist, 1f);
             if (dist > 220f)
             {
@@ -126,10 +253,21 @@ namespace SkyTide
         void Patrol(SkyFortress fort)
         {
             state = "АВТОБОЙ · ДОЗОР";
+            guns = guns != null ? guns : GetComponent<Broadside>();
+            if (guns != null) guns.chainShot = false;
             if (fort == null) { Steer(transform.forward, 0.68f); return; }
+            // Дозор по кругу за краем зоны, по часовой — навстречу сторожевым; торговец в пути — идём к нему.
+            foreach (AllyShip al in AllyShip.All)
+                if (al != null && al.Alive && al.role == AllyShip.Role.Merchant && !SkyFortress.InSafeZone(al.transform.position))
+                {
+                    Vector3 escort = al.transform.position + al.transform.right * 120f - transform.position; escort.y = 0f;
+                    state = "АВТОБОЙ · ОХРАНА ТОРГОВЦА";
+                    Steer(escort, escort.magnitude > 200f ? 1f : 0.5f);
+                    return;
+                }
             float radius = fort.safeRadius + 350f;
             Vector3 off = transform.position - fort.Center; off.y = 0f;
-            float here = Mathf.Atan2(off.z, off.x) - 0.2f;   // по часовой — навстречу сторожевому, зона прикрыта с двух сторон
+            float here = Mathf.Atan2(off.z, off.x) - 0.2f;
             Vector3 goal = fort.Center + new Vector3(Mathf.Cos(here), 0f, Mathf.Sin(here)) * radius;
             Steer(goal - transform.position, 0.68f);
         }
@@ -139,7 +277,7 @@ namespace SkyTide
             heading.y = 0f;
             if (heading.sqrMagnitude < 1e-4f) heading = transform.forward;
             float ang = Vector3.SignedAngle(transform.forward, heading.normalized, Vector3.up);
-            ship.turn = Mathf.Clamp(ang / 25f, -1f, 1f);
+            ship.turn = Mathf.Clamp(ang / 20f, -1f, 1f);
             Throttle = throttle; ship.throttle = throttle;
         }
     }

@@ -47,6 +47,7 @@ namespace SkyTide
         // (от начала отсечения до конца сцены) и счётчики Unity (ProfilerRecorder — доступны и в релизной сборке).
         bool details;
         readonly List<KeyValuePair<string, float>> top = new List<KeyValuePair<string, float>>();
+        float copiedAt = -10f;
         ProfilerRecorder drawCalls, setPass, batches, tris, shadowCasters, gcAlloc, mainThread, renderThread;
         bool recorders;
         long camStart; float camMs;
@@ -181,9 +182,17 @@ namespace SkyTide
             GUI.Label(new Rect(x, y, w, h), string.Format("10 с: средний {0:F0}   худший 1% {1:F0}   макс. кадр {2:F0} мс", avgFps, lowFps, worstMs), label); y += h;
             if (small == null) { small = new GUIStyle(label) { fontSize = Mathf.RoundToInt(label.fontSize * 0.8f) }; }
             GUI.Label(new Rect(x, y, w, h * 0.62f), string.Format("работа: игра {0:F1} · отрисовка {1:F1} · ВК {2:F1} мс   → {3}", mainWork, renderWork, gpu, Bottleneck()), small); y += h * 0.7f;
-            float hw = (w - u * 0.02f) * 0.5f;
+            float hw = (w - u * 0.04f) / 3f;
             if (GUI.Button(new Rect(x, y, hw, h * 0.9f), details ? "← Переключатели" : "Замер по частям →", button)) { details = !details; PerfTimers.Reset(); camMs = 0f; }
             if (GUI.Button(new Rect(x + hw + u * 0.02f, y, hw, h * 0.9f), "АВТОЗАМЕР ▶", button) && game != null) StartCoroutine(Bench());
+            // Отчёт для разработчика: состояние, корабли, события, ошибки, автозамер — в буфер обмена (вставить в чат).
+            if (GUI.Button(new Rect(x + (hw + u * 0.02f) * 2f, y, hw, h * 0.9f), Time.unscaledTime - copiedAt < 2f ? "СКОПИРОВАНО ✓" : "КОПИРОВАТЬ ОТЧЁТ", button))
+            {
+                System.Text.StringBuilder tm = new System.Text.StringBuilder();
+                if (PerfTimers.Enabled) foreach (KeyValuePair<string, float> kv in PerfTimers.Sorted(top)) if (kv.Value > 0.05f) tm.AppendLine("  " + kv.Key + " " + kv.Value.ToString("F2"));
+                GUIUtility.systemCopyBuffer = DebugReport.Build(fps, tm.ToString());
+                copiedAt = Time.unscaledTime;
+            }
             y += h;
             if (details) { Details(x, y, w, h); return; }
             if (game == null) return;
@@ -322,6 +331,7 @@ namespace SkyTide
             System.Text.StringBuilder log = new System.Text.StringBuilder("SkyTide: автозамер\n");
             foreach (BenchRow b in bench) log.AppendFormat("{0}: FPS {1:F1}, ВК {2:F1} мс, кадр {3:F1} мс, игра {4:F1} мс\n", b.name, b.fps, b.gpu, b.frame, b.main);
             Debug.Log(log.ToString());
+            DebugReport.LastBench = log.ToString();
             benchRunning = false; benchShow = true; Open = true;
         }
 

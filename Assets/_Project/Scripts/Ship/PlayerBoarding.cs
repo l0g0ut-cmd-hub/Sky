@@ -41,12 +41,13 @@ namespace SkyTide
             boarding = candidate; candidate = null; progress = 0f;
             boarding.BeingBoarded = true;
             HudNotice.Show("АБОРДАЖ!", 0, 2f);
+            DebugReport.Count("абордажей начато");
             Haptics.Pulse(60);
         }
 
         void Abort()
         {
-            if (boarding != null) { boarding.BeingBoarded = false; HudNotice.Show("АБОРДАЖ СОРВАН", 1, 2.5f); }
+            if (boarding != null) { boarding.BeingBoarded = false; HudNotice.Show("АБОРДАЖ СОРВАН", 1, 2.5f); DebugReport.Count("абордажей сорвано"); }
             boarding = null; progress = 0f;
         }
 

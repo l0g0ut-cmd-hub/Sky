@@ -91,6 +91,7 @@ namespace SkyTide
             pendingLeft = gunsPerSide;
             pendingAt = Time.time;
             LastVolleyTime = Time.time;
+            DebugReport.Count(victimAlly != null ? "залпов врага по своим" : "залпов врага по флагману");
             ready = Time.time + (cooldown + Random.Range(0f, 1.5f)) * skillCooldown * (hurt > 1.4f ? 1.3f : 1f);
         }
 

@@ -12,6 +12,7 @@ namespace SkyTide
         {
             if (!Application.isPlaying) return;
             Text = text; Icon = icon; Hold = hold; At = Time.time;
+            DebugReport.Event(text);
         }
         /// <summary>0..1 — видимость сейчас (плавное появление и уход).</summary>
         public static float Alpha

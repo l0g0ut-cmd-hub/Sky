@@ -88,6 +88,7 @@ namespace SkyTide
         {
             if (!Alive) return;
             hits += power > 1.5f ? 3 : 1;
+            DebugReport.Count("попаданий врага по своим");
             Vector3 normal = (point - Center).normalized;
             if (damage != null) damage.Hit(point, hits / (float)Mathf.Max(1, hitsToSink), Velocity, normal);
             SkySound.HullHit(point, false);
@@ -100,6 +101,7 @@ namespace SkyTide
                 if (damage != null) damage.BeginSink(point, Velocity);
                 ctrl.throttle = 0f; ctrl.turn = 0f;
                 HudNotice.Show(RoleNames[(int)role] + " ПОТОПЛЕН", 1, 3.5f);
+                DebugReport.Count("своих потоплено");
             }
             else if (fx != null) fx.HullImpact(point, normal, Velocity);
         }
@@ -178,7 +180,7 @@ namespace SkyTide
                 if (t == null || !t.Alive) continue;
                 if (t.InPort && !t.Outlaw) continue;   // гость порта — не цель
                 Vector3 off = t.transform.position - anchor; off.y = 0f;
-                float limit = role == Role.Wingman ? engageRange : leash;
+                float limit = role == Role.Wingman ? engageRange : float.MaxValue;   // сторожевые ходят по всей карте — бьют, где встретят
                 if (off.magnitude > limit) continue;
                 float d = Vector3.Distance(t.transform.position, transform.position);
                 if (role == Role.Guard && !t.Outlaw && d > engageRange) continue;
@@ -187,13 +189,26 @@ namespace SkyTide
             return best;
         }
 
+        // Дозор по карте: точки в 900–2000 м от себя в пределах района (3000 м), в обход камня крепости; дошёл или
+        // прошло 70 с — следующая. Половину точек сторожевой берёт у края безопасной зоны — возвращается к крепости.
+        Vector3 roamPoint; float nextRoam;
         void Patrol(SkyFortress f)
         {
-            if (f == null) { Steer(transform.forward, 0.5f); return; }
-            Vector3 off = transform.position - f.Center; off.y = 0f;
-            float here = Mathf.Atan2(off.z, off.x) + 0.22f;
-            Vector3 goal = f.Center + new Vector3(Mathf.Cos(here), 0f, Mathf.Sin(here)) * (f.safeRadius - 180f);
-            Steer(goal - transform.position, 0.5f);
+            if (Time.time >= nextRoam || (roamPoint - transform.position).sqrMagnitude < 150f * 150f)
+            {
+                nextRoam = Time.time + 70f;
+                float a = Random.Range(0f, Mathf.PI * 2f);
+                if (f != null && Random.value < 0.5f)
+                    roamPoint = f.Center + new Vector3(Mathf.Cos(a), 0f, Mathf.Sin(a)) * (f.safeRadius + 150f);
+                else
+                {
+                    roamPoint = transform.position + new Vector3(Mathf.Cos(a), 0f, Mathf.Sin(a)) * Random.Range(900f, 2000f);
+                    Vector2 flat = new Vector2(roamPoint.x, roamPoint.z);
+                    if (flat.magnitude > 3000f) { flat = flat.normalized * 2600f; roamPoint.x = flat.x; roamPoint.z = flat.y; }
+                }
+                roamPoint.y = transform.position.y;
+            }
+            if (f != null) SteerAround(f, roamPoint, 0.6f); else Steer(roamPoint - transform.position, 0.6f);
         }
 
         void Follow()
@@ -233,6 +248,7 @@ namespace SkyTide
                 if (to.magnitude < 50f)
                 {
                     leg = Leg.Docked; waitUntil = Time.time + 25f;
+                    DebugReport.Count("торговцев дошло");
                     PlayerHull ph = PlayerHull.Instance;
                     if (ph != null && ph.Alive) { ph.Repair(ph.maxHealth * 0.1f); HudNotice.Show("ТОРГОВЕЦ ДОШЁЛ · РЕМОНТ +10%", 0, 3.5f); }
                 }

@@ -144,6 +144,7 @@ namespace SkyTide
             power = Mathf.Max(1f, power);
             Health -= damagePerHit * power;
             LastHitTime = Time.time;
+            DebugReport.Count("попаданий по флагману");
             Vector3 fromShip = point - transform.position; fromShip.y = 0f;
             LastHitDir = fromShip.sqrMagnitude > 1e-3f ? fromShip.normalized : Vector3.zero;
             // Удар по корпусу встряхивает камеру (сильнее — от тяжёлого ядра крепости).
@@ -179,6 +180,8 @@ namespace SkyTide
                 Health = 0f;
                 SkySound.ShipDestroyed(Center);
                 Haptics.LongBuzz();
+                DebugReport.Event("ФЛАГМАН ПОТОПЛЕН");
+                DebugReport.Count("флагман потоплен");
                 if (fx != null) fx.Explosion(Center, 3f);
                 deadUntil = Time.time + respawnDelay;
                 // Корабль не исчезает во вспышке: кренится на подбитый борт и уходит в облака.

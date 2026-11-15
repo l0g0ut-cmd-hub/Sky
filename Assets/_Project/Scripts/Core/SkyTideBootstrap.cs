@@ -83,6 +83,7 @@ namespace SkyTide
             if (Application.isPlaying) volumetricClouds = PlayerPrefs.GetInt(VolumetricKey, 0) == 1;
             QualitySettings.vSyncCount = 0;
             Screen.sleepTimeout = SleepTimeout.NeverSleep;
+            if (Application.isPlaying) DebugReport.Hook();
             if (Application.isPlaying)
             {
                 // Физики в игре нет (столкновения и попадания считаются своим кодом) — её шаг каждый кадр не нужен.
@@ -196,6 +197,9 @@ namespace SkyTide
                 rg.maxRange = 420f; rg.rangeError = 0.11f; rg.sideError = 0.04f;
                 Raider.retreatRange = 380f; Raider.canBeHeavy = true; Target.canBeHeavy = true;
                 if (crewFrom2 != null && crewFrom2.crew != null && crewFrom2.crew.IsValid) e2.gameObject.AddComponent<EnemyCrew>().Setup(Raider, crewFrom2.crew);
+                // Ещё трое по углам карты (2 рядовых, 1 разведчик): бродят своими курсами, в бой — когда увидят.
+                Vector3[] extra = { new Vector3(-2200f, 0f, -1600f), new Vector3(2400f, 0f, 1500f), new Vector3(-600f, 0f, -2600f) };
+                for (int k = 0; k < extra.Length; k++) SpawnEnemy("Enemy " + (k + 4), spawnPosition + extra[k], Random.Range(0f, 360f), k == 2, crewFrom2);
                 ShipVariant crewFrom = CurrentShip;
                 if (crewFrom != null && crewFrom.crew != null && crewFrom.crew.IsValid) s.gameObject.AddComponent<EnemyCrew>().Setup(Scout, crewFrom.crew);
             }
@@ -265,6 +269,22 @@ namespace SkyTide
         public AllyShip Ally { get; private set; }
         public TargetShip Scout { get; private set; }
         public TargetShip Raider { get; private set; }
+
+        /// <summary>Враг на карте (только в игре): рядовой (может выйти тяжёлым) или разведчик (корпус ×0.72).</summary>
+        TargetShip SpawnEnemy(string name, Vector3 at, float heading, bool scout, ShipVariant crewFrom)
+        {
+            ShipController s = ShipFactory.Build(name, at, heading, materials, targetShip);
+            if (scout) s.transform.localScale = Vector3.one * 0.72f;
+            TargetShip t = s.gameObject.AddComponent<TargetShip>();
+            t.lampSlot = -1;
+            t.Setup(s, Ship.transform, materials.darkWood, targetShip.mesh, targetShip.lights);
+            EnemyGunner g = s.gameObject.AddComponent<EnemyGunner>();
+            g.Setup(t, s);
+            if (scout) { t.hitsToSink = 16; t.spawnRange = 1500f; s.maxSpeed = 27f; s.maxYawRate = 34f; g.gunsPerSide = 3; g.maxRange = 360f; g.cooldown = 5f; g.rangeError = 0.12f; g.sideError = 0.045f; t.retreatRange = 340f; }
+            else { s.maxSpeed = 20f; s.maxYawRate = 24f; g.maxRange = 420f; g.rangeError = 0.11f; g.sideError = 0.04f; t.retreatRange = 380f; t.canBeHeavy = true; }
+            if (crewFrom != null && crewFrom.crew != null && crewFrom.crew.IsValid) s.gameObject.AddComponent<EnemyCrew>().Setup(t, crewFrom.crew);
+            return t;
+        }
 
         /// <summary>Объёмные облака вкл/выкл: спрайты на высоте полёта показываются, только когда объёма нет.</summary>
         static void FreeMemory() { Resources.UnloadUnusedAssets(); System.GC.Collect(); }

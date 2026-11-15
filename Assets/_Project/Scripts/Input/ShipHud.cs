@@ -151,7 +151,21 @@ namespace SkyTide
             float t = Time.realtimeSinceStartup;
             float sweep = Mathf.Repeat(t / SweepPeriod, 1f) * Mathf.PI * 2f;
             const float edge0 = -60f * Mathf.Deg2Rad;     // передний край луча на картинке (вверх-вправо)
-            Image(rFace, c, size, 0f, Color.white);
+            // Радар — «нос вверх»: отметки уже в осях корабля, а теперь и стекло со своей картой поворачивается вслед за
+            // курсом, и стороны света (С/В/Ю/З) бегут по кругу — видно, что радар вращается вместе с кораблём.
+            float hdg = input.ship.transform.eulerAngles.y * Mathf.Deg2Rad;
+            Image(rFace, c, size, -hdg, Color.white);
+            {
+                string[] cards = { "С", "В", "Ю", "З" };
+                for (int k = 0; k < 4; k++)
+                {
+                    Vector3 wd = Quaternion.Euler(0f, k * 90f, 0f) * Vector3.forward;
+                    Vector3 ld = input.ship.transform.InverseTransformDirection(wd);
+                    Vector2 sd = new Vector2(ld.x, -ld.z); if (sd.sqrMagnitude < 1e-4f) continue; sd.Normalize();
+                    Vector2 cp = c + sd * face * 0.74f; float cs = R * 0.3f;
+                    Text(new Rect(cp.x - cs, cp.y - cs * 0.5f, cs * 2f, cs), cards[k], R * 0.16f, k == 0 ? new Color(1f, 0.5f, 0.38f, 0.95f) : new Color(0.93f, 0.85f, 0.65f, 0.75f));
+                }
+            }
             if (rSweep != null) Image(rSweep, c, size, sweep, new Color(1f, 1f, 1f, 0.9f));
             foreach (TargetShip ts in TargetShip.All)
             {

@@ -63,6 +63,7 @@ namespace SkyTide
         {
             if (!Alive) return;
             Captured = true; BeingBoarded = false;
+            DebugReport.Count("призов взято"); DebugReport.Event(name + " взят на абордаж");
             deadUntil = Time.time + respawnDelay;
             ctrl.throttle = 0f; ctrl.turn = 0f;
             ctrl.visual.gameObject.SetActive(false);
@@ -141,6 +142,7 @@ namespace SkyTide
                 bool go = Health01 < 0.45f ? Random.value < 0.6f : Random.value < 0.1f;
                 if (!go) return false;
                 mode = Mode.ToPort;
+                DebugReport.Count("врагов ушло в порт");
                 // Глупость случается не с каждым: новичок срывается чаще, ветеран — почти никогда.
                 float dumb = skill == Skill.Novice ? 0.55f : skill == Skill.Veteran ? 0.08f : 0.3f;
                 dumbAt = Random.value < dumb ? Time.time + Random.Range(25f, 70f) : -1f;
@@ -165,7 +167,7 @@ namespace SkyTide
             {
                 dumbAt = -1f;
                 if (gunner == null) gunner = GetComponent<EnemyGunner>();
-                if (gunner != null && gunner.ForceVolley()) { OutlawUntil = Time.time + 40f; SkyFortress.NotifyEnemyFired(this); mode = Mode.Flee; return true; }
+                if (gunner != null && gunner.ForceVolley()) { DebugReport.Count("глупых залпов врага в зоне"); OutlawUntil = Time.time + 40f; SkyFortress.NotifyEnemyFired(this); mode = Mode.Flee; return true; }
             }
             if (mode == Mode.ToPort)
             {
@@ -237,11 +239,20 @@ namespace SkyTide
         void OnEnable() { if (!All.Contains(this)) All.Add(this); }
         void OnDisable() { All.Remove(this); }
 
+        /// <summary>Видит цель (флагман, свой корабль) ближе этого — идёт в бой; дальше — бродит по карте своим курсом.</summary>
+        [System.NonSerialized] public float aggroRange = 1300f;
+        /// <summary>Кто-то из наших недавно попал по нему — он помнит и преследует дальше обычного.</summary>
+        float angryUntil = -1f;
         void Pick()
         {
-            Vector3 c = player != null ? player.position : Vector3.zero;
+            // В игре враг бродит по всей карте (дозор/охота), а не кружит у флагмана: точка в 500–1400 м от себя,
+            // в пределах района боя. В кадрах CI — как раньше (рядом с игроком).
+            bool roam = Application.isPlaying;
+            Vector3 c = roam ? transform.position : (player != null ? player.position : Vector3.zero);
             float a = Random.Range(0f, Mathf.PI * 2f);
-            float d = Random.Range(minRange, maxRange);
+            float d = roam ? Random.Range(500f, 1400f) : Random.Range(minRange, maxRange);
+            if (roam && new Vector2(c.x + Mathf.Cos(a) * d, c.z + Mathf.Sin(a) * d).magnitude > 3000f)
+                a = Mathf.Atan2(-c.z, -c.x) + Random.Range(-0.8f, 0.8f);   // не уходить за край района — разворот к центру
             waypoint = new Vector3(c.x + Mathf.Cos(a) * d, transform.position.y, c.z + Mathf.Sin(a) * d);
             // В безопасную зону крепости враг не заходит — точку выносим за её край.
             SkyFortress f = SkyFortress.Instance;
@@ -287,21 +298,22 @@ namespace SkyTide
             Vector3 toPlayer = player != null ? player.position - transform.position : Vector3.zero;
             toPlayer.y = 0f;
             PlayerHull playerHull = PlayerHull.Instance;
-            bool playerFair = player != null && playerHull != null && playerHull.Alive && !SkyFortress.InSafeZone(player.position);
+            float aggro = Time.time < angryUntil ? aggroRange * 1.6f : aggroRange;
+            bool playerFair = player != null && playerHull != null && playerHull.Alive && !SkyFortress.InSafeZone(player.position) && toPlayer.magnitude < aggro;
             // Свои корабли тоже цели: торговца враг выбирает охотнее (лёгкая добыча), сторожевого и ведомого — если они
             // заметно ближе флагмана. Всё — вне безопасной зоны крепости.
-            AllyShip prey = null; float preyD = playerFair ? toPlayer.magnitude * 0.7f : 900f;
+            AllyShip prey = null; float preyD = playerFair ? toPlayer.magnitude * 0.7f : aggro;
             foreach (AllyShip al in AllyShip.All)
             {
                 if (al == null || !al.Alive || SkyFortress.InSafeZone(al.transform.position)) continue;
                 Vector3 ta = al.transform.position - transform.position; ta.y = 0f;
                 float d = ta.magnitude * (al.role == AllyShip.Role.Merchant ? 0.6f : 1f);
-                if (d < preyD && ta.magnitude < 900f) { preyD = d; prey = al; }
+                if (d < preyD && ta.magnitude < aggro) { preyD = d; prey = al; }
             }
             if (prey != null) { Vector3 tp = prey.transform.position - transform.position; tp.y = 0f; Engage(tp); return; }
             if (playerFair) { Engage(toPlayer); return; }
             fightSide = 0f;
-            if (player != null && toPlayer.magnitude > leash && !SkyFortress.InSafeZone(player.position)) { waypoint = player.position; nextPick = Time.time + 8f; }
+            if (!Application.isPlaying && player != null && toPlayer.magnitude > leash && !SkyFortress.InSafeZone(player.position)) { waypoint = player.position; nextPick = Time.time + 8f; }
             Vector3 to = waypoint - transform.position;
             to.y = 0f;
             if (to.magnitude < 40f || Time.time > nextPick) Pick();
@@ -409,6 +421,7 @@ namespace SkyTide
             if (closing > 22f)
             {
                 Vector3 ramAt = (pa + pb) * 0.5f; ramAt.y = a0.y + 2f;
+                DebugReport.Count("таранов");
                 hull.OnHit(ramAt, closing > 45f ? 2f : 1f);
                 OnHit(ramAt);
                 if (!Alive) return;
@@ -456,6 +469,7 @@ namespace SkyTide
                 chainAcc -= 1f;
             }
             hits++;
+            angryUntil = Time.time + 40f;
             if (Time.time - TallyAt > 2.5f) Tally = 0;
             Tally++; TallyAt = Time.time;
             // Попадание по месту: корма — руль, верх с баллонами — ход (на 12 с).
@@ -482,6 +496,8 @@ namespace SkyTide
             SkySound.HullHit(point, hits % 3 == 0);
             if (hits >= hitsToSink)
             {
+                DebugReport.Event(name + " потоплен");
+                DebugReport.Count("врагов потоплено");
                 SkySound.ShipDestroyed(point);
                 if (fx != null) fx.Explosion(model.TransformPoint(box.center), 3f);
                 deadUntil = Time.time + respawnDelay;
@@ -505,6 +521,7 @@ namespace SkyTide
             if (damageVisual != null) damageVisual.BeginSink(at, velocity);
             ctrl.throttle = 0f; ctrl.turn = 0f;
             HudNotice.Show("ВРАГ СГОРЕЛ", 0);
+            DebugReport.Count("врагов сгорело");
         }
 
         void Respawn()

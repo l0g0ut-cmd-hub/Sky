@@ -172,6 +172,7 @@ namespace SkyTide
             float now = Application.isPlaying ? Time.time : 0f;
             if (now < ready[k]) return false;
             ready[k] = now + cooldown;
+            if (Application.isPlaying) DebugReport.Count(AimOnTarget ? "залпов флагмана" : "залпов флагмана вне прицела");
             if (Application.isPlaying) SkyFortress.NotifyPlayerFired(transform.position);   // залп в безопасной зоне — крепость откроет огонь
             if(Application.isPlaying&&Camera.main!=null)
             {
@@ -408,7 +409,7 @@ namespace SkyTide
             Vector3 muzzle = model.TransformPoint(m.Muzzle);
             // Наводка — только в игре: проверки CI сверяют выстрел с осью ствола модели.
             Vector3 dir = Application.isPlaying ? GunDir(m, FxSystem.Instance.gravity) : model.TransformDirection(m.Dir).normalized;
-            FxSystem.Instance.Fire(muzzle, dir, velocity, ShotSpeed, false, 7f, 1f, Application.isPlaying && chainShot);
+            FxSystem.Instance.Fire(muzzle, dir, velocity, ShotSpeed, false, 7f, 1f, Application.isPlaying && chainShot, Application.isPlaying && GetComponent<PlayerHull>() != null);
             if(crew!=null)crew.NotifyShot(m,now);
             if (recoilEnabled)
             {
