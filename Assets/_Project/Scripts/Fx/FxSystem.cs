@@ -225,9 +225,20 @@ namespace SkyTide
             }
         }
 
+        /// <summary>Мягкий бюджет частиц: дальше 1000 декоративные (дым, пена, волна, щепа) отбрасываются тем чаще, чем их больше,
+        /// и почти всегда — вдали от камеры. Провалы FPS 15.11: 1650–1830 частиц в кадре (перерисовка дымом на Mali).
+        /// Ядра, вспышки выстрела, огонь и прицел не трогаются.</summary>
+        const int SoftParticles = 1000;
         void Add(P p)
         {
             if (ps.Count >= MaxParticles) return;
+            if (ps.Count > SoftParticles && (p.kind == Kind.Smoke || p.kind == Kind.Foam || p.kind == Kind.Wave || p.kind == Kind.Splinter || p.kind == Kind.Spark))
+            {
+                float over = (ps.Count - SoftParticles) / (float)(MaxParticles - SoftParticles);   // 0..1
+                Camera cam = Camera.main;
+                float far = cam != null ? Mathf.Clamp01(((p.pos - cam.transform.position).magnitude - 150f) / 300f) : 0f;
+                if (Random.value < Mathf.Clamp01(over * 3f + far * 0.6f)) return;
+            }
             ps.Add(p);
         }
 
