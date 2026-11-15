@@ -566,7 +566,7 @@ namespace SkyTide
             }
             PlayerHull hull = PlayerHull.Instance;
             float bw = Mathf.Min(l.safe.width * 0.5f, l.safe.height * 2.1f), bh = bw * 0.25f;
-            float vic = capV ? 1f : Envelope(Time.time - victoryAt, 3.6f, 0.25f, 0.7f);
+            float vic = capV ? 1f : Envelope(Time.time - victoryAt, 2.2f, 0.2f, 0.5f);   // было 3,6 с по центру — закрывало корабль
             bool dead = capD || (hull != null && !hull.Alive);
             float deadFor = capD ? 1f : hull != null ? hull.DeadFor : 0f, delay = hull != null ? hull.respawnDelay : 4f;
             if (dead)
@@ -584,7 +584,9 @@ namespace SkyTide
             else if (vic > 0f)
             {
                 float pop = capV ? 1f : 1f + 0.06f * (1f - Mathf.Clamp01((Time.time - victoryAt) / 0.25f));
-                Rect r = new Rect(l.safe.center.x - bw * pop * 0.5f, l.safe.y + l.safe.height * 0.5f - bh * pop * 0.5f, bw * pop, bh * pop);
+                float vw = bw * 0.62f, vh = bh * 0.62f;   // меньше и выше корабля: под полосой корпуса, а не в центре экрана
+                Rect r = new Rect(l.safe.center.x - vw * pop * 0.5f, l.safe.y + l.safe.height * 0.235f, vw * pop, vh * pop);
+                bh = vh;
                 if (bVictory != null)
                 {
                     ImageRect(bVictory, r, Whole, new Color(1f, 1f, 1f, vic));
@@ -619,7 +621,7 @@ namespace SkyTide
                     float zone = Envelope(Time.time - fort.EnteredAt, 3f, 0.2f, 0.6f);
                     float foeAlarm = Envelope(Time.time - SkyFortress.EnemyAlarmAt, 3.5f, 0.15f, 0.5f);
                     if (alarm > 0f) { noteText = "КРЕПОСТЬ ОТКРЫЛА ОГОНЬ"; noteIcon = 1; note = alarm; corner = false; }
-                    else if (foeAlarm > 0f) { noteText = "КРЕПОСТЬ БЬЁТ ПО ВРАГУ"; noteIcon = 0; note = foeAlarm; corner = false; }
+                    else if (foeAlarm > 0f) { noteText = "КРЕПОСТЬ БЬЁТ ПО ВРАГУ"; noteIcon = 0; note = foeAlarm; corner = true; }   // в угол: по центру висела десятки секунд поверх корабля
                     else if (fort.Hostile) { noteText = "ТРЕВОГА · " + Mathf.CeilToInt(fort.HostileLeft) + " с"; noteIcon = 1; note = 1f; corner = true; }
                     else if (fort.PlayerDocked && hull != null) { noteText = "РЕМОНТ · " + Mathf.RoundToInt(hull.Health01 * 100f) + "%"; noteIcon = 0; note = 1f; corner = true; }
                     else if (zone > 0f && fort.PlayerInside) { noteText = "БЕЗОПАСНАЯ ЗОНА"; noteIcon = 0; note = zone; corner = false; }
@@ -634,6 +636,7 @@ namespace SkyTide
                     }
                 }
             }
+            if (vic > 0f && !dead) corner = true;   // баннер победы теперь в слоте центральной плашки
             if (note > 0f && bPlate != null)
             {
                 float pw = Mathf.Min(l.safe.width * 0.32f, l.safe.height * 1.3f), ph = pw * 192f / 1024f;
