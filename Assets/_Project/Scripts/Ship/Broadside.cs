@@ -557,10 +557,7 @@ namespace SkyTide
             // Залп не ложится в цель, но решение есть: малая метка там, где цель окажется к прилёту ядер, —
             // её и надо поставить на траверз (доворот стволов ограничен).
             HasLead = !AimOnTarget && solved && best == Locked; if (HasLead) LeadPoint = best.Center + targetVel * flightTime;   // упреждение рисует HUD: кольцо, пунктир от рамки цели и подпись
-            float mark = ready ? 1f : 0.6f;
-            if (midHull) fx.AddAim(midEnd, Vector3.up, 9f, 3, 1f, mark);            // прицел на корпусе цели
-            if (foreHull && fore != mid) fx.AddAim(foreEnd, Vector3.up, 5f, 3, 1f, mark * 0.8f);
-            if (aftHull && aft != mid) fx.AddAim(aftEnd, Vector3.up, 5f, 3, 1f, mark * 0.8f);
+            // Ромбы точек попадания на корпусе цели убраны (владелец 16.11): что залп ляжет в корпус, показывает красная рамка цели.
             // Эллипс накрытия на облаках убран: место падения показывает наконечник стрелки.
         }
 
