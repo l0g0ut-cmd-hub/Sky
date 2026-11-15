@@ -65,14 +65,19 @@ namespace SkyTide
             Init();
         }
 
+        // Замер этапов сборки мира (серый экран при запуске, владелец 15.11) — строкой в журнал событий.
+        float initT0, markAt; readonly System.Text.StringBuilder marks = new System.Text.StringBuilder();
+        void Mark(string what) { float now = Time.realtimeSinceStartup; marks.Append(' ').Append(what).Append(' ').Append((now - markAt).ToString("F1")).Append(';'); markAt = now; }
+
         /// <summary>Собирает всё. Вызывается из Awake, а в редакторе — для кадров в CI (там Awake не срабатывает).</summary>
         public void Init()
         {
             if (initialized) return;
             initialized = true;
-            float initT0 = Time.realtimeSinceStartup;
+            initT0 = Time.realtimeSinceStartup; markAt = initT0; marks.Length = 0;
             Instance = this;
             materials.EnsureAll();
+            Mark("материалы");
 
             // Потолок 30 кадров: телефон владельца (Mali-G76) 60 не держит ни в одном режиме, а без потолка греется и
             // сбрасывает частоты — те же кадры становятся в 1.5–2 раза дороже (автозамеры 89/92/105). Ровные 30 лучше
@@ -121,14 +126,17 @@ namespace SkyTide
             fx.deckTop = vol.deckTop;
             fx.wind = vol.wind;
             fx.ConfigureSurface(keepNoise as Texture2D, vol.noiseBytes);
+            Mark("эффекты/облака-шум");
             Fx = fx;
             FxSystem.Instance = fx;
 
             World = gameObject.AddComponent<CloudSea>();
             World.Build(materials);
+            Mark("море облаков");
             SetVolumetric(volumetricClouds);
 
             Ship = ShipFactory.Build("Player Ship", spawnPosition, spawnHeading, materials, CurrentShip);
+            Mark("флагман");
             PlayerHull hull = Ship.GetComponent<PlayerHull>();
             if (hull == null) hull = Ship.gameObject.AddComponent<PlayerHull>();
             if (Application.isPlaying)
@@ -232,6 +240,7 @@ namespace SkyTide
 
             // Ход боя: волны, счёт, замедление при потоплении (только в игре; в кадрах CI — значения по умолчанию).
 
+            Mark("враги/крепость");
             cam.target = Ship.transform;
             cam.Snap();
 
@@ -243,7 +252,7 @@ namespace SkyTide
             controls.hudFont = hudFont;
             post.controls = controls;
             SetClothWind(Application.isPlaying ? Time.time : 0f, Application.isPlaying ? 1f : 0f);
-            if (Application.isPlaying) DebugReport.Event("мир собран за " + (Time.realtimeSinceStartup - initT0).ToString("F1") + " с (с запуска приложения " + Time.realtimeSinceStartup.ToString("F1") + " с)");
+            if (Application.isPlaying) DebugReport.Event("мир собран за " + (Time.realtimeSinceStartup - initT0).ToString("F1") + " с (с запуска приложения " + Time.realtimeSinceStartup.ToString("F1") + " с):" + marks);
         }
 
         void Update(){long __pt=PerfTimers.Start();UpdateTimed();PerfTimers.Stop("Мир",__pt);}

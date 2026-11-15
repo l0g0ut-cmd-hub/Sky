@@ -27,7 +27,7 @@ Shader "SkyTide/AimArrow"
                 float fadeIn = smoothstep(0.0, 0.18, i.uv.y);         // у борта растворяется
                 float chev = frac(i.uv.y * 9.0 - abs(i.uv.x - 0.5) * 1.6 - _Time.y * 0.9);
                 float stripes = 0.75 + 0.25 * smoothstep(0.55, 0.62, chev) * (1.0 - smoothstep(0.85, 0.92, chev));
-                float nearCam = saturate((i.camDist - 12.0) / 45.0);   // вблизи камеры лента не заливает экран
+                float nearCam = saturate((i.camDist - 25.0) / 90.0);   // у камеры гаснет раньше: лента мимо камеры заливала угол экрана   // вблизи камеры лента не заливает экран
                 float rim = smoothstep(0.90, 1.0, across);           // тёмная обводка снаружи канта — контраст на светлом небе
                 float a = (body * stripes + edge * 0.95) * fadeIn * nearCam;
                 float3 rgb = lerp(_Color.rgb * i.color.rgb * (1.15 + edge * 0.5), float3(0.18, 0.08, 0.02), rim * 0.7);

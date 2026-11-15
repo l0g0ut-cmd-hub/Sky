@@ -40,7 +40,7 @@ namespace SkyTide
             l.radius = u * stickRadius;
             l.wheel = new Vector2(safeArea.x + u * 0.19f, safeArea.yMax - u * 0.215f);
             // Машинный телеграф: полукруглый циферблат справа от штурвала (5 секторов: назад, стоп, малый, средний, полный).
-            float dw = u * 0.27f, dh = dw * TelegraphH / TelegraphW;
+            float dw = u * 0.31f, dh = dw * TelegraphH / TelegraphW;
             l.telegraph = new Rect(l.wheel.x + l.radius * 1.2f, l.wheel.y - dh * 0.5f, dw, dh);
             float left = Mathf.Max(l.speed.xMax, l.telegraph.xMax) + m;
             l.hint = new Rect(left, safeArea.yMax - u * 0.1f, Mathf.Max(0f, l.port.x - m - left), u * 0.075f);
@@ -54,7 +54,8 @@ namespace SkyTide
         /// <summary>Картинка телеграфа (telegraph_dial.png): размер, ось рычага и углы секторов (0 — назад, слева; 4 — полный, справа).</summary>
         public const float TelegraphW = 1222f, TelegraphH = 876f, HubX = 600f, HubY = 594f;
         public Vector2 TelegraphHub => new Vector2(telegraph.x + telegraph.width * HubX / TelegraphW, telegraph.y + telegraph.height * HubY / TelegraphH);
-        public static float GearAngle(int g) => 162f - 36f * g;   // градусы от «вправо», против часовой
+        static readonly float[] GearAngles = { 170f, 130f, 86f, 44f, 10f };   // центры секторов циферблата (замер по картинке)
+        public static float GearAngle(int g) => GearAngles[Mathf.Clamp(g, 0, 4)];   // градусы от «вправо», против часовой
         public Vector2 GearPoint(int g)
         {
             float a = GearAngle(g) * Mathf.Deg2Rad, r = telegraph.width * 0.3f;
@@ -65,7 +66,8 @@ namespace SkyTide
             Vector2 h = TelegraphHub;
             if (p.y > h.y) return p.x < h.x ? 0 : 4;
             float a = Mathf.Atan2(h.y - p.y, p.x - h.x) * Mathf.Rad2Deg;
-            return Mathf.Clamp(Mathf.RoundToInt((162f - a) / 36f), 0, 4);
+            int best = 0; for (int g = 1; g < 5; g++) if (Mathf.Abs(GearAngles[g] - a) < Mathf.Abs(GearAngles[best] - a)) best = g;
+            return best;
         }
 
         /// <summary>Меню паузы: панель по центру и её строки (одна геометрия для рисования и касаний).</summary>

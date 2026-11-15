@@ -333,7 +333,7 @@ namespace SkyTide
             Rect body=Content(r); body=new Rect(body.x-r.height*0.12f,body.y,body.width+r.height*0.24f,body.height);   // только поле плашки: раньше заливка ложилась прямоугольником поверх рамки и орнаментов
             if(!ready){LoadBanners();float f0=Mathf.Clamp01(readiness);Rect fr=new Rect(body.x,body.y+body.height*0.08f,body.width*f0,body.height*0.84f);if(tFill!=null)ImageRect(tFill,fr,new Rect(0f,0f,f0,1f),new Color(1f,1f,1f,0.42f));else Solid(fr,new Color(1f,0.6f,0.18f,0.3f));}   // раскалённая заливка слева направо (ui_fill)
             float pop=Mathf.Clamp01(1f-(vNow-volleyReadyAt[vk])/0.45f);
-            if(ready&&pop>0f)Solid(body,new Color(1f,0.9f,0.6f,0.55f*pop));
+            if(ready&&pop>0f)Solid(body,new Color(1f,0.9f,0.6f,0.28f*pop));   // вспышка готовности слабее: на 0,55 выбеливала надпись
             if(aimed)Solid(body,new Color(1f,0.82f,0.4f,(ready?0.2f:0.1f)+0.08f*Mathf.Sin(vNow*6f)));
             Rect c=Content(r);
             Rect title=new Rect(c.x,c.y,c.width,c.height*0.36f);
@@ -347,7 +347,7 @@ namespace SkyTide
                 float gapX=ih*0.15f;
                 row=side<0?new Rect(row.x+iw+gapX,row.y,row.width-iw-gapX,row.height):new Rect(row.x,row.y,row.width-iw-gapX,row.height);
             }
-            Text(row,ready?(aimed?"В ПРИЦЕЛЕ":idle):((1f-readiness)*cooldown).ToString("F1")+" с",l.unit*0.03f,ready?(aimed?new Color(1f,0.88f,0.55f):gold):muted);
+            Text(row,ready?(aimed?"В ПРИЦЕЛЕ":idle):((1f-readiness)*cooldown).ToString("F1")+" с",l.unit*0.03f,ready?(aimed?new Color(1f,0.88f,0.55f):gold):cream);   // секунды — светлым: на раскалённой заливке серые не читались
             float bh=Mathf.Max(2f,c.height*0.1f);
             Rect bar=new Rect(c.x,c.yMax-bh,c.width,bh);
             if(HasKit)
@@ -506,7 +506,7 @@ namespace SkyTide
             float want = HudLayout.GearAngle(input.Gear);
             leverAngle = float.IsNaN(leverAngle) ? want : Mathf.Lerp(leverAngle, want, 1f - Mathf.Exp(-14f * Time.unscaledDeltaTime));
             // Рычаг: ось — шарнир у основания (94, 674), ручка смотрит на 74,8° от горизонтали; длина до ручки ≈ 0,32 ширины циферблата.
-            float scale = t.width * 0.32f / 673f;
+            float scale = t.width * 0.4f / 673f;   // рычаг до середины секторов (на 0,32 был мелким, терялся на ступице)
             ImagePivot(tLever, l.TelegraphHub, new Vector2(94f, 674f), scale, leverAngle - 74.8f, Color.white);
         }
 

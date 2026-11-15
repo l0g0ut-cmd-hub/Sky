@@ -408,7 +408,7 @@ namespace SkyTide
         // Ровная прицельная дуга: начало — середина борта в системе курса (без качки модели), направление и возвышение
         // сглажены по времени; лента — центр ± полуширина накрытия, без перекоса.
         readonly List<Vector3> arcA = new List<Vector3>(48), arcB = new List<Vector3>(48);
-        bool arcValid; float arcYaw, arcElev, arcDist; int arcSide;
+        bool arcValid; float arcYaw, arcElev, arcDist; int arcSide; OrbitCamera scopeCam;
         bool BuildArc(CannonMount fore, CannonMount aft, CannonMount mid, float side, float g, FxSystem fx)
         {
             Vector3 mFore = transform.InverseTransformPoint(model.TransformPoint(fore.Muzzle)), mAft = transform.InverseTransformPoint(model.TransformPoint(aft.Muzzle));
@@ -543,7 +543,9 @@ namespace SkyTide
             float aimedK = aimBlend[SideIdx(side)];
             if (arrow != null)
             {
-                if (best != null && solved && aimedK > 0.02f && BuildArc(fore != null ? fore : mid, aft != null ? aft : mid, mid, side, g, fx))
+                if (scopeCam == null && Camera.main != null) scopeCam = Camera.main.GetComponent<OrbitCamera>();
+                bool scoped = scopeCam != null && scopeCam.ScopeOn;   // в трубе лента шла у самой камеры жёлтой стеной (снимки 155)
+                if (!scoped && best != null && solved && aimedK > 0.02f && BuildArc(fore != null ? fore : mid, aft != null ? aft : mid, mid, side, g, fx))
                     arrow.Draw(arcA, arcB, hullAny ? 2 : ready ? 0 : 1, (ready ? 0.85f : 0.5f) * Mathf.SmoothStep(0f, 1f, aimedK));
                 else { arrow.Hide(); arcValid = false; }
             }
