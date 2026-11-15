@@ -125,6 +125,12 @@ namespace SkyTide
         }
 
         /// <summary>Кучевые облака-спрайты и дальние башни (полосы дымки остаются всегда).</summary>
+        /// <summary>Отладка (команда set sea 0|1): рисованная поверхность моря облаков — видна/скрыта.</summary>
+        public void SetSeaVisible(bool visible)
+        {
+            foreach (Transform p in seaPlanes) if (p != null) p.gameObject.SetActive(visible);
+        }
+
         public void SetSpriteCloudsVisible(bool visible)
         {
             for (int i = 0; i < spriteClouds.Count; i++) spriteClouds[i].SetActive(visible);

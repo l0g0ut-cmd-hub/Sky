@@ -201,6 +201,8 @@ namespace SkyTide
                 case "fortress": if (g == null || g.Fortress == null) return "нет крепости"; g.Fortress.Visible = on; return "крепость видна " + on;
                 case "fortshadow": SkyFortress.ShadowsFar = on; return "тень крепости издалека " + on;
                 case "lod": ShipLod.Enabled = on; return "лёгкие модели " + on;
+                case "sea": if (g == null || g.World == null) return "нет мира"; g.World.SetSeaVisible(on); return "рисованное море облаков " + on;
+                case "sprites": if (g == null || g.World == null) return "нет мира"; g.World.SetSpriteCloudsVisible(on); return "рисованные облака-спрайты " + on;
                 case "far": { float k; if (float.TryParse(val, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out k)) ShipLod.FarScale = Mathf.Clamp(k, 0.2f, 20f); return "дальний уровень ×" + ShipLod.FarScale; }
                 case "cull": { float d; if (float.TryParse(val, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out d)) ShipLod.CullDistance = Mathf.Max(300f, d); return "не рисовать дальше " + ShipLod.CullDistance + " м"; }
                 case "fx": if (g == null || g.Fx == null) return "нет эффектов"; g.Fx.debugHidden = !on; return "эффекты " + on;
