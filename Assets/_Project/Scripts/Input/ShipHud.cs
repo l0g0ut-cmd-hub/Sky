@@ -360,17 +360,63 @@ namespace SkyTide
         /// Всё внутри поля плашки, мимо рамки и угловых орнаментов.</summary>
         readonly bool[] volleyWasReady={true,true};
         readonly float[] volleyReadyAt={-10f,-10f};
+        /// <summary>Кнопка борта из картинок владельца (1024×256): обычная, «в прицеле» (раскалённая), перезарядка (тёмная).
+        /// Режется 5×3: углы и заклёпки не тянутся. Название — сверху по центру поля, состояние с пушкой — под ним,
+        /// заряд — в канавке картинки.</summary>
+        void VolleyArt(TouchControls input,HudLayout l,Rect r,int side,float readiness,float cooldown,bool aimed,bool ready,string idle)
+        {
+            Texture2D tex=!ready?tSideReload:aimed?tSideAim:tSide;
+            float k=r.height/256f; bool pressed=input.Pressed(r);
+            Color tint=pressed?new Color(0.85f,0.85f,0.85f,1f):Color.white;
+            if(tex==tSideAim&&tSideGlow!=null)   // ореол раскалённой кнопки — позади, за краями рамки (рамка в нём: x 51…2036 из 2083, y 57…417 из 481)
+                ImageRect(tSideGlow,new Rect(r.x-r.width*15f/858f,r.y-r.height*60f/288f,r.width*887f/858f,r.height*408f/288f),Whole,tint);   // ореол: рамка в нём x 15…873 из 887, y 60…348 из 408
+            float TW=tex.width*256f/tex.height, cw=128f;   // атлас владельца: все три кнопки 768×256 одной формы
+            float[] sx={0f,cw,TW*0.5f-32f,TW*0.5f+32f,TW-cw,TW}, sy={0f,60f,180f,256f};
+            float[] dx={r.x,r.x+cw*k,0f,0f,r.xMax-cw*k,r.xMax}; float mid=(dx[1]+dx[4])*0.5f; dx[2]=mid-32f*k; dx[3]=mid+32f*k;
+            float[] dy={r.y,r.y+60f*k,r.yMax-76f*k,r.yMax};
+            for(int j=0;j<3;j++)for(int i=0;i<5;i++)
+                ImageRect(tex,new Rect(dx[i],dy[j],dx[i+1]-dx[i],dy[j+1]-dy[j]),new Rect(sx[i]/TW,sy[j]/256f,(sx[i+1]-sx[i])/TW,(sy[j+1]-sy[j])/256f),tint);
+            // Поле под текст: между угловыми орнаментами, от верхней кромки до канавки.
+            float fx0=r.x+125f*k, fx1=r.xMax-125f*k, fy0=r.y+40f*k, fy1=r.yMax-(256f-188f)*k;
+            float fh=fy1-fy0;
+            Rect title=new Rect(fx0,fy0,fx1-fx0,fh*0.48f), row=new Rect(fx0,fy0+fh*0.5f,fx1-fx0,fh*0.5f);
+            float ts=Mathf.Min(fh*0.35f,l.unit*0.028f);
+            Text(title,side<0?"ЛЕВЫЙ БОРТ":"ПРАВЫЙ БОРТ",ts,ready?cream:new Color(0.78f,0.74f,0.68f,1f));
+            string st=ready?(aimed?"В ПРИЦЕЛЕ":idle):((1f-readiness)*cooldown).ToString("F1")+" с";
+            Color sc=ready?(aimed?new Color(1f,0.93f,0.7f):gold):new Color(0.86f,0.82f,0.76f);
+            if(HasKit)
+            {
+                // Пушка и подпись — одной группой по центру строки.
+                Rect src=side<0?KCannonL:KCannonR; float ih=row.height*1.3f, iw=ih*src.width/src.height, g=ih*0.18f;
+                float tw=TextWidth(st,Mathf.Max(9f,ts)), total=iw+g+tw, gx=row.center.x-total*0.5f;
+                Rect ir=side<0?new Rect(gx,row.center.y-ih*0.5f,iw,ih):new Rect(gx+tw+g,row.center.y-ih*0.5f,iw,ih);
+                Sprite(ir,src,new Color(1f,1f,1f,ready?1f:0.55f));
+                float txs=side<0?gx+iw+g:gx, pad=row.height*0.3f+4f;
+                Text(new Rect(txs-pad,row.y,tw+pad*2f,row.height),st,ts,sc);
+            }
+            else Text(row,st,ts,sc);
+            // Заряд — в канавке картинки (x 114…909, y 180…205); у раскалённой кнопки канавки нет — борт готов.
+            if(tFill!=null)   // заряд в канавке; готов — полная
+            {
+                float f=ready?1f:Mathf.Clamp01(readiness);
+                Rect gr=new Rect(r.x+101f*k,r.yMax-(256f-195f)*k,(r.xMax-103f*k)-(r.x+101f*k),15f*k);   // канавка атласа (замер): x 98…668 из 768, y 194…210
+                if(f>0.001f) ImageRect(tFill,new Rect(gr.x,gr.y,gr.width*f,gr.height),new Rect(0f,0f,f,1f),Color.white);
+            }
+        }
+
         void Volley(TouchControls input,HudLayout l,Rect r,int side,float readiness,float cooldown,bool aimed)
         {
-            // Почему борт не «в прицеле»: враг дальше предела пушек — «ДАЛЕКО», в пределах, но не на траверзе — «ДОВЕРНИ».
+            // Почему борт не «в прицеле»: враг дальше предела пушек — «ДАЛЕКО», в пределах, но не на траверзе — «ЖДЁМ ЦЕЛЬ» (владелец 16.11: вместо «ДОВЕРНИ»).
             string idle="ГОТОВ"; Broadside vg=input.Guns();
             if(Application.isPlaying&&vg!=null&&vg.AimSide==side&&!aimed)
             {
                 float nearest=float.MaxValue;
                 foreach(TargetShip ts in TargetShip.All){if(ts==null||!ts.Alive)continue;float d=Vector3.Distance(ts.transform.position,input.ship.transform.position);if(d<nearest)nearest=d;}
-                if(nearest<float.MaxValue)idle=nearest>vg.MaxRange?"ДАЛЕКО":"ДОВЕРНИ";
+                if(nearest<float.MaxValue)idle=nearest>vg.MaxRange?"ДАЛЕКО":"ЖДЁМ ЦЕЛЬ";
             }
             bool ready=readiness>=0.9999f;
+            LoadBanners();
+            if(tSide!=null&&tSideAim!=null&&tSideReload!=null){VolleyArt(input,l,r,side,readiness,cooldown,aimed,ready,idle);return;}
             Panel(r,l.unit,ready,input.Pressed(r));
             // Заливка перезарядки: кнопка наполняется янтарём слева направо, в момент готовности вспыхивает;
             // борт, чьи ядра по прицельной дуге ложатся в корпус врага, светится и пишет «В ПРИЦЕЛЕ».
@@ -663,7 +709,7 @@ namespace SkyTide
 
         // ---------- баннеры, оповещения, виньетка (Resources/UI: banner_victory/defeat 2048×512, plate_notice 1024×192,
         // vignette_damage 2:1, icons 4×4). Текст всегда в пределах внутреннего поля плашки (пиксели картинки ниже). ----------
-        Texture2D bVictory, bDefeat, bPlate, bVignette, bIcons, bIcons2, tInfo, tFill, tCompass, tDial, tLever, tModule, tConsole, tWheel; bool bannersTried;
+        Texture2D bVictory, bDefeat, bPlate, bVignette, bIcons, bIcons2, tInfo, tFill, tCompass, tDial, tLever, tModule, tConsole, tWheel, tSide, tSideAim, tSideReload, tSideGlow; bool bannersTried;
         string victoryText = "ЦЕЛЬ УНИЧТОЖЕНА";
         readonly HashSet<TargetShip> sunkSeen = new HashSet<TargetShip>();
         float victoryAt = -100f;
@@ -680,6 +726,7 @@ namespace SkyTide
             tDial = Resources.Load<Texture2D>("UI/telegraph_dial"); tLever = Resources.Load<Texture2D>("UI/telegraph_lever");
             tModule = Resources.Load<Texture2D>("UI/ui_radar_module");
             tConsole = Resources.Load<Texture2D>("UI/ui_console"); tWheel = Resources.Load<Texture2D>("UI/ui_wheel");
+            tSide = Resources.Load<Texture2D>("UI/btn_side"); tSideAim = Resources.Load<Texture2D>("UI/btn_side_aim"); tSideReload = Resources.Load<Texture2D>("UI/btn_side_reload"); tSideGlow = Resources.Load<Texture2D>("UI/btn_side_glow");
         }
         /// <summary>Картинка в прямоугольник; uv — доли картинки от верхнего левого угла.</summary>
         void ImageRect(Texture2D tex, Rect dst, Rect uv, Color col)
