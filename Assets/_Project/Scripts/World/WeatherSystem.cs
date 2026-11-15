@@ -16,6 +16,9 @@ namespace SkyTide
         public Kind Current { get; private set; } = Kind.Clear;
         public static readonly string[] Names = { "ЯСНО", "ДЫМКА", "ГРОЗА" };
         float until, haze, storm, flash, nextBolt = -1f;
+        [System.NonSerialized] public float clearMin = 300f, clearMax = 480f;
+        /// <summary>Тест: сразу перейти к погоде.</summary>
+        public void Force(Kind k) { Current = k; until = Time.time + (k == Kind.Clear ? Random.Range(clearMin, clearMax) : Random.Range(120f, 180f)); HudNotice.Show("ТЕСТ: " + Names[(int)k], 0, 2f); }
         SkyTidePost post; Light sun;
         bool saved; float baseExposure, baseSaturation, baseSun; Vector4 baseAerial;
 
@@ -60,7 +63,7 @@ namespace SkyTide
         void Next()
         {
             Current = Current == Kind.Clear ? Kind.Haze : Current == Kind.Haze ? Kind.Storm : Kind.Clear;
-            until = Time.time + (Current == Kind.Clear ? Random.Range(300f, 480f) : Random.Range(120f, 180f));
+            until = Time.time + (Current == Kind.Clear ? Random.Range(clearMin, clearMax) : Random.Range(120f, 180f));
             HudNotice.Show(Current == Kind.Storm ? "НАДВИГАЕТСЯ ГРОЗА" : Current == Kind.Haze ? "ДЫМКА · ВИДИМОСТЬ ПАДАЕТ" : "ПРОЯСНЯЕТСЯ", 0, 3f);
         }
 

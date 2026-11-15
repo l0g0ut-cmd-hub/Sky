@@ -21,6 +21,7 @@ namespace SkyTide
     /// </summary>
     public class PlayerAutopilot : MonoBehaviour
     {
+        public static float RepairBelowDefault = 0.35f;
         public float repairBelow = 0.35f, repairUntil = 0.98f;
         ShipController ship; PlayerHull hull; Broadside guns; PlayerBoarding boarding;
         bool repairing; int wantSide; string state = "";
@@ -49,6 +50,7 @@ namespace SkyTide
             if (ship == null) { ship = GetComponent<ShipController>(); hull = GetComponent<PlayerHull>(); guns = GetComponent<Broadside>(); boarding = GetComponent<PlayerBoarding>(); }
             if (ship == null || hull == null || !hull.Alive) { state = ""; return; }
             SkyFortress fort = SkyFortress.Instance;
+            repairBelow = RepairBelowDefault;
             if (hull.Health01 < repairBelow) repairing = true;
             else if (hull.Health01 >= repairUntil) repairing = false;
             if (repairing && fort != null) { foe = null; Repair(fort); return; }

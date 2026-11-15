@@ -9,6 +9,8 @@ namespace SkyTide
     /// </summary>
     public static class WindField
     {
+        /// <summary>Конфиг: множитель силы ветра (0 — штиль).</summary>
+        public static float Mul = 1f;
         static readonly Vector3 Base = new Vector3(-4f, 0f, 1.8f).normalized;
         public static Vector3 Dir
         {
@@ -24,7 +26,7 @@ namespace SkyTide
             get
             {
                 if (!Application.isPlaying) return 0.6f;
-                float s = 0.65f + 0.35f * Mathf.Sin(Time.time * 0.011f + 1.3f);
+                float s = (0.65f + 0.35f * Mathf.Sin(Time.time * 0.011f + 1.3f)) * Mul;
                 // В грозу ветер крепче.
                 return WeatherSystem.Instance != null && WeatherSystem.Instance.Current == WeatherSystem.Kind.Storm ? Mathf.Min(1.4f, s * 1.5f) : s;
             }

@@ -98,6 +98,12 @@ namespace SkyTide
 
         /// <summary>Ремонт у причала.</summary>
         public void Repair(float amount) { if (Alive) Health = Mathf.Min(maxHealth, Health + amount); }
+        /// <summary>Новая прочность (конфиг): текущая — в той же доле.</summary>
+        public void SetMaxHealth(float max) { float k = Health01; maxHealth = Mathf.Max(1f, max); Health = maxHealth * k; }
+        /// <summary>Тест: бессмертие (попадания видны, урона нет).</summary>
+        public static bool God;
+        /// <summary>Тест: снять прочность без попадания (без эффектов и критов).</summary>
+        public void OnHitDamageOnly(float amount) { if (Alive && amount > 0f) Health = Mathf.Max(1f, Health - amount); }
         public Vector3 Center { get { return model != null ? model.TransformPoint(box.center) : transform.position; } }
 
         public bool TryHit(Vector3 a, Vector3 b, out Vector3 point)
@@ -142,6 +148,7 @@ namespace SkyTide
         {
             if (!Alive) return;
             power = Mathf.Max(1f, power);
+            if (God) { FxSystem gfx = FxSystem.Instance; if (gfx != null) gfx.Explosion(point, 0.6f); return; }
             Health -= damagePerHit * power;
             LastHitTime = Time.time;
             DebugReport.Count("попаданий по флагману");

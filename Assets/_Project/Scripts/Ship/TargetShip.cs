@@ -61,6 +61,19 @@ namespace SkyTide
 
         // Тяжёлый: иногда рядовой враг выходит тяжёлым — вдвое прочнее, медленнее, 6 пушек на борт, бьёт дальше.
         [System.NonSerialized] public bool canBeHeavy;
+        [System.NonSerialized] public float heavyChance = 0.22f;
+        /// <summary>Конфиг: новые базовые числа (ход, поворот, прочность, дальность, перезарядка) — с учётом тяжёлого.</summary>
+        public void Tune(float speed, float yaw, int hitsMax, float range, float cooldown)
+        {
+            baseSaved = true; baseSpeed = speed; baseYaw = yaw; baseHits = hitsMax; baseRange = range; baseCooldown = cooldown;
+            if (gunner == null) gunner = GetComponent<EnemyGunner>();
+            if (gunner != null && baseGuns == 0) baseGuns = gunner.gunsPerSide;
+            hitsToSink = Heavy ? baseHits * 2 : baseHits;
+            if (ctrl != null) { ctrl.maxSpeed = Heavy ? baseSpeed * 0.75f : baseSpeed; ctrl.maxYawRate = Heavy ? baseYaw * 0.75f : baseYaw; }
+            if (gunner != null) { gunner.maxRange = Heavy ? baseRange * 1.15f : baseRange; gunner.cooldown = Heavy ? baseCooldown * 1.35f : baseCooldown; }
+        }
+        /// <summary>Тест: прочность в долях (0..1).</summary>
+        public void SetHealth01(float f) { if (Alive) hits = Mathf.Clamp(Mathf.RoundToInt((1f - f) * hitsToSink), 0, hitsToSink - 1); }
         public bool Heavy { get; private set; }
         bool baseSaved; int baseHits; float baseSpeed, baseYaw; int baseGuns; float baseRange, baseCooldown;
         /// <summary>Взят на абордаж (а не потоплен) — HUD пишет «ПРИЗ ВЗЯТ».</summary>
@@ -84,7 +97,7 @@ namespace SkyTide
                 baseSaved = true; baseHits = hitsToSink; baseSpeed = ctrl.maxSpeed; baseYaw = ctrl.maxYawRate;
                 if (gunner != null) { baseGuns = gunner.gunsPerSide; baseRange = gunner.maxRange; baseCooldown = gunner.cooldown; }
             }
-            Heavy = canBeHeavy && captainRolled && Random.value < 0.22f;
+            Heavy = canBeHeavy && captainRolled && Random.value < heavyChance;
             hitsToSink = Heavy ? baseHits * 2 : baseHits;
             ctrl.maxSpeed = Heavy ? baseSpeed * 0.75f : baseSpeed; ctrl.maxYawRate = Heavy ? baseYaw * 0.75f : baseYaw;
             if (gunner != null) { gunner.gunsPerSide = Heavy ? 6 : baseGuns; gunner.maxRange = Heavy ? baseRange * 1.15f : baseRange; gunner.cooldown = Heavy ? baseCooldown * 1.35f : baseCooldown; }

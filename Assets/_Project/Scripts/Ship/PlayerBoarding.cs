@@ -11,6 +11,8 @@ namespace SkyTide
     public class PlayerBoarding : MonoBehaviour
     {
         public float range = 85f, breakRange = 120f, duration = 5f;
+        /// <summary>Конфиг: абордаж включён.</summary>
+        public static bool Allowed = true;
         PlayerHull hull; ShipController ship;
         TargetShip candidate, boarding;
         float progress, nextFx;
@@ -26,6 +28,7 @@ namespace SkyTide
             if (!hull.Alive) { Abort(); candidate = null; return; }
             if (boarding != null) { Step(Time.deltaTime); return; }
             candidate = null; float best = range;
+            if (!Allowed) return;
             foreach (TargetShip t in TargetShip.All)
             {
                 if (t == null || !t.Alive || t.Health01 > 0.2f || t.Controller == null) continue;

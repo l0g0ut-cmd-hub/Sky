@@ -45,7 +45,7 @@ namespace SkyTide
         GUIStyle label, button, small;
         // Страница «Замер»: время процессора по нашим системам (PerfTimers), отрисовка камеры на процессоре
         // (от начала отсечения до конца сцены) и счётчики Unity (ProfilerRecorder — доступны и в релизной сборке).
-        bool details;
+        bool details, testPage;
         readonly List<KeyValuePair<string, float>> top = new List<KeyValuePair<string, float>>();
         float copiedAt = -10f; bool copiedFull;
         ProfilerRecorder drawCalls, setPass, batches, tris, shadowCasters, gcAlloc, mainThread, renderThread;
@@ -183,7 +183,8 @@ namespace SkyTide
             if (small == null) { small = new GUIStyle(label) { fontSize = Mathf.RoundToInt(label.fontSize * 0.8f) }; }
             GUI.Label(new Rect(x, y, w, h * 0.62f), string.Format("работа: игра {0:F1} · отрисовка {1:F1} · ВК {2:F1} мс   → {3}", mainWork, renderWork, gpu, Bottleneck()), small); y += h * 0.7f;
             float hw = (w - u * 0.06f) / 4f, gx = u * 0.02f;
-            if (GUI.Button(new Rect(x, y, hw, h * 0.9f), details ? "← Назад" : "Части →", button)) { details = !details; PerfTimers.Reset(); camMs = 0f; }
+            // Страницы по кругу: переключатели → замер по частям → тест → переключатели.
+            if (GUI.Button(new Rect(x, y, hw, h * 0.9f), details ? "Тест →" : testPage ? "← Назад" : "Части →", button)) { if (details) { details = false; testPage = true; } else if (testPage) testPage = false; else details = true; PerfTimers.Reset(); camMs = 0f; }
             if (GUI.Button(new Rect(x + (hw + gx), y, hw, h * 0.9f), "АВТОЗАМЕР", button) && game != null) StartCoroutine(Bench());
             // Отчёт для разработчика в буфер обмена (вставить в чат): короткий (~2 тыс. знаков) и полный.
             bool justCopied = Time.unscaledTime - copiedAt < 2f;
@@ -197,6 +198,7 @@ namespace SkyTide
                 }
             y += h;
             if (details) { Details(x, y, w, h); return; }
+            if (testPage) { TestCells(x, y, w, h); return; }
             if (game == null) return;
             VolumetricClouds v = game.Volumetric;
             float cw = (w - u * 0.02f) * 0.5f; int col = 0;
@@ -390,6 +392,52 @@ namespace SkyTide
             if (c) return "упор: ПРОЦЕССОР";
             return "упор: не ясно";
         }
+
+        // ---------- меню тестера ----------
+        float timeScaleBeforeTest = 1f; bool fast;
+        void TestCells(float x, float y, float w, float h)
+        {
+            float u = Mathf.Min(Screen.width, Screen.height);
+            float cw = (w - u * 0.02f) * 0.5f; int col = 0;
+            PlayerHull ph = PlayerHull.Instance;
+            Transform me = game != null && game.Ship != null ? game.Ship.transform : null;
+            TargetShip near = null; float nd = float.MaxValue;
+            if (me != null) foreach (TargetShip t in TargetShip.All) { if (t == null || !t.Alive) continue; float d = Vector3.Distance(t.transform.position, me.position); if (d < nd) { nd = d; near = t; } }
+            if (Cell(x, ref y, cw, h, ref col, "враг рядом (450 м, на траверз)", false) && me != null && near != null)
+            {
+                near.transform.SetPositionAndRotation(me.position + me.right * 450f + me.forward * 60f, me.rotation);
+                Test("враг рядом: " + near.name);
+            }
+            if (Cell(x, ref y, cw, h, ref col, "ближнему врагу 15% (абордаж)", false) && near != null) { near.SetHealth01(0.15f); Test(near.name + " → 15%"); }
+            if (Cell(x, ref y, cw, h, ref col, "бессмертие", PlayerHull.God)) { PlayerHull.God = !PlayerHull.God; Test("бессмертие " + PlayerHull.God); }
+            if (Cell(x, ref y, cw, h, ref col, "время ×3", fast)) { fast = !fast; if (fast) { timeScaleBeforeTest = Time.timeScale; Time.timeScale = 3f; } else Time.timeScale = 1f; Test("время ×" + (fast ? 3 : 1)); }
+            if (Cell(x, ref y, cw, h, ref col, "к причалу крепости", false) && me != null && SkyFortress.Instance != null)
+            {
+                SkyFortress f = SkyFortress.Instance; Vector3 o = f.BerthWorld - f.Center; o.y = 0f; o = o.sqrMagnitude > 1f ? o.normalized : Vector3.forward;
+                Vector3 at = f.BerthWorld + o * 30f; at.y = me.position.y; me.SetPositionAndRotation(at, Quaternion.LookRotation(o, Vector3.up)); Test("телепорт к причалу");
+            }
+            if (Cell(x, ref y, cw, h, ref col, "починить флагман", false) && ph != null) { ph.Repair(ph.maxHealth); Test("флагман починен"); }
+            if (Cell(x, ref y, cw, h, ref col, "флагману 25%", false) && ph != null) { ph.OnHitDamageOnly(ph.Health - ph.maxHealth * 0.25f); Test("флагман → 25%"); }
+            WeatherSystem ws = WeatherSystem.Instance;
+            if (ws != null)
+            {
+                if (Cell(x, ref y, cw, h, ref col, "погода: гроза", ws.Current == WeatherSystem.Kind.Storm)) ws.Force(WeatherSystem.Kind.Storm);
+                if (Cell(x, ref y, cw, h, ref col, "погода: дымка", ws.Current == WeatherSystem.Kind.Haze)) ws.Force(WeatherSystem.Kind.Haze);
+                if (Cell(x, ref y, cw, h, ref col, "погода: ясно", ws.Current == WeatherSystem.Kind.Clear)) ws.Force(WeatherSystem.Kind.Clear);
+            }
+            if (Cell(x, ref y, cw, h, ref col, "атаковать торговца (враг к нему)", false) && near != null)
+                foreach (AllyShip a in AllyShip.All) if (a != null && a.Alive && a.role == AllyShip.Role.Merchant) { near.transform.position = a.transform.position + a.transform.right * 350f; Test(near.name + " у торговца"); break; }
+            if (Cell(x, ref y, cw, h, ref col, "все враги в 1 км", false) && me != null)
+            {
+                int k = 0; foreach (TargetShip t in TargetShip.All) { if (t == null || !t.Alive) continue; float a = k++ * 1.1f; t.transform.position = me.position + new Vector3(Mathf.Cos(a), 0f, Mathf.Sin(a)) * 1000f; }
+                Test("все враги в 1 км: " + k);
+            }
+            if (Cell(x, ref y, cw, h, ref col, "конфиг заново с GitHub", false) && RemoteConfig.Instance != null) { RemoteConfig.Instance.StartCoroutine("Start"); Test("перечитать конфиг"); }
+            GUI.Label(new Rect(x, y + h * 0.2f, w, h), RemoteConfig.Status, small != null ? small : label);
+            y += h;
+            if (GUI.Button(new Rect(x, y + h * 0.2f, w, h), "Закрыть", button)) Open = false;
+        }
+        static void Test(string what) { DebugReport.Event("ТЕСТ: " + what); DebugReport.Count("тест-команд"); HudNotice.Show("ТЕСТ: " + what, 0, 2f); }
 
         bool Cell(float x, ref float y, float cw, float h, ref int col, string name, bool on)
         {
