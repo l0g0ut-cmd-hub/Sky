@@ -62,6 +62,24 @@ namespace SkyTide
 
         void Awake()
         {
+            if (!Application.isPlaying) { Init(); return; }
+            // Сборка мира — 6–7 с на телефоне в одном кадре. Раньше она шла здесь, в Awake, до первого кадра, и весь
+            // этот срок между заставкой Unity и заставкой студии висел серый экран (владелец 15.11). Теперь сначала
+            // показывается заставка студии, а мир собирается под ней: камера и эффекты до сборки выключены.
+            Camera c0 = Camera.main; if (c0 != null) c0.enabled = false;
+            FxSystem f0 = GetComponent<FxSystem>(); if (f0 != null) f0.enabled = false;
+            StartCoroutine(DeferredInit(c0, f0));
+        }
+
+        System.Collections.IEnumerator DeferredInit(Camera c0, FxSystem f0)
+        {
+            float t0 = Time.realtimeSinceStartup;
+            yield return null;
+            // Ждём, пока заставка студии проявится полностью (проявление 0,25 с), не дольше 1,5 с.
+            while (StudioSplash.Active && StudioSplash.Elapsed < 0.35f && Time.realtimeSinceStartup - t0 < 1.5f) yield return null;
+            yield return null;
+            if (c0 != null) c0.enabled = true;
+            if (f0 != null) f0.enabled = true;
             Init();
         }
 

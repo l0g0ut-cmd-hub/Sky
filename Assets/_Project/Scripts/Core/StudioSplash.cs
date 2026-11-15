@@ -31,11 +31,14 @@ namespace SkyTide
 
         /// <summary>Заставка ещё закрывает экран (ввод игры можно игнорировать).</summary>
         public static bool Active { get; private set; }
+        /// <summary>Сколько секунд заставка уже на экране (для отложенной сборки мира).</summary>
+        public static float Elapsed { get { return inst != null && inst.start >= 0f ? Time.unscaledTime - inst.start : 0f; } }
+        static StudioSplash inst;
 
         void Start()
         {
             useGUILayout = false;
-            Active = true;
+            Active = true; inst = this;
             TextAsset bn = Resources.Load<TextAsset>("BuildNumber");
             string num = bn != null ? bn.text.Trim() : "";
             version = "НЕБЕСНЫЙ ПРИЛИВ  ·  версия " + Application.version + (num.Length > 0 ? "  ·  сборка #" + num : "");

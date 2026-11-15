@@ -358,8 +358,7 @@ namespace SkyTide
             if (!Application.isPlaying) return;
             wind = WindField.Drift;   // дым, пыль и щепу сносит общим ветром (он же ускоряет корабли по ветру)
             if (Time.timeSinceLevelLoad < 1.5f) Warm();
-            SpeedFx(Time.deltaTime);
-            EnemyWake(Time.deltaTime);
+            // След за кормой и клочья по бокам убраны (владелец 15.11: «этот пердёж убери» — читались как пузыри).
             Simulate(Time.deltaTime);
         }
 

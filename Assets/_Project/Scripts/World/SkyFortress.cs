@@ -125,7 +125,7 @@ namespace SkyTide
         }
         bool warned;
         float alarmGlow, nextBell;
-        Vector3 beaconPos; bool beaconFound;
+        Vector3 beaconPos; bool beaconFound; BerthRing berthRing; bool berthRingTried;
         /// <summary>Крепость рисуется (панель FPS, автозамер «без крепости»): столкновения и орудия работают в любом случае.</summary>
         public bool Visible
         {
@@ -174,10 +174,10 @@ namespace SkyTide
             for (int i = 0; i < 56; i++) fx.SetLamp(40 + i, centre, 1f, new Color(0f, 0f, 0f, 0f));
             if (zoneMist == null && !zoneMistTried) { zoneMistTried = true; zoneMist = ZoneMist.Create(this, fx.deckTop + 1f); }
             if (zoneMist != null) zoneMist.Tick(alarm, centre, fx.deckTop + 1f);
-            if (alarm) { fx.ClearBeacon(); return; }
-            float dist = Vector3.Distance(eye, beaconPos);
-            float pulse = Mathf.Pow(Mathf.Max(0f, Mathf.Sin(time * 2.2f)), 4f);
-            fx.SetBeacon(beaconPos, Mathf.Clamp(dist * 0.02f, 7f, 55f), new Color(1f, 0.85f, 0.55f, 0.12f + 0.4f * pulse));
+            // Точка ремонта — кольцо по зоне ремонта у причала вместо огонька-«звезды» (владелец 15.11).
+            fx.ClearBeacon();
+            if (berthRing == null && !berthRingTried && Application.isPlaying) { berthRingTried = true; berthRing = BerthRing.Create(BerthWorld, berthRadius); }
+            if (berthRing != null) berthRing.Tick(BerthWorld, !alarm, PlayerDocked, time);
         }
 
         /// <summary>Ставит крепость в <paramref name="position"/> пирсом к <paramref name="faceTowards"/> (+ yawOffset°),
