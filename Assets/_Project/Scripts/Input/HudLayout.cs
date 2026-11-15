@@ -33,9 +33,9 @@ namespace SkyTide
             // Левая колонка — одна ширина и один левый край для всего: FPS+ТРУБА, радар, плашка радара, плашка хода;
             // штурвал — по её середине; зазоры между блоками равные (владелец 15.11: «выровняй нормально»).
             float colW = u * 0.34f, colX = safeArea.x + m;
-            float topH = u * 0.065f, halfW = (colW - gap) * 0.5f;
-            l.fps = new Rect(colX, safeArea.y + m, halfW, topH);
-            l.spy = new Rect(colX + halfW + gap, l.fps.y, halfW, topH);
+            float topH = u * 0.065f, fpsW = u * 0.14f;
+            l.fps = new Rect(colX, safeArea.y + m, fpsW, topH);
+            l.spy = new Rect(colX + fpsW + gap, l.fps.y, colW - fpsW - gap, topH);   // «ТРУБА» шире: в половине колонки надпись ужималась в мелочь
             // Радар со вкладками — одна картинка (ui_radar_module.png 1536×1024): круг радара слева (центр 357,357, r 247),
             // вкладки ВРАГ / ПРИЧАЛ / РАДАР справа, ниже — вкладка хода. Высота — сколько влезает до штурвала.
             l.radius = u * stickRadius;
@@ -45,8 +45,8 @@ namespace SkyTide
             l.console = new Rect(colX - 2f * ck, safeArea.yMax - m - 908f * ck, 1536f * ck, 1024f * ck);
             l.wheel = new Vector2(l.console.x + 385f * ck, l.console.y + 560f * ck);
             float mTop = l.fps.yMax + gap, mBottom = l.console.y + 169f * ck - gap;
-            float mH = Mathf.Max(u * 0.3f, Mathf.Min(u * 0.56f, mBottom - mTop)), k = mH / 1024f;
-            l.radarModule = new Rect(colX - 3f * k, mTop, 1536f * k, mH);
+            float mH = Mathf.Max(u * 0.3f, Mathf.Min(u * 0.47f, mBottom - mTop)), k = mH / 1024f;   // меньше: загораживал обзор (владелец 16.11)
+            l.radarModule = new Rect(safeArea.x + m * 0.25f, mTop, 1536f * k, mH);   // и левее — к краю экрана
             float mx = l.radarModule.x, my = l.radarModule.y;
             l.radar = new Rect(mx + (357f - 247f) * k, my + (357f - 247f) * k, 494f * k, 494f * k);   // стекло радара (касание — масштаб)
             l.tabEnemy = new Rect(mx + 900f * k, my + 119f * k, 505f * k, 112f * k);

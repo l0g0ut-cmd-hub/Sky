@@ -512,6 +512,23 @@ namespace SkyTide
         /// За краем экрана — стрелка у края в его сторону.</summary>
         int lockHints;
         float lockHintAt = -100f;
+        /// <summary>Зелёное кольцо вокруг своих кораблей на экране — отличать от врагов с одного взгляда (владелец 16.11).</summary>
+        void AllyRings(TouchControls input, HudLayout l)
+        {
+            Camera c = Camera.main; if (c == null || !Application.isPlaying) return;
+            foreach (AllyShip a in AllyShip.All)
+            {
+                if (a == null || !a.Alive) continue;
+                Vector3 sp = c.WorldToScreenPoint(a.Center); if (sp.z <= 0f) continue;
+                float dist = Vector3.Distance(c.transform.position, a.Center); if (dist > 1600f) continue;
+                Vector3 sp2 = c.WorldToScreenPoint(a.Center + c.transform.right * 24f * a.transform.lossyScale.x);
+                float r = Mathf.Clamp(Mathf.Abs(sp2.x - sp.x), l.unit * 0.035f, l.unit * 0.32f);
+                Vector2 q = new Vector2(sp.x, Screen.height - sp.y);
+                float alpha = Mathf.Clamp01((1600f - dist) / 300f) * 0.85f;
+                Color g = a.UnderAttack && Mathf.Repeat(Time.unscaledTime * 3f, 1f) < 0.5f ? new Color(1f, 0.5f, 0.4f, alpha) : new Color(0.45f, 1f, 0.5f, alpha);   // под огнём — мигает красным
+                Ring(q, r, Mathf.Max(2f, l.unit * 0.0035f), g);
+            }
+        }
         void LockMarker(TouchControls input, HudLayout l)
         {
             Broadside gb = input.Guns(); Camera c = Camera.main;
@@ -959,6 +976,7 @@ namespace SkyTide
                     Compass(input,l);
                     if(tModule==null){Panel(l.speed,l.unit);PlateText(l.speed,0f,1f,Cached(3,input.Gear*1000+Mathf.RoundToInt(Mathf.Abs(input.ship.Speed)),v=>TouchControls.GearNames[v/1000]+" · "+(v%1000)+" м/с"),l.unit*0.034f,cream);}   // ступень рукояти и скорость (с модулем радара — во вкладке хода)
                     Telegraph(input,l);
+                    AllyRings(input,l);
                     LockMarker(input,l);
                     Radar(input,l);
                     Hull(l);

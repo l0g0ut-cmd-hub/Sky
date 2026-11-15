@@ -176,8 +176,8 @@ namespace SkyTide
             if (zoneMist != null) zoneMist.Tick(alarm, centre, fx.deckTop + 1f);
             // Точка ремонта — кольцо по зоне ремонта у причала вместо огонька-«звезды» (владелец 15.11).
             fx.ClearBeacon();
-            if (berthRing == null && !berthRingTried && Application.isPlaying) { berthRingTried = true; berthRing = BerthRing.Create(BerthWorld, berthRadius); }
-            if (berthRing != null) berthRing.Tick(BerthWorld, !alarm, PlayerDocked, time);
+            if (berthRing == null && !berthRingTried && Application.isPlaying) { berthRingTried = true; berthRing = BerthRing.Create(RepairCentre, RepairRadius); }
+            if (berthRing != null) berthRing.Tick(RepairCentre, !alarm, PlayerDocked, time);
         }
 
         /// <summary>Ставит крепость в <paramref name="position"/> пирсом к <paramref name="faceTowards"/> (+ yawOffset°),
@@ -251,7 +251,12 @@ namespace SkyTide
             FxSystem.Instance.Plume(top, model.lossyScale.y);
         }
 
+        static float FlatDist(Vector3 a, Vector3 b) { a.y = 0f; b.y = 0f; return Vector3.Distance(a, b); }
         public Vector3 BerthWorld { get { return model != null ? model.TransformPoint(berthLocal) : transform.position; } }
+        /// <summary>Зона ремонта — круг перед причалом (на воздухе, а не на пирсе): центр в 35 м наружу от края причала,
+        /// туда же встаёт автошвартовка (30 м). Кольцо рисуется ровно по ней (владелец 15.11: кольцо заезжало на причал).</summary>
+        public const float RepairRadius = 42f;
+        public Vector3 RepairCentre { get { Vector3 b = BerthWorld, o = b - Center; o.y = 0f; o = o.sqrMagnitude > 1f ? o.normalized : Vector3.forward; return b + o * 35f; } }
 
         /// <summary>Верх крепости над точкой мира (м) или −∞, если там пусто.</summary>
         public float TopAt(Vector3 world)
@@ -336,7 +341,7 @@ namespace SkyTide
 
             // Причал: рядом и на малом ходу — ремонт.
             PlayerDocked = hasBerth && !Hostile && hull.Alive
-                && (ship.transform.position - BerthWorld).sqrMagnitude < berthRadius * berthRadius && Mathf.Abs(ship.Speed) < berthMaxSpeed;
+                && FlatDist(ship.transform.position, RepairCentre) < RepairRadius + 6f && Mathf.Abs(ship.Speed) < berthMaxSpeed;   // ремонт — внутри кольца
             if (PlayerDocked)
             {
                 hull.Repair(repairPerSecond * dt);

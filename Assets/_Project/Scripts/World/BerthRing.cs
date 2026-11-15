@@ -18,7 +18,7 @@ namespace SkyTide
             if (sh == null) return null;
             GameObject go = new GameObject("SkyTide.BerthRing");
             BerthRing b = go.AddComponent<BerthRing>();
-            const int N = 120; const float low = -8f, high = 14f;
+            const int N = 96; const float low = -6f, high = 9f;
             Vector3[] v = new Vector3[(N + 1) * 2]; Vector2[] uv = new Vector2[v.Length]; int[] tri = new int[N * 6];
             float circ = 2f * Mathf.PI * radius;
             for (int i = 0; i <= N; i++)
