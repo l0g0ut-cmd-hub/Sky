@@ -17,6 +17,9 @@ namespace SkyTide
         {
             Mesh ignored;return Load(asset,wind,recoil,null,out ignored);
         }
+        /// <summary>Сетка, которую ещё будут дописывать (лёгкая LOD: цвета вершин ставит ShipLod, он же выгружает).</summary>
+        public static Mesh LoadReadable(TextAsset asset) { keepReadable = true; try { Mesh ignored; return Load(asset, null, null, null, out ignored); } finally { keepReadable = false; } }
+        static bool keepReadable;
         public static Mesh Load(TextAsset asset,TextAsset wind,TextAsset recoil,TextAsset steering,out Mesh sail)
         {
             sail=null;
@@ -85,7 +88,7 @@ namespace SkyTide
             // Цвета вершин (ветер/откат) нужны лёгкой модели LOD, а после UploadMeshData(true) сетка не читается —
             // раньше ShipLod читал их у нечитаемой сетки: 46 ошибок «Not allowed to access colors» и лёгкая модель без весов.
             ShipLod.SourceColors[mesh] = mesh.colors32;
-            mesh.UploadMeshData(true);
+            if (!keepReadable) mesh.UploadMeshData(true);
             return mesh;
         }
     }

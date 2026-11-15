@@ -308,6 +308,11 @@ namespace SkyTide
             steps.Add(new KeyValuePair<string, System.Action>("всё выключено", () => all(false)));
             steps.Add(new KeyValuePair<string, System.Action>("база ещё раз (сверка)", () => all(true)));
             benchTotal = steps.Count;
+            // Разогрев 8 с: в сборках 123–124 первые 6–7 шагов шли в 2 раза медленнее (база 76 мс ВК, сверка в конце 30 мс) —
+            // начало замера ловило что-то переходное (разгон частот/компиляция конвейеров Vulkan), и «без резкости» выглядело как
+            // выигрыш ×2. Теперь сначала прогрев в базовом режиме, без записи.
+            all(true); benchStep = "разогрев"; benchIndex = 0;
+            { float w = 0f; while (w < 8f) { w += Time.unscaledDeltaTime; yield return null; } }
             for (int k = 0; k < steps.Count; k++)
             {
                 benchIndex = k + 1; benchStep = steps[k].Key;

@@ -36,7 +36,7 @@ for l in lines[i + 1:]:
 
 fig, ax = plt.subplots(figsize=(11, 11), dpi=110)
 ax.set_facecolor("#dfe8f0")
-style = lambda k: ("#d4a017", 2.6, "флагман") if k == "F" else ("#c0392b", 1.4, "враг " + k[1:]) if k.startswith("E") else ("#2e86c1", 1.4, {"AG": "страж", "AW": "ведомый", "AM": "торговец"}.get(k, k))
+style = lambda k: ("#d4a017", 2.6, "флагман") if k == "F" else ("#c0392b", 1.4, "враг " + k[1:]) if k.startswith("E") else ("#2e86c1", 1.4, {"G": "страж", "W": "ведомый", "M": "торговец"}.get(k[1:2], k) + " " + k[2:])
 for k, pts in tracks.items():
     c, w, name = style(k)
     xs = [p[1] for p in pts]; zs = [p[2] for p in pts]

@@ -21,7 +21,7 @@ namespace SkyTide
         public TextAsset lights;    // <модель>_lights.json — фонари и окна в координатах модели (ореолы издалека)
         public float lodDistance;   // 0 — только тень
         [NonSerialized] Mesh cachedLite;
-        public Mesh LiteMesh { get { if (cachedLite == null && lite != null) cachedLite = ShipMeshLoader.Load(lite); return cachedLite; } }
+        public Mesh LiteMesh { get { if (cachedLite == null && lite != null) cachedLite = ShipMeshLoader.LoadReadable(lite); return cachedLite; } }
 
         [NonSerialized] Mesh cached,cachedSteering;
         public Mesh SteeringMesh {get {if(cached==null){Mesh unused=Mesh;}return cachedSteering;}}

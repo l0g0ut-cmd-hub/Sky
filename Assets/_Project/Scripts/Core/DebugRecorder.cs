@@ -133,10 +133,12 @@ namespace SkyTide
                 b.Append(" | E").Append(i).Append(t.Heavy ? "T" : "").Append(' ');
                 if (t.Alive) b.Append(P(t.transform.position)).Append(',').Append(Mathf.RoundToInt(t.Health01 * 100f)); else b.Append('x');
             }
+            int ai = 0;
             foreach (AllyShip a in AllyShip.All)
             {
+                ai++;
                 if (a == null || !a.gameObject.activeInHierarchy) continue;
-                b.Append(" | A").Append("GWM"[(int)a.role]).Append(' ');
+                b.Append(" | A").Append("GWM"[(int)a.role]).Append(ai).Append(' ');   // номер: два стража раньше сливались в одну линию на карте
                 if (a.Alive) b.Append(P(a.transform.position)).Append(',').Append(Mathf.RoundToInt(a.Health01 * 100f)); else b.Append('x');
             }
             Push(track, 300, b.ToString());

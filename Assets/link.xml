@@ -1,0 +1,7 @@
+<!-- GameObject.CreatePrimitive(Quad/Plane) добавляет MeshCollider, а вырезка движка его удаляла:
+     «Can't add component because class 'MeshCollider' doesn't exist!» в каждом отчёте. -->
+<linker>
+  <assembly fullname="UnityEngine.PhysicsModule">
+    <type fullname="UnityEngine.MeshCollider" preserve="all" />
+  </assembly>
+</linker>

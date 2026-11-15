@@ -29,7 +29,8 @@ namespace SkyTide
             if (full == null || fullMesh == null || liteMesh == null) return;
             Color32[] fc;
             if (!SourceColors.TryGetValue(fullMesh, out fc)) fc = fullMesh.isReadable ? fullMesh.colors32 : null;
-            if (src != null && src.Length == liteMesh.vertexCount && fc != null && fc.Length == fullMesh.vertexCount)
+            if (!liteMesh.isReadable) { }
+            else if (src != null && src.Length == liteMesh.vertexCount && fc != null && fc.Length == fullMesh.vertexCount)
             {
                 Color32[] lc = new Color32[src.Length];
                 for (int i = 0; i < src.Length; i++) { int s = src[i]; lc[i] = (uint)s < (uint)fc.Length ? fc[s] : new Color32(0, 128, 128, 0); }
@@ -42,6 +43,8 @@ namespace SkyTide
                 for (int i = 0; i < lc.Length; i++) lc[i] = new Color32(0, 128, 128, 0);
                 liteMesh.colors32 = lc;
             }
+            // Лёгкая сетка общая для всех кораблей типа: цвета ставятся один раз, затем выгрузка (раньше — 46 ошибок на нечитаемой).
+            if (liteMesh.isReadable) liteMesh.UploadMeshData(true);
             GameObject go = new GameObject("Lite (shadow/LOD)");
             go.transform.SetParent(full.transform, false);
             go.AddComponent<MeshFilter>().sharedMesh = liteMesh;
