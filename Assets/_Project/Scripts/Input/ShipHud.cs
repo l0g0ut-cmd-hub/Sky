@@ -432,12 +432,12 @@ namespace SkyTide
             if (HasKit) SpriteRot(t.center, new Vector2(t.height, t.width), Mathf.PI * 0.5f, KGroove, Color.white);
             else Box(t, new Color(0.015f, 0.02f, 0.026f, 0.9f));
             // Подложка под подписями ступеней: на ярком море облаков серые подписи пропадали (видео сборки 102).
-            Solid(new Rect(t.xMax + l.unit * 0.012f, t.y - step * 0.05f, l.unit * 0.135f, t.height + step * 0.1f), new Color(0.015f, 0.02f, 0.026f, 0.5f));
+            Solid(new Rect(t.xMax + l.unit * 0.02f, t.y - step * 0.05f, l.unit * 0.14f, t.height + step * 0.1f), new Color(0.015f, 0.02f, 0.026f, 0.5f));
             for (int i = 0; i < n; i++)
             {
                 float cy = t.yMax - (i + 0.5f) * step; bool on = i == input.Gear;
                 Solid(new Rect(t.xMax + l.unit * 0.004f, cy - Mathf.Max(1f, l.unit * 0.002f), l.unit * 0.012f, Mathf.Max(2f, l.unit * 0.004f)), new Color(gold.r, gold.g, gold.b, on ? 1f : 0.6f));
-                Text(new Rect(t.xMax + l.unit * 0.018f, cy - step * 0.5f, l.unit * 0.15f, step), TouchControls.GearNames[i], l.unit * 0.025f, on ? new Color(1f, 0.86f, 0.5f, 1f) : new Color(Mathf.Lerp(muted.r, 1f, 0.35f), Mathf.Lerp(muted.g, 1f, 0.35f), Mathf.Lerp(muted.b, 1f, 0.35f), 1f));
+                Text(new Rect(t.xMax + l.unit * 0.02f, cy - step * 0.5f, l.unit * 0.14f, step), TouchControls.GearNames[i], l.unit * 0.025f, on ? new Color(1f, 0.86f, 0.5f, 1f) : new Color(Mathf.Lerp(muted.r, 1f, 0.35f), Mathf.Lerp(muted.g, 1f, 0.35f), Mathf.Lerp(muted.b, 1f, 0.35f), 1f));
             }
             float hy = t.yMax - (input.Gear + 0.5f) * step, kd = t.width * 2.1f, kh = kd * KKnob.height / KKnob.width;
             if (HasKit) Sprite(new Rect(t.center.x - kd * 0.5f, hy - kh * 0.5f, kd, kh), KKnob, Color.white);
@@ -745,7 +745,7 @@ namespace SkyTide
                     Telegraph(input,l);
                     Radar(input,l);
                     Hull(l);
-                    if(Application.isPlaying&&input.cam!=null){Panel(l.spy,l.unit,input.cam.ScopeOn,input.Pressed(l.spy));PlateText(l.spy,0f,1f,"×4",l.unit*0.032f,input.cam.ScopeOn?new Color(1f,0.88f,0.55f):cream);}   // подзорная труба
+                    if(Application.isPlaying&&input.cam!=null){Panel(l.spy,l.unit,input.cam.ScopeOn,input.Pressed(l.spy));PlateText(l.spy,0f,1f,input.cam.ScopeOn?"ТРУБА ×4":"ТРУБА",l.unit*0.03f,input.cam.ScopeOn?new Color(1f,0.88f,0.55f):cream);}   // подзорная труба
                     Panel(l.fps,l.unit);PlateText(l.fps,0f,1f,Application.isPlaying?Cached(2,Mathf.RoundToInt(input.Fps),v=>v+" FPS"):"FPS —",l.unit*0.03f,Application.isPlaying&&input.Fps<24f?new Color(1f,0.55f,0.45f,1f):muted);   // ниже 24 — красным: просадку видно сразу
                     Text(l.version,input.BuildText,l.unit*0.023f,cream);
                     Broadside guns=input.Guns();

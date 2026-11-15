@@ -46,8 +46,8 @@ namespace SkyTide
             l.hint = new Rect(left, safeArea.yMax - u * 0.1f, Mathf.Max(0f, l.port.x - m - left), u * 0.075f);
             // «НА АБОРДАЖ» — над подсказкой по центру между штурвалом и кнопками бортов (появляется, только когда можно).
             l.board = new Rect(l.hint.center.x - u * 0.17f, l.hint.y - gap - u * 0.09f, u * 0.34f, u * 0.09f);
-            // Подзорная труба — квадрат справа от счётчика FPS.
-            l.spy = new Rect(l.fps.xMax + gap, l.fps.y, u * 0.085f, l.fps.height);
+            // Подзорная труба — плашка «ТРУБА» справа от счётчика FPS.
+            l.spy = new Rect(l.fps.xMax + gap, l.fps.y, u * 0.17f, l.fps.height);   // был квадрат 0,085 — внутри рамки «×4» сжималось в точку, кнопку не было видно
             return l;
         }
 
