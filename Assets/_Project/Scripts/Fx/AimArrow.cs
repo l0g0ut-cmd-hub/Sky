@@ -48,10 +48,13 @@ namespace SkyTide
         public void Draw(List<Vector3> a, List<Vector3> b, int state, float alpha)
         {
             if (a == null || b == null || a.Count < 2 || b.Count < 2) { Hide(); return; }
+            // Точки с NaN/∞ (88 ошибок «abnormal mesh bounds» за сессию 15.11) — обрезаем путь до первой плохой.
+            Trim(a); Trim(b);
+            if (a.Count < 2 || b.Count < 2) { Hide(); return; }
             v.Clear(); uv.Clear(); col.Clear(); tri.Clear();
             Color c = state == 2 ? new Color(1f, 0.45f, 0.3f, alpha) : state == 1 ? new Color(0.75f, 0.75f, 0.8f, alpha * 0.7f) : new Color(1f, 0.78f, 0.38f, alpha);
             const int N = 36;
-            float minWidth = 6f;
+            float minWidth = 10f;   // заметнее: на снимках 15.11 издалека лента терялась
             Vector3 lastC = Vector3.zero, lastDir = Vector3.forward, lastSide = Vector3.right; float lastHalf = 3f;
             for (int i = 0; i <= N; i++)
             {
@@ -91,11 +94,15 @@ namespace SkyTide
             v.Add(tipBase + lastSide * headHalf); uv.Add(new Vector2(1f, 0.97f)); col.Add(c);
             v.Add(tipEnd); uv.Add(new Vector2(0.5f, 1f)); col.Add(new Color(c.r, c.g, c.b, c.a * 1.2f));
             tri.Add(s); tri.Add(s + 1); tri.Add(s + 2);
+            for (int i = 0; i < v.Count; i++) if (Bad(v[i])) { Hide(); return; }
             mesh.Clear();
             mesh.SetVertices(v); mesh.SetUVs(0, uv); mesh.SetColors(col); mesh.SetTriangles(tri, 0);
             mesh.RecalculateBounds();
             mr.enabled = true; drawnFrame = Time.frameCount;
         }
+
+        static bool Bad(Vector3 p) { return float.IsNaN(p.x) || float.IsNaN(p.y) || float.IsNaN(p.z) || float.IsInfinity(p.x) || float.IsInfinity(p.y) || float.IsInfinity(p.z) || p.sqrMagnitude > 1e12f; }
+        static void Trim(List<Vector3> path) { for (int i = 0; i < path.Count; i++) if (Bad(path[i])) { path.RemoveRange(i, path.Count - i); return; } }
 
         public void Hide() { if (mr != null) mr.enabled = false; }
 

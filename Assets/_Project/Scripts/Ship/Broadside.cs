@@ -264,6 +264,7 @@ namespace SkyTide
             Vector3 d0 = tpos - muzzle;
             float t = Ballistics.Lead(d0.x, d0.y, d0.z, rel.x, rel.y, rel.z, ShotSpeed, g, minElevationDeg * Mathf.Deg2Rad, maxElevationDeg * Mathf.Deg2Rad, out _, out _, out _);
             Vector3 raw = tpos + rel * t;
+            if (float.IsNaN(raw.x) || float.IsNaN(raw.y) || float.IsNaN(raw.z) || float.IsNaN(t)) return;   // без решения, без NaN в наводке
             if (aimSmoothFor != best || aimSmoothAt < 0f || Time.time - aimSmoothAt > 0.5f || (raw - aimSmooth).sqrMagnitude > 120f * 120f) aimSmooth = raw;
             else aimSmooth = Vector3.Lerp(aimSmooth, raw, 1f - Mathf.Exp(-6f * Mathf.Max(Time.deltaTime, 1e-4f)));
             aimSmoothFor = best; aimSmoothAt = Time.time;

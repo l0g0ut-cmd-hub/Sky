@@ -28,7 +28,7 @@ Shader "SkyTide/AimArrow"
                 float chev = frac(i.uv.y * 9.0 - abs(i.uv.x - 0.5) * 1.6 - _Time.y * 0.9);
                 float stripes = 0.75 + 0.25 * smoothstep(0.55, 0.62, chev) * (1.0 - smoothstep(0.85, 0.92, chev));
                 float nearCam = saturate((i.camDist - 12.0) / 45.0);   // вблизи камеры лента не заливает экран
-                float a = (body * 0.55 * stripes + edge * 0.9) * fadeIn * nearCam;
+                float a = (body * 0.8 * stripes + edge * 1.0) * fadeIn * nearCam;
                 return fixed4(_Color.rgb * i.color.rgb * (1.0 + edge * 0.6), saturate(a * i.color.a * _Color.a));
             }
             ENDCG
