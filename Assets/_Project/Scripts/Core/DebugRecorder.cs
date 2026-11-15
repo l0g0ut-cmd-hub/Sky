@@ -17,6 +17,7 @@ namespace SkyTide
         readonly Queue<string> spikes = new Queue<string>();
         readonly Queue<string> track = new Queue<string>();
         float nextTrack; bool benchChecked;
+        public static bool AutoBenchOnNewBuild = false;
         float nextSnap, nextTemp, nextSave = 60f;
         int gcAtFrame;
         ProfilerRecorder drawCalls, batches, setPass, triangles, gcAlloc, usedMemory;
@@ -73,7 +74,9 @@ namespace SkyTide
             if (Time.time >= nextSnap) { nextSnap = Time.time + 10f; Snapshot(); }
             if (Time.time >= nextTrack) { nextTrack = Time.time + 2f; Track(); }
             // Первый запуск новой сборки: автозамер сам, через 40 с боя (не в меню, не на паузе).
-            if (!benchChecked && Time.timeSinceLevelLoad > 40f && !MainMenu.Active && Time.timeScale > 0.5f && !CiBattle.Active && PerfPanel.Instance != null)
+            // Автозамер при первом запуске новой сборки выключен (владелец 15.11: «убери стартовые проверки, только когда берёшь
+            // управление») — замер теперь только командой bench в удалённой партии.
+            if (AutoBenchOnNewBuild && !benchChecked && Time.timeSinceLevelLoad > 40f && !MainMenu.Active && Time.timeScale > 0.5f && !CiBattle.Active && PerfPanel.Instance != null)
             {
                 benchChecked = true;
                 int bn = DebugReport.BuildNo;
