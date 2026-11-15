@@ -5,7 +5,7 @@ namespace SkyTide
     /// <summary>Одна геометрия в пикселях (начало сверху слева) для рисования и попадания пальца.</summary>
     public struct HudLayout
     {
-        public Rect safe, port, starboard, mode, ammo, board, spy, auto, clouds, ship, course, speed, fps, version, hint, radar, radarInfo, radarModule, tabEnemy, tabBerth, tabRadar, telegraph, pause;
+        public Rect safe, port, starboard, mode, ammo, board, spy, auto, clouds, ship, course, speed, fps, version, hint, radar, radarInfo, radarModule, console, tabEnemy, tabBerth, tabRadar, telegraph, pause;
         public Vector2 wheel;
         public float unit, radius;
 
@@ -39,8 +39,12 @@ namespace SkyTide
             // Радар со вкладками — одна картинка (ui_radar_module.png 1536×1024): круг радара слева (центр 357,357, r 247),
             // вкладки ВРАГ / ПРИЧАЛ / РАДАР справа, ниже — вкладка хода. Высота — сколько влезает до штурвала.
             l.radius = u * stickRadius;
-            l.wheel = new Vector2(colX + u * 0.17f, safeArea.yMax - u * 0.215f);
-            float mTop = l.fps.yMax + gap, mBottom = l.wheel.y - l.radius * 1.35f - gap;
+            // Пульт «штурвал + телеграф» (ui_console.png 1536×1024): гнездо штурвала — центр (385,560), латунь — y 169…908;
+            // ступица телеграфа — (1118,728). Масштаб — по штурвалу (диаметр 2,35 радиуса = 560 пикселей пульта).
+            float ck = l.radius * 2.35f / 560f;
+            l.console = new Rect(colX - 2f * ck, safeArea.yMax - m - 908f * ck, 1536f * ck, 1024f * ck);
+            l.wheel = new Vector2(l.console.x + 385f * ck, l.console.y + 560f * ck);
+            float mTop = l.fps.yMax + gap, mBottom = l.console.y + 169f * ck - gap;
             float mH = Mathf.Max(u * 0.3f, Mathf.Min(u * 0.56f, mBottom - mTop)), k = mH / 1024f;
             l.radarModule = new Rect(colX - 3f * k, mTop, 1536f * k, mH);
             float mx = l.radarModule.x, my = l.radarModule.y;
@@ -53,8 +57,7 @@ namespace SkyTide
             l.version = new Rect(l.port.x, safeArea.yMax - u * 0.065f, l.ammo.xMax - l.port.x, u * 0.04f);
             l.pause = new Rect(safeArea.xMax - m - u * 0.085f, safeArea.y + m, u * 0.085f, u * 0.075f);   // кнопка паузы — в правом верхнем углу
             // Машинный телеграф: полукруглый циферблат справа от штурвала (5 секторов: назад, стоп, малый, средний, полный).
-            float dw = u * 0.31f, dh = dw * TelegraphH / TelegraphW;
-            l.telegraph = new Rect(l.wheel.x + l.radius * 1.2f, l.wheel.y - dh * 0.5f, dw, dh);
+            l.telegraph = new Rect(l.console.x + 740f * ck, l.console.y + 380f * ck, 780f * ck, 440f * ck);   // поле касаний циферблата
             float left = l.telegraph.xMax + m;   // вкладка хода теперь наверху, в модуле радара
             l.hint = new Rect(left, safeArea.yMax - u * 0.1f, Mathf.Max(0f, l.port.x - m - left), u * 0.075f);
             // «НА АБОРДАЖ» — над подсказкой по центру между штурвалом и кнопками бортов (появляется, только когда можно).
@@ -63,13 +66,13 @@ namespace SkyTide
         }
 
         /// <summary>Картинка телеграфа (telegraph_dial.png): размер, ось рычага и углы секторов (0 — назад, слева; 4 — полный, справа).</summary>
-        public const float TelegraphW = 1222f, TelegraphH = 876f, HubX = 600f, HubY = 594f;
-        public Vector2 TelegraphHub => new Vector2(telegraph.x + telegraph.width * HubX / TelegraphW, telegraph.y + telegraph.height * HubY / TelegraphH);
-        static readonly float[] GearAngles = { 170f, 130f, 86f, 44f, 10f };   // центры секторов циферблата (замер по картинке)
+        public Vector2 TelegraphHub => new Vector2(console.x + console.width * 1118f / 1536f, console.y + console.height * 728f / 1024f);
+        // Центры цветных секторов пульта (замер по ui_console.png: перегородки на 35°, 71°, 110°, 146°, края 0° и 180°).
+        static readonly float[] GearAngles = { 163f, 128f, 90.5f, 53f, 17.5f };
         public static float GearAngle(int g) => GearAngles[Mathf.Clamp(g, 0, 4)];   // градусы от «вправо», против часовой
         public Vector2 GearPoint(int g)
         {
-            float a = GearAngle(g) * Mathf.Deg2Rad, r = telegraph.width * 0.3f;
+            float a = GearAngle(g) * Mathf.Deg2Rad, r = console.width * 230f / 1536f;
             return TelegraphHub + new Vector2(Mathf.Cos(a), -Mathf.Sin(a)) * r;
         }
         public int GearAt(Vector2 p)

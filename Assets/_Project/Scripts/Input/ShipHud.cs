@@ -579,18 +579,17 @@ namespace SkyTide
         }
 
         /// <summary>Машинный телеграф: циферблат с пятью секторами, рычаг плавно доворачивается на выбранную ступень.</summary>
-        float leverAngle = float.NaN;
+        float leverAngle = float.NaN, leverScale; bool leverDeferred; Vector2 leverHub;
         void Telegraph(TouchControls input, HudLayout l)
         {
             LoadBanners();
-            Rect t = l.telegraph;
-            if (tDial == null) return;
-            ImageRect(tDial, t, Whole, Color.white);
+            if (tConsole == null) return;
+            ImageRect(tConsole, l.console, Whole, Color.white);   // пульт: гнездо штурвала + циферблат одной латунной конструкцией
             float want = HudLayout.GearAngle(input.Gear);
             leverAngle = float.IsNaN(leverAngle) ? want : Mathf.Lerp(leverAngle, want, 1f - Mathf.Exp(-14f * Time.unscaledDeltaTime));
             // Рычаг: ось — шарнир у основания (94, 674), ручка смотрит на 74,8° от горизонтали; длина до ручки ≈ 0,32 ширины циферблата.
-            float scale = t.width * 0.4f / 673f;   // рычаг до середины секторов (на 0,32 был мелким, терялся на ступице)
-            ImagePivot(tLever, l.TelegraphHub, new Vector2(94f, 674f), scale, leverAngle - 74.8f, Color.white);
+            float scale = l.console.width * 0.18f / 673f;   // ручка — на середине цветных секторов
+            leverDeferred = true; leverScale = scale; leverHub = l.TelegraphHub;
         }
 
         /// <summary>Радар: курс корабля — вверх, цель — отметка с чёрточкой курса; за пределом дальности — на ободе.</summary>
@@ -637,7 +636,7 @@ namespace SkyTide
 
         // ---------- баннеры, оповещения, виньетка (Resources/UI: banner_victory/defeat 2048×512, plate_notice 1024×192,
         // vignette_damage 2:1, icons 4×4). Текст всегда в пределах внутреннего поля плашки (пиксели картинки ниже). ----------
-        Texture2D bVictory, bDefeat, bPlate, bVignette, bIcons, bIcons2, tInfo, tFill, tCompass, tDial, tLever, tModule; bool bannersTried;
+        Texture2D bVictory, bDefeat, bPlate, bVignette, bIcons, bIcons2, tInfo, tFill, tCompass, tDial, tLever, tModule, tConsole, tWheel; bool bannersTried;
         string victoryText = "ЦЕЛЬ УНИЧТОЖЕНА";
         readonly HashSet<TargetShip> sunkSeen = new HashSet<TargetShip>();
         float victoryAt = -100f;
@@ -653,6 +652,7 @@ namespace SkyTide
             tInfo = Resources.Load<Texture2D>("UI/plate_info"); tFill = Resources.Load<Texture2D>("UI/ui_fill"); tCompass = Resources.Load<Texture2D>("UI/ui_compass");
             tDial = Resources.Load<Texture2D>("UI/telegraph_dial"); tLever = Resources.Load<Texture2D>("UI/telegraph_lever");
             tModule = Resources.Load<Texture2D>("UI/ui_radar_module");
+            tConsole = Resources.Load<Texture2D>("UI/ui_console"); tWheel = Resources.Load<Texture2D>("UI/ui_wheel");
         }
         /// <summary>Картинка в прямоугольник; uv — доли картинки от верхнего левого угла.</summary>
         void ImageRect(Texture2D tex, Rect dst, Rect uv, Color col)
@@ -985,7 +985,8 @@ namespace SkyTide
                         }
                         if(Application.isPlaying){string autoText=input.AutoBattle?(string.IsNullOrEmpty(input.AutoState)?"АВТОБОЙ · ВКЛ":input.AutoState):"АВТОБОЙ";Panel(l.auto,l.unit,input.AutoBattle,input.Pressed(l.auto));PlateText(l.auto,0f,1f,autoText,l.unit*0.028f,input.AutoBattle?new Color(1f,0.88f,0.55f):cream);}
                     }
-                    Vector2 home=input.StickActive?l.ClampWheel(input.StickOrigin):l.wheel;
+                    Vector2 home=tConsole!=null?l.wheel:(input.StickActive?l.ClampWheel(input.StickOrigin):l.wheel);   // с пультом штурвал стоит в своём гнезде
+                    if(leverDeferred){leverDeferred=false;ImagePivot(tLever,leverHub,new Vector2(94f,674f),leverScale,leverAngle-74.8f,Color.white);}
                     float r=l.radius, a=input.StickActive?0.85f:0.45f;
                     if(HasKit)
                     {
@@ -993,7 +994,8 @@ namespace SkyTide
                         Vector2 off=input.StickOffset(l.radius);
                         float ang=Mathf.Clamp(off.x/Mathf.Max(1f,l.radius),-1f,1f)*1.2f;
                         float d=r*2.35f;
-                        SpriteRot(home,new Vector2(d,d*KWheel.height/KWheel.width),ang,KWheel,new Color(1f,1f,1f,input.StickActive?1f:0.7f));
+                        if(tWheel!=null) ImagePivot(tWheel,home,new Vector2(tWheel.width*0.5f,tWheel.height*0.5f),d/tWheel.width,-ang*Mathf.Rad2Deg,Color.white);
+                        else SpriteRot(home,new Vector2(d,d*KWheel.height/KWheel.width),ang,KWheel,new Color(1f,1f,1f,input.StickActive?1f:0.7f));
                         float kd=r*0.66f; Sprite(new Rect(home.x+off.x-kd*0.5f,home.y+off.y-kd*0.5f,kd,kd*KKnob.height/KKnob.width),KKnob,new Color(1f,1f,1f,input.StickActive?1f:0.8f));
                     }
                     else
