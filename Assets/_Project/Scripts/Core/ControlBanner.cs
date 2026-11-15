@@ -32,17 +32,25 @@ namespace SkyTide
         {
             if (HiddenForShot) return;
             ReportUploader up = ReportUploader.Instance;
-            if (!Busy && (AwaitUpload || Time.realtimeSinceStartup < doneUntil))
+            int pend = up != null ? up.Pending : 0;
+            // Очередь больше 3 файлов — всегда видно, сколько осталось и сколько ждать (владелец 15.11).
+            if (!Busy && (AwaitUpload || pend > 3 || Time.realtimeSinceStartup < doneUntil))
             {
-                int n = up != null ? up.Pending : 0;
-                if (AwaitUpload && n == 0) { AwaitUpload = false; doneUntil = Time.realtimeSinceStartup + 8f; }
-                Strip(AwaitUpload ? "ОТПРАВКА СНИМКОВ: " + n + " · НЕ СВОРАЧИВАЙ" : "ГОТОВО — МОЖНО СВОРАЧИВАТЬ", "");
+                if (AwaitUpload && pend == 0) { AwaitUpload = false; doneUntil = Time.realtimeSinceStartup + 8f; }
+                if (pend > 0) Strip("ОСТАЛОСЬ ОТПРАВИТЬ: " + pend + " · ~" + Eta(up) + " · НЕ СВОРАЧИВАЙ", "");
+                else Strip("ГОТОВО — МОЖНО СВОРАЧИВАТЬ", "");
                 return;
             }
             if (!Busy) return;
             float left = BusyUntil - Time.realtimeSinceStartup;
             string t = left > 0f ? "ЖДИ " + Mathf.FloorToInt(left / 60f) + ":" + Mathf.FloorToInt(left % 60f).ToString("00") : "ИДЁТ ПРОВЕРКА";
-            Strip("УПРАВЛЯЕТ CLAUDE · " + t, "коснись — отменить");
+            Strip("УПРАВЛЯЕТ CLAUDE · " + t + (pend > 3 ? " · В ОЧЕРЕДИ " + pend : ""), "коснись — отменить");
+        }
+
+        static string Eta(ReportUploader up)
+        {
+            float m = up != null ? up.PendingMinutes : 0f;
+            return m < 1f ? Mathf.Max(5, Mathf.RoundToInt(m * 60f / 5f) * 5) + " с" : Mathf.CeilToInt(m) + " мин";
         }
 
         void Strip(string main, string hint)

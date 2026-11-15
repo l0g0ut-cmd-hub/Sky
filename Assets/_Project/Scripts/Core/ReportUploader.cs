@@ -242,6 +242,8 @@ namespace SkyTide
 
         /// <summary>Сколько файлов ещё в очереди на отправку (для таблички «отправка…»).</summary>
         public int Pending { get { return queue.Count + (busy ? 1 : 0); } }
+        /// <summary>Сколько ещё отправлять, мин.</summary>
+        public float PendingMinutes { get { return Pending * SecPerFile / 60f; } }
 
         public static int OutboxCount
         {
@@ -297,8 +299,12 @@ namespace SkyTide
         /// <summary>Перезаписать файл в Sky-reports (в очередь).</summary>
         public void Put(string path, byte[] data) { if (Ready) Enqueue(path, data); }
 
+        /// <summary>Среднее время отправки одного файла (с), для оценки «займёт ~N мин».</summary>
+        public float SecPerFile = 2.5f;
         IEnumerator PutRoutine(string path, byte[] data)
         {
+            float putStart = Time.realtimeSinceStartup;
+            try {
             string url = "https://api.github.com/repos/" + Repo + "/contents/" + path;
             // sha старого файла — без него GitHub не даст перезаписать.
             string sha = null;
@@ -325,6 +331,7 @@ namespace SkyTide
                 int wait = OutboxCount;
                 LastStatus = (ok ? "отправлено: " : "ошибка отправки (" + put.responseCode + "): ") + path + " · " + System.DateTime.Now.ToString("HH:mm:ss") + (wait > 0 ? " · ждут " + wait : "");
             }
+            } finally { SecPerFile = Mathf.Lerp(SecPerFile, Mathf.Clamp(Time.realtimeSinceStartup - putStart, 0.2f, 30f), 0.2f); }
         }
     }
 }
