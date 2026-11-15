@@ -22,3 +22,5 @@ jobs:
           echo "$out" | grep -q " 0 Error(s)"
       - name: Logic tests
         run: tools/logictests/run.sh
+      - name: Shader lint
+        run: python3 tools/shaderlint/lint.py
