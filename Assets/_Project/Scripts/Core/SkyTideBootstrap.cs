@@ -70,6 +70,7 @@ namespace SkyTide
         {
             if (initialized) return;
             initialized = true;
+            float initT0 = Time.realtimeSinceStartup;
             Instance = this;
             materials.EnsureAll();
 
@@ -242,6 +243,7 @@ namespace SkyTide
             controls.hudFont = hudFont;
             post.controls = controls;
             SetClothWind(Application.isPlaying ? Time.time : 0f, Application.isPlaying ? 1f : 0f);
+            if (Application.isPlaying) DebugReport.Event("мир собран за " + (Time.realtimeSinceStartup - initT0).ToString("F1") + " с (с запуска приложения " + Time.realtimeSinceStartup.ToString("F1") + " с)");
         }
 
         void Update(){long __pt=PerfTimers.Start();UpdateTimed();PerfTimers.Stop("Мир",__pt);}
@@ -279,9 +281,22 @@ namespace SkyTide
             if (!Application.isPlaying || Ship == null || targetShip == null) return 0;
             TargetShip.Created.RemoveAll(x => x == null);
             int have = TargetShip.Created.Count;
-            int added = 0;
-            for (int k = have; k < Mathf.Min(total, 30); k++)
+            int want = Mathf.Min(total, 30) - have;
+            if (want <= 0) return 0;
+            // Дальние враги (1,8–3,8 км) рождаются по одному за кадр уже после старта: 12 кораблей разом в Awake давали
+            // ~15 с серого экрана при каждом запуске (владелец 15.11).
+            StartCoroutine(SpawnSpread(have, Mathf.Min(total, 30)));
+            return want;
+        }
+        System.Collections.IEnumerator SpawnSpread(int from, int to)
+        {
+            float t0 = Time.realtimeSinceStartup;
+            for (int k = from; k < to; k++)
             {
+                yield return null;
+                if (Ship == null || targetShip == null) yield break;
+                TargetShip.Created.RemoveAll(x => x == null);
+                if (TargetShip.Created.Count > k) continue;   // уже кто-то добавил (повторный конфиг)
                 Vector3 at = spawnPosition;
                 for (int tries = 0; tries < 12; tries++)
                 {
@@ -290,9 +305,8 @@ namespace SkyTide
                     if ((at - Ship.transform.position).sqrMagnitude > 900f * 900f) break;
                 }
                 SpawnEnemy("Enemy " + (k + 1), at, Random.Range(0f, 360f), k % 3 == 2, k < 9 ? CurrentShip : null);
-                added++;
             }
-            return added;
+            DebugReport.Event("дальние враги догружены за " + (Time.realtimeSinceStartup - t0).ToString("F1") + " с");
         }
 
         /// <summary>Враг на карте (только в игре): рядовой (может выйти тяжёлым) или разведчик (корпус ×0.72).</summary>

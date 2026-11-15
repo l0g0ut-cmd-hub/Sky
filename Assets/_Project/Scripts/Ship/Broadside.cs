@@ -248,6 +248,11 @@ namespace SkyTide
         static int SideIdx(float s) { return s > 0f ? 1 : 0; }
         /// <summary>Борт, противоположный прицельному, и ляжет ли его залп в корпус своей цели.</summary>
         public int OffSide { get { return offSide; } }
+        /// <summary>Цель, взятая игроком касанием по кораблю (владелец 15.11: «кого взял в таргет — по тому и целимся»).
+        /// Без неё и без автобоя прицела нет: стрелка не рисуется, стволы стоят прямо.</summary>
+        public TargetShip Locked;
+        /// <summary>Автобой сам выбирает цель (как раньше — ближайшую к траверзу).</summary>
+        public bool AutoAim;
         /// <summary>Цель прицельного борта (радар выделяет её).</summary>
         public TargetShip AimTargetShip { get { return aimTarget; } }
         public bool OffOnTarget { get; private set; }
@@ -400,6 +405,40 @@ namespace SkyTide
             OffOnTarget = hull;
         }
 
+        // Ровная прицельная дуга: начало — середина борта в системе курса (без качки модели), направление и возвышение
+        // сглажены по времени; лента — центр ± полуширина накрытия, без перекоса.
+        readonly List<Vector3> arcA = new List<Vector3>(48), arcB = new List<Vector3>(48);
+        bool arcValid; float arcYaw, arcElev, arcDist; int arcSide;
+        bool BuildArc(CannonMount fore, CannonMount aft, CannonMount mid, float side, float g, FxSystem fx)
+        {
+            Vector3 mFore = transform.InverseTransformPoint(model.TransformPoint(fore.Muzzle)), mAft = transform.InverseTransformPoint(model.TransformPoint(aft.Muzzle));
+            Vector3 mMid = (mFore + mAft) * 0.5f; mMid.y = transform.InverseTransformPoint(model.TransformPoint(mid.Muzzle)).y;
+            Vector3 origin = transform.TransformPoint(new Vector3(mMid.x, mMid.y, mMid.z));
+            float half = Mathf.Max(5f, Mathf.Abs(mFore.z - mAft.z) * 0.5f + 2f);
+            Vector3 to = aimPoint - origin; Vector3 flat = new Vector3(to.x, 0f, to.z);
+            float dist = flat.magnitude; if (dist < 15f || float.IsNaN(dist)) return false;
+            float yaw = Mathf.Atan2(flat.x, flat.z) * Mathf.Rad2Deg;
+            float elev = LowAngle(dist, to.y, g);
+            if (float.IsNaN(elev)) return false;
+            float k = 1f - Mathf.Exp(-5f * Mathf.Max(Time.deltaTime, 1e-4f));
+            if (!arcValid || arcSide != (int)side) { arcYaw = yaw; arcElev = elev; arcDist = dist; arcValid = true; arcSide = (int)side; }
+            else { arcYaw += Mathf.DeltaAngle(arcYaw, yaw) * k; arcElev = Mathf.Lerp(arcElev, elev, k); arcDist = Mathf.Lerp(arcDist, dist, k); }
+            Vector3 dir = new Vector3(Mathf.Sin(arcYaw * Mathf.Deg2Rad), 0f, Mathf.Cos(arcYaw * Mathf.Deg2Rad));
+            Vector3 sideV = Vector3.Cross(Vector3.up, dir);
+            float vh = ShotSpeed * Mathf.Cos(arcElev), vv = ShotSpeed * Mathf.Sin(arcElev);
+            float tEnd = arcDist / Mathf.Max(1f, vh);
+            arcA.Clear(); arcB.Clear();
+            const int N = 32;
+            for (int i = 0; i <= N; i++)
+            {
+                float t = tEnd * i / N;
+                Vector3 p = origin + dir * (vh * t) + Vector3.up * (vv * t - 0.5f * g * t * t);
+                if (p.y < fx.deckTop - 5f && i > 2) break;
+                arcA.Add(p - sideV * half); arcB.Add(p + sideV * half);
+            }
+            return arcA.Count >= 3;
+        }
+
         public void AimPreview()
         {
             FxSystem fx = FxSystem.Instance;
@@ -418,18 +457,23 @@ namespace SkyTide
             // Цель: в пределах 1.3 дальности борта, лучше — та, что ближе к траверзу (носом/кормой стволы не наводятся).
             // Удержание: прежняя цель остаётся, пока новая не лучше на 25%.
             float reach = MaxRange * 1.3f;
+            if (Locked != null && (!Locked.Alive || !Locked.gameObject.activeInHierarchy)) Locked = null;
             TargetShip best = null; float bestScore = float.MaxValue, curScore = float.MaxValue;
-            foreach (TargetShip t in TargetShip.All)
+            if (Locked != null) best = Locked;
+            else if (AutoAim)
             {
-                if (t == null || !t.Alive || !t.gameObject.activeInHierarchy) continue;
-                Vector3 lp = transform.InverseTransformPoint(t.transform.position);
-                float d = lp.magnitude;
-                if (d > reach) continue;
-                float score = d * (1f + 0.8f * Mathf.Abs(lp.z) / Mathf.Max(1f, d));
-                if (t == aimTarget) curScore = score;
-                if (score < bestScore) { bestScore = score; best = t; }
+                foreach (TargetShip t in TargetShip.All)
+                {
+                    if (t == null || !t.Alive || !t.gameObject.activeInHierarchy) continue;
+                    Vector3 lp = transform.InverseTransformPoint(t.transform.position);
+                    float d = lp.magnitude;
+                    if (d > reach) continue;
+                    float score = d * (1f + 0.8f * Mathf.Abs(lp.z) / Mathf.Max(1f, d));
+                    if (t == aimTarget) curScore = score;
+                    if (score < bestScore) { bestScore = score; best = t; }
+                }
+                if (aimTarget != null && curScore < float.MaxValue && curScore < bestScore * 1.25f) best = aimTarget;
             }
-            if (aimTarget != null && curScore < float.MaxValue && curScore < bestScore * 1.25f) best = aimTarget;
             aimTarget = best;
             // Борт: меняется, только когда цель уверенно ушла на другую сторону (мёртвая зона ±12 м у диаметральной плоскости).
             float side = aimSide;
@@ -493,11 +537,18 @@ namespace SkyTide
             TracePath(aft != null ? aft : mid, best, fx, out aftEnd, out aftHull, aftPath);
             AimArrow arrow = AimArrow.Get();
             bool hullAny = midHull || foreHull || aftHull;
-            // Борт не наведён (цель вне сектора/нет цели) — стрелка бледнее: показывает, куда ляжет залп «прямо».
-            float aimedK = 0.45f + 0.55f * aimBlend[SideIdx(side)];
-            if (arrow != null) arrow.Draw(forePath, aftPath, hullAny ? 2 : ready ? 0 : 1, (ready ? 0.85f : 0.5f) * aimedK);
+            // Стрелка — только при цели (взятой касанием или выбранной автобоем) и только пока борт на неё наведён
+            // (цель в секторе ±30° от траверза). Строится не по пушкам качающейся модели, а ровной дугой в системе курса
+            // корабля со сглаживанием — раньше её «колбасило» качкой и разными доворотами носовой и кормовой пушек.
+            float aimedK = aimBlend[SideIdx(side)];
+            if (arrow != null)
+            {
+                if (best != null && solved && aimedK > 0.02f && BuildArc(fore != null ? fore : mid, aft != null ? aft : mid, mid, side, g, fx))
+                    arrow.Draw(arcA, arcB, hullAny ? 2 : ready ? 0 : 1, (ready ? 0.85f : 0.5f) * Mathf.SmoothStep(0f, 1f, aimedK));
+                else { arrow.Hide(); arcValid = false; }
+            }
             AimOnTarget = midHull || foreHull || aftHull;
-            OffSideSolve(-side, reach, fx);
+            if (AutoAim) OffSideSolve(-side, reach, fx); else { offSolved = false; OffOnTarget = false; }   // второй борт — только в автобое
             // Залп не ложится в цель, но решение есть: малая метка там, где цель окажется к прилёту ядер, —
             // её и надо поставить на траверз (доворот стволов ограничен).
             if (!AimOnTarget && solved) fx.AddAim(best.Center + targetVel * flightTime, Vector3.up, 6f, 3, 1f, 0.45f);

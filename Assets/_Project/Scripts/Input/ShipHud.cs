@@ -458,6 +458,43 @@ namespace SkyTide
             }
         }
 
+        /// <summary>Рамка-уголки вокруг взятой в цель врага (касанием по кораблю) с дальностью; красная — залп ложится в корпус.
+        /// За краем экрана — стрелка у края в его сторону.</summary>
+        int lockHints;
+        float lockHintAt = -100f;
+        void LockMarker(TouchControls input, HudLayout l)
+        {
+            Broadside gb = input.Guns(); Camera c = Camera.main;
+            if (gb == null || c == null || !Application.isPlaying) return;
+            TargetShip t = gb.Locked;
+            if (t == null)
+            {
+                // Подсказка (до трёх раз за запуск): враг рядом, автобой выключен, цели нет.
+                if (!input.AutoBattle && lockHints < 3 && Time.unscaledTime - lockHintAt > 25f)
+                    foreach (TargetShip e in TargetShip.All)
+                        if (e != null && e.Alive && Vector3.Distance(e.transform.position, input.ship.transform.position) < gb.MaxRange * 1.2f)
+                        { HudNotice.Show("КОСНИСЬ ВРАГА — ВЗЯТЬ В ЦЕЛЬ", 1, 3f); lockHints++; lockHintAt = Time.unscaledTime; break; }
+                return;
+            }
+            Vector3 sp = c.WorldToScreenPoint(t.Center);
+            Color col = gb.AimOnTarget && gb.AimTargetShip == t ? new Color(1f, 0.45f, 0.3f, 0.95f) : new Color(1f, 0.82f, 0.45f, 0.95f);
+            float dist = Vector3.Distance(t.transform.position, input.ship.transform.position);
+            if (sp.z > 0f)
+            {
+                Vector2 q = new Vector2(sp.x, Screen.height - sp.y);
+                Vector3 sp2 = c.WorldToScreenPoint(t.Center + c.transform.right * 22f * t.transform.lossyScale.x);
+                float r = Mathf.Clamp(Mathf.Abs(sp2.x - sp.x), l.unit * 0.04f, l.unit * 0.3f), arm = r * 0.4f, w = Mathf.Max(2f, l.unit * 0.004f);
+                for (int i = 0; i < 4; i++)
+                {
+                    float sx = i % 2 == 0 ? -1f : 1f, sy = i < 2 ? -1f : 1f;
+                    Vector2 corner = q + new Vector2(sx * r, sy * r * 0.7f);
+                    Line(corner, corner - new Vector2(sx * arm, 0f), w, col);
+                    Line(corner, corner - new Vector2(0f, sy * arm), w, col);
+                }
+                Text(new Rect(q.x - l.unit * 0.1f, q.y + r * 0.7f + l.unit * 0.005f, l.unit * 0.2f, l.unit * 0.035f), Mathf.RoundToInt(dist / 10f) * 10 + " м", l.unit * 0.026f, col);
+            }
+        }
+
         /// <summary>Машинный телеграф: циферблат с пятью секторами, рычаг плавно доворачивается на выбранную ступень.</summary>
         float leverAngle = float.NaN;
         void Telegraph(TouchControls input, HudLayout l)
@@ -829,6 +866,7 @@ namespace SkyTide
                     Compass(input,l);
                     Panel(l.speed,l.unit);PlateText(l.speed,0f,1f,Cached(3,input.Gear*1000+Mathf.RoundToInt(Mathf.Abs(input.ship.Speed)),v=>TouchControls.GearNames[v/1000]+" · "+(v%1000)+" м/с"),l.unit*0.034f,cream);   // ступень рукояти и скорость
                     Telegraph(input,l);
+                    LockMarker(input,l);
                     Radar(input,l);
                     Hull(l);
                     if(Application.isPlaying&&input.cam!=null){Panel(l.spy,l.unit,input.cam.ScopeOn,input.Pressed(l.spy));IconText(l.spy,0,input.cam.ScopeOn?"×4":"ТРУБА",l.unit*0.03f,input.cam.ScopeOn?new Color(1f,0.88f,0.55f):cream);}   // подзорная труба

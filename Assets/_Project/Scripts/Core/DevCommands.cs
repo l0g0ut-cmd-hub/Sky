@@ -17,7 +17,7 @@ namespace SkyTide
             "shot [почему] — метка со снимком · report — отчёт сейчас · bench — автозамер · " +
             "snap N — снимок каждые N с · burst кадров шаг [подпись] — серия · " +
             "view угол наклон дист [сек] · spin градусов сек — обычная камера · " +
-            "play — «В БОЙ» из меню · tap pause|row N|radar|ammo|board|spy|auto|ripple|left|right|fps|gear N|xy 0.5,0.5 — нажатие как пальцем · " +
+            "play — «В БОЙ» из меню · lock near|enemy N|off — взять цель · tap pause|row N|radar|ammo|board|spy|auto|ripple|left|right|fps|gear N|xy 0.5,0.5 — нажатие как пальцем · " +
             "where — координаты всех · pilot goto x z [ход]|heading град|speed|stop|release · go цель [N] [ход] · tp x z [курс] · " +
             "cam orbit цель [N] угол наклон дист|at x y z курс наклон|look x y z цель [N]|fov N|height N|off · hud 0|1 · photo [full] подпись · " +
             "цели: me fortress berth near enemy N ally N merchant · set clouds|fps60|post|crew|sharpen|fortress|fortshadow|lod|fx 0|1 · set shadows 0|1|2 · fps N — замер N с (в отчёт) · say текст — надпись на экране";
@@ -157,6 +157,16 @@ namespace SkyTide
                         Transform t = Find(arg, a.Length > 2 ? a[2] : null);
                         if (t == null) return "не нашёл " + arg;
                         RemotePilot.GoTo(t, Num(a, a.Length > 3 ? 3 : 99, 0.7f), arg); return RemotePilot.State;
+                    }
+                case "lock":
+                    {
+                        Broadside gb = SkyTideBootstrap.Instance != null && SkyTideBootstrap.Instance.Ship != null ? SkyTideBootstrap.Instance.Ship.GetComponent<Broadside>() : null;
+                        if (gb == null) return "нет флагмана";
+                        if (arg == "off") { gb.Locked = null; return "цель снята"; }
+                        Transform t = Find(arg == "" ? "near" : arg, a.Length > 2 ? a[2] : null);
+                        TargetShip ts = t != null ? t.GetComponent<TargetShip>() : null;
+                        if (ts == null) return "нет цели";
+                        gb.Locked = ts; return "цель: " + ts.name;
                     }
                 case "duel":
                     {

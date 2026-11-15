@@ -38,6 +38,7 @@ namespace SkyTide
         public int Gear { get { return gear; } }
         public void SetGear(int g) { gear = Mathf.Clamp(g, 0, GearThrottle.Length - 1); gearArmed = true; }
         float lastCamTap = -10f; Vector2 lastCamTapPos;
+        readonly Dictionary<int, float> camDownAt = new Dictionary<int, float>(); readonly Dictionary<int, Vector2> camDownPos = new Dictionary<int, Vector2>();
         // Подсказки первого запуска — по шагам, каждая гаснет после своего действия:
         // 0 дать ход, 1 дать залп, 2 камера за корму, 3 обзор и масштаб, 4 — всё показано (запоминается).
         int hintStage; bool hintDone, recentered; float hintShownFor;
@@ -155,6 +156,7 @@ namespace SkyTide
         void Update(){long __pt=PerfTimers.Start();UpdateTimed();PerfTimers.Stop("Ввод",__pt);}
         void UpdateTimed()
         {
+            { Broadside gb = Guns(); if (gb != null) gb.AutoAim = AutoBattle; }   // автобой выбирает цель сам; вручную — только взятая касанием
             if (!legacyInputOk) return;
             // Заставка студии и главное меню закрывают экран — касания им, а не кораблю.
             if (StudioSplash.Active || MainMenu.Active) { if (owners.Count > 0 || stickId != int.MinValue) ResetInteraction(); return; }
@@ -304,6 +306,7 @@ namespace SkyTide
                 else
                 {
                     owners[id] = Owner.Camera;
+                    camDownAt[id] = Time.unscaledTime; camDownPos[id] = p;
                     // Двойное касание одним пальцем — камера возвращается за корму.
                     float tapNow = Time.unscaledTime, tapR = Mathf.Min(ViewWidth, ViewHeight) * 0.09f;
                     if (cam != null && CameraFingers() == 1 && tapNow - lastCamTap < 0.32f && (p - lastCamTapPos).sqrMagnitude < tapR * tapR) { cam.Recenter(); recentered = true; lastCamTap = -10f; }
@@ -334,6 +337,12 @@ namespace SkyTide
 
             if (ended)
             {
+                // Короткое касание без сдвига по кораблю врага — взять его в цель (повторно по той же — снять).
+                float downAt; Vector2 downPos;
+                if (o == Owner.Camera && camDownAt.TryGetValue(id, out downAt) && camDownPos.TryGetValue(id, out downPos)
+                    && Time.unscaledTime - downAt < 0.3f && (p - downPos).magnitude < Mathf.Min(ViewWidth, ViewHeight) * 0.03f)
+                    if (TryLock(p)) lastCamTap = -10f;   // не считать первым касанием «двойного» (возврат камеры)
+                camDownAt.Remove(id); camDownPos.Remove(id);
                 owners.Remove(id);
                 lastPos.Remove(id);
                 if (id == stickId) stickId = int.MinValue;
@@ -463,6 +472,31 @@ namespace SkyTide
             AutoBattle = on;
             if (on) Haptics.Pulse(30);
         }
+        /// <summary>Взять в цель врага под пальцем (p — экранные координаты, y вниз): ближайший к точке касания на экране
+        /// в пределах 9% высоты экрана (и рамки его корпуса). По уже взятому — снять цель.</summary>
+        public bool TryLock(Vector2 p)
+        {
+            Broadside gb = Guns(); Camera c = Camera.main;
+            if (gb == null || c == null) return false;
+            TargetShip best = null; float bestD = Mathf.Min(ViewWidth, ViewHeight) * 0.09f;
+            foreach (TargetShip t in TargetShip.All)
+            {
+                if (t == null || !t.Alive || !t.gameObject.activeInHierarchy) continue;
+                Vector3 sp = c.WorldToScreenPoint(t.Center);
+                if (sp.z <= 0f) continue;
+                Vector2 q = new Vector2(sp.x, ViewHeight - sp.y);
+                // Чем ближе корабль, тем крупнее он на экране — допуск растёт с его экранным размером.
+                Vector3 sp2 = c.WorldToScreenPoint(t.Center + c.transform.right * 25f * t.transform.lossyScale.x);
+                float r = Mathf.Max(bestD, Mathf.Abs(sp2.x - sp.x));
+                float d = (q - p).magnitude;
+                if (d < r && (best == null || d < bestD)) { best = t; bestD = d; }
+            }
+            if (best == null) return false;
+            if (gb.Locked == best) { gb.Locked = null; HudNotice.Show("ЦЕЛЬ СНЯТА", 0, 1.2f); }
+            else { gb.Locked = best; HudNotice.Show("ЦЕЛЬ ВЗЯТА", 1, 1.2f); Haptics.Pulse(25); }
+            return true;
+        }
+
         public Broadside Guns()
         {
             if(ship==null)return null;
