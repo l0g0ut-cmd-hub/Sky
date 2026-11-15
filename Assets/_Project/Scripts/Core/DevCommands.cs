@@ -17,7 +17,7 @@ namespace SkyTide
             "shot [почему] — метка со снимком · report — отчёт сейчас · bench — автозамер · " +
             "snap N — снимок каждые N с · burst кадров шаг [подпись] — серия · " +
             "view угол наклон дист [сек] · spin градусов сек — обычная камера · " +
-            "tap pause|row N|radar|ammo|board|spy|auto|ripple|left|right|fps|gear N|xy 0.5,0.5 — нажатие как пальцем · " +
+            "play — «В БОЙ» из меню · tap pause|row N|radar|ammo|board|spy|auto|ripple|left|right|fps|gear N|xy 0.5,0.5 — нажатие как пальцем · " +
             "where — координаты всех · pilot goto x z [ход]|heading град|speed|stop|release · go цель [N] [ход] · tp x z [курс] · " +
             "cam orbit цель [N] угол наклон дист|at x y z курс наклон|look x y z цель [N]|fov N|height N|off · hud 0|1 · photo [full] подпись · " +
             "цели: me fortress berth near enemy N ally N merchant · set clouds|fps60|post|crew|sharpen|fortress|fortshadow|lod|fx 0|1 · set shadows 0|1|2 · fps N — замер N с (в отчёт) · say текст — надпись на экране";
@@ -204,6 +204,7 @@ namespace SkyTide
                     if (ReportUploader.Instance == null) return "нет отправки";
                     ReportUploader.Instance.Burst((int)Num(a, 1, 10f), Num(a, 2, 0.15f), a.Length > 3 ? string.Join(" ", a, 3, a.Length - 3) : "серия");
                     return "серия " + Num(a, 1, 10f) + " кадров";
+                case "play": return MainMenu.RemotePlay() ? "меню → В БОЙ" : (MainMenu.Active ? "меню не готово" : "уже в бою");
                 case "say": HudNotice.Show(line.Substring(3).Trim(), 0, 6f); return "показано";
                 case "set": return Set(arg, a.Length > 2 ? a[2] : "1", g);
             }

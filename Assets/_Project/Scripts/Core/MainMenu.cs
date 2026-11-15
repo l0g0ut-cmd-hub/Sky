@@ -40,7 +40,7 @@ namespace SkyTide
             Active = true;
         }
 
-        void Start() { useGUILayout = false; start = Time.unscaledTime; }
+        void Start() { instance = this; useGUILayout = false; start = Time.unscaledTime; }
         void OnDestroy() { Active = false; }
         /// <summary>Снова показать главное меню (из паузы).</summary>
         public static void Open() { if (Active) return; shown = false; Boot(); }
@@ -94,6 +94,9 @@ namespace SkyTide
         }
 
         bool toSettings;
+        static MainMenu instance;
+        /// <summary>«В БОЙ» удалённой командой (play): проверка Claude не должна ждать, пока владелец нажмёт сам.</summary>
+        public static bool RemotePlay() { if (!Active || instance == null) return false; instance.Press(0); return true; }
         void Press(int i)
         {
             switch (i)
