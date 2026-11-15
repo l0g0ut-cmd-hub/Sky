@@ -39,16 +39,33 @@ namespace SkyTide
             l.pause = new Rect(safeArea.xMax - m - u * 0.085f, safeArea.y + m, u * 0.085f, u * 0.075f);   // кнопка паузы — в правом верхнем углу
             l.radius = u * stickRadius;
             l.wheel = new Vector2(safeArea.x + u * 0.19f, safeArea.yMax - u * 0.215f);
-            // Рукоять хода: вертикальная шкала справа от штурвала, подписи ступеней — правее неё.
-            float th = l.radius * 2.2f;
-            l.telegraph = new Rect(l.wheel.x + l.radius * 1.32f, l.wheel.y - th * 0.5f, u * 0.03f, th);
-            float left = Mathf.Max(l.speed.xMax, l.telegraph.xMax + u * 0.17f) + m;
+            // Машинный телеграф: полукруглый циферблат справа от штурвала (5 секторов: назад, стоп, малый, средний, полный).
+            float dw = u * 0.27f, dh = dw * TelegraphH / TelegraphW;
+            l.telegraph = new Rect(l.wheel.x + l.radius * 1.2f, l.wheel.y - dh * 0.5f, dw, dh);
+            float left = Mathf.Max(l.speed.xMax, l.telegraph.xMax) + m;
             l.hint = new Rect(left, safeArea.yMax - u * 0.1f, Mathf.Max(0f, l.port.x - m - left), u * 0.075f);
             // «НА АБОРДАЖ» — над подсказкой по центру между штурвалом и кнопками бортов (появляется, только когда можно).
             l.board = new Rect(l.hint.center.x - u * 0.17f, l.hint.y - gap - u * 0.09f, u * 0.34f, u * 0.09f);
             // Подзорная труба — плашка «ТРУБА» справа от счётчика FPS.
-            l.spy = new Rect(l.fps.xMax + gap, l.fps.y, u * 0.17f, l.fps.height);   // был квадрат 0,085 — внутри рамки «×4» сжималось в точку, кнопку не было видно
+            l.spy = new Rect(l.fps.xMax + gap, l.fps.y, u * 0.2f, l.fps.height);   // был квадрат 0,085 — внутри рамки «×4» сжималось в точку, кнопку не было видно
             return l;
+        }
+
+        /// <summary>Картинка телеграфа (telegraph_dial.png): размер, ось рычага и углы секторов (0 — назад, слева; 4 — полный, справа).</summary>
+        public const float TelegraphW = 1222f, TelegraphH = 876f, HubX = 600f, HubY = 594f;
+        public Vector2 TelegraphHub => new Vector2(telegraph.x + telegraph.width * HubX / TelegraphW, telegraph.y + telegraph.height * HubY / TelegraphH);
+        public static float GearAngle(int g) => 162f - 36f * g;   // градусы от «вправо», против часовой
+        public Vector2 GearPoint(int g)
+        {
+            float a = GearAngle(g) * Mathf.Deg2Rad, r = telegraph.width * 0.3f;
+            return TelegraphHub + new Vector2(Mathf.Cos(a), -Mathf.Sin(a)) * r;
+        }
+        public int GearAt(Vector2 p)
+        {
+            Vector2 h = TelegraphHub;
+            if (p.y > h.y) return p.x < h.x ? 0 : 4;
+            float a = Mathf.Atan2(h.y - p.y, p.x - h.x) * Mathf.Rad2Deg;
+            return Mathf.Clamp(Mathf.RoundToInt((162f - a) / 36f), 0, 4);
         }
 
         /// <summary>Меню паузы: панель по центру и её строки (одна геометрия для рисования и касаний).</summary>

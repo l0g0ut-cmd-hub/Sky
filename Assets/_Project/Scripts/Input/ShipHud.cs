@@ -34,6 +34,13 @@ namespace SkyTide
             Text(new Rect(c.x, c.y + c.height * top, c.width, c.height * height), text, size, color);
         }
 
+        /// <summary>Надпись со значком (icons2) слева в поле плашки; текст — по центру оставшегося места.</summary>
+        void IconText(Rect plate, int icon, string text, float size, Color color)
+        {
+            Rect c = Content(plate); float ic = Mathf.Min(c.height * 1.25f, plate.height * 0.9f);
+            Icon2(icon, new Rect(c.x - ic * 0.15f, plate.center.y - ic * 0.5f, ic, ic), Color.white);
+            Text(new Rect(c.x + ic * 0.9f, c.y, c.width - ic * 0.9f, c.height), text, size, color);
+        }
         void Tint(Color c) { GL.Color(QualitySettings.activeColorSpace == ColorSpace.Linear ? c.linear : c); }
         static void Vertex(Vector2 p, Vector2 uv) { GL.TexCoord2(uv.x, uv.y); GL.Vertex3(p.x, p.y, 0f); }
         static void Quad(Vector2 a, Vector2 b, Vector2 c, Vector2 d, Vector2 ua, Vector2 ub, Vector2 uc, Vector2 ud)
@@ -128,7 +135,7 @@ namespace SkyTide
         }
 
         // ---------- радар (Resources/UI/radar_*, 1024²: рамка, стекло, луч; 128²: свой корабль, цель, цель за пределом) ----------
-        Texture2D rFrame, rFace, rSweep, rShip, rEnemy, rFar; bool radarTried;
+        Texture2D rFrame, rFace, rSweep, rShip, rEnemy, rFar, rAlly, rMerchant, rFort, rBerth; bool radarTried;
         bool HasRadar
         {
             get
@@ -139,6 +146,8 @@ namespace SkyTide
                     rFrame = Resources.Load<Texture2D>("UI/radar_frame"); rFace = Resources.Load<Texture2D>("UI/radar_face");
                     rSweep = Resources.Load<Texture2D>("UI/radar_sweep"); rShip = Resources.Load<Texture2D>("UI/radar_ship");
                     rEnemy = Resources.Load<Texture2D>("UI/radar_enemy"); rFar = Resources.Load<Texture2D>("UI/radar_enemy_far");
+                    rAlly = Resources.Load<Texture2D>("UI/radar_ally"); rMerchant = Resources.Load<Texture2D>("UI/radar_merchant");
+                    rFort = Resources.Load<Texture2D>("UI/radar_fort"); rBerth = Resources.Load<Texture2D>("UI/radar_berth");
                 }
                 return rFrame != null && rFace != null;
             }
@@ -192,12 +201,11 @@ namespace SkyTide
                 bool isTarget = input.Guns() != null && input.Guns().AimTargetShip == ts;
                 // Мельче (было 0.24 R): при 18 врагах отметки сливались; цель борта — крупнее, с курсом.
                 float g = R * (outside ? 0.2f : isTarget ? 0.2f : 0.13f) * (0.9f + 0.15f * Mathf.Exp(-since * 3f));
-                if (outside && rFar != null) Image(rFar, p, g, beta + 45f * Mathf.Deg2Rad, new Color(1f, 1f, 1f, glow));
-                else if (rEnemy != null) Image(rEnemy, p, g, 0f, new Color(1f, 1f, 1f, glow));
-                // Курс врага: чёрточка от отметки в сторону его хода (вверх — наш нос). Дальность — строкой под радаром.
                 float rel = (ts.transform.eulerAngles.y - input.ship.transform.eulerAngles.y) * Mathf.Deg2Rad;
-                Vector2 hd = new Vector2(Mathf.Sin(rel), -Mathf.Cos(rel));
-                if (!outside && isTarget) Line(p + hd * g * 0.35f, p + hd * g * 1.2f, Mathf.Max(1.5f, R * 0.035f), new Color(1f, 0.42f, 0.26f, glow));
+                // Близкий враг — красная стрелка по его курсу (вверх — наш нос); за краем — ромб у обода.
+                if (outside && rFar != null) Image(rFar, p, g * 0.8f, beta + Mathf.PI * 0.5f, new Color(1f, 1f, 1f, glow));
+                else if (rEnemy != null) Image(rEnemy, p, g * 1.15f, rel, new Color(1f, 1f, 1f, glow));
+                if (!outside && isTarget) { float rr = g * 0.95f; for (int q = 0; q < 24; q += 2) { float a0 = q * Mathf.PI / 12f, a1 = (q + 1) * Mathf.PI / 12f; Line(p + new Vector2(Mathf.Cos(a0), Mathf.Sin(a0)) * rr, p + new Vector2(Mathf.Cos(a1), Mathf.Sin(a1)) * rr, Mathf.Max(1.2f, R * 0.02f), new Color(1f, 0.82f, 0.45f, glow)); } }   // цель борта — пунктирное кольцо
             }
             // Союзники (сторожевой крепости): зелёная отметка-кораблик, за краем радара — у обода.
             if (rShip != null) foreach (AllyShip ally in AllyShip.All)
@@ -212,7 +220,12 @@ namespace SkyTide
                 Color ac = ally.role == AllyShip.Role.Merchant ? new Color(1f, 0.92f, 0.45f) : new Color(0.55f, 1f, 0.65f);
                 if (ally.UnderAttack && Mathf.Repeat(Time.unscaledTime * 3f, 1f) < 0.5f) ac = new Color(1f, 0.35f, 0.25f);   // под огнём — мигает красным
                 ac.a = ad > range ? 0.6f : 1f;
-                Image(rShip, c + adir * Mathf.Min(ad / range, 1f) * face * 0.9f, R * 0.14f, arel, ac);
+                Vector2 ap = c + adir * Mathf.Min(ad / range, 1f) * face * 0.9f;
+                bool merch = ally.role == AllyShip.Role.Merchant;
+                Color tint = ally.UnderAttack && Mathf.Repeat(Time.unscaledTime * 3f, 1f) < 0.5f ? new Color(1f, 0.45f, 0.4f, ac.a) : new Color(1f, 1f, 1f, ac.a);
+                if (merch && rMerchant != null) Image(rMerchant, ap, R * 0.15f, 0f, tint);
+                else if (!merch && rAlly != null) Image(rAlly, ap, R * 0.15f, arel, tint);
+                else Image(rShip, ap, R * 0.14f, arel, ac);
             }
             // Крепость-причал: значок «ангар» (лист иконок), за краем радара — прижат к ободу.
             SkyFortress fort = SkyFortress.Instance;
@@ -237,7 +250,9 @@ namespace SkyTide
                     if ((q0 - c).sqrMagnitude > lim * lim || (q1 - c).sqrMagnitude > lim * lim) continue;
                     Line(q0, q1, Mathf.Max(1.2f, R * 0.025f), zcol);
                 }
-                Icon(9, new Rect(p.x - g * 0.5f, p.y - g * 0.5f, g, g), fort.Hostile ? new Color(1f, 0.45f, 0.35f, 1f) : Color.white);
+                Texture2D ft = fort.Hostile ? rFort : rBerth;   // причал — якорь; при тревоге — башня крепости, красным
+                if (ft != null) Image(ft, p, g * 0.75f, 0f, fort.Hostile ? new Color(1f, 0.55f, 0.45f, 1f) : Color.white);
+                else Icon(9, new Rect(p.x - g * 0.5f, p.y - g * 0.5f, g, g), fort.Hostile ? new Color(1f, 0.45f, 0.35f, 1f) : Color.white);
             }
             Image(rFrame, c, size, 0f, Color.white);
             // Ветер: голубая стрелка у обода убрана (владелец 15.11 не понял, что это; лишняя деталь в каше). Ветер — в отчёте.
@@ -316,7 +331,7 @@ namespace SkyTide
             if(ready&&!volleyWasReady[vk]&&Application.isPlaying)volleyReadyAt[vk]=vNow;
             volleyWasReady[vk]=ready;
             Rect body=Content(r); body=new Rect(body.x-r.height*0.12f,body.y,body.width+r.height*0.24f,body.height);   // только поле плашки: раньше заливка ложилась прямоугольником поверх рамки и орнаментов
-            if(!ready)Solid(new Rect(body.x,body.y,body.width*Mathf.Clamp01(readiness),body.height),new Color(1f,0.6f,0.18f,0.3f));
+            if(!ready){LoadBanners();float f0=Mathf.Clamp01(readiness);Rect fr=new Rect(body.x,body.y+body.height*0.08f,body.width*f0,body.height*0.84f);if(tFill!=null)ImageRect(tFill,fr,new Rect(0f,0f,f0,1f),new Color(1f,1f,1f,0.42f));else Solid(fr,new Color(1f,0.6f,0.18f,0.3f));}   // раскалённая заливка слева направо (ui_fill)
             float pop=Mathf.Clamp01(1f-(vNow-volleyReadyAt[vk])/0.45f);
             if(ready&&pop>0f)Solid(body,new Color(1f,0.9f,0.6f,0.55f*pop));
             if(aimed)Solid(body,new Color(1f,0.82f,0.4f,(ready?0.2f:0.1f)+0.08f*Mathf.Sin(vNow*6f)));
@@ -372,9 +387,7 @@ namespace SkyTide
             }
             SkyFortress fort = SkyFortress.Instance;
             int rows = 1 + (best < float.MaxValue ? 1 : 0) + (fort != null ? 1 : 0);
-            { Rect pr = new Rect(r.x, y - l.unit * 0.003f, r.width, lh * rows + l.unit * 0.006f); float bt = Mathf.Max(1f, l.unit * 0.002f);
-              Solid(pr, new Color(0.02f, 0.025f, 0.035f, 0.82f));   // Box брал альфу из атласа шрифта — подложка выходила полупрозрачной, текст терялся на светлых облаках
-              Solid(new Rect(pr.x, pr.y, pr.width, bt), new Color(gold.r, gold.g, gold.b, 0.7f)); Solid(new Rect(pr.x, pr.yMax - bt, pr.width, bt), new Color(gold.r, gold.g, gold.b, 0.7f)); }   // плотнее: на светлых облаках подложка была серой, текст терялся
+            InfoPlate(new Rect(r.x - l.unit * 0.01f, y - l.unit * 0.008f, r.width + l.unit * 0.02f, lh * rows + l.unit * 0.016f), lh, Color.white);   // латунная плашка (plate_info)
             Text(new Rect(r.x, y, r.width, lh), "РАДАР " + Range(input.RadarRange), fs, new Color(Mathf.Lerp(muted.r, 1f, 0.4f), Mathf.Lerp(muted.g, 1f, 0.4f), Mathf.Lerp(muted.b, 1f, 0.4f), 1f)); y += lh;
             if (best < float.MaxValue) { Text(new Rect(r.x, y, r.width, lh), "ВРАГ " + Range(best) + (bestHealth < 0.995f ? " · " + Mathf.RoundToInt(bestHealth * 100f) + "%" : ""), fs, best <= GunRange(input) ? new Color(1f, 0.72f, 0.55f, 1f) : new Color(0.72f, 0.74f, 0.78f, 1f)); y += lh; }   // серым — дальше, чем достают свои пушки
             if (fort != null)
@@ -388,23 +401,39 @@ namespace SkyTide
         /// <summary>Курс — компасная лента: румбы и деления едут под неподвижной меткой по центру плашки.</summary>
         void Compass(TouchControls input, HudLayout l)
         {
-            Rect c = Content(l.course);
+            LoadBanners();
             float heading = input.ship.transform.eulerAngles.y;
-            const float span = 100f;
-            float perDeg = c.width / span, lw = l.unit * 0.085f, tick = Mathf.Max(1f, l.unit * 0.003f);
-            for (int d = 0; d < 360; d += 15)
+            Rect cr = l.course;
+            if (tCompass == null) { Panel(cr, l.unit); return; }
+            // Латунная лента (ui_compass.png 2131×107): тянется один период между большими рисками (x 297–568) — это 45°,
+            // лента «едет» под неподвижной стрелкой; буквы румбов — над большими рисками.
+            const float TW = 2131f, TH = 107f, P0 = 297f, P1 = 568f, CAP = 30f;
+            float sh = l.unit * 0.042f, k = sh / TH;
+            Rect strip = new Rect(cr.x, cr.yMax - sh, cr.width, sh);
+            float capW = CAP * k, x0 = strip.x + capW, x1 = strip.xMax - capW;
+            float periodPx = (P1 - P0) * k, degPx = 45f / periodPx;
+            ImageRect(tCompass, new Rect(strip.x, strip.y, capW, sh), new Rect(0f, 0f, CAP / TW, 1f), Color.white);
+            ImageRect(tCompass, new Rect(x1, strip.y, capW, sh), new Rect(1f - CAP / TW, 0f, CAP / TW, 1f), Color.white);
+            float cx = strip.center.x;
+            int dFirst = Mathf.FloorToInt((heading - (cx - x0) * degPx) / 45f) - 1, dLast = Mathf.CeilToInt((heading + (x1 - cx) * degPx) / 45f) + 1;
+            for (int n = dFirst; n <= dLast; n++)
             {
-                float off = Mathf.DeltaAngle(heading, d);
-                if (Mathf.Abs(off) > span * 0.5f) continue;
-                float x = c.center.x + off * perDeg;
-                float edgeA = Mathf.Clamp01((span * 0.5f - Mathf.Abs(off)) / 12f);   // к краям шкала гаснет, а не обрывается
-                if (d % 45 == 0 && x - lw * 0.5f >= c.x && x + lw * 0.5f <= c.xMax)
+                float xs = cx + (n * 45f - heading) / degPx, xe = xs + periodPx;
+                float a = Mathf.Max(xs, x0), b = Mathf.Min(xe, x1);
+                if (b <= a) continue;
+                float ua = (P0 + (a - xs) / k) / TW, ub = (P0 + (b - xs) / k) / TW;
+                ImageRect(tCompass, new Rect(a, strip.y, b - a, sh), new Rect(ua, 0f, ub - ua, 1f), Color.white);
+                // Буква над большой риской в начале периода; у краёв — гаснет.
+                if (xs >= x0 && xs <= x1)
                 {
-                    Text(new Rect(x - lw * 0.5f, c.y, lw, c.height * 0.74f), Cardinals[d / 45], l.unit * 0.032f, d % 90 == 0 ? cream : muted);
+                    int d = ((n % 8) + 8) % 8; float lw = l.unit * 0.07f;
+                    float fade = Mathf.Clamp01(Mathf.Min(xs - x0, x1 - xs) / (l.unit * 0.03f));
+                    Color lc = d % 2 == 0 ? cream : muted; lc.a = fade;
+                    Text(new Rect(xs - lw * 0.5f, cr.y, lw, cr.height - sh), Cardinals[d], l.unit * 0.032f, lc);
                 }
-                else Solid(new Rect(x - tick * 0.5f, c.yMax - c.height * 0.3f, tick, c.height * (d % 45 == 0 ? 0.3f : 0.22f)), new Color(gold.r, gold.g, gold.b, 0.8f * edgeA));   // у края вместо буквы — длинная риска: шаг шкалы ровный, без дыр
             }
-            Solid(new Rect(c.center.x - tick, c.yMax - c.height * 0.24f, tick * 2f, c.height * 0.32f), new Color(1f, 0.86f, 0.5f, 1f));
+            // Неподвижная стрелка курса — латунный треугольник остриём вниз над лентой.
+            if (HasKit) { float aw = sh * 0.55f, ah = aw * KArrow.height / KArrow.width; SpriteRot(new Vector2(cx, strip.y + ah * 0.35f), new Vector2(aw, ah), Mathf.PI, KArrow, Color.white); }
         }
 
         /// <summary>Меню паузы: затемнение, панель по центру, четыре строки (геометрия — HudLayout.PauseRow).</summary>
@@ -427,25 +456,19 @@ namespace SkyTide
             }
         }
 
-        /// <summary>Рукоять хода: шкала справа от штурвала, ручка — на выбранной ступени, подписи ступеней правее.</summary>
+        /// <summary>Машинный телеграф: циферблат с пятью секторами, рычаг плавно доворачивается на выбранную ступень.</summary>
+        float leverAngle = float.NaN;
         void Telegraph(TouchControls input, HudLayout l)
         {
-            Rect t = l.telegraph; int n = TouchControls.GearNames.Length; float step = t.height / n;
-            if (HasKit) SpriteRot(t.center, new Vector2(t.height, t.width), Mathf.PI * 0.5f, KGroove, Color.white);
-            else Box(t, new Color(0.015f, 0.02f, 0.026f, 0.9f));
-            // Подложка под подписями ступеней: на ярком море облаков серые подписи пропадали (видео сборки 102).
-            { Rect gp = new Rect(t.xMax + l.unit * 0.02f, t.y - step * 0.05f, l.unit * 0.14f, t.height + step * 0.1f); float bt = Mathf.Max(1f, l.unit * 0.002f);
-              Solid(gp, new Color(0.015f, 0.02f, 0.026f, 0.8f));   // была 0,5 — на светлом облаке подписи терялись (снимки 15.11)
-              Solid(new Rect(gp.x, gp.y, gp.width, bt), new Color(gold.r, gold.g, gold.b, 0.7f)); Solid(new Rect(gp.x, gp.yMax - bt, gp.width, bt), new Color(gold.r, gold.g, gold.b, 0.7f)); }
-            for (int i = 0; i < n; i++)
-            {
-                float cy = t.yMax - (i + 0.5f) * step; bool on = i == input.Gear;
-                Solid(new Rect(t.xMax + l.unit * 0.004f, cy - Mathf.Max(1f, l.unit * 0.002f), l.unit * 0.012f, Mathf.Max(2f, l.unit * 0.004f)), new Color(gold.r, gold.g, gold.b, on ? 1f : 0.6f));
-                Text(new Rect(t.xMax + l.unit * 0.02f, cy - step * 0.5f, l.unit * 0.14f, step), TouchControls.GearNames[i], l.unit * 0.025f, on ? new Color(1f, 0.86f, 0.5f, 1f) : new Color(Mathf.Lerp(muted.r, 1f, 0.35f), Mathf.Lerp(muted.g, 1f, 0.35f), Mathf.Lerp(muted.b, 1f, 0.35f), 1f));
-            }
-            float hy = t.yMax - (input.Gear + 0.5f) * step, kd = t.width * 2.1f, kh = kd * KKnob.height / KKnob.width;
-            if (HasKit) Sprite(new Rect(t.center.x - kd * 0.5f, hy - kh * 0.5f, kd, kh), KKnob, Color.white);
-            else Solid(new Rect(t.x - t.width * 0.3f, hy - step * 0.2f, t.width * 1.6f, step * 0.4f), gold);
+            LoadBanners();
+            Rect t = l.telegraph;
+            if (tDial == null) return;
+            ImageRect(tDial, t, Whole, Color.white);
+            float want = HudLayout.GearAngle(input.Gear);
+            leverAngle = float.IsNaN(leverAngle) ? want : Mathf.Lerp(leverAngle, want, 1f - Mathf.Exp(-14f * Time.unscaledDeltaTime));
+            // Рычаг: ось — шарнир у основания (94, 674), ручка смотрит на 74,8° от горизонтали; длина до ручки ≈ 0,32 ширины циферблата.
+            float scale = t.width * 0.32f / 673f;
+            ImagePivot(tLever, l.TelegraphHub, new Vector2(94f, 674f), scale, leverAngle - 74.8f, Color.white);
         }
 
         /// <summary>Радар: курс корабля — вверх, цель — отметка с чёрточкой курса; за пределом дальности — на ободе.</summary>
@@ -483,7 +506,7 @@ namespace SkyTide
 
         // ---------- баннеры, оповещения, виньетка (Resources/UI: banner_victory/defeat 2048×512, plate_notice 1024×192,
         // vignette_damage 2:1, icons 4×4). Текст всегда в пределах внутреннего поля плашки (пиксели картинки ниже). ----------
-        Texture2D bVictory, bDefeat, bPlate, bVignette, bIcons; bool bannersTried;
+        Texture2D bVictory, bDefeat, bPlate, bVignette, bIcons, bIcons2, tInfo, tFill, tCompass, tDial, tLever; bool bannersTried;
         string victoryText = "ЦЕЛЬ УНИЧТОЖЕНА";
         readonly HashSet<TargetShip> sunkSeen = new HashSet<TargetShip>();
         float victoryAt = -100f;
@@ -495,7 +518,9 @@ namespace SkyTide
             if (bannersTried) return; bannersTried = true;
             bVictory = Resources.Load<Texture2D>("UI/banner_victory"); bDefeat = Resources.Load<Texture2D>("UI/banner_defeat");
             bPlate = Resources.Load<Texture2D>("UI/plate_notice"); bVignette = Resources.Load<Texture2D>("UI/vignette_damage");
-            bIcons = Resources.Load<Texture2D>("UI/icons");
+            bIcons = Resources.Load<Texture2D>("UI/icons"); bIcons2 = Resources.Load<Texture2D>("UI/icons2");
+            tInfo = Resources.Load<Texture2D>("UI/plate_info"); tFill = Resources.Load<Texture2D>("UI/ui_fill"); tCompass = Resources.Load<Texture2D>("UI/ui_compass");
+            tDial = Resources.Load<Texture2D>("UI/telegraph_dial"); tLever = Resources.Load<Texture2D>("UI/telegraph_lever");
         }
         /// <summary>Картинка в прямоугольник; uv — доли картинки от верхнего левого угла.</summary>
         void ImageRect(Texture2D tex, Rect dst, Rect uv, Color col)
@@ -522,6 +547,49 @@ namespace SkyTide
             const float inset = 0.006f;
             float u = (index % 4) * 0.25f, v = (index / 4) * 0.25f;
             ImageRect(bIcons, dst, new Rect(u + inset, v + inset, 0.25f - inset * 2f, 0.25f - inset * 2f), col);
+        }
+        /// <summary>Второй лист значков (icons2.png, 4×4): 0 труба, 1 книппели, 2 ядро, 3 волной, 4 союзник, 5 торговец.</summary>
+        void Icon2(int index, Rect dst, Color col)
+        {
+            LoadBanners(); if (bIcons2 == null) return;
+            const float inset = 0.006f;
+            float u = (index % 4) * 0.25f, v = (index / 4) * 0.25f;
+            ImageRect(bIcons2, dst, new Rect(u + inset, v + inset, 0.25f - inset * 2f, 0.25f - inset * 2f), col);
+        }
+        /// <summary>Информационная плашка (plate_info.png 1536×91): тонкая — тремя частями с заклёпками по краям;
+        /// высокая (несколько строк) — девятью, края берутся из полос без заклёпок, чтобы те не вытягивались.</summary>
+        void InfoPlate(Rect r, float rowH, Color col)
+        {
+            LoadBanners();
+            if (tInfo == null) { Solid(r, new Color(0.02f, 0.025f, 0.035f, 0.82f * col.a)); return; }
+            const float W = 1536f, H = 91f, capPx = 64f;
+            float k = rowH / H, cw = capPx * k, cu = capPx / W;
+            if (r.height <= rowH * 1.08f)
+            {
+                ImageRect(tInfo, new Rect(r.x, r.y, cw, r.height), new Rect(0f, 0f, cu, 1f), col);
+                ImageRect(tInfo, new Rect(r.x + cw, r.y, r.width - cw * 2f, r.height), new Rect(cu, 0f, 1f - cu * 2f, 1f), col);
+                ImageRect(tInfo, new Rect(r.xMax - cw, r.y, cw, r.height), new Rect(1f - cu, 0f, cu, 1f), col);
+                return;
+            }
+            float[] vy = { 0f, 0.3f, 0.36f, 1f }, uy = { 0f, 0.3f, 0.3f, 0.36f };   // верх 0–0,3; середина — полоса 0,3–0,36 без заклёпки; низ 0,64–1
+            float th = 0.3f * H * k;
+            float[] dy = { r.y, r.y + th, r.yMax - th, r.yMax };
+            float[] sy0 = { 0f, 0.3f, 0.7f }, sy1 = { 0.3f, 0.36f, 1f };
+            float[] dx = { r.x, r.x + cw, r.xMax - cw, r.xMax };
+            float[] sx0 = { 0f, cu, 1f - cu }, sx1 = { cu, 1f - cu, 1f };
+            for (int j = 0; j < 3; j++) for (int i = 0; i < 3; i++)
+                ImageRect(tInfo, new Rect(dx[i], dy[j], dx[i + 1] - dx[i], dy[j + 1] - dy[j]), new Rect(sx0[i], sy0[j], sx1[i] - sx0[i], sy1[j] - sy0[j]), col);
+        }
+        /// <summary>Картинка, повёрнутая вокруг своей точки pivot (пиксели картинки от верхнего левого угла).
+        /// angle — против часовой (в градусах) относительно исходного положения; scale — экранных пикселей на пиксель картинки.</summary>
+        void ImagePivot(Texture2D tex, Vector2 at, Vector2 pivot, float scale, float angleDeg, Color col)
+        {
+            if (tex == null) return;
+            float a = angleDeg * Mathf.Deg2Rad, cs = Mathf.Cos(a), sn = Mathf.Sin(a);
+            System.Func<float, float, Vector2> T = (x, y) => { float px = (x - pivot.x) * scale, py = (y - pivot.y) * scale; return at + new Vector2(px * cs + py * sn, -px * sn + py * cs); };
+            float w = tex.width, h = tex.height;
+            sprites.Add(new Spr { a = T(0, 0), b = T(w, 0), c = T(w, h), d = T(0, h),
+                ua = new Vector2(0, 1), ub = new Vector2(1, 1), uc = new Vector2(1, 0), ud = new Vector2(0, 0), col = col, tex = tex });
         }
         /// <summary>Поле внутри картинки (пиксели src от верхнего левого угла) — в экранный прямоугольник dst.</summary>
         static Rect Inner(Rect dst, float srcW, float srcH, float x0, float y0, float x1, float y1)
@@ -643,27 +711,29 @@ namespace SkyTide
             if (vic > 0f && !dead) corner = true;   // баннер победы теперь в слоте центральной плашки
             if (note > 0f && bPlate != null)
             {
-                float pw = Mathf.Min(l.safe.width * 0.32f, l.safe.height * 1.3f), ph = pw * 192f / 1024f;
-                Rect r = new Rect(l.safe.center.x - pw * 0.5f, l.safe.y + l.safe.height * 0.235f, pw, ph);   // ниже подписи «КОРПУС»: на 0.2 плашка при появлении наезжала на неё
+                // Плашка plate_notice.png 1536×264: слева гнездо значка (кольцо, центр x 205), справа — завиток; середина тянется.
+                const float PW = 1536f, PH = 264f, LCAP = 330f, RCAP = 160f, RING = 205f;
+                float pw = Mathf.Min(l.safe.width * 0.32f, l.safe.height * 1.3f), ph = pw * PH / PW;
+                float fsz = ph * 0.3f;
+                float need = noteText.Length * fsz * 0.64f + ph * (LCAP + RCAP) / PH + ph * 0.25f;   // текст + гнездо + завиток + поля
                 if (corner)
                 {
-                    ph = Mathf.Min(l.safe.width * 0.2f, l.safe.height * 0.8f) * 192f / 1024f; pw = ph * 1024f / 192f * 1.25f;
-                    // Шрифт один для всех оповещений, плашка растягивается под текст: длинное «УХОДИМ ИЗ-ПОД ПУШЕК КРЕПОСТИ»
-                    // раньше ужималось в нечитаемую мелочь, а «ТРЕВОГА» была крупной.
-                    float need = noteText.Length * ph * 0.34f * 0.64f + ph * 2.5f;   // текст + значок + поля под углы
-                    pw = Mathf.Min(Mathf.Max(pw, need), l.pause.x - l.safe.x - l.unit * 0.6f);
-                    r = new Rect(l.pause.x - pw - l.unit * 0.015f, cornerTop, pw, ph);   // левее кнопки паузы
+                    ph = Mathf.Min(l.safe.width * 0.2f, l.safe.height * 0.8f) * 1.15f * PH / PW; fsz = ph * 0.3f;
+                    need = noteText.Length * fsz * 0.64f + ph * (LCAP + RCAP) / PH + ph * 0.25f;
+                    pw = Mathf.Min(Mathf.Max(ph * PW / PH * 0.8f, need), l.pause.x - l.safe.x - l.unit * 0.6f);
                 }
-                {   // три части: углы плашки не растягиваются, тянется только середина
-                    Color pc = new Color(1f, 1f, 1f, note); float capU = 0.16f, capW = r.height * capU * 1024f / 192f;
-                    ImageRect(bPlate, new Rect(r.x, r.y, capW, r.height), new Rect(0f, 0f, capU, 1f), pc);
-                    ImageRect(bPlate, new Rect(r.x + capW, r.y, r.width - capW * 2f, r.height), new Rect(capU, 0f, 1f - capU * 2f, 1f), pc);
-                    ImageRect(bPlate, new Rect(r.xMax - capW, r.y, capW, r.height), new Rect(1f - capU, 0f, capU, 1f), pc);
-                }
-                Rect inner = new Rect(r.x + r.height * 150f / 192f, r.y + r.height * 0.25f, r.width - r.height * 300f / 192f, r.height * 0.5f);   // поля по высоте плашки — одинаковые при любой ширине
-                float ic = inner.height * 1.05f;
-                Icon(noteIcon, new Rect(inner.x, inner.center.y - ic * 0.5f, ic, ic), new Color(1f, 1f, 1f, note));
-                Text(new Rect(inner.x + ic * 1.1f, inner.y, inner.width - ic * 1.1f, inner.height), noteText, corner ? ph * 0.34f : ph * 0.4f, dead ? new Color(cream.r, cream.g, cream.b, note) : new Color(1f, 0.72f, 0.5f, note));
+                else pw = Mathf.Min(Mathf.Max(pw, need), l.safe.width * 0.6f);
+                Rect r = corner ? new Rect(l.pause.x - pw - l.unit * 0.015f, cornerTop, pw, ph)   // левее кнопки паузы
+                                : new Rect(l.safe.center.x - pw * 0.5f, l.safe.y + l.safe.height * 0.235f, pw, ph);   // ниже подписи «КОРПУС»
+                Color pc = new Color(1f, 1f, 1f, note);
+                float lw = ph * LCAP / PH, rw = ph * RCAP / PH;
+                ImageRect(bPlate, new Rect(r.x, r.y, lw, ph), new Rect(0f, 0f, LCAP / PW, 1f), pc);
+                ImageRect(bPlate, new Rect(r.x + lw, r.y, r.width - lw - rw, ph), new Rect(LCAP / PW, 0f, 1f - (LCAP + RCAP) / PW, 1f), pc);
+                ImageRect(bPlate, new Rect(r.xMax - rw, r.y, rw, ph), new Rect(1f - RCAP / PW, 0f, RCAP / PW, 1f), pc);
+                float ic = ph * 0.6f, icx = r.x + ph * RING / PH;
+                Icon(noteIcon, new Rect(icx - ic * 0.5f, r.center.y - ic * 0.5f, ic, ic), pc);
+                Rect tr = new Rect(r.x + lw, r.y + ph * 0.2f, r.width - lw - rw, ph * 0.6f);
+                Text(tr, noteText, fsz, dead ? new Color(cream.r, cream.g, cream.b, note) : new Color(1f, 0.72f, 0.5f, note));
             }
         }
 
@@ -701,11 +771,11 @@ namespace SkyTide
                 Solid(new Rect(bar.x + bar.width * f, bar.y + pad, bar.width * (hullGhost - f), bar.height - pad * 2f), new Color(1f, 0.95f, 0.85f, 0.9f));
             }
             // Подпись — на тёмной подложке (на светлых облаках терялась); ниже 30% подложка пульсирует красным.
-            Rect cap = new Rect(bar.center.x - l.unit * 0.105f, bar.yMax + l.unit * 0.002f, l.unit * 0.21f, l.unit * 0.036f);
+            Rect cap = new Rect(bar.center.x - l.unit * 0.13f, bar.yMax + l.unit * 0.002f, l.unit * 0.26f, l.unit * 0.04f);   // шире: по краям заклёпки плашки
             float alarm = f < 0.3f && f > 0f ? 0.5f + 0.5f * Mathf.Sin(Time.unscaledTime * 6f) : 0f;
-            Solid(cap, Color.Lerp(new Color(0.02f, 0.025f, 0.035f, 0.82f), new Color(0.55f, 0.06f, 0.04f, 0.85f), alarm));
-            { float bt = Mathf.Max(1f, l.unit * 0.002f); Solid(new Rect(cap.x, cap.yMax - bt, cap.width, bt), new Color(gold.r, gold.g, gold.b, 0.7f)); }   // как у плашки радара
-            Text(new Rect(bar.x, bar.yMax, bar.width, l.unit * 0.038f), Cached(1, Mathf.RoundToInt(f * 100f), v => "КОРПУС " + v + "%"), l.unit * 0.03f, f < 0.3f ? new Color(1f, 0.7f, 0.6f) : cream);
+            InfoPlate(cap, cap.height, Color.white);
+            if (alarm > 0f) Solid(new Rect(cap.x + cap.height * 0.6f, cap.y + cap.height * 0.2f, cap.width - cap.height * 1.2f, cap.height * 0.6f), new Color(0.55f, 0.06f, 0.04f, 0.7f * alarm));   // ниже 30% — пульсирует красным
+            Text(new Rect(cap.x + cap.height * 0.6f, cap.y, cap.width - cap.height * 1.2f, cap.height), Cached(1, Mathf.RoundToInt(f * 100f), v => "КОРПУС " + v + "%"), l.unit * 0.03f, f < 0.3f ? new Color(1f, 0.7f, 0.6f) : cream);
         }
 
         void RadarKit(TouchControls input,HudLayout l,Vector2 c,float R,float range)
@@ -754,12 +824,12 @@ namespace SkyTide
                     // Плашки «облака» справа сверху нет — переключатель в панели FPS.
                     if(input.game.ships!=null&&input.game.ships.Length>1) {Panel(l.ship,l.unit);PlateText(l.ship,0f,1f,input.game.CurrentShipName,l.unit*0.03f,cream);}
                     cornerTop=l.safe.y+l.unit*0.02f;
-                    Panel(l.course,l.unit); Compass(input,l);
+                    Compass(input,l);
                     Panel(l.speed,l.unit);PlateText(l.speed,0f,1f,Cached(3,input.Gear*1000+Mathf.RoundToInt(Mathf.Abs(input.ship.Speed)),v=>TouchControls.GearNames[v/1000]+" · "+(v%1000)+" м/с"),l.unit*0.034f,cream);   // ступень рукояти и скорость
                     Telegraph(input,l);
                     Radar(input,l);
                     Hull(l);
-                    if(Application.isPlaying&&input.cam!=null){Panel(l.spy,l.unit,input.cam.ScopeOn,input.Pressed(l.spy));PlateText(l.spy,0f,1f,input.cam.ScopeOn?"ТРУБА ×4":"ТРУБА",l.unit*0.03f,input.cam.ScopeOn?new Color(1f,0.88f,0.55f):cream);}   // подзорная труба
+                    if(Application.isPlaying&&input.cam!=null){Panel(l.spy,l.unit,input.cam.ScopeOn,input.Pressed(l.spy));IconText(l.spy,0,input.cam.ScopeOn?"×4":"ТРУБА",l.unit*0.03f,input.cam.ScopeOn?new Color(1f,0.88f,0.55f):cream);}   // подзорная труба
                     Panel(l.fps,l.unit);PlateText(l.fps,0f,1f,Application.isPlaying?Cached(2,Mathf.RoundToInt(input.Fps),v=>v+" FPS"):"FPS —",l.unit*0.03f,Application.isPlaying&&input.Fps<24f?new Color(1f,0.55f,0.45f,1f):muted);   // ниже 24 — красным: просадку видно сразу
                     Text(l.version,input.BuildText,l.unit*0.023f,cream);
                     Broadside guns=input.Guns();
@@ -768,9 +838,9 @@ namespace SkyTide
                         Volley(input,l,l.port,-1,guns.Readiness(-1),guns.cooldown,guns.AimOnTarget&&guns.AimSide<0);
                         Volley(input,l,l.starboard,1,guns.Readiness(1),guns.cooldown,guns.AimOnTarget&&guns.AimSide>0);
                         Panel(l.mode,l.unit,false,input.Pressed(l.mode));
-                        PlateText(l.mode,0f,1f,guns.ripple?"ВОЛНОЙ":"ВЕСЬ БОРТ",l.unit*0.03f,cream);
+                        IconText(l.mode,3,guns.ripple?"ВОЛНОЙ":"ВЕСЬ БОРТ",l.unit*0.03f,cream);
                         Panel(l.ammo,l.unit,guns.chainShot,input.Pressed(l.ammo));
-                        PlateText(l.ammo,0f,1f,guns.chainShot?"КНИППЕЛИ":"ЯДРА",l.unit*0.03f,guns.chainShot?new Color(1f,0.88f,0.55f):cream);
+                        IconText(l.ammo,guns.chainShot?1:2,guns.chainShot?"КНИППЕЛИ":"ЯДРА",l.unit*0.03f,guns.chainShot?new Color(1f,0.88f,0.55f):cream);
                         // Абордаж: кнопка, пока можно; во время схватки — полоса хода абордажа.
                         PlayerBoarding pb=input.Boarding();
                         if(Application.isPlaying&&pb!=null&&(pb.Candidate!=null||pb.Active))

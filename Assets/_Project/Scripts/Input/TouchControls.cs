@@ -81,8 +81,7 @@ namespace SkyTide
 
         void GearFromTouch(HudLayout l, Vector2 p)
         {
-            float step = l.telegraph.height / GearThrottle.Length;
-            SetGear(Mathf.FloorToInt((l.telegraph.yMax - p.y) / Mathf.Max(1f, step)));
+            SetGear(l.GearAt(p));   // сектор циферблата по углу от оси рычага
         }
 
         void PauseAction(int row)
@@ -226,8 +225,7 @@ namespace SkyTide
                 case "gear":
                     {
                         int g; int.TryParse(arg, out g); g = Mathf.Clamp(g, 0, GearThrottle.Length - 1);
-                        float step = hl.telegraph.height / GearThrottle.Length;
-                        Vector2 gp = new Vector2(hl.telegraph.center.x, hl.telegraph.yMax - step * (g + 0.5f));
+                        Vector2 gp = hl.GearPoint(g);
                         StartCoroutine(TapRoutine(gp)); return "ход " + g;
                     }
                 case "xy":
@@ -266,8 +264,8 @@ namespace SkyTide
                 }
                 if (Application.isPlaying && hl.pause.Contains(p)) { owners[id] = Owner.Button; lastPos[id] = p; SetPaused(true); return; }
                 if (hl.radar.Contains(p)) { owners[id] = Owner.Button; lastPos[id] = p; radarNear = !radarNear; return; }
-                // Рукоять хода можно вести пальцем прямо по шкале (и по подписям ступеней справа от неё).
-                Rect lever = new Rect(hl.telegraph.x - hl.unit * 0.03f, hl.telegraph.y, hl.telegraph.width + hl.unit * 0.2f, hl.telegraph.height);
+                // Телеграф: палец по циферблату — сектор под пальцем (ведётся и протяжкой).
+                Rect lever = hl.telegraph;
                 if (lever.Contains(p)) { owners[id] = Owner.Telegraph; lastPos[id] = p; GearFromTouch(hl, p); return; }   // автобой снимается только своей кнопкой (владелец 15.11)
                 if (game != null && game.ships != null && game.ships.Length > 1 && ShipButtonRect().Contains(p))
                 {
@@ -539,7 +537,7 @@ namespace SkyTide
             if (FpsButtonRect().Contains(p)) return "FPS"; if (PerfPanel.Open && PerfPanel.Area.Contains(p)) return "панель FPS";
             if (l.port.Contains(p)) return "левый борт"; if (l.starboard.Contains(p)) return "правый борт"; if (l.mode.Contains(p)) return "режим залпа";
             if (l.ammo.Contains(p)) return "заряд"; if (l.auto.Contains(p)) return "автобой"; if (l.board.Contains(p)) return "абордаж (кнопка " + (Boarding() != null && Boarding().Candidate != null ? "есть" : "скрыта") + ")";
-            if (new Rect(l.telegraph.x - l.unit * 0.03f, l.telegraph.y, l.telegraph.width + l.unit * 0.2f, l.telegraph.height).Contains(p)) return "рукоять хода";
+            if (l.telegraph.Contains(p)) return "телеграф";
             return p.x < ViewWidth * 0.5f ? (stickId == int.MinValue ? "штурвал" : "камера (штурвал занят)") : "камера";
         }
         public HudLayout Layout(int width,int height)
