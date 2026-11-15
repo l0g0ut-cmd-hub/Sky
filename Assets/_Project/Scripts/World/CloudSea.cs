@@ -261,6 +261,8 @@ namespace SkyTide
         /// <summary>Шаг поля: ветер, перенос вокруг камеры, «дыхание». Разворот к камере — в шейдере.</summary>
         public void Step(Vector3 cp, float dt, Vector3 camForward)
         {
+            // Высота поверхности моря — облакам-спрайтам (CloudSprite тает к ней, без прямого среза).
+            if (seaPlanes.Count > 0 && seaPlanes[0] != null) Shader.SetGlobalFloat("_SkyTideSeaY", seaPlanes[0].gameObject.activeSelf ? seaPlanes[0].position.y : -100000f);
             // Море едет за камерой (UV мировые — рисунок стоит на месте).
             if (shaderSea)
             {
