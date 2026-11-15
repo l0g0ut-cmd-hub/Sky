@@ -15,6 +15,7 @@ namespace SkyTide
             "repair · hurt 25 — флагману 25% · weather storm|haze|clear · merchant — враг к торговцу · all1km — все враги в 1 км · " +
             "auto on|off — автобой · config — перечитать config.json · cfg поле число — правка баланса на лету · " +
             "shot [почему] — метка со снимком · report — отчёт сейчас · bench — автозамер · " +
+            "view угол наклон дист [сек] · spin градусов сек — обычная камера · " +
             "tap pause|row N|radar|ammo|board|spy|auto|ripple|left|right|fps|gear N|xy 0.5,0.5 — нажатие как пальцем · " +
             "where — координаты всех · pilot goto x z [ход]|heading град|speed|stop|release · go цель [N] [ход] · tp x z [курс] · " +
             "cam orbit цель [N] угол наклон дист|at x y z курс наклон|look x y z цель [N]|fov N|height N|off · hud 0|1 · photo [full] подпись · " +
@@ -177,6 +178,20 @@ namespace SkyTide
                         if (tc == null) return "нет управления";
                         return tc.RemoteTap(arg, a.Length > 2 ? a[2] : null);
                     }
+                case "view":   // view угол наклон дистанция [секунды] — обычная игровая камера, как пальцами (плавно)
+                    {
+                        OrbitCamera oc = g != null ? g.Cam : null;
+                        if (oc == null || PerfPanel.Instance == null) return "нет камеры";
+                        PerfPanel.Instance.StartCoroutine(View(oc, Num(a, 1, oc.yaw), Num(a, 2, oc.pitch), Num(a, 3, oc.distance), Num(a, 4, 1.5f)));
+                        return "камера: угол " + a[1] + (a.Length > 2 ? " наклон " + a[2] : "") + (a.Length > 3 ? " дист " + a[3] : "");
+                    }
+                case "spin":   // spin градусов секунд — облёт обычной камерой вокруг корабля
+                    {
+                        OrbitCamera oc = g != null ? g.Cam : null;
+                        if (oc == null || PerfPanel.Instance == null) return "нет камеры";
+                        PerfPanel.Instance.StartCoroutine(View(oc, oc.yaw + Num(a, 1, 360f), oc.pitch, oc.distance, Num(a, 2, 8f), true));
+                        return "облёт " + Num(a, 1, 360f) + "°";
+                    }
                 case "say": HudNotice.Show(line.Substring(3).Trim(), 0, 6f); return "показано";
                 case "set": return Set(arg, a.Length > 2 ? a[2] : "1", g);
             }
@@ -328,6 +343,22 @@ namespace SkyTide
         {
             Camera c = Camera.main;
             if (c != null && c.GetComponent<RemoteCam>() == null) c.gameObject.AddComponent<RemoteCam>();
+        }
+
+        static System.Collections.IEnumerator View(OrbitCamera oc, float yaw, float pitch, float dist, float sec, bool unwrapped = false)
+        {
+            float y0 = oc.yaw, p0 = oc.pitch, d0 = oc.distance, t = 0f;
+            float dy = unwrapped ? yaw - y0 : Mathf.DeltaAngle(y0, yaw);
+            pitch = Mathf.Clamp(pitch, oc.minPitch, oc.maxPitch); dist = Mathf.Clamp(dist, oc.minDistance, oc.maxDistance);
+            oc.CancelRecenter();
+            while (t < 1f)
+            {
+                t = sec <= 0.01f ? 1f : Mathf.Min(1f, t + Time.unscaledDeltaTime / sec);
+                float e = t * t * (3f - 2f * t);
+                oc.yaw = y0 + dy * e; oc.pitch = Mathf.Lerp(p0, pitch, e); oc.distance = Mathf.Lerp(d0, dist, e);
+                yield return null;
+            }
+            oc.yaw = Mathf.Repeat(oc.yaw + 180f, 360f) - 180f;
         }
 
         public static string List()
