@@ -1021,7 +1021,7 @@ namespace SkyTide
                 GL.Begin(GL.TRIANGLES);
                 try
                 {
-                    if(input.Paused)PauseMenu(input,l,width,height);
+                    if(input.Paused){PauseMenu(input,l,width,height);Text(l.version,input.BuildText,l.unit*0.023f,cream);}   // «СБОРКА N» — только в меню паузы (владелец 16.11)
                     else
                     {
                     if(Application.isPlaying||CaptureBanner!=0)DamageVignette(width,height);   // под всеми плашками
@@ -1038,7 +1038,6 @@ namespace SkyTide
                     Hull(l);
                     if(Application.isPlaying&&input.cam!=null){Panel(l.spy,l.unit,input.cam.ScopeOn,input.Pressed(l.spy));IconText(l.spy,0,input.cam.ScopeOn?"×4":"ТРУБА",l.unit*0.03f,input.cam.ScopeOn?new Color(1f,0.88f,0.55f):cream);}   // подзорная труба
                     Panel(l.fps,l.unit);PlateText(l.fps,0f,1f,Application.isPlaying?Cached(2,Mathf.RoundToInt(input.Fps),v=>v+" FPS"):"FPS —",l.unit*0.03f,Application.isPlaying&&input.Fps<24f?new Color(1f,0.55f,0.45f,1f):muted);   // ниже 24 — красным: просадку видно сразу
-                    Text(l.version,input.BuildText,l.unit*0.023f,cream);
                     Broadside guns=input.Guns();
                     if(guns!=null)
                     {
