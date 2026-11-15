@@ -42,6 +42,36 @@ namespace SkyTide
         public float Health01 { get { return Mathf.Clamp01(1f - hits / (float)Mathf.Max(1, hitsToSink)); } }
         public Vector3 Center { get { return model != null ? model.TransformPoint(box.center) : transform.position; } }
         public Vector3 Velocity { get { return ctrl != null ? transform.forward * ctrl.Speed : Vector3.zero; } }
+        /// <summary>Под огнём: попадание за последние 15 с. Флагман на автобое и свои идут на помощь.</summary>
+        public float LastHitTime { get; private set; } = -100f;
+        public bool UnderAttack { get { return Alive && Time.time - LastHitTime < 15f; } }
+        /// <summary>Ближайший к нему живой враг (кто, скорее всего, и бьёт) — в пределах 900 м.</summary>
+        public TargetShip Attacker
+        {
+            get
+            {
+                TargetShip best = null; float bd = 900f * 900f;
+                foreach (TargetShip t in TargetShip.All)
+                {
+                    if (t == null || !t.Alive) continue;
+                    float d = (t.transform.position - transform.position).sqrMagnitude;
+                    if (d < bd) { bd = d; best = t; }
+                }
+                return best;
+            }
+        }
+        /// <summary>Самый «горячий» из своих под огнём (ближайший к точке from), или null.</summary>
+        public static AllyShip Distressed(Vector3 from, float within, AllyShip except = null)
+        {
+            AllyShip best = null; float bd = within * within;
+            foreach (AllyShip a in All)
+            {
+                if (a == null || a == except || !a.UnderAttack) continue;
+                float d = (a.transform.position - from).sqrMagnitude;
+                if (d < bd) { bd = d; best = a; }
+            }
+            return best;
+        }
 
         public void Setup(ShipController c, Role r, TextAsset geometry, Material wood)
         {
@@ -88,6 +118,14 @@ namespace SkyTide
         {
             if (!Alive) return;
             hits += power > 1.5f ? 3 : 1;
+            // Первое попадание после затишья — сигнал бедствия: оповещение флагману с расстоянием.
+            if (Time.time - LastHitTime > 20f)
+            {
+                PlayerHull ph = PlayerHull.Instance;
+                float d = ph != null ? Vector3.Distance(ph.transform.position, transform.position) : 0f;
+                HudNotice.Show(RoleNames[(int)role] + " ПОД ОГНЁМ · " + (d >= 1000f ? (d / 1000f).ToString("F1") + " КМ" : Mathf.RoundToInt(d / 10f) * 10 + " М"), 1, 3f);
+            }
+            LastHitTime = Time.time;
             DebugReport.Count("попаданий врага по своим");
             Vector3 normal = (point - Center).normalized;
             if (damage != null) damage.Hit(point, hits / (float)Mathf.Max(1, hitsToSink), Velocity, normal);
@@ -153,6 +191,12 @@ namespace SkyTide
             if (Health01 < 0.35f) repairing = true;
             if (repairing && f != null) { foe = null; pendingLeft = 0; GoRepair(f); return; }
             foe = PickFoe(f);
+            // Свой под огнём в 2.5 км — идём на помощь и бьём того, кто его атакует (торговец сам не воюет).
+            if (foe == null)
+            {
+                AllyShip mate = Distressed(transform.position, 2500f, this);
+                if (mate != null) foe = mate.Attacker;
+            }
             if (foe == null)
             {
                 announced = false; pendingLeft = 0;

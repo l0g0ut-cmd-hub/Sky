@@ -25,7 +25,7 @@ namespace SkyTide
         ShipController ship; PlayerHull hull; Broadside guns; PlayerBoarding boarding;
         bool repairing; int wantSide; string state = "";
         float dodgeUntil, dodgeThrottle, lastVolleySeen = -100f, nextTargetPick;
-        TargetShip foe;
+        TargetShip foe; AllyShip helping;
         public string State { get { return state; } }
         const float RadarRange = 1500f;
         Vector3 lastSeen; float lastSeenAt = -100f; Vector3 searchPoint; float nextSearch;
@@ -52,7 +52,15 @@ namespace SkyTide
             if (hull.Health01 < repairBelow) repairing = true;
             else if (hull.Health01 >= repairUntil) repairing = false;
             if (repairing && fort != null) { foe = null; Repair(fort); return; }
-            if (foe == null || !foe.Alive || (foe.InPort && !foe.Outlaw) || Time.time >= nextTargetPick) { foe = PickFoe(); nextTargetPick = Time.time + 3f; }
+            if (foe == null || !foe.Alive || (foe.InPort && !foe.Outlaw) || Time.time >= nextTargetPick)
+            {
+                nextTargetPick = Time.time + 3f;
+                // Свой под огнём (до 3.5 км) — помощь важнее всего: цель — тот, кто его бьёт.
+                AllyShip mate = AllyShip.Distressed(transform.position, 3500f);
+                TargetShip rescue = mate != null ? mate.Attacker : null;
+                if (rescue != null && !(rescue.InPort && !rescue.Outlaw)) { foe = rescue; helping = mate; }
+                else { foe = PickFoe(); helping = null; }
+            }
             if (foe == null) { if (!Hunt()) Patrol(fort); return; }
             if (TryBoard()) return;
             Fight(foe, fort);
@@ -132,7 +140,7 @@ namespace SkyTide
 
         void Fight(TargetShip foe, SkyFortress fort)
         {
-            state = "АВТОБОЙ · БОЙ";
+            state = helping != null && helping.UnderAttack ? "АВТОБОЙ · НА ПОМОЩЬ " + AllyShip.RoleNames[(int)helping.role] : "АВТОБОЙ · БОЙ";
             Vector3 to = foe.transform.position - transform.position; to.y = 0f;
             float dist = to.magnitude;
             Vector3 dir = dist > 1f ? to / dist : transform.forward;
@@ -172,7 +180,7 @@ namespace SkyTide
                 Vector3 meet = foe.transform.position + tv * t - foe.transform.forward * Mathf.Min(320f, want * 0.6f);
                 Vector3 toMeet = meet - transform.position; toMeet.y = 0f;
                 heading = toMeet.sqrMagnitude > 1f ? toMeet.normalized : dir;
-                state = "АВТОБОЙ · ПЕРЕХВАТ";
+                state = helping != null && helping.UnderAttack ? "АВТОБОЙ · НА ПОМОЩЬ " + AllyShip.RoleNames[(int)helping.role] : "АВТОБОЙ · ПЕРЕХВАТ";
             }
             else
             {

@@ -196,6 +196,7 @@ namespace SkyTide
                 float arel = (ally.transform.eulerAngles.y - input.ship.transform.eulerAngles.y) * Mathf.Deg2Rad;
                 if (!ally.Alive) continue;
                 Color ac = ally.role == AllyShip.Role.Merchant ? new Color(1f, 0.92f, 0.45f) : new Color(0.55f, 1f, 0.65f);
+                if (ally.UnderAttack && Mathf.Repeat(Time.unscaledTime * 3f, 1f) < 0.5f) ac = new Color(1f, 0.35f, 0.25f);   // под огнём — мигает красным
                 ac.a = ad > range ? 0.6f : 1f;
                 Image(rShip, c + adir * Mathf.Min(ad / range, 1f) * face * 0.9f, R * 0.2f, arel, ac);
             }
