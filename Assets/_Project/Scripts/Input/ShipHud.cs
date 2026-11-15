@@ -166,7 +166,7 @@ namespace SkyTide
             Image(rFace, c, size, -hdg, Color.white);
             {
                 string[] cards = { "С", "В", "Ю", "З" };
-                for (int k = 0; k < 1; k++)   // только «С» (владелец 15.11: каша) — остальные стороны света видны по компасу курса
+                for (int k = 0; k < 0; k++)   // стороны света на радаре убраны совсем (владелец 15.11: «С убери») — они на компасе курса
                 {
                     Vector3 wd = Quaternion.Euler(0f, k * 90f, 0f) * Vector3.forward;
                     Vector3 ld = input.ship.transform.InverseTransformDirection(wd);
