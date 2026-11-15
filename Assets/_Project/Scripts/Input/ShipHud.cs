@@ -167,11 +167,22 @@ namespace SkyTide
                 }
             }
             if (rSweep != null) Image(rSweep, c, size, sweep, new Color(1f, 1f, 1f, 0.9f));
+            // Порядок на радаре (владелец 15.11: «каша»): при 18 врагах у обода лежали все дальние. Теперь за краем —
+            // только 2 ближайших дальних (стрелкой-направлением), остальные не рисуются; внутри — все.
+            float far1 = float.MaxValue, far2 = float.MaxValue;
+            foreach (TargetShip ts in TargetShip.All)
+            {
+                if (ts == null || !ts.Alive) continue;
+                float dd = Vector3.Distance(ts.transform.position, input.ship.transform.position);
+                if (dd <= range) continue;
+                if (dd < far1) { far2 = far1; far1 = dd; } else if (dd < far2) far2 = dd;
+            }
             foreach (TargetShip ts in TargetShip.All)
             {
                 if (ts == null || !ts.Alive) continue;
                 Vector3 local = input.ship.transform.InverseTransformPoint(ts.transform.position);
                 Vector2 v = new Vector2(local.x, -local.z); float dist = v.magnitude; bool outside = dist > range;
+                if (outside && dist > far2 + 0.01f) continue;
                 Vector2 dir = dist > 1e-3f ? v / dist : Vector2.up;
                 Vector2 p = c + dir * Mathf.Min(dist / range, 1f) * face * (outside ? 0.93f : 0.88f);
                 // Отметка вспыхивает, когда по ней проходит луч, и гаснет до следующего оборота.
@@ -195,6 +206,7 @@ namespace SkyTide
                 Vector2 adir = ad > 1e-3f ? av / ad : Vector2.up;
                 float arel = (ally.transform.eulerAngles.y - input.ship.transform.eulerAngles.y) * Mathf.Deg2Rad;
                 if (!ally.Alive) continue;
+                if (ad > range && ally.role != AllyShip.Role.Merchant && !ally.UnderAttack) continue;   // дальние свои — только торговец и те, кто под огнём
                 Color ac = ally.role == AllyShip.Role.Merchant ? new Color(1f, 0.92f, 0.45f) : new Color(0.55f, 1f, 0.65f);
                 if (ally.UnderAttack && Mathf.Repeat(Time.unscaledTime * 3f, 1f) < 0.5f) ac = new Color(1f, 0.35f, 0.25f);   // под огнём — мигает красным
                 ac.a = ad > range ? 0.6f : 1f;
@@ -225,8 +237,8 @@ namespace SkyTide
                 Icon(9, new Rect(p.x - g * 0.5f, p.y - g * 0.5f, g, g), fort.Hostile ? new Color(1f, 0.45f, 0.35f, 1f) : Color.white);
             }
             Image(rFrame, c, size, 0f, Color.white);
-            // Ветер: голубая стрелка у обода — куда дует (вверх — наш нос); длиннее — сильнее.
-            if (Application.isPlaying)
+            // Ветер: голубая стрелка у обода убрана (владелец 15.11 не понял, что это; лишняя деталь в каше). Ветер — в отчёте.
+            if (false)
             {
                 Vector3 wl = input.ship.transform.InverseTransformDirection(WindField.Dir);
                 Vector2 wd = new Vector2(wl.x, -wl.z); if (wd.sqrMagnitude > 1e-4f) wd.Normalize();
