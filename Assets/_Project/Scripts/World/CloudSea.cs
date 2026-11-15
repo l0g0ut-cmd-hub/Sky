@@ -28,6 +28,7 @@ namespace SkyTide
             public float phase;
             public float breathe;
             public float driftMul;
+            public char kind;   // для отчёта: П — куча, Л — лента, Б — башня
         }
 
         readonly List<Cloud> clouds = new List<Cloud>();
@@ -160,6 +161,7 @@ namespace SkyTide
             c.phase = Range(rnd, 0f, 100f);
             c.breathe = Range(rnd, 0.015f, 0.035f);
             c.driftMul = Range(rnd, 0.8f, 1.2f) * windMul;
+            c.kind = strip ? 'Л' : width >= 650f ? 'Б' : 'П';
             clouds.Add(c);
             return go.transform;
         }
@@ -298,6 +300,33 @@ namespace SkyTide
                 float s = c.baseScale * (1f + c.breathe * Mathf.Sin(time * 0.13f + c.phase));
                 c.t.localScale = new Vector3(s, s * (1f + c.breathe * 0.6f * Mathf.Sin(time * 0.09f + c.phase * 1.7f)), s);
                 // Разворот к камере делает шейдер (SkyTide/CloudSprite) — здесь только позиция и «дыхание».
+            }
+        }
+
+        /// <summary>Отладочный отчёт: n ближайших видимых облаков-спрайтов одной строкой каждое
+        /// (вид, x,y,z от камеры, ширина, дальность, экран). Плюс сколько всего и сколько в кадре.</summary>
+        public void Dump(System.Text.StringBuilder b, Camera cam, int n)
+        {
+            if (cam == null) return;
+            Vector3 cp = cam.transform.position;
+            int active = 0, inView = 0;
+            List<KeyValuePair<float, Cloud>> vis = new List<KeyValuePair<float, Cloud>>();
+            foreach (Cloud c in clouds)
+            {
+                if (c.t == null || !c.t.gameObject.activeInHierarchy) continue;
+                active++;
+                Vector3 mid = c.t.position + Vector3.up * c.t.localScale.y * 0.3f;
+                Vector3 vp = cam.WorldToViewportPoint(mid);
+                bool on = vp.z > 0f && vp.x > -0.2f && vp.x < 1.2f && vp.y > -0.2f && vp.y < 1.2f;
+                if (on) { inView++; vis.Add(new KeyValuePair<float, Cloud>((c.t.position - cp).magnitude, c)); }
+            }
+            vis.Sort((a, x) => a.Key.CompareTo(x.Key));
+            b.AppendLine("облака-спрайты: всего " + clouds.Count + ", включено " + active + ", в кадре " + inView + (active == 0 ? " (объёмный режим)" : ""));
+            for (int i = 0; i < vis.Count && i < n; i++)
+            {
+                Cloud c = vis[i].Value; Vector3 r = c.t.position - cp; Vector3 vp = cam.WorldToViewportPoint(c.t.position + Vector3.up * c.t.localScale.y * 0.3f);
+                b.AppendLine(" обл " + c.kind + " " + Mathf.RoundToInt(r.x) + "," + Mathf.RoundToInt(r.y) + "," + Mathf.RoundToInt(r.z) + " ш" + Mathf.RoundToInt(c.t.localScale.x)
+                    + " д" + Mathf.RoundToInt(vis[i].Key) + " э" + vp.x.ToString("0.00") + "," + vp.y.ToString("0.00"));
             }
         }
 

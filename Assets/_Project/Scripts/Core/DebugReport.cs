@@ -50,6 +50,55 @@ namespace SkyTide
         /// <summary>Событие игры в журнал (оповещения HUD, гибели, абордаж, автобой и т. п.).</summary>
         public static void Event(string text) { Push(events, 60, Stamp() + " " + text); }
 
+        /// <summary>Сцена в цифрах: камера, корабли (модель, LOD, треугольники, масштаб, место в кадре), крепость, облака.
+        /// Координаты — x,y,z от камеры в метрах (x вправо по миру, z — на север), «э» — место в кадре 0..1 (0,0 — низ-лево).</summary>
+        static void Scene(StringBuilder b)
+        {
+            Camera cam = Camera.main;
+            if (cam == null) return;
+            b.AppendLine("сцена (легенда: x,y,z — от камеры, м; к — курс°; м — масштаб; д — дальность, м; э — место в кадре x,y 0..1, «—» вне кадра; LOD полн/лёг; тр — тыс. треугольников):");
+            Vector3 cp = cam.transform.position;
+            OrbitCamera oc = cam.GetComponent<OrbitCamera>();
+            b.AppendLine(" кам " + Mathf.RoundToInt(cp.x) + "," + Mathf.RoundToInt(cp.y) + "," + Mathf.RoundToInt(cp.z) + " (мир) к" + Mathf.RoundToInt(cam.transform.eulerAngles.y) + " накл" + Mathf.RoundToInt(Mathf.DeltaAngle(0f, cam.transform.eulerAngles.x))
+                + " обзор" + Mathf.RoundToInt(cam.fieldOfView) + (oc != null ? " орбита " + Mathf.RoundToInt(oc.yaw) + "°/" + Mathf.RoundToInt(oc.pitch) + "° дист" + Mathf.RoundToInt(oc.distance) + (oc.ScopeOn ? " ТРУБА" : "") : ""));
+            foreach (ShipController s in ShipController.All)
+            {
+                if (s == null) continue;
+                string role = s.GetComponent<PlayerHull>() != null ? "СВОЙ" : s.GetComponent<TargetShip>() != null ? "враг" : s.GetComponent<AllyShip>() != null ? "союз" : "?";
+                b.AppendLine(" кор " + role + " " + s.name + " " + Obj(cam, s.transform.position, s.transform.eulerAngles.y, s.transform.lossyScale.x) + " " + Lod(s.visual));
+            }
+            SkyFortress f = SkyFortress.Instance;
+            if (f != null) b.AppendLine(" крепость " + Obj(cam, f.Center, f.transform.eulerAngles.y, f.transform.lossyScale.x) + " видна " + f.Visible + " причал д" + Mathf.RoundToInt(Vector3.Distance(cp, f.BerthWorld)));
+            SkyTideBootstrap g = SkyTideBootstrap.Instance;
+            if (g != null && g.World != null) g.World.Dump(b, cam, 12);
+        }
+
+        static string Obj(Camera cam, Vector3 p, float yaw, float scale)
+        {
+            Vector3 r = p - cam.transform.position; Vector3 vp = cam.WorldToViewportPoint(p);
+            bool on = vp.z > 0f && vp.x >= 0f && vp.x <= 1f && vp.y >= 0f && vp.y <= 1f;
+            return Mathf.RoundToInt(r.x) + "," + Mathf.RoundToInt(r.y) + "," + Mathf.RoundToInt(r.z) + " к" + Mathf.RoundToInt(yaw) + (Mathf.Abs(scale - 1f) > 0.01f ? " м" + scale.ToString("0.00") : "")
+                + " д" + Mathf.RoundToInt(r.magnitude) + " э" + (on ? vp.x.ToString("0.00") + "," + vp.y.ToString("0.00") : "—");
+        }
+
+        /// <summary>Что рисуется у корабля: полная модель или облегчённая копия, сколько тысяч треугольников.</summary>
+        static string Lod(Transform visual)
+        {
+            if (visual == null) return "";
+            if (!visual.gameObject.activeInHierarchy) return "скрыт";
+            int tris = 0; bool full = false, lite = false;
+            foreach (MeshRenderer r in visual.GetComponentsInChildren<MeshRenderer>())
+            {
+                if (!r.enabled || r.forceRenderingOff || r.shadowCastingMode == UnityEngine.Rendering.ShadowCastingMode.ShadowsOnly) continue;
+                MeshFilter mf = r.GetComponent<MeshFilter>(); if (mf == null || mf.sharedMesh == null) continue;
+                int t = 0; for (int i = 0; i < mf.sharedMesh.subMeshCount; i++) t += (int)mf.sharedMesh.GetIndexCount(i) / 3;
+                tris += t;
+                if (r.name.StartsWith("Lite")) lite = true; else if (t > 20000) full = true;
+            }
+            int skins = visual.GetComponentsInChildren<SkinnedMeshRenderer>().Length;
+            return "LOD " + (full ? "полн" : lite ? "лёг" : "?") + " тр" + (tris / 1000) + (skins > 0 ? " матросов " + skins : "");
+        }
+
         static void Push(Queue<string> q, int max, string s) { q.Enqueue(s); while (q.Count > max) q.Dequeue(); }
         static string Stamp() { float t = Time.timeSinceLevelLoad; return ((int)(t / 60f)).ToString("00") + ":" + ((int)(t % 60f)).ToString("00"); }
         static string Trim(string s, int n) { return s == null ? "" : s.Length > n ? s.Substring(0, n) + "…" : s; }
@@ -118,6 +167,7 @@ namespace SkyTide
             if (errorCount > 0) { b.AppendLine("  ! в логе есть ошибки — см. ниже"); outs++; }
             if (fps > 0f && fps < 22f) { b.AppendLine("  ! FPS " + fps.ToString("F0") + " — упор, см. кадр/ВК"); outs++; }
             if (outs == 0) b.AppendLine("  явных проблем не найдено");
+            Scene(b);
             if (!string.IsNullOrEmpty(timers)) { b.AppendLine("время систем (ЦП, мс):"); b.AppendLine(timers); }
             if (!string.IsNullOrEmpty(LastBench)) { b.AppendLine("последний автозамер:"); b.AppendLine(LastBench); }
             b.AppendLine("события:"); foreach (string e in events) b.AppendLine("  " + e);
