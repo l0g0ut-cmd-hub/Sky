@@ -65,7 +65,9 @@ namespace SkyTide
                 if (b.id <= last || b.cmds.Length == 0) { Status = "команды: последняя #" + Mathf.Max(last, b.id); if (b.id > last) { PlayerPrefs.SetInt(LastKey, b.id); PlayerPrefs.Save(); } yield break; }
                 // В главном меню партия не стартует (иначе табличка «УПРАВЛЯЕТ CLAUDE» висела над меню, а команды шли вхолостую):
                 // ждём боя; партия, начинающаяся с play, сама жмёт «В БОЙ».
-                if (MainMenu.Active && b.cmds[0] != "play") { Status = "команды: #" + b.id + " ждёт боя"; yield break; }
+                if (MainMenu.Active && b.cmds[0] != "play") MainMenu.RemotePlay();   // из меню — сразу «В БОЙ»
+                // Пауза снимается сама: после разворота игра всегда стоит на паузе (владелец 16.11 — «учитывай паузу»).
+                { TouchControls tc = Object.FindFirstObjectByType<TouchControls>(); if (tc != null && tc.Paused) tc.SetPaused(false); }
                 PlayerPrefs.SetInt(LastKey, b.id); PlayerPrefs.Save();
                 if (b.expires > 0 && now > b.expires) { Status = "команды: #" + b.id + " просрочена"; DebugReport.Event("команды #" + b.id + " просрочены — пропущены"); yield break; }
                 // Оценка длительности партии — для таблички «УПРАВЛЯЕТ CLAUDE · ЖДИ M:SS».
