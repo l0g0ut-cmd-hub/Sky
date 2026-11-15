@@ -266,7 +266,7 @@ namespace SkyTide
                 if (hl.radar.Contains(p)) { owners[id] = Owner.Button; lastPos[id] = p; radarNear = !radarNear; return; }
                 // Рукоять хода можно вести пальцем прямо по шкале (и по подписям ступеней справа от неё).
                 Rect lever = new Rect(hl.telegraph.x - hl.unit * 0.03f, hl.telegraph.y, hl.telegraph.width + hl.unit * 0.2f, hl.telegraph.height);
-                if (lever.Contains(p)) { owners[id] = Owner.Telegraph; lastPos[id] = p; SetAutoBattle(false); GearFromTouch(hl, p); return; }
+                if (lever.Contains(p)) { owners[id] = Owner.Telegraph; lastPos[id] = p; GearFromTouch(hl, p); return; }   // автобой снимается только своей кнопкой (владелец 15.11)
                 if (game != null && game.ships != null && game.ships.Length > 1 && ShipButtonRect().Contains(p))
                 {
                     owners[id] = Owner.Button;
@@ -319,7 +319,7 @@ namespace SkyTide
             if (o == Owner.Stick)
             {
                 stickPos = p;
-                if (AutoBattle && (p - stickOrigin).sqrMagnitude > Mathf.Pow(Mathf.Min(ViewWidth, ViewHeight) * 0.06f, 2f)) SetAutoBattle(false);   // повернул штурвал — управление у игрока
+                // Автобой штурвалом не снимается — только кнопкой «АВТОБОЙ» (владелец 15.11).
             }
             else if (o == Owner.Telegraph) GearFromTouch(Layout(ViewWidth, ViewHeight), p);
             else if (o == Owner.Camera && cam != null && CameraFingers() == 1)

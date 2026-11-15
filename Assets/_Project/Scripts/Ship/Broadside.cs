@@ -241,6 +241,11 @@ namespace SkyTide
         bool solved; int solvedSide; Vector3 aimPoint, targetVel; float flightTime;
         // Второй борт (владелец 15.11: «окружён с двух сторон — бей обоими бортами»): своя цель и своё решение.
         bool offSolved; int offSide; Vector3 offAim, offVel; TargetShip offTarget;
+        // Плавный переход «стволы прямо ↔ наведены» по бортам (0 — прямо, 1 — на цель): раньше на границе ±30° от траверза
+        // (цель у носа) ствол каждый кадр прыгал между осью и решением — стрелку «ебошило» (видео владельца 15.11).
+        readonly float[] aimBlend = new float[2];
+        float sideHoldUntil = -1f;
+        static int SideIdx(float s) { return s > 0f ? 1 : 0; }
         /// <summary>Борт, противоположный прицельному, и ляжет ли его залп в корпус своей цели.</summary>
         public int OffSide { get { return offSide; } }
         /// <summary>Цель прицельного борта (радар выделяет её).</summary>
@@ -283,17 +288,27 @@ namespace SkyTide
         {
             Vector3 w = model.TransformDirection(m.Dir).normalized;
             int ms = m.side > 0f ? 1 : -1;
+            Vector3 rest = Rest(w);
+            float blend = aimBlend[SideIdx(ms)];
+            if (blend <= 0.001f) return rest;
             Vector3 target;
             if (solved && ms == solvedSide) target = aimPoint;
             else if (offSolved && ms == offSide) target = offAim;
-            else return Rest(w);
+            else return rest;
+            Vector3 aimed = AimedDir(m, w, target, g);
+            return blend >= 0.999f ? aimed : Vector3.Slerp(rest, aimed, blend).normalized;
+        }
+
+        /// <summary>Наведённый ствол без порога: доворот и возвышение ограничены пределами, вне ±30° — прижат к пределу доворота.</summary>
+        Vector3 AimedDir(CannonMount m, Vector3 w, Vector3 target, float g)
+        {
             Vector3 d = target - model.TransformPoint(m.Muzzle);
             Vector3 h0 = new Vector3(w.x, 0f, w.z), hd = new Vector3(d.x, 0f, d.z);
             float x = hd.magnitude;
             if (x < 20f || h0.sqrMagnitude < 1e-4f) return Rest(w);
             h0.Normalize();
             float ang = Vector3.SignedAngle(h0, hd, Vector3.up);
-            if (Mathf.Abs(ang) > 30f) return Rest(w);   // цель не на траверзе — стволы стоят прямо
+            // (вне ±30° стволы не наводятся — это решает aimBlend плавно, а не скачком)
             Vector3 h = Quaternion.AngleAxis(Mathf.Clamp(ang, -traverseDeg, traverseDeg), Vector3.up) * h0;
             float theta = LowAngle(x, d.y, g);
             return h * Mathf.Cos(theta) + Vector3.up * Mathf.Sin(theta);
@@ -358,7 +373,7 @@ namespace SkyTide
             }
             if (offTarget != null && cur < float.MaxValue && cur < bestScore * 1.25f) best = offTarget;
             offTarget = best;
-            if (best == null) return;
+            if (best == null) { int si0 = SideIdx(side); aimBlend[si0] = Mathf.MoveTowards(aimBlend[si0], 0f, Time.deltaTime * 2.5f); return; }
             CannonMount mid = null; float midZ = 0f; int count = 0;
             foreach (CannonMount m in mounts) if (Mathf.Sign(m.side) == side) { midZ += m.Muzzle.z; count++; }
             if (count == 0) return;
@@ -373,6 +388,13 @@ namespace SkyTide
             Vector3 aim = best.Center + rel * tt;
             if (float.IsNaN(aim.x) || float.IsNaN(aim.y) || float.IsNaN(aim.z)) return;
             offAim = aim; offSolved = true;
+            {
+                Vector3 w0 = model.TransformDirection(mid.Dir); w0.y = 0f;
+                Vector3 dd = aim - muzzle; dd.y = 0f;
+                float wantB = w0.sqrMagnitude > 1e-4f && dd.magnitude > 20f && Mathf.Abs(Vector3.SignedAngle(w0, dd, Vector3.up)) <= 30f ? 1f : 0f;
+                int si = SideIdx(side);
+                aimBlend[si] = Mathf.MoveTowards(aimBlend[si], wantB, Time.deltaTime * 2.5f);
+            }
             Vector3 end; bool hull;
             TracePath(mid, best, fx, out end, out hull, null, true);
             OffOnTarget = hull;
@@ -411,7 +433,14 @@ namespace SkyTide
             aimTarget = best;
             // Борт: меняется, только когда цель уверенно ушла на другую сторону (мёртвая зона ±12 м у диаметральной плоскости).
             float side = aimSide;
-            if (best != null) { float lx = transform.InverseTransformPoint(best.transform.position).x; if (lx > 12f) side = 1f; else if (lx < -12f) side = -1f; }
+            // Борт меняется, только если цель уверенно (за 20 м от диаметральной плоскости) на другой стороне 0.6 с подряд.
+            if (best != null)
+            {
+                float lx = transform.InverseTransformPoint(best.transform.position).x;
+                float want = lx > 20f ? 1f : lx < -20f ? -1f : side;
+                if (want != side) { if (sideHoldUntil < 0f) sideHoldUntil = Time.time + 0.6f; else if (Time.time >= sideHoldUntil) { side = want; sideHoldUntil = -1f; } }
+                else sideHoldUntil = -1f;
+            }
             aimSide = side;
             AimSide = side > 0f ? 1 : -1;
             // Средняя, носовая и кормовая пушки этого борта.
@@ -431,6 +460,18 @@ namespace SkyTide
             // Пунктир: короткие штрихи вдоль пути средней пушки (раньше — крупные, похожие на летящие ядра).
             float g = fx.gravity; const float step = 0.06f;
             Solve(best, mid, side, g);
+            // Наводка борта: 1, если цель в секторе ±30° от траверза средней пушки, иначе 0 — переход за ~0.4 с.
+            {
+                float wantB = 0f;
+                if (solved)
+                {
+                    Vector3 w0 = model.TransformDirection(mid.Dir); w0.y = 0f;
+                    Vector3 dd = aimPoint - model.TransformPoint(mid.Muzzle); dd.y = 0f;
+                    if (w0.sqrMagnitude > 1e-4f && dd.magnitude > 20f && Mathf.Abs(Vector3.SignedAngle(w0, dd, Vector3.up)) <= 30f) wantB = 1f;
+                }
+                int si = SideIdx(side);
+                aimBlend[si] = Mathf.MoveTowards(aimBlend[si], wantB, Time.deltaTime * 2.5f);
+            }
             Vector3 p = model.TransformPoint(mid.Muzzle);
             Vector3 v = GunDir(mid, g) * ShotSpeed + velocity;
             Vector3 tv = solved ? targetVel : Vector3.zero;
@@ -452,7 +493,9 @@ namespace SkyTide
             TracePath(aft != null ? aft : mid, best, fx, out aftEnd, out aftHull, aftPath);
             AimArrow arrow = AimArrow.Get();
             bool hullAny = midHull || foreHull || aftHull;
-            if (arrow != null) arrow.Draw(forePath, aftPath, hullAny ? 2 : ready ? 0 : 1, ready ? 0.85f : 0.5f);
+            // Борт не наведён (цель вне сектора/нет цели) — стрелка бледнее: показывает, куда ляжет залп «прямо».
+            float aimedK = 0.45f + 0.55f * aimBlend[SideIdx(side)];
+            if (arrow != null) arrow.Draw(forePath, aftPath, hullAny ? 2 : ready ? 0 : 1, (ready ? 0.85f : 0.5f) * aimedK);
             AimOnTarget = midHull || foreHull || aftHull;
             OffSideSolve(-side, reach, fx);
             // Залп не ложится в цель, но решение есть: малая метка там, где цель окажется к прилёту ядер, —
