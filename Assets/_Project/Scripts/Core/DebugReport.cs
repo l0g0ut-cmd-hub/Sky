@@ -27,6 +27,7 @@ namespace SkyTide
             counters[name] = v + add;
         }
         static int Get(string name) { int v; return counters.TryGetValue(name, out v) ? v : 0; }
+        public static int CountOf(string name) { return Get(name); }
         // Время в состояниях автобоя (с).
         static readonly Dictionary<string, float> stateTime = new Dictionary<string, float>();
         public static void StateTick(string state, float dt) { if (string.IsNullOrEmpty(state)) return; float v; stateTime.TryGetValue(state, out v); stateTime[state] = v + dt; }
@@ -123,6 +124,13 @@ namespace SkyTide
         /// облако-спрайт в крепости, камера в стене, NaN. Только найденное.</summary>
         static void Intersections(StringBuilder b)
         {
+            List<string> found = FindIntersections();
+            b.AppendLine("пересечения: " + (found.Count == 0 ? "нет" : ""));
+            for (int i = 0; i < found.Count && i < 12; i++) b.AppendLine("  ! " + found[i]);
+        }
+
+        public static List<string> FindIntersections()
+        {
             List<string> found = new List<string>();
             SkyFortress f = SkyFortress.Instance;
             FxSystem fx = FxSystem.Instance;
@@ -144,9 +152,9 @@ namespace SkyTide
             if (cam != null && f != null && f.TopAt(cam.transform.position) > cam.transform.position.y) found.Add("камера внутри крепости");
             SkyTideBootstrap g = SkyTideBootstrap.Instance;
             if (g != null && g.World != null && f != null) { int n = g.World.CloudsInFortress(f); if (n > 0) found.Add("облаков-спрайтов в крепости: " + n); }
-            b.AppendLine("пересечения: " + (found.Count == 0 ? "нет" : ""));
-            for (int i = 0; i < found.Count && i < 12; i++) b.AppendLine("  ! " + found[i]);
+            return found;
         }
+        public static int ErrorCount { get { return errorCount; } }
 
         /// <summary>Свет и цвет: что меняет картинку (пост, солнце, дымка, погода).</summary>
         static void LightInfo(StringBuilder b)
