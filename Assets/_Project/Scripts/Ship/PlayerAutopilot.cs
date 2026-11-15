@@ -262,6 +262,8 @@ namespace SkyTide
             if (zone && !foe.Outlaw && !bold) return;
             // Расчёт борта наводится на ближайшего врага — стреляем, когда это и есть цель (или любой враг в прицеле: не жалеем ядер).
             if (guns.AimOnTarget && guns.Readiness(guns.AimSide) >= 0.999f) guns.Fire(guns.AimSide);
+            // Окружили — второй борт бьёт свою цель, если его залп ложится в корпус.
+            if (guns.OffOnTarget && guns.Readiness(guns.OffSide) >= 0.999f) { guns.Fire(guns.OffSide); DebugReport.Count("залпов вторым бортом"); }
         }
 
         void Repair(SkyFortress fort)

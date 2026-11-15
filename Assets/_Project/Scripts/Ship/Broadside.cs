@@ -239,6 +239,11 @@ namespace SkyTide
         [Tooltip("Наводка: доворот стволов по горизонту и пределы возвышения, градусы")]
         public float traverseDeg = 10f, minElevationDeg = -8f, maxElevationDeg = 24f;
         bool solved; int solvedSide; Vector3 aimPoint, targetVel; float flightTime;
+        // Второй борт (владелец 15.11: «окружён с двух сторон — бей обоими бортами»): своя цель и своё решение.
+        bool offSolved; int offSide; Vector3 offAim, offVel; TargetShip offTarget;
+        /// <summary>Борт, противоположный прицельному, и ляжет ли его залп в корпус своей цели.</summary>
+        public int OffSide { get { return offSide; } }
+        public bool OffOnTarget { get; private set; }
         // Сглаженная точка наводки: стволы доворачиваются, а не прыгают за каждым кадром решения (владелец 15.11: «прицел дёргается»).
         Vector3 aimSmooth; TargetShip aimSmoothFor; float aimSmoothAt = -1f;
         // Цель прицела с удержанием: меняется, только если новая заметно лучше (раньше — ближайшая каждый кадр, дуга прыгала).
@@ -275,8 +280,12 @@ namespace SkyTide
         Vector3 GunDir(CannonMount m, float g)
         {
             Vector3 w = model.TransformDirection(m.Dir).normalized;
-            if (!solved || (m.side > 0f ? 1 : -1) != solvedSide) return Rest(w);
-            Vector3 d = aimPoint - model.TransformPoint(m.Muzzle);
+            int ms = m.side > 0f ? 1 : -1;
+            Vector3 target;
+            if (solved && ms == solvedSide) target = aimPoint;
+            else if (offSolved && ms == offSide) target = offAim;
+            else return Rest(w);
+            Vector3 d = target - model.TransformPoint(m.Muzzle);
             Vector3 h0 = new Vector3(w.x, 0f, w.z), hd = new Vector3(d.x, 0f, d.z);
             float x = hd.magnitude;
             if (x < 20f || h0.sqrMagnitude < 1e-4f) return Rest(w);
@@ -301,14 +310,14 @@ namespace SkyTide
 
         /// <summary>Путь ядра пушки m до корпуса цели или до моря облаков. hull — попало в корпус.</summary>
         readonly List<Vector3> forePath = new List<Vector3>(130), aftPath = new List<Vector3>(130);
-        bool TracePath(CannonMount m, TargetShip best, FxSystem fx, out Vector3 end, out bool hull, List<Vector3> pts = null)
+        bool TracePath(CannonMount m, TargetShip best, FxSystem fx, out Vector3 end, out bool hull, List<Vector3> pts = null, bool off = false)
         {
             hull = false;
             Vector3 p = model.TransformPoint(m.Muzzle);
             if (pts != null) pts.Add(p);
             float g = fx.gravity; const float step = 0.06f;
             Vector3 v = GunDir(m, g) * ShotSpeed + velocity;
-            Vector3 tv = solved ? targetVel : Vector3.zero;
+            Vector3 tv = off ? (offSolved ? offVel : Vector3.zero) : (solved ? targetVel : Vector3.zero);
             end = p;
             for (int i = 0; i < 120; i++)
             {
@@ -329,6 +338,44 @@ namespace SkyTide
         /// всего борта. Если ядра ложатся в корпус — перекрестия на корпусе (средняя, носовая и кормовая пушки);
         /// если в облака — эллипс от места падения носового ядра до кормового. Янтарный — борт готов, серый — перезарядка.
         /// </summary>
+        /// <summary>Второй борт: ближайшая к траверзу цель с той стороны (в 1.3 дальности, удержание), своё решение
+        /// без сглаживания и проверка — ляжет ли залп средней пушки в корпус. Только для огня, прицельная стрелка — у основного.</summary>
+        void OffSideSolve(float side, float reach, FxSystem fx)
+        {
+            offSolved = false; OffOnTarget = false; offSide = side > 0f ? 1 : -1;
+            TargetShip best = null; float bestScore = float.MaxValue, cur = float.MaxValue;
+            foreach (TargetShip t in TargetShip.All)
+            {
+                if (t == null || !t.Alive || !t.gameObject.activeInHierarchy || t == aimTarget) continue;
+                Vector3 lp = transform.InverseTransformPoint(t.transform.position);
+                if (lp.x * side < 12f) continue;   // только с этой стороны
+                float d = lp.magnitude; if (d > reach) continue;
+                float score = d * (1f + 0.8f * Mathf.Abs(lp.z) / Mathf.Max(1f, d));
+                if (t == offTarget) cur = score;
+                if (score < bestScore) { bestScore = score; best = t; }
+            }
+            if (offTarget != null && cur < float.MaxValue && cur < bestScore * 1.25f) best = offTarget;
+            offTarget = best;
+            if (best == null) return;
+            CannonMount mid = null; float midZ = 0f; int count = 0;
+            foreach (CannonMount m in mounts) if (Mathf.Sign(m.side) == side) { midZ += m.Muzzle.z; count++; }
+            if (count == 0) return;
+            midZ /= count; float bd = float.MaxValue;
+            foreach (CannonMount m in mounts) if (Mathf.Sign(m.side) == side && Mathf.Abs(m.Muzzle.z - midZ) < bd) { bd = Mathf.Abs(m.Muzzle.z - midZ); mid = m; }
+            if (mid == null) return;
+            float g = fx.gravity;
+            Vector3 muzzle = model.TransformPoint(mid.Muzzle), own = velocity; own.y = 0f;
+            offVel = best.Controller != null ? best.transform.forward * best.Controller.Speed : Vector3.zero;
+            Vector3 rel = offVel - own, d0 = best.Center - muzzle;
+            float tt = Ballistics.Lead(d0.x, d0.y, d0.z, rel.x, rel.y, rel.z, ShotSpeed, g, minElevationDeg * Mathf.Deg2Rad, maxElevationDeg * Mathf.Deg2Rad, out _, out _, out _);
+            Vector3 aim = best.Center + rel * tt;
+            if (float.IsNaN(aim.x) || float.IsNaN(aim.y) || float.IsNaN(aim.z)) return;
+            offAim = aim; offSolved = true;
+            Vector3 end; bool hull;
+            TracePath(mid, best, fx, out end, out hull, null, true);
+            OffOnTarget = hull;
+        }
+
         public void AimPreview()
         {
             FxSystem fx = FxSystem.Instance;
@@ -405,6 +452,7 @@ namespace SkyTide
             bool hullAny = midHull || foreHull || aftHull;
             if (arrow != null) arrow.Draw(forePath, aftPath, hullAny ? 2 : ready ? 0 : 1, ready ? 0.85f : 0.5f);
             AimOnTarget = midHull || foreHull || aftHull;
+            OffSideSolve(-side, reach, fx);
             // Залп не ложится в цель, но решение есть: малая метка там, где цель окажется к прилёту ядер, —
             // её и надо поставить на траверз (доворот стволов ограничен).
             if (!AimOnTarget && solved) fx.AddAim(best.Center + targetVel * flightTime, Vector3.up, 6f, 3, 1f, 0.45f);
