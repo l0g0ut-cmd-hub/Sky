@@ -124,7 +124,7 @@ namespace SkyTide
             {
                 if (lens == null) lens = GetComponent<Camera>();
                 scopeBlend = Mathf.MoveTowards(scopeBlend, ScopeOn ? 1f : 0f, dt * 3f);
-                if (lens != null) { if (baseFov < 0f) baseFov = lens.fieldOfView; lens.fieldOfView = Mathf.Lerp(baseFov + 5f * speedPull, baseFov * 0.28f, scopeBlend); }
+                if (lens != null) { if (baseFov < 0f) baseFov = lens.fieldOfView; lens.fieldOfView = Mathf.Lerp(baseFov + 5f * speedPull, baseFov * scopeZoom, scopeBlend); }
                 // Дальность теней — по удалению камеры: вблизи та же карта теней ложится на меньший участок (тени резче),
                 // издалека — хватает до корабля. Шаг 10 м, чтобы тени не «дышали» при каждом движении пальцев.
                 float shadowReach = Mathf.Clamp(Mathf.Ceil((reach + 55f) / 10f) * 10f, 90f, 200f);
@@ -182,6 +182,15 @@ namespace SkyTide
                 // (удалённая проверка 15.11, снимок «труба» — весь кадр в парусине).
                 Vector3 deck = target.position + Vector3.up * 26f * target.lossyScale.y;
                 Vector3 look = scopeTarget != null && scopeTarget.Alive ? scopeTarget.Center : deck + target.forward * 300f;
+                // Увеличение по дальности: корабль цели занимает около трети кадра. Вблизи (20–60 м) труба почти не
+                // приближает — на ×0,28 при враге в 20 м кадр был изнанкой его корпуса (удалённая проверка 15.11).
+                if (scopeTarget != null && baseFov > 0f)
+                {
+                    float dist = Mathf.Max(1f, Vector3.Distance(deck, look));
+                    float wantFov = 2f * Mathf.Atan(45f * scopeTarget.transform.lossyScale.x / dist) * Mathf.Rad2Deg;
+                    scopeZoom = Mathf.Lerp(scopeZoom, Mathf.Clamp(wantFov / baseFov, 0.2f, 1f), 1f - Mathf.Exp(-6f * dt));
+                }
+                deck = AvoidShips(deck);   // точка трубы тоже не входит в чужие корабли
                 Quaternion scopeRot = Quaternion.LookRotation(look - deck, Vector3.up);
                 float k2 = scopeBlend * scopeBlend * (3f - 2f * scopeBlend);
                 transform.position = Vector3.Lerp(transform.position, deck, k2);
@@ -192,17 +201,21 @@ namespace SkyTide
         }
 
         public bool ScopeOn { get; private set; }
-        float scopeBlend; TargetShip scopeTarget;
+        float scopeBlend, scopeZoom = 0.5f; TargetShip scopeTarget;
         /// <summary>Подзорная труба вкл/выкл (кнопка рядом с FPS): наводится на ближайшего живого врага.</summary>
         public void ToggleScope()
         {
             if (ScopeOn) { ScopeOn = false; return; }
             scopeTarget = null; float best = float.MaxValue;
-            if (target != null)
+            // Цель бортов — в первую очередь (на неё и наводится прицел); иначе ближайший враг дальше 60 м, иначе просто ближайший.
+            Broadside guns = target != null ? target.GetComponentInChildren<Broadside>() : null;
+            if (guns != null && guns.AimTargetShip != null && guns.AimTargetShip.Alive) scopeTarget = guns.AimTargetShip;
+            if (scopeTarget == null && target != null)
                 foreach (TargetShip t in TargetShip.All)
                 {
                     if (t == null || !t.Alive) continue;
                     float d = (t.transform.position - target.position).sqrMagnitude;
+                    if (d < 60f * 60f) d += 1e8f;   // вплотную — в последнюю очередь
                     if (d < best) { best = d; scopeTarget = t; }
                 }
             ScopeOn = scopeTarget != null;
