@@ -154,6 +154,49 @@ namespace SkyTide
             }
         }
         const float SweepPeriod = 3f;
+        bool moduleFrame;
+        /// <summary>Текст во вкладках модуля радара: враг (дальность · % корпуса), причал, масштаб радара, ход.</summary>
+        void ModuleTexts(TouchControls input, HudLayout l)
+        {
+            float best = float.MaxValue, bestHealth = 1f;
+            foreach (TargetShip t in TargetShip.All)
+            {
+                if (t == null || !t.Alive) continue;
+                Vector3 d = t.transform.position - input.ship.transform.position; d.y = 0f;
+                if (d.magnitude < best) { best = d.magnitude; bestHealth = t.Health01; }
+            }
+            float fs = l.tabEnemy.height * 0.5f;
+            Color amber = new Color(1f, 0.74f, 0.55f, 1f), grey = new Color(0.78f, 0.79f, 0.82f, 1f);
+            if (best < float.MaxValue)
+            {
+                string a = "ВРАГ " + Range(best);
+                Color ac = best <= GunRange(input) ? amber : grey;   // серым — дальше, чем достают свои пушки
+                if (bestHealth < 0.995f) TextPair(l.tabEnemy, a + " · ", ac, Mathf.RoundToInt(bestHealth * 100f) + "%", new Color(1f, 0.35f, 0.28f, 1f), fs);
+                else Text(l.tabEnemy, a, fs, ac);
+            }
+            else Text(l.tabEnemy, "ВРАГ —", fs, grey);
+            SkyFortress fort = SkyFortress.Instance;
+            if (fort != null) { Vector3 d = fort.BerthWorld - input.ship.transform.position; d.y = 0f; Text(l.tabBerth, "ПРИЧАЛ " + Range(d.magnitude), fs, fort.Hostile ? new Color(1f, 0.55f, 0.45f, 1f) : cream); }
+            else Text(l.tabBerth, "ПРИЧАЛ —", fs, grey);
+            Text(l.tabRadar, "РАДАР " + Range(input.RadarRange), fs, cream);
+            Text(l.speed, Cached(3, input.Gear * 1000 + Mathf.RoundToInt(Mathf.Abs(input.ship.Speed)), v => TouchControls.GearNames[v / 1000] + " · " + (v % 1000) + " м/с"), l.speed.height * 0.46f, cream);
+        }
+        /// <summary>Две части строки разным цветом, вместе — по центру прямоугольника.</summary>
+        void TextPair(Rect r, string a, Color ca, string b, Color cb, float size)
+        {
+            float wa = TextWidth(a, size), wb = TextWidth(b, size), x = r.center.x - (wa + wb) * 0.5f, pad = r.height * 0.3f + 4f;
+            // Поля DrawLabel (0,3 высоты с боков) — снаружи: прямоугольник шире слова, центр — по середине слова.
+            Text(new Rect(x - pad, r.y, wa + pad * 2f, r.height), a, size, ca);
+            Text(new Rect(x + wa - pad, r.y, wb + pad * 2f, r.height), b, size, cb);
+        }
+        float TextWidth(string t, float size)
+        {
+            if (font == null || string.IsNullOrEmpty(t)) return 0f;
+            int sz = Mathf.Max(9, Mathf.RoundToInt(size)); font.RequestCharactersInTexture(t, sz, FontStyle.Normal);
+            float w = 0f; CharacterInfo c;
+            for (int i = 0; i < t.Length; i++) if (font.GetCharacterInfo(t[i], out c, sz, FontStyle.Normal)) w += c.advance;
+            return w;
+        }
         void RadarArt(TouchControls input, HudLayout l, Vector2 c, float R, float range)
         {
             float size = R * 2f * 1024f / 900f;           // рамка (с выступами) — 900 из 1024 пикселей по ширине
@@ -255,7 +298,7 @@ namespace SkyTide
                 if (ft != null) Image(ft, p, g * 0.75f, 0f, fort.Hostile ? new Color(1f, 0.55f, 0.45f, 1f) : Color.white);
                 else Icon(9, new Rect(p.x - g * 0.5f, p.y - g * 0.5f, g, g), fort.Hostile ? new Color(1f, 0.45f, 0.35f, 1f) : Color.white);
             }
-            Image(rFrame, c, size, 0f, Color.white);
+            if (!moduleFrame) Image(rFrame, c, size, 0f, Color.white);   // у модуля свой обод
             // Ветер: голубая стрелка у обода убрана (владелец 15.11 не понял, что это; лишняя деталь в каше). Ветер — в отчёте.
             if (false)
             {
@@ -556,6 +599,15 @@ namespace SkyTide
             Rect r=l.radar; if(r.width<l.unit*0.08f||input.ship==null)return;
             float range=input.RadarRange;   // касание радара меняет масштаб: 1.5 км или 600 м
             Vector2 c=r.center; float R=r.width*0.5f, lw=Mathf.Max(1f,l.unit*0.0025f);
+            LoadBanners();
+            if(HasRadar && tModule!=null)
+            {
+                // Радар со вкладками одной латунной конструкцией: под вырезанным кругом — стекло и отметки, поверх — модуль.
+                moduleFrame = true; RadarArt(input,l,c,R*1.8f,range); moduleFrame = false;
+                ImageRect(tModule,l.radarModule,Whole,Color.white);
+                ModuleTexts(input,l);
+                return;
+            }
             RadarLines(input,l);
             if(HasRadar) { RadarArt(input,l,c,R,range); return; }
             if(HasKit) { RadarKit(input,l,c,R,range); return; }
@@ -585,7 +637,7 @@ namespace SkyTide
 
         // ---------- баннеры, оповещения, виньетка (Resources/UI: banner_victory/defeat 2048×512, plate_notice 1024×192,
         // vignette_damage 2:1, icons 4×4). Текст всегда в пределах внутреннего поля плашки (пиксели картинки ниже). ----------
-        Texture2D bVictory, bDefeat, bPlate, bVignette, bIcons, bIcons2, tInfo, tFill, tCompass, tDial, tLever; bool bannersTried;
+        Texture2D bVictory, bDefeat, bPlate, bVignette, bIcons, bIcons2, tInfo, tFill, tCompass, tDial, tLever, tModule; bool bannersTried;
         string victoryText = "ЦЕЛЬ УНИЧТОЖЕНА";
         readonly HashSet<TargetShip> sunkSeen = new HashSet<TargetShip>();
         float victoryAt = -100f;
@@ -600,6 +652,7 @@ namespace SkyTide
             bIcons = Resources.Load<Texture2D>("UI/icons"); bIcons2 = Resources.Load<Texture2D>("UI/icons2");
             tInfo = Resources.Load<Texture2D>("UI/plate_info"); tFill = Resources.Load<Texture2D>("UI/ui_fill"); tCompass = Resources.Load<Texture2D>("UI/ui_compass");
             tDial = Resources.Load<Texture2D>("UI/telegraph_dial"); tLever = Resources.Load<Texture2D>("UI/telegraph_lever");
+            tModule = Resources.Load<Texture2D>("UI/ui_radar_module");
         }
         /// <summary>Картинка в прямоугольник; uv — доли картинки от верхнего левого угла.</summary>
         void ImageRect(Texture2D tex, Rect dst, Rect uv, Color col)
@@ -904,7 +957,7 @@ namespace SkyTide
                     if(input.game.ships!=null&&input.game.ships.Length>1) {Panel(l.ship,l.unit);PlateText(l.ship,0f,1f,input.game.CurrentShipName,l.unit*0.03f,cream);}
                     cornerTop=l.safe.y+l.unit*0.02f;
                     Compass(input,l);
-                    Panel(l.speed,l.unit);PlateText(l.speed,0f,1f,Cached(3,input.Gear*1000+Mathf.RoundToInt(Mathf.Abs(input.ship.Speed)),v=>TouchControls.GearNames[v/1000]+" · "+(v%1000)+" м/с"),l.unit*0.034f,cream);   // ступень рукояти и скорость
+                    if(tModule==null){Panel(l.speed,l.unit);PlateText(l.speed,0f,1f,Cached(3,input.Gear*1000+Mathf.RoundToInt(Mathf.Abs(input.ship.Speed)),v=>TouchControls.GearNames[v/1000]+" · "+(v%1000)+" м/с"),l.unit*0.034f,cream);}   // ступень рукояти и скорость (с модулем радара — во вкладке хода)
                     Telegraph(input,l);
                     LockMarker(input,l);
                     Radar(input,l);
