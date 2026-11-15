@@ -176,7 +176,7 @@ namespace SkyTide
             if (zoneMist != null) zoneMist.Tick(alarm, centre, fx.deckTop + 1f);
             // Точка ремонта — кольцо по зоне ремонта у причала вместо огонька-«звезды» (владелец 15.11).
             fx.ClearBeacon();
-            if (berthRing == null && !berthRingTried && Application.isPlaying) { berthRingTried = true; berthRing = BerthRing.Create(RepairCentre, RepairRadius); }
+            if (berthRing == null && !berthRingTried && Application.isPlaying) { berthRingTried = true; berthRing = BerthRing.Create(RepairCentre, RepairAlong, RepairOut, RepairRotation, -6f, 9f); }
             if (berthRing != null) berthRing.Tick(RepairCentre, !alarm, PlayerDocked, time);
         }
 
@@ -255,8 +255,17 @@ namespace SkyTide
         public Vector3 BerthWorld { get { return model != null ? model.TransformPoint(berthLocal) : transform.position; } }
         /// <summary>Зона ремонта — круг перед причалом (на воздухе, а не на пирсе): центр в 35 м наружу от края причала,
         /// туда же встаёт автошвартовка (30 м). Кольцо рисуется ровно по ней (владелец 15.11: кольцо заезжало на причал).</summary>
-        public const float RepairRadius = 42f;
-        public Vector3 RepairCentre { get { Vector3 b = BerthWorld, o = b - Center; o.y = 0f; o = o.sqrMagnitude > 1f ? o.normalized : Vector3.forward; return b + o * 35f; } }
+        // Овал вдоль причала (владелец 16.11: «овальную и больше»): 85 м вдоль кромки, 50 м наружу, центр в 55 м от кромки.
+        public const float RepairAlong = 85f, RepairOut = 50f;
+        Vector3 BerthOut { get { Vector3 o = BerthWorld - Center; o.y = 0f; return o.sqrMagnitude > 1f ? o.normalized : Vector3.forward; } }
+        public Vector3 RepairCentre { get { return BerthWorld + BerthOut * 55f; } }
+        public Quaternion RepairRotation { get { return Quaternion.LookRotation(BerthOut, Vector3.up); } }
+        public bool InRepairZone(Vector3 p)
+        {
+            Vector3 d = p - RepairCentre; d.y = 0f; Vector3 o = BerthOut, x = Vector3.Cross(Vector3.up, o);
+            float a = Vector3.Dot(d, x) / (RepairAlong + 6f), b = Vector3.Dot(d, o) / (RepairOut + 6f);
+            return a * a + b * b < 1f;
+        }
 
         /// <summary>Верх крепости над точкой мира (м) или −∞, если там пусто.</summary>
         public float TopAt(Vector3 world)
@@ -331,7 +340,7 @@ namespace SkyTide
             if (Hostile && Time.time >= nextBell) { nextBell = Time.time + 1.15f; SkySound.Alarm(transform.position); }
             UpdateBeacon(Camera.main, Time.time);
 
-            if (!mooredBuilt) BuildMoored();
+            // Пришвартованные «холостые» корабли убраны (владелец 16.11).
             bool inside = InSafeZone(ship.transform.position);
             if (inside && !PlayerInside) EnteredAt = Time.time;
             PlayerInside = inside;
@@ -341,7 +350,7 @@ namespace SkyTide
 
             // Причал: рядом и на малом ходу — ремонт.
             PlayerDocked = hasBerth && !Hostile && hull.Alive
-                && FlatDist(ship.transform.position, RepairCentre) < RepairRadius + 6f && Mathf.Abs(ship.Speed) < berthMaxSpeed;   // ремонт — внутри кольца
+                && InRepairZone(ship.transform.position) && Mathf.Abs(ship.Speed) < berthMaxSpeed;   // ремонт — внутри овала
             if (PlayerDocked)
             {
                 hull.Repair(repairPerSecond * dt);
@@ -352,7 +361,7 @@ namespace SkyTide
                 if (Mathf.Abs(ship.throttle) < 0.01f && moorOut.sqrMagnitude > 1f)
                 {
                     moorOut.Normalize();
-                    Vector3 moorSpot = BerthWorld + moorOut * 30f; moorSpot.y = ship.transform.position.y;
+                    Vector3 moorSpot = RepairCentre;   // центр овала ремонта moorSpot.y = ship.transform.position.y;
                     ship.transform.SetPositionAndRotation(Vector3.MoveTowards(ship.transform.position, moorSpot, 6f * dt),
                         Quaternion.RotateTowards(ship.transform.rotation, Quaternion.LookRotation(moorOut, Vector3.up), 14f * dt));
                 }

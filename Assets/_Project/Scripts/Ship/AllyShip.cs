@@ -102,6 +102,7 @@ namespace SkyTide
             if (!All.Contains(this)) All.Add(this);
         }
         void OnEnable() { if (!All.Contains(this)) All.Add(this); }
+        void OnDestroy() { if (glow != null) Destroy(glow.gameObject); }
         void OnDisable() { All.Remove(this); }
 
         // ---------- попадания ----------
@@ -175,10 +176,18 @@ namespace SkyTide
             ctrl.enabled = true;
         }
 
+        BerthRing glow; bool glowTried;
         void Update()
         {
             long pt = PerfTimers.Start();
             Tick(Time.deltaTime);
+            // Подсветка своих: зелёное светящееся кольцо под корпусом, как у зоны ремонта (владелец 16.11).
+            if (!glowTried && Application.isPlaying) { glowTried = true; float len = Mathf.Max(20f, box.size.z * transform.lossyScale.z); glow = BerthRing.Create(transform.position, len * 0.42f, len * 0.62f, transform.rotation, -3f, 5f); }
+            if (glow != null)
+            {
+                Vector3 at = Center; at.y = Center.y - box.extents.y * transform.lossyScale.y * 0.9f;
+                glow.TickAlly(at, Quaternion.Euler(0f, transform.eulerAngles.y, 0f), Alive && gameObject.activeInHierarchy, UnderAttack, Time.time);
+            }
             PerfTimers.Stop("Союзники", pt);
         }
 

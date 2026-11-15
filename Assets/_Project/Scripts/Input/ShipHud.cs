@@ -976,7 +976,6 @@ namespace SkyTide
                     Compass(input,l);
                     if(tModule==null){Panel(l.speed,l.unit);PlateText(l.speed,0f,1f,Cached(3,input.Gear*1000+Mathf.RoundToInt(Mathf.Abs(input.ship.Speed)),v=>TouchControls.GearNames[v/1000]+" · "+(v%1000)+" м/с"),l.unit*0.034f,cream);}   // ступень рукояти и скорость (с модулем радара — во вкладке хода)
                     Telegraph(input,l);
-                    AllyRings(input,l);
                     LockMarker(input,l);
                     Radar(input,l);
                     Hull(l);

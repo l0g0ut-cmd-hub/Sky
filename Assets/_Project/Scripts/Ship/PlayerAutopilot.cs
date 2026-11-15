@@ -270,7 +270,7 @@ namespace SkyTide
         {
             Vector3 outDir = fort.BerthWorld - fort.Center; outDir.y = 0f;
             outDir = outDir.sqrMagnitude > 1f ? outDir.normalized : Vector3.forward;
-            Vector3 spot = fort.BerthWorld + outDir * 30f; spot.y = transform.position.y;
+            Vector3 spot = fort.RepairCentre; spot.y = transform.position.y;   // в центр овала ремонта
             Vector3 to = spot - transform.position; to.y = 0f;
             float dist = to.magnitude;
             if (fort.PlayerDocked || dist < fort.berthRadius * 0.6f)

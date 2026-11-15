@@ -50,7 +50,7 @@ namespace SkyTide
             float mH = Mathf.Max(u * 0.3f, Mathf.Min(u * 0.41f, mBottom - mTop)), k = mH / 1024f;   // меньше: загораживал обзор (владелец 16.11)
             l.radarModule = new Rect(edgeX - 4f * k, mTop, 1536f * k, mH);   // и левее — к краю экрана
             float mx = l.radarModule.x, my = l.radarModule.y;
-            l.radar = new Rect(mx + (357f - 247f) * k, my + (357f - 247f) * k, 494f * k, 494f * k);   // стекло радара (касание — масштаб)
+            l.radar = new Rect(mx + (357f - 244f) * k, my + (377.5f - 244f) * k, 488f * k, 488f * k);   // круг обода по замеру: центр (357; 377,5), r 244   // стекло радара (касание — масштаб)
             l.tabEnemy = new Rect(mx + 900f * k, my + 119f * k, 505f * k, 112f * k);
             l.tabBerth = new Rect(mx + 900f * k, my + 318f * k, 505f * k, 112f * k);
             l.tabRadar = new Rect(mx + 900f * k, my + 513f * k, 505f * k, 112f * k);
