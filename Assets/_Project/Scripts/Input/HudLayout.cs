@@ -18,14 +18,15 @@ namespace SkyTide
             l.safe = safeArea;
             l.unit = Mathf.Min(safeArea.height, safeArea.width);
             float u = l.unit, m = u * 0.03f, gap = u * 0.025f;
-            float w = Mathf.Max(u * 0.33f, Mathf.Min(u * 0.39f, safeArea.width * 0.18f)) * ButtonScale, h = u * 0.15f * ButtonScale;   // кнопки бортов: поле внутри рамки вмещает название, пушку и состояние крупно
-            l.starboard = new Rect(safeArea.xMax - m - w, safeArea.yMax - u * 0.09f - h, w, h);
-            l.port = new Rect(l.starboard.x - gap - w, l.starboard.y, w, h);
-            l.mode = new Rect(l.port.x, l.port.y - gap - u * 0.072f, w * 2f + gap, u * 0.072f);
-            l.auto = new Rect(l.mode.x, l.mode.y - gap - u * 0.072f, l.mode.width, u * 0.072f);   // «АВТОБОЙ» — над режимом залпа
+            float w = Mathf.Max(u * 0.33f, Mathf.Min(u * 0.39f, safeArea.width * 0.18f)) * ButtonScale * 0.84f, h = u * 0.15f * ButtonScale * 0.84f;   // ×0,84 — открыть обзор (владелец 16.11)   // кнопки бортов: поле внутри рамки вмещает название, пушку и состояние крупно
+            float rgap = gap * 0.8f, rh = u * 0.06f;
+            l.starboard = new Rect(safeArea.xMax - m * 0.5f - w, safeArea.yMax - u * 0.075f - h, w, h);
+            l.port = new Rect(l.starboard.x - rgap - w, l.starboard.y, w, h);
+            l.mode = new Rect(l.port.x, l.port.y - rgap - rh, w * 2f + rgap, rh);
+            l.auto = new Rect(l.mode.x, l.mode.y - rgap - rh, l.mode.width, rh);   // «АВТОБОЙ» — над режимом залпа
             // Строка режима делится: слева — залп волной/весь борт, справа — заряд (ядра/книппели).
-            float half = (l.mode.width - gap) * 0.5f;
-            l.ammo = new Rect(l.mode.x + half + gap, l.mode.y, half, l.mode.height);
+            float half = (l.mode.width - rgap) * 0.5f;
+            l.ammo = new Rect(l.mode.x + half + rgap, l.mode.y, half, l.mode.height);
             l.mode = new Rect(l.mode.x, l.mode.y, half, l.mode.height);
             l.clouds = new Rect(safeArea.xMax - m - u * 0.43f, safeArea.y + m, u * 0.43f, u * 0.105f);
             l.ship = new Rect(l.clouds.x, l.clouds.yMax + gap, l.clouds.width, u * 0.08f);
