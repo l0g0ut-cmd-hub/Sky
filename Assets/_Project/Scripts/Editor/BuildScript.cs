@@ -37,7 +37,9 @@ namespace SkyTide.EditorTools
                 Application.logMessageReceivedThreaded += watch;
 
                 SceneBuilder.Build();
-                SceneShots.Capture(SceneBuilder.ScenePath);   // кадры для оценки картинки (build/shots)
+                // Кадры сцены на программном GPU CI стоили ~25 минут сборки — только по флагу [shots] в сообщении коммита.
+                if (Flag("shots")) SceneShots.Capture(SceneBuilder.ScenePath);   // кадры для оценки картинки (build/shots)
+                else Debug.Log("SkyTide: кадры сцены пропущены (нет флага shots) — быстрая сборка");
                 ConfigurePlayer();
 
                 BuildPlayerOptions opts = new BuildPlayerOptions();
@@ -80,11 +82,11 @@ namespace SkyTide.EditorTools
         /// <summary>
         /// Linux-сборка той же игры для прогона боя в CI (-skysim, см. CiBattle): Mono (быстро), только OpenGLCore.
         /// Провал этой сборки APK не трогает — только строка в логе, шаг прогона тогда пропускается.
-        /// SKYTIDE_NO_SIM=1 — не собирать.
+        /// Только по флагу [sim] в сообщении коммита.
         /// </summary>
         static void BuildLinuxSim()
         {
-            if (System.Environment.GetEnvironmentVariable("SKYTIDE_NO_SIM") == "1") { Debug.Log("SkyTide: прогон боя отключён"); return; }
+            if (!Flag("sim")) { Debug.Log("SkyTide: прогон боя пропущен (нет флага sim)"); return; }
             float t0 = Time.realtimeSinceStartup;
             try
             {
@@ -197,6 +199,13 @@ namespace SkyTide.EditorTools
             so.ApplyModifiedPropertiesWithoutUndo();
             AssetDatabase.SaveAssets();
             Debug.Log("SkyTide: activeInputHandler = Input Manager (Old)");
+        }
+
+        /// <summary>Флаги сборки из build-flags.txt (пишет CI по сообщению коммита: [shots], [sim]).</summary>
+        static bool Flag(string name)
+        {
+            try { return File.Exists("build-flags.txt") && (" " + File.ReadAllText("build-flags.txt") + " ").Contains(" " + name + " "); }
+            catch (Exception) { return false; }
         }
 
         static string GetArg(string key)

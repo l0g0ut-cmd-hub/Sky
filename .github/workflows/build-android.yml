@@ -61,6 +61,22 @@ jobs:
           restore-keys: |
             Library-Android-${{ env.UNITY_VERSION }}-
 
+      # .meta файлов большинства ассетов в репозитории нет — Unity создавал новые GUID и переимпортировал ~180 ассетов
+      # (~7 мин) на каждой сборке. Метаданные прошлой сборки лежат в кэше Library (Library/SkyMetaCache) и
+      # подкладываются только туда, где .meta нет (закоммиченные не трогаются).
+      - name: Restore .meta from cache
+        run: |
+          M=Library/SkyMetaCache
+          if [ -d "$M" ]; then n=0; while IFS= read -r f; do [ -e "$f" ] || { mkdir -p "$(dirname "$f")"; cp "$M/$f" "$f"; n=$((n+1)); }; done < <(cd "$M" && find . -name '*.meta' | sed 's|^\./||'); echo "метаданных подложено: $n"; else echo "кэша метаданных нет"; fi
+
+      # Флаги сборки по сообщению коммита: [shots] — кадры сцены (+~25 мин), [sim] — прогон боя на Linux (+~15 мин).
+      - name: Build flags
+        env:
+          MSG: ${{ github.event.head_commit.message }}
+        run: |
+          f=""; case "$MSG" in *"[shots]"*) f="$f shots";; esac; case "$MSG" in *"[sim]"*) f="$f sim";; esac
+          echo "$f" > build-flags.txt; echo "флаги сборки:${f:- нет (быстрая)}" | tee -a "$RUNNER_TEMP/ci.log"
+
       - name: Install GameCI CLI
         run: |
           set -o pipefail
@@ -121,6 +137,13 @@ jobs:
             echo "== отчёт прогона"; cat build/sim/report.txt 2>/dev/null | head -400 || true
           } | tee -a "$RUNNER_TEMP/ci.log"
           mkdir -p build/shots; cp build/sim/*.jpg build/shots/ 2>/dev/null || true
+
+      - name: Save .meta to cache
+        if: success()
+        run: |
+          sudo mkdir -p Library/SkyMetaCache && sudo chown -R "$(id -u)" Library/SkyMetaCache
+          find Assets -name '*.meta' -print0 | sudo tar --null -T - -cf - | tar -xf - -C Library/SkyMetaCache
+          echo "метаданных в кэш: $(find Library/SkyMetaCache -name '*.meta' | wc -l)"
 
       - name: Upload APK
         if: always()
