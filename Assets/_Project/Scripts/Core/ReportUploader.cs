@@ -57,6 +57,7 @@ namespace SkyTide
         void Update()
         {
             if (!Ready) return;
+            SnapTick();
             if (Time.realtimeSinceStartup >= nextOutbox) { nextOutbox = Time.realtimeSinceStartup + 60f; RetryOutbox(); }
             if (Time.realtimeSinceStartup >= nextUpload) { nextUpload = Time.realtimeSinceStartup + (Time.realtimeSinceStartup < RemoteCommands.LiveUntil ? 30f : 300f); UploadReport(); }
             else if (Time.realtimeSinceStartup < RemoteCommands.LiveUntil && nextUpload - Time.realtimeSinceStartup > 30f) nextUpload = Time.realtimeSinceStartup + 30f;
@@ -155,6 +156,20 @@ namespace SkyTide
         // ---------- снимки ракурсов для ассистента (команда photo) ----------
         // reports/photo0..19.jpg по кругу + reports/photos.txt — подпись, время, поза камеры. Без отчёта, без ограничения частоты.
         int photoSlot = -1;
+        /// <summary>Кольцо снимков: 60 (было 20 — за партию с частыми снимками первые затирались).</summary>
+        public const int PhotoSlots = 60;
+        /// <summary>Снимки по таймеру (команда snap N): каждые N с полуразмерный кадр, пока идёт партия.</summary>
+        public static float SnapEvery;
+        float nextSnap;
+        int burstLeft; float burstStep, nextBurst; string burstLabel;
+        public void Burst(int n, float step, string label) { burstLeft = Mathf.Clamp(n, 1, 30); burstStep = Mathf.Clamp(step, 0.05f, 2f); nextBurst = 0f; burstLabel = label; }
+        void SnapTick()
+        {
+            if (!Ready) return;
+            float t = Time.realtimeSinceStartup;
+            if (burstLeft > 0 && t >= nextBurst) { nextBurst = t + burstStep; burstLeft--; Photo(burstLabel + " · серия", false); return; }
+            if (SnapEvery > 0f && t >= nextSnap) { nextSnap = t + SnapEvery; Photo("по таймеру", false); }
+        }
         readonly System.Collections.Generic.Queue<string> photoIndex = new System.Collections.Generic.Queue<string>();
         public void Photo(string label, bool full)
         {
@@ -164,7 +179,7 @@ namespace SkyTide
         IEnumerator PhotoRoutine(string label, bool full)
         {
             if (photoSlot < 0) photoSlot = 0;
-            int slot = photoSlot; photoSlot = (photoSlot + 1) % 20;
+            int slot = photoSlot; photoSlot = (photoSlot + 1) % PhotoSlots;
             bool wasOpen = PerfPanel.Open; PerfPanel.Open = false; ControlBanner.HiddenForShot = true;
             yield return null; yield return new WaitForEndOfFrame();
             Texture2D shot = ScreenCapture.CaptureScreenshotAsTexture();
@@ -192,7 +207,7 @@ namespace SkyTide
             Camera cam = Camera.main;
             string pose = cam != null ? " · кам " + Vec(cam.transform.position) + " курс " + Mathf.RoundToInt(cam.transform.eulerAngles.y) + " накл " + Mathf.RoundToInt(Mathf.DeltaAngle(0f, cam.transform.eulerAngles.x)) + " обзор " + Mathf.RoundToInt(cam.fieldOfView) : "";
             photoIndex.Enqueue("photo" + slot + " · " + System.DateTime.Now.ToString("HH:mm:ss") + " · " + label + pose + " · FPS " + (1f / Mathf.Max(1e-3f, Time.smoothDeltaTime)).ToString("F0") + " · " + DevCommands.Settings());
-            while (photoIndex.Count > 20) photoIndex.Dequeue();
+            while (photoIndex.Count > PhotoSlots) photoIndex.Dequeue();
             Enqueue("reports/photos.txt", Encoding.UTF8.GetBytes(string.Join("\n", photoIndex.ToArray()) + "\n"));
         }
         static string Vec(Vector3 v) { return Mathf.RoundToInt(v.x) + "," + Mathf.RoundToInt(v.y) + "," + Mathf.RoundToInt(v.z); }

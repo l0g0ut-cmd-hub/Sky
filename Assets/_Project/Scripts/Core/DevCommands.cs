@@ -15,6 +15,7 @@ namespace SkyTide
             "repair · hurt 25 — флагману 25% · weather storm|haze|clear · merchant — враг к торговцу · all1km — все враги в 1 км · " +
             "auto on|off — автобой · config — перечитать config.json · cfg поле число — правка баланса на лету · " +
             "shot [почему] — метка со снимком · report — отчёт сейчас · bench — автозамер · " +
+            "snap N — снимок каждые N с · burst кадров шаг [подпись] — серия · " +
             "view угол наклон дист [сек] · spin градусов сек — обычная камера · " +
             "tap pause|row N|radar|ammo|board|spy|auto|ripple|left|right|fps|gear N|xy 0.5,0.5 — нажатие как пальцем · " +
             "where — координаты всех · pilot goto x z [ход]|heading град|speed|stop|release · go цель [N] [ход] · tp x z [курс] · " +
@@ -192,6 +193,11 @@ namespace SkyTide
                         PerfPanel.Instance.StartCoroutine(View(oc, oc.yaw + Num(a, 1, 360f), oc.pitch, oc.distance, Num(a, 2, 8f), true));
                         return "облёт " + Num(a, 1, 360f) + "°";
                     }
+                case "snap": ReportUploader.SnapEvery = Mathf.Max(0f, Num(a, 1, 0f)); return ReportUploader.SnapEvery > 0f ? "снимок каждые " + ReportUploader.SnapEvery + " с" : "снимки по таймеру выкл";
+                case "burst":   // burst кадров шаг_с [подпись] — серия для оценки движения
+                    if (ReportUploader.Instance == null) return "нет отправки";
+                    ReportUploader.Instance.Burst((int)Num(a, 1, 10f), Num(a, 2, 0.15f), a.Length > 3 ? string.Join(" ", a, 3, a.Length - 3) : "серия");
+                    return "серия " + Num(a, 1, 10f) + " кадров";
                 case "say": HudNotice.Show(line.Substring(3).Trim(), 0, 6f); return "показано";
                 case "set": return Set(arg, a.Length > 2 ? a[2] : "1", g);
             }
