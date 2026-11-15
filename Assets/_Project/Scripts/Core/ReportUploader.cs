@@ -179,7 +179,7 @@ namespace SkyTide
             Destroy(shot); Destroy(small);
             Camera cam = Camera.main;
             string pose = cam != null ? " · кам " + Vec(cam.transform.position) + " курс " + Mathf.RoundToInt(cam.transform.eulerAngles.y) + " накл " + Mathf.RoundToInt(Mathf.DeltaAngle(0f, cam.transform.eulerAngles.x)) + " обзор " + Mathf.RoundToInt(cam.fieldOfView) : "";
-            photoIndex.Enqueue("photo" + slot + " · " + System.DateTime.Now.ToString("HH:mm:ss") + " · " + label + pose + " · FPS " + (1f / Mathf.Max(1e-3f, Time.smoothDeltaTime)).ToString("F0"));
+            photoIndex.Enqueue("photo" + slot + " · " + System.DateTime.Now.ToString("HH:mm:ss") + " · " + label + pose + " · FPS " + (1f / Mathf.Max(1e-3f, Time.smoothDeltaTime)).ToString("F0") + " · " + DevCommands.Settings());
             while (photoIndex.Count > 20) photoIndex.Dequeue();
             Enqueue("reports/photos.txt", Encoding.UTF8.GetBytes(string.Join("\n", photoIndex.ToArray()) + "\n"));
         }

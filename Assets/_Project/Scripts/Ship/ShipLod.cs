@@ -18,47 +18,61 @@ namespace SkyTide
         public static bool Enabled = true;
         static readonly List<ShipLod> all = new List<ShipLod>();
 
-        MeshRenderer full, lite;
-        float lodDistance;
+        MeshRenderer full, lite, farR;
+        float lodDistance, farDistance;
 
         /// <summary>Цвета вершин полной модели, снятые до UploadMeshData (сетка потом нечитаема).</summary>
         public static readonly Dictionary<Mesh, Color32[]> SourceColors = new Dictionary<Mesh, Color32[]>();
 
-        public static void Attach(MeshRenderer full, Mesh fullMesh, Mesh liteMesh, int[] src, Material[] materials, float lodDistance)
+        static void MapColors(Mesh fullMesh, Mesh m, int[] src)
         {
-            if (full == null || fullMesh == null || liteMesh == null) return;
+            if (m == null || !m.isReadable) return;
             Color32[] fc;
             if (!SourceColors.TryGetValue(fullMesh, out fc)) fc = fullMesh.isReadable ? fullMesh.colors32 : null;
-            if (!liteMesh.isReadable) { }
-            else if (src != null && src.Length == liteMesh.vertexCount && fc != null && fc.Length == fullMesh.vertexCount)
+            if (src != null && src.Length == m.vertexCount && fc != null && fc.Length == fullMesh.vertexCount)
             {
                 Color32[] lc = new Color32[src.Length];
                 for (int i = 0; i < src.Length; i++) { int s = src[i]; lc[i] = (uint)s < (uint)fc.Length ? fc[s] : new Color32(0, 128, 128, 0); }
-                liteMesh.colors32 = lc;
+                m.colors32 = lc;
             }
             else if (fc != null && fc.Length > 0)
             {
                 // без карты — нейтральные цвета (без ветра и отката), иначе шейдер ткани качал бы весь корпус
-                Color32[] lc = new Color32[liteMesh.vertexCount];
+                Color32[] lc = new Color32[m.vertexCount];
                 for (int i = 0; i < lc.Length; i++) lc[i] = new Color32(0, 128, 128, 0);
-                liteMesh.colors32 = lc;
+                m.colors32 = lc;
             }
-            // Лёгкая сетка общая для всех кораблей типа: цвета ставятся один раз, затем выгрузка (раньше — 46 ошибок на нечитаемой).
-            if (liteMesh.isReadable) liteMesh.UploadMeshData(true);
-            GameObject go = new GameObject("Lite (shadow/LOD)");
-            go.transform.SetParent(full.transform, false);
-            go.AddComponent<MeshFilter>().sharedMesh = liteMesh;
-            MeshRenderer r = go.AddComponent<MeshRenderer>();
-            Material[] slots = new Material[liteMesh.subMeshCount];
-            for (int i = 0; i < slots.Length; i++) slots[i] = materials[Mathf.Min(i, materials.Length - 1)];
-            r.sharedMaterials = slots;
-            r.shadowCastingMode = ShadowCastingMode.ShadowsOnly;
-            r.receiveShadows = full.receiveShadows;
-            ShipLod l = full.gameObject.AddComponent<ShipLod>();
-            l.full = full; l.lite = r; l.lodDistance = lodDistance;
-            l.Apply(false, false, true);
+            // Сетка общая для всех кораблей типа: цвета один раз, затем выгрузка.
+            m.UploadMeshData(true);
         }
 
+        static MeshRenderer Copy(MeshRenderer full, Mesh m, Material[] materials, string name)
+        {
+            GameObject go = new GameObject(name);
+            go.transform.SetParent(full.transform, false);
+            go.AddComponent<MeshFilter>().sharedMesh = m;
+            MeshRenderer r = go.AddComponent<MeshRenderer>();
+            Material[] slots = new Material[m.subMeshCount];
+            for (int i = 0; i < slots.Length; i++) slots[i] = materials[Mathf.Min(i, materials.Length - 1)];
+            r.sharedMaterials = slots;
+            r.receiveShadows = full.receiveShadows;
+            return r;
+        }
+
+        public static void Attach(MeshRenderer full, Mesh fullMesh, Mesh liteMesh, int[] src, Material[] materials, float lodDistance,
+            Mesh farMesh = null, int[] farSrc = null, float farDistance = 0f)
+        {
+            if (full == null || fullMesh == null || liteMesh == null) return;
+            MapColors(fullMesh, liteMesh, src);
+            MapColors(fullMesh, farMesh, farSrc);
+            MeshRenderer r = Copy(full, liteMesh, materials, "Lite (shadow/LOD)");
+            r.shadowCastingMode = ShadowCastingMode.ShadowsOnly;
+            MeshRenderer fr = null;
+            if (farMesh != null && farDistance > 0f) { fr = Copy(full, farMesh, materials, "Far LOD"); fr.shadowCastingMode = ShadowCastingMode.Off; fr.forceRenderingOff = true; }
+            ShipLod l = full.gameObject.AddComponent<ShipLod>();
+            l.full = full; l.lite = r; l.lodDistance = lodDistance; l.farR = fr; l.farDistance = farDistance;
+            l.Apply(false, false, true);
+        }
         void OnEnable() { all.Add(this); if (all.Count == 1) Camera.onPreCull += PreCull; }
         void OnDisable() { all.Remove(this); if (all.Count == 0) Camera.onPreCull -= PreCull; }
 
@@ -73,7 +87,7 @@ namespace SkyTide
                 float d2 = (l.transform.position - c).sqrMagnitude;
                 bool far = l.lodDistance > 0f && d2 > l.lodDistance * l.lodDistance;
                 float sd = QualitySettings.shadowDistance + 60f;
-                l.Apply(far, d2 > CullDistance * CullDistance, d2 < sd * sd);
+                l.Apply(far, d2 > CullDistance * CullDistance, d2 < sd * sd, l.farR != null && d2 > l.farDistance * l.farDistance * FarScale * FarScale);
             }
         }
 
@@ -81,12 +95,24 @@ namespace SkyTide
         /// 60 тыс. треугольников). На радаре и в логике он есть. Владелец 15.11 поднял врагов до 18 — без этого дальние ели ВК.</summary>
         public static float CullDistance = 2200f;
 
-        void Apply(bool far, bool cull, bool shadowNear)
+        /// <summary>Множитель дальности третьего уровня (команда set far N).</summary>
+        public static float FarScale = 1f;
+
+        void Apply(bool far, bool cull, bool shadowNear, bool veryFar = false)
         {
             if (lite == null) return;
             if (cull)
             {
-                full.forceRenderingOff = true; lite.forceRenderingOff = true;
+                full.forceRenderingOff = true; lite.forceRenderingOff = true; if (farR != null) farR.forceRenderingOff = true;
+                return;
+            }
+            bool useFar = veryFar && Enabled && farR != null;
+            if (farR != null) farR.forceRenderingOff = !useFar;
+            if (useFar)
+            {
+                // Третий уровень: только он, без тени (дальше дальности теней их всё равно нет).
+                full.forceRenderingOff = true; full.shadowCastingMode = ShadowCastingMode.Off;
+                lite.forceRenderingOff = true; lite.enabled = true;
                 return;
             }
             lite.forceRenderingOff = false;

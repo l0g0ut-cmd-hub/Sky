@@ -205,6 +205,50 @@ namespace SkyTide
             Pinch();
         }
 
+        /// <summary>Удалённое нажатие (DevCommands tap): касание по центру кнопки через тот же путь, что и палец.</summary>
+        public string RemoteTap(string what, string arg)
+        {
+            HudLayout hl = Layout(ViewWidth, ViewHeight);
+            Rect r;
+            switch (what)
+            {
+                case "pause": r = hl.pause; break;
+                case "radar": r = hl.radar; break;
+                case "ammo": r = hl.ammo; break;
+                case "board": r = hl.board; break;
+                case "spy": r = hl.spy; break;
+                case "auto": r = hl.auto; break;
+                case "ripple": case "mode": r = hl.mode; break;
+                case "left": r = hl.port; break;
+                case "right": r = hl.starboard; break;
+                case "fps": r = hl.fps; break;
+                case "row": { int n; int.TryParse(arg, out n); r = hl.PauseRow(Mathf.Clamp(n, 0, HudLayout.PauseRows - 1)); break; }
+                case "gear":
+                    {
+                        int g; int.TryParse(arg, out g); g = Mathf.Clamp(g, 0, GearThrottle.Length - 1);
+                        float step = hl.telegraph.height / GearThrottle.Length;
+                        Vector2 gp = new Vector2(hl.telegraph.center.x, hl.telegraph.yMax - step * (g + 0.5f));
+                        StartCoroutine(TapRoutine(gp)); return "ход " + g;
+                    }
+                case "xy":
+                    {
+                        float fx, fy; string[] q = (arg ?? "").Split(',');
+                        if (q.Length < 2 || !float.TryParse(q[0], System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out fx) || !float.TryParse(q[1], System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out fy)) return "tap xy 0.5,0.5";
+                        StartCoroutine(TapRoutine(new Vector2(fx * ViewWidth, fy * ViewHeight))); return "касание " + arg;
+                    }
+                default: return "нет кнопки " + what;
+            }
+            StartCoroutine(TapRoutine(r.center));
+            return "нажато " + what + (what == "row" ? " " + arg : "");
+        }
+
+        System.Collections.IEnumerator TapRoutine(Vector2 p)
+        {
+            Pointer(77, p, true, false);
+            yield return null;
+            Pointer(77, p, false, true);
+        }
+
         void Pointer(int id, Vector2 p, bool began, bool ended)
         {
             if (began)

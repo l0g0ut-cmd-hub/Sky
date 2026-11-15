@@ -91,6 +91,11 @@ namespace SkyTide
                     }
                     ack.AppendLine(c + " → " + DevCommands.Run(c));
                     yield return null;
+                    // Снимок делается в конце следующего кадра — без паузы следующая команда успевала сдвинуть камеру
+                    // (сборка 127: каждый снимок показывал следующий ракурс).
+                    if (c.StartsWith("photo") || c.StartsWith("shot") || c.StartsWith("mark")) { yield return null; yield return new WaitForEndOfFrame(); yield return null; yield return null; }
+                    // Нажатие: касание-отпускание занимает кадр.
+                    if (c.StartsWith("tap")) { yield return null; yield return null; }
                 }
                 // Конец партии — управление владельцу (кроме hold).
                 ControlBanner.BusyUntil = -1f;

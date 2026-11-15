@@ -20,6 +20,12 @@ namespace SkyTide
         public TextAsset lite, liteSrc;
         public TextAsset lights;    // <модель>_lights.json — фонари и окна в координатах модели (ореолы издалека)
         public float lodDistance;   // 0 — только тень
+        // Третий уровень (14 тыс. треуг., 4 прохода tools/decimate_ship.py): дальше farDistance вместо лёгкой.
+        // Владелец 15.11 поднял врагов до 18 — 18 лёгких по 60k давали ~1 млн треугольников и 15 FPS.
+        public TextAsset far, farSrc;
+        public float farDistance;
+        [NonSerialized] Mesh cachedFar;
+        public Mesh FarMesh { get { if (cachedFar == null && far != null) cachedFar = ShipMeshLoader.LoadReadable(far); return cachedFar; } }
         [NonSerialized] Mesh cachedLite;
         public Mesh LiteMesh { get { if (cachedLite == null && lite != null) cachedLite = ShipMeshLoader.LoadReadable(lite); return cachedLite; } }
 

@@ -77,6 +77,8 @@ namespace SkyTide.EditorTools
                 // Мишень держится в 140–320 м: дальше 110 м рисуется копия 60k треугольников вместо 207k, тень — всегда копия.
                 lite = AssetDatabase.LoadAssetAtPath<TextAsset>(Models + "Corsair_lod.bytes"),
                 liteSrc = AssetDatabase.LoadAssetAtPath<TextAsset>(Models + "Corsair_lod_src.bytes"), lodDistance = 90f,
+                far = AssetDatabase.LoadAssetAtPath<TextAsset>(Models + "Corsair_far.bytes"),
+                farSrc = AssetDatabase.LoadAssetAtPath<TextAsset>(Models + "Corsair_far_src.bytes"), farDistance = 450f,
                 lights = AssetDatabase.LoadAssetAtPath<TextAsset>(Models + "Corsair_lights.json") } : null;
             b.postShader = AssetDatabase.LoadAssetAtPath<Shader>("Assets/_Project/Shaders/PostFX.shader");
             b.volumetricShader = AssetDatabase.LoadAssetAtPath<Shader>("Assets/_Project/Shaders/VolumetricClouds.shader");

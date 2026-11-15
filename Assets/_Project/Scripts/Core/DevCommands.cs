@@ -15,17 +15,20 @@ namespace SkyTide
             "repair · hurt 25 — флагману 25% · weather storm|haze|clear · merchant — враг к торговцу · all1km — все враги в 1 км · " +
             "auto on|off — автобой · config — перечитать config.json · cfg поле число — правка баланса на лету · " +
             "shot [почему] — метка со снимком · report — отчёт сейчас · bench — автозамер · " +
+            "tap pause|row N|radar|ammo|board|spy|auto|ripple|left|right|fps|gear N|xy 0.5,0.5 — нажатие как пальцем · " +
             "where — координаты всех · pilot goto x z [ход]|heading град|speed|stop|release · go цель [N] [ход] · tp x z [курс] · " +
             "cam orbit цель [N] угол наклон дист|at x y z курс наклон|look x y z цель [N]|fov N|height N|off · hud 0|1 · photo [full] подпись · " +
             "цели: me fortress berth near enemy N ally N merchant · set clouds|fps60|post|crew|sharpen|fortress|fortshadow|lod|fx 0|1 · set shadows 0|1|2 · fps N — замер N с (в отчёт) · say текст — надпись на экране";
 
         public static float TimeScaleSet = 1f;
         static readonly StringBuilder measures = new StringBuilder();
-        static string Settings()
+        public static string Settings()
         {
             SkyTideBootstrap g = SkyTideBootstrap.Instance;
             SkyTidePost p = Camera.main != null ? Camera.main.GetComponent<SkyTidePost>() : null;
-            return "облака " + (g != null && g.volumetricClouds ? "об" : "рис") + " тени " + QualitySettings.shadows + " пост " + (p != null && p.enabled)
+            VolumetricClouds vc = g != null ? g.Volumetric : null;
+            string vol = vc != null && vc.enabled ? "об(башни " + (vc.debugTowers ? 1 : 0) + " море " + (vc.debugDeck ? 1 : 0) + " имп " + (vc.impostors ? 1 : 0) + ")" : "рис";
+            return "облака " + vol + " тени " + QualitySettings.shadows + " пост " + (p != null && p.enabled)
                 + " резк " + SkyTidePost.Sharpen + " крепость " + (g != null && g.Fortress != null && g.Fortress.Visible) + " LOD " + ShipLod.Enabled
                 + " темп " + (DebugRecorder.Instance != null ? DebugRecorder.Instance.BatteryTemp.ToString("F1") : "?");
         }
@@ -168,6 +171,12 @@ namespace SkyTide
                         string label = line.Length > 5 ? line.Substring(5).Trim() : "снимок";
                         ReportUploader.Instance.Photo(label, full); return "снимок";
                     }
+                case "tap":
+                    {
+                        TouchControls tc = g != null ? g.GetComponent<TouchControls>() : null;
+                        if (tc == null) return "нет управления";
+                        return tc.RemoteTap(arg, a.Length > 2 ? a[2] : null);
+                    }
                 case "say": HudNotice.Show(line.Substring(3).Trim(), 0, 6f); return "показано";
                 case "set": return Set(arg, a.Length > 2 ? a[2] : "1", g);
             }
@@ -192,6 +201,7 @@ namespace SkyTide
                 case "fortress": if (g == null || g.Fortress == null) return "нет крепости"; g.Fortress.Visible = on; return "крепость видна " + on;
                 case "fortshadow": SkyFortress.ShadowsFar = on; return "тень крепости издалека " + on;
                 case "lod": ShipLod.Enabled = on; return "лёгкие модели " + on;
+                case "far": { float k; if (float.TryParse(val, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out k)) ShipLod.FarScale = Mathf.Clamp(k, 0.2f, 20f); return "дальний уровень ×" + ShipLod.FarScale; }
                 case "cull": { float d; if (float.TryParse(val, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out d)) ShipLod.CullDistance = Mathf.Max(300f, d); return "не рисовать дальше " + ShipLod.CullDistance + " м"; }
                 case "fx": if (g == null || g.Fx == null) return "нет эффектов"; g.Fx.debugHidden = !on; return "эффекты " + on;
                 case "crew":

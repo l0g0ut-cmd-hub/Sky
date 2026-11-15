@@ -31,19 +31,19 @@ namespace SkyTide
             if (big == null)
             {
                 bg = new Texture2D(1, 1); bg.SetPixel(0, 0, new Color(0.08f, 0.05f, 0.02f, 0.72f)); bg.Apply();
-                big = new GUIStyle(GUI.skin.label) { alignment = TextAnchor.MiddleCenter, fontStyle = FontStyle.Bold, fontSize = Mathf.RoundToInt(u * 0.075f) };
+                big = new GUIStyle(GUI.skin.label) { alignment = TextAnchor.MiddleCenter, fontStyle = FontStyle.Bold, fontSize = Mathf.RoundToInt(u * 0.038f) };
                 big.normal.textColor = new Color(1f, 0.85f, 0.45f);
-                small = new GUIStyle(big) { fontSize = Mathf.RoundToInt(u * 0.042f), fontStyle = FontStyle.Normal };
+                small = new GUIStyle(big) { fontSize = Mathf.RoundToInt(u * 0.028f), fontStyle = FontStyle.Normal };
                 small.normal.textColor = Color.white;
             }
-            float w = Screen.width * 0.62f, h = u * 0.30f;
-            Rect r = new Rect((Screen.width - w) * 0.5f, Screen.height * 0.18f, w, h);
+            // Узкая полоса у верхнего края (владелец: «сверху, чтобы весь экран не закрывала»).
+            float w = Screen.width * 0.56f, h = u * 0.075f;
+            Rect r = new Rect((Screen.width - w) * 0.5f, 0f, w, h);
             GUI.DrawTexture(r, bg);
-            GUI.Label(new Rect(r.x, r.y + h * 0.04f, w, h * 0.42f), "УПРАВЛЯЕТ CLAUDE", big);
             float left = BusyUntil - Time.realtimeSinceStartup;
             string t = left > 0f ? "ЖДИ " + Mathf.FloorToInt(left / 60f) + ":" + Mathf.FloorToInt(left % 60f).ToString("00") : "ИДЁТ ПРОВЕРКА";
-            GUI.Label(new Rect(r.x, r.y + h * 0.46f, w, h * 0.28f), t, small);
-            GUI.Label(new Rect(r.x, r.y + h * 0.72f, w, h * 0.24f), "коснись экрана — отменить", small);
+            GUI.Label(new Rect(r.x, r.y, w * 0.62f, h), "УПРАВЛЯЕТ CLAUDE · " + t, big);
+            GUI.Label(new Rect(r.x + w * 0.62f, r.y, w * 0.38f, h), "коснись — отменить", small);
         }
     }
 }
