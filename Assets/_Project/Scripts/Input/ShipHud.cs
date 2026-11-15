@@ -383,7 +383,7 @@ namespace SkyTide
         static float GunRange(TouchControls input) { Broadside g = input.Guns(); return g != null ? g.MaxRange : 0f; }
         void RadarLines(TouchControls input, HudLayout l)
         {
-            Rect r = l.radar; float lh = l.unit * 0.036f, fs = l.unit * 0.027f, y = r.yMax + l.unit * 0.008f;
+            Rect r = l.radar, ri = l.radarInfo; float lh = l.unit * 0.036f, fs = l.unit * 0.027f;
             float best = float.MaxValue, bestHealth = 1f;
             foreach (TargetShip t in TargetShip.All)
             {
@@ -393,13 +393,14 @@ namespace SkyTide
             }
             SkyFortress fort = SkyFortress.Instance;
             int rows = 1 + (best < float.MaxValue ? 1 : 0) + (fort != null ? 1 : 0);
-            InfoPlate(new Rect(r.x, y - l.unit * 0.008f, r.width, lh * rows + l.unit * 0.016f), lh, Color.white);   // ровно по радару: левый край — общий с FPS и плашкой хода   // латунная плашка (plate_info)
-            Text(new Rect(r.x, y, r.width, lh), "РАДАР " + Range(input.RadarRange), fs, new Color(Mathf.Lerp(muted.r, 1f, 0.4f), Mathf.Lerp(muted.g, 1f, 0.4f), Mathf.Lerp(muted.b, 1f, 0.4f), 1f)); y += lh;
-            if (best < float.MaxValue) { Text(new Rect(r.x, y, r.width, lh), "ВРАГ " + Range(best) + (bestHealth < 0.995f ? " · " + Mathf.RoundToInt(bestHealth * 100f) + "%" : ""), fs, best <= GunRange(input) ? new Color(1f, 0.72f, 0.55f, 1f) : new Color(0.72f, 0.74f, 0.78f, 1f)); y += lh; }   // серым — дальше, чем достают свои пушки
+            InfoPlate(ri, lh, Color.white);   // плашка во всю ширину левой колонки, всегда на три строки
+            float y = ri.y + l.unit * 0.008f + (3 - rows) * lh * 0.5f;   // строки — по центру плашки
+            Text(new Rect(ri.x, y, ri.width, lh), "РАДАР " + Range(input.RadarRange), fs, new Color(Mathf.Lerp(muted.r, 1f, 0.4f), Mathf.Lerp(muted.g, 1f, 0.4f), Mathf.Lerp(muted.b, 1f, 0.4f), 1f)); y += lh;
+            if (best < float.MaxValue) { Text(new Rect(ri.x, y, ri.width, lh), "ВРАГ " + Range(best) + (bestHealth < 0.995f ? " · " + Mathf.RoundToInt(bestHealth * 100f) + "%" : ""), fs, best <= GunRange(input) ? new Color(1f, 0.72f, 0.55f, 1f) : new Color(0.72f, 0.74f, 0.78f, 1f)); y += lh; }   // серым — дальше, чем достают свои пушки
             if (fort != null)
             {
                 Vector3 d = fort.BerthWorld - input.ship.transform.position; d.y = 0f;
-                Text(new Rect(r.x, y, r.width, lh), "ПРИЧАЛ " + Range(d.magnitude), fs, fort.Hostile ? new Color(1f, 0.55f, 0.45f, 1f) : cream);
+                Text(new Rect(ri.x, y, ri.width, lh), "ПРИЧАЛ " + Range(d.magnitude), fs, fort.Hostile ? new Color(1f, 0.55f, 0.45f, 1f) : cream);
             }
         }
 
@@ -509,6 +510,28 @@ namespace SkyTide
                     Line(corner, corner - new Vector2(0f, sy * arm), w, col);
                 }
                 Text(new Rect(q.x - l.unit * 0.1f, q.y + hh + l.unit * 0.005f, l.unit * 0.2f, l.unit * 0.035f), Mathf.RoundToInt(dist / 10f) * 10 + " м", l.unit * 0.026f, col);
+                // Упреждение: куда цель уйдёт за время полёта ядра. Пунктир от рамки к кольцу и подпись — чтобы было
+                // понятно, что это и зачем (владелец 15.11: «что значит этот значок»).
+                if (gb.HasLead)
+                {
+                    Vector3 lp = c.WorldToScreenPoint(gb.LeadPoint);
+                    if (lp.z > 0f)
+                    {
+                        Vector2 lq = new Vector2(lp.x, Screen.height - lp.y);
+                        Color lc = new Color(1f, 0.82f, 0.45f, 0.9f);
+                        float rr = l.unit * 0.022f, lw2 = Mathf.Max(1.5f, l.unit * 0.003f);
+                        for (int k = 0; k < 20; k++) { float a0 = k * Mathf.PI / 10f, a1 = (k + 1) * Mathf.PI / 10f; Line(lq + new Vector2(Mathf.Cos(a0), Mathf.Sin(a0)) * rr, lq + new Vector2(Mathf.Cos(a1), Mathf.Sin(a1)) * rr, lw2, lc); }
+                        Line(lq - new Vector2(rr * 0.4f, 0f), lq + new Vector2(rr * 0.4f, 0f), lw2, lc); Line(lq - new Vector2(0f, rr * 0.4f), lq + new Vector2(0f, rr * 0.4f), lw2, lc);
+                        Vector2 dv = lq - q; float dl = dv.magnitude;
+                        if (dl > rr * 3f)
+                        {
+                            Vector2 dn = dv / dl; Vector2 a = q + dn * Mathf.Min(dl * 0.5f, Mathf.Max(hw, hh) * 0.6f), b = lq - dn * rr * 1.3f;
+                            float seg = l.unit * 0.012f, len = (b - a).magnitude;
+                            for (float t0 = 0f; t0 < len; t0 += seg * 2f) Line(a + dn * t0, a + dn * Mathf.Min(len, t0 + seg), lw2, new Color(lc.r, lc.g, lc.b, 0.7f));
+                        }
+                        Text(new Rect(lq.x - l.unit * 0.12f, lq.y - rr - l.unit * 0.034f, l.unit * 0.24f, l.unit * 0.03f), "УПРЕЖДЕНИЕ", l.unit * 0.022f, lc);
+                    }
+                }
             }
         }
 

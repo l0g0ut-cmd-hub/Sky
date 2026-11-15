@@ -251,6 +251,8 @@ namespace SkyTide
         /// <summary>Цель, взятая игроком касанием по кораблю (владелец 15.11: «кого взял в таргет — по тому и целимся»).
         /// Без неё и без автобоя прицела нет: стрелка не рисуется, стволы стоят прямо.</summary>
         public TargetShip Locked;
+        /// <summary>Точка упреждения по взятой цели (где она будет, когда долетит ядро); есть, пока залп не ложится в корпус.</summary>
+        [System.NonSerialized] public bool HasLead; [System.NonSerialized] public Vector3 LeadPoint;
         /// <summary>Автобой сам выбирает цель (как раньше — ближайшую к траверзу).</summary>
         public bool AutoAim;
         /// <summary>Цель прицельного борта (радар выделяет её).</summary>
@@ -457,6 +459,7 @@ namespace SkyTide
             // Цель: в пределах 1.3 дальности борта, лучше — та, что ближе к траверзу (носом/кормой стволы не наводятся).
             // Удержание: прежняя цель остаётся, пока новая не лучше на 25%.
             float reach = MaxRange * 1.3f;
+            HasLead = false;
             if (Locked != null && (!Locked.Alive || !Locked.gameObject.activeInHierarchy)) Locked = null;
             TargetShip best = null; float bestScore = float.MaxValue, curScore = float.MaxValue;
             if (Locked != null) best = Locked;
@@ -553,7 +556,7 @@ namespace SkyTide
             if (AutoAim) OffSideSolve(-side, reach, fx); else { offSolved = false; OffOnTarget = false; }   // второй борт — только в автобое
             // Залп не ложится в цель, но решение есть: малая метка там, где цель окажется к прилёту ядер, —
             // её и надо поставить на траверз (доворот стволов ограничен).
-            if (!AimOnTarget && solved) fx.AddAim(best.Center + targetVel * flightTime, Vector3.up, 6f, 3, 1f, 0.45f);
+            HasLead = !AimOnTarget && solved && best == Locked; if (HasLead) LeadPoint = best.Center + targetVel * flightTime;   // упреждение рисует HUD: кольцо, пунктир от рамки цели и подпись
             float mark = ready ? 1f : 0.6f;
             if (midHull) fx.AddAim(midEnd, Vector3.up, 9f, 3, 1f, mark);            // прицел на корпусе цели
             if (foreHull && fore != mid) fx.AddAim(foreEnd, Vector3.up, 5f, 3, 1f, mark * 0.8f);

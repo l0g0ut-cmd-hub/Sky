@@ -5,7 +5,7 @@ namespace SkyTide
     /// <summary>Одна геометрия в пикселях (начало сверху слева) для рисования и попадания пальца.</summary>
     public struct HudLayout
     {
-        public Rect safe, port, starboard, mode, ammo, board, spy, auto, clouds, ship, course, speed, fps, version, hint, radar, telegraph, pause;
+        public Rect safe, port, starboard, mode, ammo, board, spy, auto, clouds, ship, course, speed, fps, version, hint, radar, radarInfo, telegraph, pause;
         public Vector2 wheel;
         public float unit, radius;
 
@@ -30,15 +30,22 @@ namespace SkyTide
             l.clouds = new Rect(safeArea.xMax - m - u * 0.43f, safeArea.y + m, u * 0.43f, u * 0.105f);
             l.ship = new Rect(l.clouds.x, l.clouds.yMax + gap, l.clouds.width, u * 0.08f);
             l.course = new Rect(safeArea.center.x - u * 0.2f, safeArea.y + m, u * 0.4f, u * 0.075f);   // шире: лента компаса была заметно уже полосы корпуса
-            l.fps = new Rect(safeArea.x + m, safeArea.y + m, u * 0.22f, u * 0.065f);
-            l.speed = new Rect(safeArea.x + m, safeArea.yMax - u * 0.46f, u * 0.34f, u * 0.07f);   // выше штурвала: на 0.425 верхняя рукоять и шарик джойстика лезли на текст (видео сборки 102)
-            // Под радаром — две строки дальностей (враг, причал): место под них вычитается из радара на низких экранах.
-            float rd = Mathf.Min(u * 0.3f, l.speed.y - l.fps.yMax - gap * 2f - u * 0.125f);
-            l.radar = new Rect(safeArea.x + m, l.fps.yMax + gap, rd, rd);
+            // Левая колонка — одна ширина и один левый край для всего: FPS+ТРУБА, радар, плашка радара, плашка хода;
+            // штурвал — по её середине; зазоры между блоками равные (владелец 15.11: «выровняй нормально»).
+            float colW = u * 0.34f, colX = safeArea.x + m;
+            float topH = u * 0.065f, halfW = (colW - gap) * 0.5f;
+            l.fps = new Rect(colX, safeArea.y + m, halfW, topH);
+            l.spy = new Rect(colX + halfW + gap, l.fps.y, halfW, topH);
+            l.speed = new Rect(colX, safeArea.yMax - u * 0.46f, colW, u * 0.07f);   // выше штурвала (видео сборки 102)
+            float infoH = u * 0.036f * 3f + u * 0.016f;   // плашка радара всегда на три строки — высота не скачет
+            float rd = Mathf.Min(u * 0.3f, l.speed.y - l.fps.yMax - gap * 3f - infoH);
+            l.radar = new Rect(colX + (colW - rd) * 0.5f, l.fps.yMax + gap, rd, rd);
+            l.radarInfo = new Rect(colX, l.radar.yMax + gap, colW, infoH);
+            l.speed.y = l.radarInfo.yMax + gap;   // тот же зазор, что между радаром и плашкой
             l.version = new Rect(l.port.x, safeArea.yMax - u * 0.065f, l.ammo.xMax - l.port.x, u * 0.04f);
             l.pause = new Rect(safeArea.xMax - m - u * 0.085f, safeArea.y + m, u * 0.085f, u * 0.075f);   // кнопка паузы — в правом верхнем углу
             l.radius = u * stickRadius;
-            l.wheel = new Vector2(safeArea.x + u * 0.19f, safeArea.yMax - u * 0.215f);
+            l.wheel = new Vector2(colX + colW * 0.5f, safeArea.yMax - u * 0.215f);   // штурвал по середине левой колонки
             // Машинный телеграф: полукруглый циферблат справа от штурвала (5 секторов: назад, стоп, малый, средний, полный).
             float dw = u * 0.31f, dh = dw * TelegraphH / TelegraphW;
             l.telegraph = new Rect(l.wheel.x + l.radius * 1.2f, l.wheel.y - dh * 0.5f, dw, dh);
@@ -46,8 +53,6 @@ namespace SkyTide
             l.hint = new Rect(left, safeArea.yMax - u * 0.1f, Mathf.Max(0f, l.port.x - m - left), u * 0.075f);
             // «НА АБОРДАЖ» — над подсказкой по центру между штурвалом и кнопками бортов (появляется, только когда можно).
             l.board = new Rect(l.hint.center.x - u * 0.17f, l.hint.y - gap - u * 0.09f, u * 0.34f, u * 0.09f);
-            // Подзорная труба — плашка «ТРУБА» справа от счётчика FPS.
-            l.spy = new Rect(l.fps.xMax + gap, l.fps.y, u * 0.2f, l.fps.height);   // был квадрат 0,085 — внутри рамки «×4» сжималось в точку, кнопку не было видно
             return l;
         }
 
