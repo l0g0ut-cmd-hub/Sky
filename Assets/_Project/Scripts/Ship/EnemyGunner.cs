@@ -68,14 +68,17 @@ namespace SkyTide
             }
             if (Time.time < ready) return;
             if (target.Dazed) return;   // капитан растерялся — и пушки молчат
-            if (SkyFortress.InSafeZone(transform.position)) return;   // из зоны крепости не стреляет (кроме глупости — ForceVolley)
+            bool bold = target.Bold;
+            if (!bold && SkyFortress.InSafeZone(transform.position)) return;   // из зоны крепости не стреляет (кроме глупости и дерзости)
             // Цель залпа — ближайший на траверзе в пределах пушек: корабль игрока или свой (сторожевой, ведомый, торговец).
             // Под пушками крепости (в безопасной зоне) враг ни по кому не стреляет.
             victimAlly = null; float dist = float.MaxValue; Vector3 rel = Vector3.zero, local = Vector3.zero;
-            if (player.Alive && !SkyFortress.InSafeZone(pp)) TryVictim(pp, null, ref dist, ref rel, ref local);
+            if (player.Alive && (bold || !SkyFortress.InSafeZone(pp))) TryVictim(pp, null, ref dist, ref rel, ref local);
             foreach (AllyShip al in AllyShip.All)
-                if (al != null && al.Alive && !SkyFortress.InSafeZone(al.transform.position)) TryVictim(al.Center, al, ref dist, ref rel, ref local);
+                if (al != null && al.Alive && (bold || !SkyFortress.InSafeZone(al.transform.position))) TryVictim(al.Center, al, ref dist, ref rel, ref local);
             if (dist == float.MaxValue) return;
+            // Дерзкий залп в зоне (своей или цели) — нарушитель: крепость откроет огонь.
+            if (bold && (SkyFortress.InSafeZone(transform.position) || SkyFortress.InSafeZone(pp))) target.MarkOutlaw();
             // Затупы расчёта: иногда залп запаздывает (замешкались с фитилями), иногда — «на авось» с двойной ошибкой.
             if (Random.value < 0.2f) { ready = Time.time + Random.Range(1f, 3f); return; }
             pendingSide = local.x > 0f ? 1 : -1;

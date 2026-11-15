@@ -41,6 +41,14 @@ namespace SkyTide
         // Порт: подбитый (а иногда и целый) враг уходит чиниться к причалу крепости — там он мирный. Иногда по глупости
         // даёт залп прямо в порту: тогда крепость бьёт уже по нему, и он удирает из зоны.
         enum Mode { Fight, ToPort, InPort, Flee }
+        // Дерзость (владелец 15.11): иногда враг начинает бой прямо в порту — под пушками крепости; сваливает, когда пушки
+        // всерьёз прижимают (потерял ≥20% прочности с начала, ниже 35% или дольше 45 с). Дерзость капитана: новичок 0.08,
+        // бывалый 0.16, ветеран 0.3 — шанс на каждую «мысль» (раз в 15–25 с), пока флагман или свои рядом в зоне.
+        public bool Bold { get; private set; }
+        float boldHealth, boldUntil, nextBoldThink;
+        float Boldness { get { return skill == Skill.Novice ? 0.08f : skill == Skill.Veteran ? 0.3f : 0.16f; } }
+        /// <summary>Огонь в зоне крепости: нарушитель на 45 с, крепость отвечает.</summary>
+        public void MarkOutlaw() { if (!Outlaw) { DebugReport.Count("дерзких залпов в порту"); } OutlawUntil = Time.time + 45f; SkyFortress.NotifyEnemyFired(this); }
         Mode mode = Mode.Fight;
         float nextPortThink, portUntil, dumbAt = -1f, nextPortRepair, burnClock;
         /// <summary>До какого времени крепость считает этот корабль нарушителем и стреляет по нему.</summary>
@@ -122,7 +130,7 @@ namespace SkyTide
                 gunner.skillError = skill == Skill.Novice ? 1.5f : skill == Skill.Veteran ? 0.7f : 1f;
                 gunner.skillCooldown = skill == Skill.Novice ? 1.25f : skill == Skill.Veteran ? 0.85f : 1f;
             }
-            mode = Mode.Fight; OutlawUntil = -1f; dumbAt = -1f;
+            mode = Mode.Fight; OutlawUntil = -1f; dumbAt = -1f; Bold = false;
             nextPortThink = Time.time + Random.Range(25f, 45f);
             if (ctrl != null) ctrl.ClearCrits();
         }
@@ -155,6 +163,27 @@ namespace SkyTide
         {
             SkyFortress f = SkyFortress.Instance;
             if (f == null) { mode = Mode.Fight; return false; }
+            if (Bold)
+            {
+                bool pressed = Health01 < boldHealth - 0.2f || Health01 < 0.35f || Time.time > boldUntil;
+                if (!pressed) { Ai("ДЕРЗИТ", "бой в порту"); return false; }
+                Bold = false; mode = Mode.Flee;
+                DebugReport.Event(name + ": дерзкий сваливает из порта (" + Mathf.RoundToInt(Health01 * 100f) + "%)");
+                if (player != null && (player.position - transform.position).sqrMagnitude < 900f * 900f) HudNotice.Show("ДЕРЗКИЙ ВРАГ СВАЛИВАЕТ ИЗ ПОРТА", 9, 3f);
+            }
+            else if (Time.time >= nextBoldThink && Alive && Health01 > 0.5f && (SkyFortress.InSafeZone(transform.position) || mode == Mode.ToPort))
+            {
+                nextBoldThink = Time.time + Random.Range(15f, 25f);
+                bool foeHere = player != null && SkyFortress.InSafeZone(player.position) && (player.position - transform.position).sqrMagnitude < 700f * 700f;
+                if (!foeHere) foreach (AllyShip al in AllyShip.All) if (al != null && al.Alive && SkyFortress.InSafeZone(al.transform.position) && (al.transform.position - transform.position).sqrMagnitude < 600f * 600f) { foeHere = true; break; }
+                if (foeHere && Random.value < Boldness)
+                {
+                    Bold = true; boldHealth = Health01; boldUntil = Time.time + 45f; mode = Mode.Fight;
+                    DebugReport.Count("дерзостей врага"); DebugReport.Event(name + ": дерзит — бой в порту");
+                    if (player != null && (player.position - transform.position).sqrMagnitude < 900f * 900f) HudNotice.Show("ВРАГ ДЕРЗИТ — БОЙ В ПОРТУ!", 9, 3.5f);
+                    return false;
+                }
+            }
             if (Outlaw && mode != Mode.Flee) mode = Mode.Flee;
             if (mode == Mode.Fight)
             {
@@ -392,7 +421,7 @@ namespace SkyTide
             {
                 Vector3 off = transform.position - f.Center; off.y = 0f;
                 float edge = f.safeRadius + 160f;
-                if (off.sqrMagnitude < edge * edge && off.sqrMagnitude > 1f)
+                if (!Bold && off.sqrMagnitude < edge * edge && off.sqrMagnitude > 1f)   // дерзкий в зону идёт
                 {
                     Vector3 outward = off.normalized; float inward = Vector3.Dot(heading, outward);
                     if (inward < 0.2f) heading = (heading - outward * inward + outward * 0.35f).normalized;

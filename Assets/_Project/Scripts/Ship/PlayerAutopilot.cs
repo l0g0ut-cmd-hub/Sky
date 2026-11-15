@@ -140,8 +140,43 @@ namespace SkyTide
             return boarding.Active;
         }
 
+        // Дерзость автобоя (владелец 15.11): иногда начинаем бой в порту — по врагу у причала; крепость за огонь в зоне поднимет
+        // тревогу и начнёт бить. Сваливаем, когда пушки прижимают: тревога и минус 15% корпуса с начала, ниже 45% или 40 с.
+        bool bold; float boldHull, boldUntil, nextBoldThink, fleeUntil;
+        bool Bold(TargetShip foe, SkyFortress fort)
+        {
+            if (bold)
+            {
+                bool pressed = (fort.Hostile && hull.Health01 < boldHull - 0.15f) || hull.Health01 < 0.45f || Time.time > boldUntil;
+                if (pressed)
+                {
+                    bold = false; fleeUntil = Time.time + 25f;
+                    DebugReport.Event("автобой: сваливаем из порта (" + Mathf.RoundToInt(hull.Health01 * 100f) + "%)");
+                    HudNotice.Show("АВТОБОЙ · УХОДИМ ИЗ-ПОД ПУШЕК КРЕПОСТИ", 0, 3f);
+                }
+                return bold;
+            }
+            if (Time.time < fleeUntil || Time.time < nextBoldThink) return false;
+            nextBoldThink = Time.time + Random.Range(18f, 28f);
+            if (foe == null || foe.Outlaw || hull.Health01 < 0.7f) return false;
+            if (!SkyFortress.InSafeZone(foe.transform.position) && !SkyFortress.InSafeZone(transform.position)) return false;
+            if (Random.value > 0.3f) return false;
+            bold = true; boldHull = hull.Health01; boldUntil = Time.time + 40f;
+            DebugReport.Count("дерзостей автобоя"); DebugReport.Event("автобой: дерзим — бой в порту по " + foe.name);
+            HudNotice.Show("АВТОБОЙ · ДЕРЗИМ — БОЙ В ПОРТУ", 0, 3f);
+            return true;
+        }
+
         void Fight(TargetShip foe, SkyFortress fort)
         {
+            // Свалили из-под пушек: сначала выйти из зоны, потом воевать.
+            if (Time.time < fleeUntil && fort != null && SkyFortress.InSafeZone(transform.position))
+            {
+                Vector3 outDir = transform.position - fort.Center; outDir.y = 0f;
+                if (outDir.sqrMagnitude > 1f) Steer(outDir.normalized, 1f);
+                state = "АВТОБОЙ · УХОДИМ ИЗ ПОРТА";
+                return;
+            }
             state = helping != null && helping.UnderAttack ? "АВТОБОЙ · НА ПОМОЩЬ " + AllyShip.RoleNames[(int)helping.role] : "АВТОБОЙ · БОЙ";
             Vector3 to = foe.transform.position - transform.position; to.y = 0f;
             float dist = to.magnitude;
@@ -195,7 +230,7 @@ namespace SkyTide
             {
                 Vector3 off = transform.position - fort.Center; off.y = 0f;
                 float edge = foe.Outlaw ? fort.BoundRadius + 150f : fort.safeRadius + 120f;
-                if (off.sqrMagnitude < edge * edge && off.sqrMagnitude > 1f)
+                if (!Bold(foe, fort) && off.sqrMagnitude < edge * edge && off.sqrMagnitude > 1f)
                 {
                     Vector3 outward = off.normalized; float inward = Vector3.Dot(heading, outward);
                     if (inward < 0.2f) heading = (heading - outward * inward + outward * 0.4f).normalized;
@@ -224,7 +259,7 @@ namespace SkyTide
             guns.chainShot = runner;
 
             bool zone = SkyFortress.InSafeZone(transform.position);
-            if (zone && !foe.Outlaw) return;
+            if (zone && !foe.Outlaw && !bold) return;
             // Расчёт борта наводится на ближайшего врага — стреляем, когда это и есть цель (или любой враг в прицеле: не жалеем ядер).
             if (guns.AimOnTarget && guns.Readiness(guns.AimSide) >= 0.999f) guns.Fire(guns.AimSide);
         }

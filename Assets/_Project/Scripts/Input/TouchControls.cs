@@ -295,7 +295,8 @@ namespace SkyTide
                 if (p.x < ViewWidth * 0.5f && stickId == int.MinValue)
                 {
                     owners[id] = Owner.Stick;
-                    SetAutoBattle(false);   // взял штурвал — управление снова у игрока
+                    // Автобой выключается, только когда штурвал реально повернули (≥ 6% экрана), а не от касания левой
+                    // половины: 15.11 случайное касание сняло автобой, и корабль простоял 35 минут.
                     stickId = id;
                     stickOrigin = p;
                     stickPos = p;
@@ -315,7 +316,11 @@ namespace SkyTide
             Owner o;
             if (!owners.TryGetValue(id, out o)) return;
 
-            if (o == Owner.Stick) stickPos = p;
+            if (o == Owner.Stick)
+            {
+                stickPos = p;
+                if (AutoBattle && (p - stickOrigin).sqrMagnitude > Mathf.Pow(Mathf.Min(ViewWidth, ViewHeight) * 0.06f, 2f)) SetAutoBattle(false);   // повернул штурвал — управление у игрока
+            }
             else if (o == Owner.Telegraph) GearFromTouch(Layout(ViewWidth, ViewHeight), p);
             else if (o == Owner.Camera && cam != null && CameraFingers() == 1)
             {
