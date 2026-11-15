@@ -18,6 +18,7 @@ namespace SkyTide
         [System.Serializable] class Batch { public int id; public long expires; public string[] cmds; }
         public static string Status = "команды: нет токена";
         public static float LiveUntil = -1f;
+        public static bool Running;
         const string LastKey = "SkyTide.RemoteCmdId";
         string token, etag;
         float nextPoll = 12f, nextAlive = 20f;
@@ -33,6 +34,7 @@ namespace SkyTide
         {
             if (string.IsNullOrEmpty(token) || CiBattle.Active) return;
             if (Application.internetReachability == NetworkReachability.NotReachable) { Status = "команды: нет сети"; return; }
+            if (Running) return;   // одна партия за раз — 15.11 две партии шли параллельно, первая отпустила управление второй
             if (Time.realtimeSinceStartup >= nextPoll) { nextPoll = Time.realtimeSinceStartup + 15f; StartCoroutine(Poll()); }
             if (Time.realtimeSinceStartup >= nextAlive && ReportUploader.Instance != null)
             {
@@ -77,6 +79,7 @@ namespace SkyTide
                     else est += 0.05f;
                 }
                 ControlBanner.BusyUntil = Time.realtimeSinceStartup + est; ControlBanner.Cancelled = false;
+                Running = true;
                 StringBuilder ack = new StringBuilder("команды #" + b.id + " · " + System.DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss") + " · сборка " + DebugReport.BuildNo + "\n");
                 foreach (string c in b.cmds)
                 {
@@ -97,6 +100,7 @@ namespace SkyTide
                     // Нажатие: касание-отпускание занимает кадр.
                     if (c.StartsWith("tap")) { yield return null; yield return null; }
                 }
+                Running = false;
                 // Конец партии — управление владельцу (кроме hold).
                 ControlBanner.BusyUntil = -1f;
                 if (!hold) { RemotePilot.Release(); RemoteCam.Off(); TouchControls.HideHud = false; }

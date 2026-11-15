@@ -80,11 +80,14 @@ namespace SkyTide
         {
             if (cam == null || cam.cameraType == CameraType.Preview) return;
             Vector3 c = cam.transform.position;
+            // Подзорная труба (обзор ×0.28): корабль на экране как в 3.5 раза ближе — уровень детализации по размеру на экране,
+            // а не по метрам (снимок «труба» 15.11: при 15° дальние шли полными моделями, 3 FPS).
+            float zoom = Mathf.Clamp(cam.fieldOfView / 55f, 0.1f, 2f), z2 = zoom * zoom;
             for (int i = 0; i < all.Count; i++)
             {
                 ShipLod l = all[i];
                 if (l == null || l.full == null) continue;
-                float d2 = (l.transform.position - c).sqrMagnitude;
+                float d2 = (l.transform.position - c).sqrMagnitude * z2;
                 bool far = l.lodDistance > 0f && d2 > l.lodDistance * l.lodDistance;
                 float sd = QualitySettings.shadowDistance + 60f;
                 l.Apply(far, d2 > CullDistance * CullDistance, d2 < sd * sd, l.farR != null && d2 > l.farDistance * l.farDistance * FarScale * FarScale);

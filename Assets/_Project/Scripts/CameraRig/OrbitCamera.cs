@@ -56,6 +56,26 @@ namespace SkyTide
             recoil=(recoil+b*dt)*fade;recoilVelocity=(recoilVelocity-w*b*dt)*fade;
         }
 
+        /// <summary>Камера не входит в чужие корабли: удалённая проверка 15.11 — при враге в 70 м весь кадр был его корпусом.
+        /// Сфера ~1.5 радиуса корпуса вокруг центра (с баллонами); камера выталкивается по направлению от центра, плавно.</summary>
+        Vector3 shipPush;
+        Vector3 AvoidShips(Vector3 desired)
+        {
+            Vector3 push = Vector3.zero;
+            for (int i = 0; i < ShipController.All.Count; i++)
+            {
+                ShipController s = ShipController.All[i];
+                if (s == null || s.transform == target || !s.gameObject.activeInHierarchy) continue;
+                Vector3 c = s.transform.position + Vector3.up * 8f * s.transform.lossyScale.y;
+                float r = s.HullRadius * 1.5f;
+                Vector3 d = desired - c;
+                float m = d.magnitude;
+                if (m < r) push += (m > 0.01f ? d / m : Vector3.up) * (r - m);
+            }
+            shipPush = Vector3.Lerp(shipPush, push, 1f - Mathf.Exp(-12f * Time.deltaTime));
+            return desired + shipPush;
+        }
+
         public void Snap()
         {
             snapped = false;
@@ -141,6 +161,7 @@ namespace SkyTide
             wallLift = Mathf.Lerp(wallLift, lift, lift > wallLift ? quick : ease);
             if (fort == null) { wallDistance = reach; wallLift = 0f; }
             Vector3 desired = pivot + backDir * wallDistance + Vector3.up * wallLift;
+            if (Application.isPlaying) desired = AvoidShips(desired);
 
             // Позиция идёт за кораблём жёстко (без отставания на ходу), сглаживается только поворот за курсом.
             transform.position = desired;
@@ -157,7 +178,9 @@ namespace SkyTide
             if (Application.isPlaying && scopeBlend > 0.001f)
             {
                 if (ScopeOn && (scopeTarget == null || !scopeTarget.Alive)) ScopeOn = false;
-                Vector3 deck = target.position + Vector3.up * 14f - target.forward * 10f;
+                // Над баллонами своего корабля (на ~25 м): с юта на 14 м труба смотрела сквозь свои паруса и баллон
+                // (удалённая проверка 15.11, снимок «труба» — весь кадр в парусине).
+                Vector3 deck = target.position + Vector3.up * 26f * target.lossyScale.y;
                 Vector3 look = scopeTarget != null && scopeTarget.Alive ? scopeTarget.Center : deck + target.forward * 300f;
                 Quaternion scopeRot = Quaternion.LookRotation(look - deck, Vector3.up);
                 float k2 = scopeBlend * scopeBlend * (3f - 2f * scopeBlend);

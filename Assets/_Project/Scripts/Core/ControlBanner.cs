@@ -38,7 +38,8 @@ namespace SkyTide
             }
             // Узкая полоса у верхнего края (владелец: «сверху, чтобы весь экран не закрывала»).
             float w = Screen.width * 0.56f, h = u * 0.075f;
-            Rect r = new Rect((Screen.width - w) * 0.5f, 0f, w, h);
+            // Под полосой корпуса (на 21% высоты): у края она закрывала компас курса (скриншот владельца 15.11).
+            Rect r = new Rect((Screen.width - w) * 0.5f, Screen.height * 0.21f, w, h);
             GUI.DrawTexture(r, bg);
             float left = BusyUntil - Time.realtimeSinceStartup;
             string t = left > 0f ? "ЖДИ " + Mathf.FloorToInt(left / 60f) + ":" + Mathf.FloorToInt(left % 60f).ToString("00") : "ИДЁТ ПРОВЕРКА";
