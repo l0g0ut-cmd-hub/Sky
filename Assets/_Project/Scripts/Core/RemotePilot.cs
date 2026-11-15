@@ -33,7 +33,7 @@ namespace SkyTide
         /// <summary>Вызывается из TouchControls вместо ручного управления.</summary>
         public static void Drive(ShipController ship)
         {
-            if (Input.touchCount > 0 && Time.timeSinceLevelLoad > 1f) { Release(); HudNotice.Show("управление возвращено", 0, 2f); DebugReport.Event("удалённое управление: владелец коснулся — отпущено"); return; }
+            // Отмена — только кнопкой «ОТМЕНИТЬ» на табличке (ControlBanner): случайное касание больше не сбрасывает управление.
             Vector3 pos = ship.transform.position;
             Vector3 dir = Vector3.zero; float thr = throttle;
             if (follow != null && duel)

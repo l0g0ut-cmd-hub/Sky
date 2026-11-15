@@ -251,6 +251,8 @@ namespace SkyTide
 
         void Pointer(int id, Vector2 p, bool began, bool ended)
         {
+            // Пока управляет Claude, касания игрока игрой не принимаются (только кнопка «ОТМЕНИТЬ» на табличке).
+            if (id != 77 && ControlBanner.Busy) return;
             if (began)
             {
                 touchedOnce = true;

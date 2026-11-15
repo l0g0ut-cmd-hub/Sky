@@ -25,7 +25,6 @@ namespace SkyTide
         void LateUpdate()
         {
             if (M == Mode.Off || cam == null) { if (cam != null && Fov > 0f) { } return; }
-            if (Input.touchCount > 0) { Off(); if (cam != null) cam.fieldOfView = baseFov; HudNotice.Show("камера возвращена", 0, 2f); return; }
             switch (M)
             {
                 case Mode.Orbit:
