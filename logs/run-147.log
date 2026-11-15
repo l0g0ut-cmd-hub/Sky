@@ -1,0 +1,857 @@
+== uname
+Linux ip-10-0-129-155 7.0.0-1016-aws #17-Ubuntu SMP PREEMPT Mon Oct 19 17:36:33 UTC 2026 x86_64 GNU/Linux
+== df
+Filesystem            Size  Used Avail Use% Mounted on
+/dev/mapper/cow-root  145G   54G   91G  38% /
+Filesystem            Size  Used Avail Use% Mounted on
+/dev/mapper/cow-root  145G   32G  113G  23% /
+флаги сборки: нет (быстрая)
+Downloading game-ci CLI v0.1.72 from https://github.com/game-ci/cli/releases/download/v0.1.72/game-ci-linux-x64.tar.gz
+Checksum verified (SHA256) for game-ci-linux-x64.tar.gz
+/home/runner/work/_temp/game-ci/bin/game-ci
+[INFO] Versioning strategy: None
+[INFO] Version of this build: none
+[INFO] Versioning strategy is set to none, so android version code should not be applied.
+[INFO] linux Android 6000.0.36f1
+::group::Unity build
+[WARN] running docker process for linux (linux)
+Unable to find image 'unityci/editor:ubuntu-6000.0.36f1-android-3' locally
+ubuntu-6000.0.36f1-android-3: Pulling from unityci/editor
+dc7a969c82d9: Pulling fs layer
+4f4fb700ef54: Pulling fs layer
+4f4fb700ef54: Pulling fs layer
+39cd9db1617e: Pulling fs layer
+4f4fb700ef54: Pulling fs layer
+9a4d47d5aa13: Pulling fs layer
+a1ff4bc3f481: Pulling fs layer
+4f4fb700ef54: Pulling fs layer
+46805e80f2d7: Pulling fs layer
+a636358af2c8: Pulling fs layer
+4f4fb700ef54: Pulling fs layer
+4f4fb700ef54: Pulling fs layer
+4f4fb700ef54: Pulling fs layer
+d3a5feebe29b: Pulling fs layer
+4f4fb700ef54: Pulling fs layer
+8e578c7fd715: Pulling fs layer
+8d5d2a3e6b0f: Pulling fs layer
+96c832531c38: Pulling fs layer
+7bcf62982864: Pulling fs layer
+4f4fb700ef54: Pulling fs layer
+4f4fb700ef54: Pulling fs layer
+bef3b93c3984: Pulling fs layer
+4f4fb700ef54: Pulling fs layer
+e1e0763b8b7f: Pulling fs layer
+4f4fb700ef54: Pulling fs layer
+4f4fb700ef54: Pulling fs layer
+4f4fb700ef54: Pulling fs layer
+4f4fb700ef54: Pulling fs layer
+dc7a969c82d9: Download complete
+4f4fb700ef54: Download complete
+a1ff4bc3f481: Download complete
+d3a5feebe29b: Download complete
+7bcf62982864: Download complete
+39cd9db1617e: Download complete
+9a4d47d5aa13: Download complete
+a636358af2c8: Download complete
+bef3b93c3984: Download complete
+8e578c7fd715: Download complete
+e1e0763b8b7f: Download complete
+54e8aef068c6: Download complete
+96c832531c38: Download complete
+9a4d47d5aa13: Pull complete
+96c832531c38: Pull complete
+46805e80f2d7: Download complete
+46805e80f2d7: Pull complete
+dc7a969c82d9: Pull complete
+a1ff4bc3f481: Pull complete
+d3a5feebe29b: Pull complete
+a636358af2c8: Pull complete
+bef3b93c3984: Pull complete
+8d5d2a3e6b0f: Download complete
+8d5d2a3e6b0f: Pull complete
+7bcf62982864: Pull complete
+e1e0763b8b7f: Pull complete
+4f4fb700ef54: Pull complete
+8e578c7fd715: Pull complete
+39cd9db1617e: Pull complete
+Digest: sha256:3c18892b45bbe8448d64330521b029a8bf7b733f2038ddf45b47440273c1f22a
+Status: Downloaded newer image for unityci/editor:ubuntu-6000.0.36f1-android-3
+Updating Android SDK with auto detected target API version
+grep: /github/workspace/./ProjectSettings/ProjectSettings.asset: No such file or directory
+Loading package information...                                                  
+Loading local repository...                                                     
+[                                       ] 3% Loading local repository...        
+[                                       ] 3% Fetch remote repository...         
+[=                                      ] 3% Fetch remote repository...         
+[=                                      ] 4% Fetch remote repository...         
+[=                                      ] 5% Fetch remote repository...         
+[==                                     ] 5% Fetch remote repository...         
+[==                                     ] 6% Fetch remote repository...         
+[==                                     ] 7% Fetch remote repository...         
+[==                                     ] 7% Computing updates...               
+[===                                    ] 8% Computing updates...               
+[===                                    ] 10% Computing updates...              
+Warning: Failed to find package 'platforms;android-'
+                                                                                
+[===                                    ] 10% Computing updates...              
+Updated Android SDK.
+Running as root
+GIT_CONFIG_EXTENSIONS unset skipping
+---------- git config --list -------------
+filter.lfs.clean=git-lfs clean -- %f
+filter.lfs.smudge=git-lfs smudge -- %f
+filter.lfs.process=git-lfs filter-process
+filter.lfs.required=true
+---------- git config --list --show-origin -------------
+file:/etc/gitconfig	filter.lfs.clean=git-lfs clean -- %f
+file:/etc/gitconfig	filter.lfs.smudge=git-lfs smudge -- %f
+file:/etc/gitconfig	filter.lfs.process=git-lfs filter-process
+file:/etc/gitconfig	filter.lfs.required=true
+GIT_PRIVATE_TOKEN unset skipping
+---------- git config --list -------------
+filter.lfs.clean=git-lfs clean -- %f
+filter.lfs.smudge=git-lfs smudge -- %f
+filter.lfs.process=git-lfs filter-process
+filter.lfs.required=true
+---------- git config --list --show-origin -------------
+file:/etc/gitconfig	filter.lfs.clean=git-lfs clean -- %f
+file:/etc/gitconfig	filter.lfs.smudge=git-lfs smudge -- %f
+file:/etc/gitconfig	filter.lfs.process=git-lfs filter-process
+file:/etc/gitconfig	filter.lfs.required=true
+Changing to "/github/workspace/_activate-license~" directory.
+/github/workspace/_activate-license~ /github/workspace
+Licensing method: personal
+Requesting activation (personal license via Unity account)
+Trying to activate all seats ...
+Activation processed successfully.
+
+Seat ID: 5774143681452-UnityPersonal
+Status: [200] ASSIGN_SEAT
+
+
+Trying to update entitlement license file ...
+Successfully updated UnityEntitlementLicense.xml!
+Activation complete.
+/github/workspace
+Using project path "/github/workspace/.".
+Using build name "SkyTide".
+Using build target "Android".
+Doing a default "Android" platform build.
+Using build path "build/Android" to save file "SkyTide.apk".
+Using build method "SkyTide.EditorTools.BuildScript.BuildAndroid".
+
+###########################
+#    Custom parameters    #
+###########################
+
+
+
+###########################
+#    Current build dir    #
+###########################
+
+Creating "/github/workspace/build/Android" if it does not exist.
+total 8.0K
+drwxr-xr-x 2 root root 4.0K Nov 15 15:56 .
+drwxr-xr-x 3 root root 4.0K Nov 15 15:56 ..
+
+###########################
+#    Project directory    #
+###########################
+
+total 336K
+drwxr-xr-x 10 1001 1001 4.0K Nov 15 15:56 .
+drwxr-xr-x  3 root root 4.0K Nov 15 15:56 ..
+drwxr-xr-x  8 1001 1001 4.0K Nov 15 15:52 .git
+drwxr-xr-x  3 1001 1001 4.0K Nov 15 15:52 .github
+-rw-r--r--  1 1001 1001  311 Nov 15 15:52 .gitignore
+drwxr-xr-x  3 1001 1001 4.0K Nov 15 15:54 Assets
+drwxr-xr-x 15 1001 1001 4.0K Nov 15 15:19 Library
+drwxr-xr-x  2 1001 1001 4.0K Nov 15 15:52 ProjectSettings
+-rw-r--r--  1 1001 1001 4.5K Nov 15 15:52 README.md
+drwxr-xr-x  2 root root 4.0K Nov 15 15:56 _activate-license~
+drwxr-xr-x  3 root root 4.0K Nov 15 15:56 build
+-rw-r--r--  1 1001 1001    1 Nov 15 15:54 build-flags.txt
+-rw-r--r--  1 1001 1001 279K Nov 15 15:52 sky-log.txt
+drwxr-xr-x  9 1001 1001 4.0K Nov 15 15:52 tools
+
+###########################
+#    Building project     #
+###########################
+
+[UnityConnectServicesConfig] Local config successfully read: "/usr/share/unity3d/config/services-config.json"
+[UnityConnectServicesConfig] "clientConnectTimeoutSec" was overridden with "5"
+[UnityConnectServicesConfig] "clientHandshakeTimeoutSec" was overridden with "10"
+[UnityConnectServicesConfig] Service configuration:
+    "servicesConfigBaseUrl": "",
+    "disableServicesWindow": false,
+    "disableUserLogin": false,
+    "entitlementCacheTimeoutInSeconds": 60,
+    "clientConnectTimeoutSec": 5,
+    "clientHandshakeTimeoutSec": 10,
+    "clientResolveEntitlementsTimeoutSec": 30,
+    "clientUpdateLicenseTimeoutSec": 30,
+    "licensingServiceBaseUrl": "",
+    "enableProxyAutoconfig": "false"
+
+Unity Editor version:    6000.0.36f1 (9fe3b5f71dbb)
+Branch:                  6000.0/staging
+Build type:              Release
+Batch mode:              YES
+System name:             Linux
+Distro version:          #17-Ubuntu SMP PREEMPT Mon Oct 19 17:36:33 UTC 2026
+Kernel version:          7.0.0-1016-aws
+Architecture:            x86_64
+Available memory:        15700 MB
+[Licensing::Module] Trying to connect to existing licensing client channel...
+[Licensing::IpcConnector] Connection attempt to the License Client on channel: "LicenseClient-root" failed because channel doesn't exist; code: "0x80000002"
+[Licensing::Module] Successfully launched the LicensingClient (PId: 166)
+[Licensing::IpcConnector] Successfully connected to the License Client on channel: "LicenseClient-root" at "2026-11-15T15:56:40.817232Z"
+[SignatureVerifier] Application signature verification not supported on this platform.
+[Licensing::Client] Handshaking with LicensingClient:
+  Version:                 1.16.2+bdef8f5
+  Session Id:              7ea05edc011443738fb341a45514c5f1
+  Correlation Id:          861b340ee30ee4af888ede55ed7d7ee3
+  External correlation Id: 2107572451667504990
+  Machine Id:              D7nTUnjNAmtsUMcnoyrqkgIbYdM=
+[Licensing::Module] Successfully connected to LicensingClient on channel: "LicenseClient-root" (connect: 0.38s, validation: 0.04s, handshake: 0.00s)
+[Licensing::IpcConnector] Successfully connected to the License Notification on channel: "LicenseClient-root-notifications" at "2026-11-15T15:56:40.855887Z"
+[Licensing::Module] Connected to LicensingClient (PId: 166, launch time: 0.00, total connection time: 0.41s)
+[Licensing::Module] Error: Access token is unavailable; failed to update
+[Licensing::Client] Error: Code 500 while processing request (status: Unable to update licenses. Errors: No ULF license found.,Token not found in cache)
+[Licensing::Client] Error: Code 500 while updating license in client (status: Unable to update licenses. Errors: No ULF license found.,Token not found in cache)
+[Licensing::Client] Successfully resolved entitlement details
+[Licensing::Module] Serial number assigned to: "5774143681452-UnityPersXXXX"
+Pro License: NO
+The selected window backend is (null) 
+Desktop is 1280 x 1024 @ 60 Hz
+Initialize udev device monitor.
+CreateDirectory '/root/.cache/unity3d' failed:  (current dir: /github/workspace)
+[Licensing::Client] Successfully resolved entitlement details
+
+COMMAND LINE ARGUMENTS:
+/opt/unity/Editor/Unity
+-batchmode
+-logfile
+/dev/stdout
+-quit
+-customBuildName
+SkyTide
+-projectPath
+/github/workspace/.
+-buildTarget
+Android
+-customBuildTarget
+Android
+-customBuildPath
+/github/workspace/build/Android/SkyTide.apk
+-customBuildProfile
+
+-executeMethod
+SkyTide.EditorTools.BuildScript.BuildAndroid
+-buildVersion
+none
+-androidVersionCode
+0
+-androidKeystoreName
+
+-androidKeystorePass
+
+-androidKeyaliasName
+
+-androidKeyaliasPass
+
+-androidTargetSdkVersion
+
+-androidExportType
+androidPackage
+-androidSymbolType
+none
+Successfully changed project path to: /github/workspace/.
+
+(Unity:160): Gtk-CRITICAL **: 15:56:41.093: gtk_label_set_text: assertion 'GTK_IS_LABEL (label)' failed
+
+(Unity:160): Gtk-CRITICAL **: 15:56:41.094: gtk_label_set_text: assertion 'GTK_IS_LABEL (label)' failed
+/github/workspace
+[UnityMemory] Configuration Parameters - Can be set up in boot.config
+    "memorysetup-bucket-allocator-granularity=16"
+    "memorysetup-bucket-allocator-bucket-count=8"
+    "memorysetup-bucket-allocator-block-size=33554432"
+    "memorysetup-bucket-allocator-block-count=8"
+    "memorysetup-main-allocator-block-size=16777216"
+    "memorysetup-thread-allocator-block-size=16777216"
+    "memorysetup-gfx-main-allocator-block-size=16777216"
+    "memorysetup-gfx-thread-allocator-block-size=16777216"
+    "memorysetup-cache-allocator-block-size=4194304"
+    "memorysetup-typetree-allocator-block-size=2097152"
+    "memorysetup-profiler-bucket-allocator-granularity=16"
+    "memorysetup-profiler-bucket-allocator-bucket-count=8"
+    "memorysetup-profiler-bucket-allocator-block-size=33554432"
+    "memorysetup-profiler-bucket-allocator-block-count=8"
+    "memorysetup-profiler-allocator-block-size=16777216"
+    "memorysetup-profiler-editor-allocator-block-size=1048576"
+    "memorysetup-temp-allocator-size-main=16777216"
+    "memorysetup-job-temp-allocator-block-size=2097152"
+    "memorysetup-job-temp-allocator-block-size-background=1048576"
+    "memorysetup-job-temp-allocator-reduction-small-platforms=262144"
+    "memorysetup-allocator-temp-initial-block-size-main=262144"
+    "memorysetup-allocator-temp-initial-block-size-worker=262144"
+    "memorysetup-temp-allocator-size-background-worker=32768"
+    "memorysetup-temp-allocator-size-job-worker=262144"
+    "memorysetup-temp-allocator-size-preload-manager=33554432"
+    "memorysetup-temp-allocator-size-nav-mesh-worker=65536"
+    "memorysetup-temp-allocator-size-audio-worker=65536"
+    "memorysetup-temp-allocator-size-cloud-worker=32768"
+    "memorysetup-temp-allocator-size-gi-baking-worker=262144"
+    "memorysetup-temp-allocator-size-gi-baking-worker=262144"
+    "memorysetup-temp-allocator-size-gi-baking-worker=262144"
+    "memorysetup-temp-allocator-size-gi-baking-worker=262144"
+    "memorysetup-temp-allocator-size-gi-baking-worker=262144"
+    "memorysetup-temp-allocator-size-gfx=262144"
+Player connection [126942014367040]  Target information:
+
+Player connection [126942014367040]  * "[IP] 172.17.0.2 [Port] 55504 [Flags] 2 [Guid] 3846153818 [EditorId] 3846153818 [Version] 1048832 [Id] LinuxEditor(16,172.17.0.2) [Debug] 1 [PackageName] LinuxEditor [ProjectName] Editor" 
+
+Player connection [126942014367040] Host joined multi-casting on [225.0.0.222:54997]...
+Player connection [126942014367040] Host joined alternative multi-casting on [225.0.0.222:34997]...
+Input System module state changed to: Initialized.
+[Physics::Module] Initialized fallback backend.
+[Physics::Module] Id: 0xdecafbad
+[Package Manager] Connected to IPC stream "Upm-160" after 0.1 seconds.
+Library Redirect Path: Library/
+[Package Manager] Restoring resolved packages state from cache
+[Licensing::Client] Successfully resolved entitlement details
+[Package Manager] Registered 35 packages:
+  Built-in packages:
+    com.unity.multiplayer.center@1.0.0 (location: /github/workspace/Library/PackageCache/com.unity.multiplayer.center@ffda662e48c2)
+    com.unity.modules.accessibility@1.0.0 (location: /opt/unity/Editor/Data/Resources/PackageManager/BuiltInPackages/com.unity.modules.accessibility)
+    com.unity.modules.ai@1.0.0 (location: /opt/unity/Editor/Data/Resources/PackageManager/BuiltInPackages/com.unity.modules.ai)
+    com.unity.modules.androidjni@1.0.0 (location: /opt/unity/Editor/Data/Resources/PackageManager/BuiltInPackages/com.unity.modules.androidjni)
+    com.unity.modules.animation@1.0.0 (location: /opt/unity/Editor/Data/Resources/PackageManager/BuiltInPackages/com.unity.modules.animation)
+    com.unity.modules.assetbundle@1.0.0 (location: /opt/unity/Editor/Data/Resources/PackageManager/BuiltInPackages/com.unity.modules.assetbundle)
+    com.unity.modules.audio@1.0.0 (location: /opt/unity/Editor/Data/Resources/PackageManager/BuiltInPackages/com.unity.modules.audio)
+    com.unity.modules.cloth@1.0.0 (location: /opt/unity/Editor/Data/Resources/PackageManager/BuiltInPackages/com.unity.modules.cloth)
+    com.unity.modules.director@1.0.0 (location: /opt/unity/Editor/Data/Resources/PackageManager/BuiltInPackages/com.unity.modules.director)
+    com.unity.modules.imageconversion@1.0.0 (location: /opt/unity/Editor/Data/Resources/PackageManager/BuiltInPackages/com.unity.modules.imageconversion)
+    com.unity.modules.imgui@1.0.0 (location: /opt/unity/Editor/Data/Resources/PackageManager/BuiltInPackages/com.unity.modules.imgui)
+    com.unity.modules.jsonserialize@1.0.0 (location: /opt/unity/Editor/Data/Resources/PackageManager/BuiltInPackages/com.unity.modules.jsonserialize)
+    com.unity.modules.particlesystem@1.0.0 (location: /opt/unity/Editor/Data/Resources/PackageManager/BuiltInPackages/com.unity.modules.particlesystem)
+    com.unity.modules.physics@1.0.0 (location: /opt/unity/Editor/Data/Resources/PackageManager/BuiltInPackages/com.unity.modules.physics)
+    com.unity.modules.physics2d@1.0.0 (location: /opt/unity/Editor/Data/Resources/PackageManager/BuiltInPackages/com.unity.modules.physics2d)
+    com.unity.modules.screencapture@1.0.0 (location: /opt/unity/Editor/Data/Resources/PackageManager/BuiltInPackages/com.unity.modules.screencapture)
+    com.unity.modules.terrain@1.0.0 (location: /opt/unity/Editor/Data/Resources/PackageManager/BuiltInPackages/com.unity.modules.terrain)
+    com.unity.modules.terrainphysics@1.0.0 (location: /opt/unity/Editor/Data/Resources/PackageManager/BuiltInPackages/com.unity.modules.terrainphysics)
+    com.unity.modules.tilemap@1.0.0 (location: /opt/unity/Editor/Data/Resources/PackageManager/BuiltInPackages/com.unity.modules.tilemap)
+    com.unity.modules.ui@1.0.0 (location: /opt/unity/Editor/Data/Resources/PackageManager/BuiltInPackages/com.unity.modules.ui)
+    com.unity.modules.uielements@1.0.0 (location: /opt/unity/Editor/Data/Resources/PackageManager/BuiltInPackages/com.unity.modules.uielements)
+    com.unity.modules.umbra@1.0.0 (location: /opt/unity/Editor/Data/Resources/PackageManager/BuiltInPackages/com.unity.modules.umbra)
+    com.unity.modules.unityanalytics@1.0.0 (location: /opt/unity/Editor/Data/Resources/PackageManager/BuiltInPackages/com.unity.modules.unityanalytics)
+    com.unity.modules.unitywebrequest@1.0.0 (location: /opt/unity/Editor/Data/Resources/PackageManager/BuiltInPackages/com.unity.modules.unitywebrequest)
+    com.unity.modules.unitywebrequestassetbundle@1.0.0 (location: /opt/unity/Editor/Data/Resources/PackageManager/BuiltInPackages/com.unity.modules.unitywebrequestassetbundle)
+    com.unity.modules.unitywebrequestaudio@1.0.0 (location: /opt/unity/Editor/Data/Resources/PackageManager/BuiltInPackages/com.unity.modules.unitywebrequestaudio)
+    com.unity.modules.unitywebrequesttexture@1.0.0 (location: /opt/unity/Editor/Data/Resources/PackageManager/BuiltInPackages/com.unity.modules.unitywebrequesttexture)
+    com.unity.modules.unitywebrequestwww@1.0.0 (location: /opt/unity/Editor/Data/Resources/PackageManager/BuiltInPackages/com.unity.modules.unitywebrequestwww)
+    com.unity.modules.vehicles@1.0.0 (location: /opt/unity/Editor/Data/Resources/PackageManager/BuiltInPackages/com.unity.modules.vehicles)
+    com.unity.modules.video@1.0.0 (location: /opt/unity/Editor/Data/Resources/PackageManager/BuiltInPackages/com.unity.modules.video)
+    com.unity.modules.vr@1.0.0 (location: /opt/unity/Editor/Data/Resources/PackageManager/BuiltInPackages/com.unity.modules.vr)
+    com.unity.modules.wind@1.0.0 (location: /opt/unity/Editor/Data/Resources/PackageManager/BuiltInPackages/com.unity.modules.wind)
+    com.unity.modules.xr@1.0.0 (location: /opt/unity/Editor/Data/Resources/PackageManager/BuiltInPackages/com.unity.modules.xr)
+    com.unity.modules.subsystems@1.0.0 (location: /opt/unity/Editor/Data/Resources/PackageManager/BuiltInPackages/com.unity.modules.subsystems)
+    com.unity.modules.hierarchycore@1.0.0 (location: /opt/unity/Editor/Data/Resources/PackageManager/BuiltInPackages/com.unity.modules.hierarchycore)
+[Physics::Module] Selected backend.
+[Physics::Module] Name: PhysX
+[Physics::Module] Id: 0xf2b8ea05
+[Physics::Module] SDK Version: 4.1.2
+[Physics::Module] Integration Version: 1.0.0
+[Physics::Module] Threading Mode: Multi-Threaded
+Unable to load player prefs
+[Subsystems] No new subsystems found in resolved package list.
+Package Manager log level set to [2]
+[Package Manager] Done registering packages in 0.03 seconds
+[Package Manager] Done resolving packages in 0.51 seconds
+[Package Manager] Lock file was modified
+[Package Manager] Registered 35 packages:
+  Built-in packages:
+    com.unity.multiplayer.center@1.0.0 (location: /github/workspace/Library/PackageCache/com.unity.multiplayer.center@ffda662e48c2)
+    com.unity.modules.accessibility@1.0.0 (location: /opt/unity/Editor/Data/Resources/PackageManager/BuiltInPackages/com.unity.modules.accessibility)
+    com.unity.modules.ai@1.0.0 (location: /opt/unity/Editor/Data/Resources/PackageManager/BuiltInPackages/com.unity.modules.ai)
+    com.unity.modules.androidjni@1.0.0 (location: /opt/unity/Editor/Data/Resources/PackageManager/BuiltInPackages/com.unity.modules.androidjni)
+    com.unity.modules.animation@1.0.0 (location: /opt/unity/Editor/Data/Resources/PackageManager/BuiltInPackages/com.unity.modules.animation)
+    com.unity.modules.assetbundle@1.0.0 (location: /opt/unity/Editor/Data/Resources/PackageManager/BuiltInPackages/com.unity.modules.assetbundle)
+    com.unity.modules.audio@1.0.0 (location: /opt/unity/Editor/Data/Resources/PackageManager/BuiltInPackages/com.unity.modules.audio)
+    com.unity.modules.cloth@1.0.0 (location: /opt/unity/Editor/Data/Resources/PackageManager/BuiltInPackages/com.unity.modules.cloth)
+    com.unity.modules.director@1.0.0 (location: /opt/unity/Editor/Data/Resources/PackageManager/BuiltInPackages/com.unity.modules.director)
+    com.unity.modules.imageconversion@1.0.0 (location: /opt/unity/Editor/Data/Resources/PackageManager/BuiltInPackages/com.unity.modules.imageconversion)
+    com.unity.modules.imgui@1.0.0 (location: /opt/unity/Editor/Data/Resources/PackageManager/BuiltInPackages/com.unity.modules.imgui)
+    com.unity.modules.jsonserialize@1.0.0 (location: /opt/unity/Editor/Data/Resources/PackageManager/BuiltInPackages/com.unity.modules.jsonserialize)
+    com.unity.modules.particlesystem@1.0.0 (location: /opt/unity/Editor/Data/Resources/PackageManager/BuiltInPackages/com.unity.modules.particlesystem)
+    com.unity.modules.physics@1.0.0 (location: /opt/unity/Editor/Data/Resources/PackageManager/BuiltInPackages/com.unity.modules.physics)
+    com.unity.modules.physics2d@1.0.0 (location: /opt/unity/Editor/Data/Resources/PackageManager/BuiltInPackages/com.unity.modules.physics2d)
+    com.unity.modules.screencapture@1.0.0 (location: /opt/unity/Editor/Data/Resources/PackageManager/BuiltInPackages/com.unity.modules.screencapture)
+    com.unity.modules.terrain@1.0.0 (location: /opt/unity/Editor/Data/Resources/PackageManager/BuiltInPackages/com.unity.modules.terrain)
+    com.unity.modules.terrainphysics@1.0.0 (location: /opt/unity/Editor/Data/Resources/PackageManager/BuiltInPackages/com.unity.modules.terrainphysics)
+    com.unity.modules.tilemap@1.0.0 (location: /opt/unity/Editor/Data/Resources/PackageManager/BuiltInPackages/com.unity.modules.tilemap)
+    com.unity.modules.ui@1.0.0 (location: /opt/unity/Editor/Data/Resources/PackageManager/BuiltInPackages/com.unity.modules.ui)
+    com.unity.modules.uielements@1.0.0 (location: /opt/unity/Editor/Data/Resources/PackageManager/BuiltInPackages/com.unity.modules.uielements)
+    com.unity.modules.umbra@1.0.0 (location: /opt/unity/Editor/Data/Resources/PackageManager/BuiltInPackages/com.unity.modules.umbra)
+    com.unity.modules.unityanalytics@1.0.0 (location: /opt/unity/Editor/Data/Resources/PackageManager/BuiltInPackages/com.unity.modules.unityanalytics)
+    com.unity.modules.unitywebrequest@1.0.0 (location: /opt/unity/Editor/Data/Resources/PackageManager/BuiltInPackages/com.unity.modules.unitywebrequest)
+    com.unity.modules.unitywebrequestassetbundle@1.0.0 (location: /opt/unity/Editor/Data/Resources/PackageManager/BuiltInPackages/com.unity.modules.unitywebrequestassetbundle)
+    com.unity.modules.unitywebrequestaudio@1.0.0 (location: /opt/unity/Editor/Data/Resources/PackageManager/BuiltInPackages/com.unity.modules.unitywebrequestaudio)
+    com.unity.modules.unitywebrequesttexture@1.0.0 (location: /opt/unity/Editor/Data/Resources/PackageManager/BuiltInPackages/com.unity.modules.unitywebrequesttexture)
+    com.unity.modules.unitywebrequestwww@1.0.0 (location: /opt/unity/Editor/Data/Resources/PackageManager/BuiltInPackages/com.unity.modules.unitywebrequestwww)
+    com.unity.modules.vehicles@1.0.0 (location: /opt/unity/Editor/Data/Resources/PackageManager/BuiltInPackages/com.unity.modules.vehicles)
+    com.unity.modules.video@1.0.0 (location: /opt/unity/Editor/Data/Resources/PackageManager/BuiltInPackages/com.unity.modules.video)
+    com.unity.modules.vr@1.0.0 (location: /opt/unity/Editor/Data/Resources/PackageManager/BuiltInPackages/com.unity.modules.vr)
+    com.unity.modules.wind@1.0.0 (location: /opt/unity/Editor/Data/Resources/PackageManager/BuiltInPackages/com.unity.modules.wind)
+    com.unity.modules.xr@1.0.0 (location: /opt/unity/Editor/Data/Resources/PackageManager/BuiltInPackages/com.unity.modules.xr)
+    com.unity.modules.subsystems@1.0.0 (location: /opt/unity/Editor/Data/Resources/PackageManager/BuiltInPackages/com.unity.modules.subsystems)
+    com.unity.modules.hierarchycore@1.0.0 (location: /opt/unity/Editor/Data/Resources/PackageManager/BuiltInPackages/com.unity.modules.hierarchycore)
+[Subsystems] No new subsystems found in resolved package list.
+[Package Manager] Done registering packages in 0.00 seconds
+Artifact Garbage Collection - Removed 2 unused hashed content files[Licensing::Client] Successfully resolved entitlement details
+Targeting platform: Android
+Refreshing native plugins compatible for Editor in 0.00 ms, found 0 plugins.
+Preloading 0 native plugins for Editor in 0.00 ms.
+Initialize engine version: 6000.0.36f1 (9fe3b5f71dbb)
+[Subsystems] Discovering subsystems at path /opt/unity/Editor/Data/Resources/UnitySubsystems
+[Subsystems] Discovering subsystems at path /github/workspace/Assets
+kGfxThreadingModeNonThreaded is not supported on OpenGL Core. Reverting to kGfxThreadingModeDirect instead.
+GfxDevice: creating device client; kGfxThreadingModeDirect
+GLX Extensions: GLX_ARB_context_flush_control GLX_ARB_create_context GLX_ARB_create_context_no_error GLX_ARB_create_context_profile GLX_ARB_fbconfig_float GLX_ARB_framebuffer_sRGB GLX_ARB_get_proc_address GLX_ARB_multisample GLX_EXT_create_context_es2_profile GLX_EXT_create_context_es_profile GLX_EXT_fbconfig_packed_float GLX_EXT_framebuffer_sRGB GLX_EXT_no_config_context GLX_EXT_texture_from_pixmap GLX_EXT_visual_info GLX_EXT_visual_rating GLX_MESA_copy_sub_buffer GLX_MESA_query_renderer GLX_OML_swap_method GLX_SGIS_multisample GLX_SGIX_fbconfig GLX_SGIX_pbuffer GLX_SGIX_visual_select_group GLX_SGI_make_current_read 
+Renderer: llvmpipe (LLVM 15.0.7, 256 bits)
+Vendor:   Mesa
+Version:  4.5 (Core Profile) Mesa 23.2.1-1ubuntu3.1~22.04.3
+GLES:     0
+ GL_3DFX_texture_compression_FXT1 GL_AMD_conservative_depth GL_AMD_draw_buffers_blend GL_AMD_gpu_shader_int64 GL_AMD_multi_draw_indirect GL_AMD_pinned_memory GL_AMD_query_buffer_object GL_AMD_seamless_cubemap_per_texture GL_AMD_shader_stencil_export GL_AMD_shader_trinary_minmax GL_AMD_texture_texture4 GL_AMD_vertex_shader_layer GL_AMD_vertex_shader_viewport_index GL_ANGLE_texture_compression_dxt3 GL_ANGLE_texture_compression_dxt5 GL_ARB_ES2_compatibility GL_ARB_ES3_1_compatibility GL_ARB_ES3_2_compatibility GL_ARB_ES3_compatibility GL_ARB_arrays_of_arrays GL_ARB_base_instance GL_ARB_blend_func_extended GL_ARB_buffer_storage GL_ARB_clear_buffer_object GL_ARB_clear_texture GL_ARB_clip_control GL_ARB_compressed_texture_pixel_storage GL_ARB_compute_shader GL_ARB_conditional_render_inverted GL_ARB_conservative_depth GL_ARB_copy_buffer GL_ARB_copy_image GL_ARB_cull_distance GL_ARB_debug_output GL_ARB_depth_buffer_float GL_ARB_depth_clamp GL_ARB_derivative_control GL_ARB_direct_state_access GL_ARB_draw_buffers GL_A
+RB_draw_buffers_blend GL_ARB_draw_elements_base_vertex GL_ARB_draw_indirect GL_ARB_draw_instanced GL_ARB_enhanced_layouts GL_ARB_explicit_attrib_location GL_ARB_explicit_uniform_location GL_ARB_fragment_coord_conventions GL_ARB_fragment_layer_viewport GL_ARB_fragment_shader GL_ARB_framebuffer_no_attachments GL_ARB_framebuffer_object GL_ARB_framebuffer_sRGB GL_ARB_get_program_binary GL_ARB_get_texture_sub_image GL_ARB_gl_spirv GL_ARB_gpu_shader5 GL_ARB_gpu_shader_fp64 GL_ARB_gpu_shader_int64 GL_ARB_half_float_pixel GL_ARB_half_float_vertex GL_ARB_indirect_parameters GL_ARB_instanced_arrays GL_ARB_internalformat_query GL_ARB_internalformat_query2 GL_ARB_invalidate_subdata GL_ARB_map_buffer_alignment GL_ARB_map_buffer_range GL_ARB_multi_bind GL_ARB_multi_draw_indirect GL_ARB_occlusion_query2 GL_ARB_parallel_shader_compile GL_ARB_pipeline_statistics_query GL_ARB_pixel_buffer_object GL_ARB_point_sprite GL_ARB_polygon_offset_clamp GL_ARB_post_depth_coverage GL_ARB_program_interface_query GL_ARB_provoking_vertex GL
+_ARB_query_buffer_object GL_ARB_robust_buffer_access_behavior GL_ARB_robustness GL_ARB_sample_shading GL_ARB_sampler_objects GL_ARB_seamless_cube_map GL_ARB_seamless_cubemap_per_texture GL_ARB_separate_shader_objects GL_ARB_shader_atomic_counter_ops GL_ARB_shader_atomic_counters GL_ARB_shader_ballot GL_ARB_shader_bit_encoding GL_ARB_shader_clock GL_ARB_shader_draw_parameters GL_ARB_shader_group_vote GL_ARB_shader_image_load_store GL_ARB_shader_image_size GL_ARB_shader_objects GL_ARB_shader_precision GL_ARB_shader_stencil_export GL_ARB_shader_storage_buffer_object GL_ARB_shader_subroutine GL_ARB_shader_texture_image_samples GL_ARB_shader_texture_lod GL_ARB_shader_viewport_layer_array GL_ARB_shading_language_420pack GL_ARB_shading_language_include GL_ARB_shading_language_packing GL_ARB_spirv_extensions GL_ARB_stencil_texturing GL_ARB_sync GL_ARB_tessellation_shader GL_ARB_texture_barrier GL_ARB_texture_buffer_object GL_ARB_texture_buffer_object_rgb32 GL_ARB_texture_buffer_range GL_ARB_texture_compression_bptc 
+GL_ARB_texture_compression_rgtc GL_ARB_texture_cube_map_array GL_ARB_texture_filter_anisotropic GL_ARB_texture_filter_minmax GL_ARB_texture_float GL_ARB_texture_gather GL_ARB_texture_mirror_clamp_to_edge GL_ARB_texture_multisample GL_ARB_texture_non_power_of_two GL_ARB_texture_query_levels GL_ARB_texture_query_lod GL_ARB_texture_rectangle GL_ARB_texture_rg GL_ARB_texture_rgb10_a2ui GL_ARB_texture_stencil8 GL_ARB_texture_storage GL_ARB_texture_storage_multisample GL_ARB_texture_swizzle GL_ARB_texture_view GL_ARB_timer_query GL_ARB_transform_feedback2 GL_ARB_transform_feedback3 GL_ARB_transform_feedback_instanced GL_ARB_transform_feedback_overflow_query GL_ARB_uniform_buffer_object GL_ARB_vertex_array_bgra GL_ARB_vertex_array_object GL_ARB_vertex_attrib_64bit GL_ARB_vertex_attrib_binding GL_ARB_vertex_buffer_object GL_ARB_vertex_shader GL_ARB_vertex_type_10f_11f_11f_rev GL_ARB_vertex_type_2_10_10_10_rev GL_ARB_viewport_array GL_ARM_shader_framebuffer_fetch_depth_stencil GL_ATI_blend_equation_separate GL_ATI_me
+minfo GL_ATI_texture_float GL_ATI_texture_mirror_once GL_EXT_EGL_image_storage GL_EXT_EGL_sync GL_EXT_abgr GL_EXT_blend_equation_separate GL_EXT_debug_label GL_EXT_draw_buffers2 GL_EXT_draw_instanced GL_EXT_framebuffer_blit GL_EXT_framebuffer_multisample GL_EXT_framebuffer_multisample_blit_scaled GL_EXT_framebuffer_object GL_EXT_framebuffer_sRGB GL_EXT_memory_object GL_EXT_memory_object_fd GL_EXT_packed_depth_stencil GL_EXT_packed_float GL_EXT_pixel_buffer_object GL_EXT_polygon_offset_clamp GL_EXT_provoking_vertex GL_EXT_shader_framebuffer_fetch GL_EXT_shader_framebuffer_fetch_non_coherent GL_EXT_shader_integer_mix GL_EXT_texture_array GL_EXT_texture_compression_dxt1 GL_EXT_texture_compression_rgtc GL_EXT_texture_compression_s3tc GL_EXT_texture_filter_anisotropic GL_EXT_texture_filter_minmax GL_EXT_texture_integer GL_EXT_texture_mirror_clamp GL_EXT_texture_sRGB GL_EXT_texture_sRGB_R8 GL_EXT_texture_sRGB_RG8 GL_EXT_texture_sRGB_decode GL_EXT_texture_shadow_lod GL_EXT_texture_shared_exponent GL_EXT_texture_sno
+rm GL_EXT_texture_swizzle GL_EXT_timer_query GL_EXT_transform_feedback GL_EXT_vertex_array_bgra GL_EXT_vertex_attrib_64bit GL_IBM_multimode_draw_arrays GL_INTEL_shader_atomic_float_minmax GL_KHR_blend_equation_advanced GL_KHR_blend_equation_advanced_coherent GL_KHR_context_flush_control GL_KHR_debug GL_KHR_no_error GL_KHR_parallel_shader_compile GL_KHR_robust_buffer_access_behavior GL_KHR_robustness GL_KHR_texture_compression_astc_ldr GL_KHR_texture_compression_astc_sliced_3d GL_MESA_framebuffer_flip_y GL_MESA_pack_invert GL_MESA_shader_integer_functions GL_MESA_texture_signed_rgba GL_MESA_ycbcr_texture GL_NVX_gpu_memory_info GL_NV_conditional_render GL_NV_copy_image GL_NV_depth_clamp GL_NV_packed_depth_stencil GL_NV_shader_atomic_float GL_NV_texture_barrier GL_OES_EGL_image GL_S3_s3tc
+OPENGL LOG: Creating OpenGL 4.5 graphics device ; Context level  <OpenGL 4.5> ; Context handle 183909888
+[Licensing::Client] Successfully resolved entitlement details
+Initialize mono
+Mono path[0] = '/opt/unity/Editor/Data/Managed'
+Mono path[1] = '/opt/unity/Editor/Data/MonoBleedingEdge/lib/mono/unityjit-linux'
+Mono config path = '/opt/unity/Editor/Data/MonoBleedingEdge/etc'
+Using monoOptions --debugger-agent=transport=dt_socket,embedding=1,server=y,suspend=n,address=127.0.0.1:56160
+Using cacheserver namespaces - metadata:defaultmetadata, artifacts:defaultartifacts
+Using cacheserver namespaces - metadata:defaultmetadata, artifacts:defaultartifacts
+ImportWorker Server TCP listen port: 0
+AcceleratorClientConnectionCallback - disconnected - :0
+Begin MonoManager ReloadAssembly
+Registering precompiled unity dll's ...
+Register platform support module: /opt/unity/Editor/Data/PlaybackEngines/AndroidPlayer/UnityEditor.Android.Extensions.dll
+Register platform support module: /opt/unity/Editor/Data/PlaybackEngines/LinuxStandaloneSupport/UnityEditor.LinuxStandalone.Extensions.dll
+Registered in 0.003186 seconds.
+- Loaded All Assemblies, in  0.320 seconds
+Native extension for LinuxStandalone target not found
+Native extension for Android target not found
+Android Extension - Scanning For ADB Devices 113 ms
+Mono: successfully reloaded assembly
+- Finished resetting the current domain, in  0.471 seconds
+Domain Reload Profiling: 791ms
+	BeginReloadAssembly (97ms)
+		ExecutionOrderSort (0ms)
+		DisableScriptedObjects (0ms)
+		BackupInstance (0ms)
+		ReleaseScriptingObjects (0ms)
+		CreateAndSetChildDomain (1ms)
+	RebuildCommonClasses (34ms)
+	RebuildNativeTypeToScriptingClass (10ms)
+	initialDomainReloadingComplete (48ms)
+	LoadAllAssembliesAndSetupDomain (131ms)
+		LoadAssemblies (98ms)
+		RebuildTransferFunctionScriptingTraits (0ms)
+		AnalyzeDomain (127ms)
+			TypeCache.Refresh (126ms)
+				TypeCache.ScanAssembly (111ms)
+			BuildScriptInfoCaches (0ms)
+			ResolveRequiredComponents (0ms)
+	FinalizeReload (472ms)
+		ReleaseScriptCaches (0ms)
+		RebuildScriptCaches (0ms)
+		SetupLoadedEditorAssemblies (439ms)
+			LogAssemblyErrors (0ms)
+			InitializePlatformSupportModulesInManaged (203ms)
+			SetLoadedEditorAssemblies (4ms)
+			BeforeProcessingInitializeOnLoad (46ms)
+			ProcessInitializeOnLoadAttributes (133ms)
+			ProcessInitializeOnLoadMethodAttributes (54ms)
+			AfterProcessingInitializeOnLoad (0ms)
+			EditorAssembliesLoaded (0ms)
+		ExecutionOrderSort2 (0ms)
+		AwakeInstancesAfterBackupRestoration (0ms)
+[Licensing::Client] Successfully resolved entitlement details
+[Licensing::Client] Successfully resolved entitlement details
+Application.AssetDatabase Initial Refresh Start
+A meta data file (.meta) exists but its asset 'Assets/_Project/Materials/balloon.mat' can't be found. When moving or deleting files outside of Unity, please ensure that the corresponding .meta file is moved or deleted along with it.
+A meta data file (.meta) exists but its asset 'Assets/_Project/Materials/brass.mat' can't be found. When moving or deleting files outside of Unity, please ensure that the corresponding .meta file is moved or deleted along with it.
+A meta data file (.meta) exists but its asset 'Assets/_Project/Materials/canvas.mat' can't be found. When moving or deleting files outside of Unity, please ensure that the corresponding .meta file is moved or deleted along with it.
+A meta data file (.meta) exists but its asset 'Assets/_Project/Materials/cloudLayer.mat' can't be found. When moving or deleting files outside of Unity, please ensure that the corresponding .meta file is moved or deleted along with it.
+A meta data file (.meta) exists but its asset 'Assets/_Project/Materials/cloudPuff.mat' can't be found. When moving or deleting files outside of Unity, please ensure that the corresponding .meta file is moved or deleted along with it.
+A meta data file (.meta) exists but its asset 'Assets/_Project/Materials/cloudSea.mat' can't be found. When moving or deleting files outside of Unity, please ensure that the corresponding .meta file is moved or deleted along with it.
+A meta data file (.meta) exists but its asset 'Assets/_Project/Materials/cloudSprite.mat' can't be found. When moving or deleting files outside of Unity, please ensure that the corresponding .meta file is moved or deleted along with it.
+A meta data file (.meta) exists but its asset 'Assets/_Project/Materials/CorsairRepaired_0.mat' can't be found. When moving or deleting files outside of Unity, please ensure that the corresponding .meta file is moved or deleted along with it.
+A meta data file (.meta) exists but its asset 'Assets/_Project/Materials/CorsairRepaired_1.mat' can't be found. When moving or deleting files outside of Unity, please ensure that the corresponding .meta file is moved or deleted along with it.
+A meta data file (.meta) exists but its asset 'Assets/_Project/Materials/CorsairRepaired_2.mat' can't be found. When moving or deleting files outside of Unity, please ensure that the corresponding .meta file is moved or deleted along with it.
+A meta data file (.meta) exists but its asset 'Assets/_Project/Materials/CorsairRepaired_3.mat' can't be found. When moving or deleting files outside of Unity, please ensure that the corresponding .meta file is moved or deleted along with it.
+A meta data file (.meta) exists but its asset 'Assets/_Project/Materials/CorsairRepaired_4.mat' can't be found. When moving or deleting files outside of Unity, please ensure that the corresponding .meta file is moved or deleted along with it.
+A meta data file (.meta) exists but its asset 'Assets/_Project/Materials/CorsairRepaired_5.mat' can't be found. When moving or deleting files outside of Unity, please ensure that the corresponding .meta file is moved or deleted along with it.
+A meta data file (.meta) exists but its asset 'Assets/_Project/Materials/CorsairRepaired_6.mat' can't be found. When moving or deleting files outside of Unity, please ensure that the corresponding .meta file is moved or deleted along with it.
+A meta data file (.meta) exists but its asset 'Assets/_Project/Materials/CorsairRepaired_7.mat' can't be found. When moving or deleting files outside of Unity, please ensure that the corresponding .meta file is moved or deleted along with it.
+A meta data file (.meta) exists but its asset 'Assets/_Project/Materials/CorsairRepaired_8.mat' can't be found. When moving or deleting files outside of Unity, please ensure that the corresponding .meta file is moved or deleted along with it.
+A meta data file (.meta) exists but its asset 'Assets/_Project/Materials/darkWood.mat' can't be found. When moving or deleting files outside of Unity, please ensure that the corresponding .meta file is moved or deleted along with it.
+A meta data file (.meta) exists but its asset 'Assets/_Project/Materials/Deckhand.mat' can't be found. When moving or deleting files outside of Unity, please ensure that the corresponding .meta file is moved or deleted along with it.
+A meta data file (.meta) exists but its asset 'Assets/_Project/Materials/flag.mat' can't be found. When moving or deleting files outside of Unity, please ensure that the corresponding .meta file is moved or deleted along with it.
+A meta data file (.meta) exists but its asset 'Assets/_Project/Materials/hull.mat' can't be found. When moving or deleting files outside of Unity, please ensure that the corresponding .meta file is moved or deleted along with it.
+A meta data file (.meta) exists but its asset 'Assets/_Project/Materials/iron.mat' can't be found. When moving or deleting files outside of Unity, please ensure that the corresponding .meta file is moved or deleted along with it.
+A meta data file (.meta) exists but its asset 'Assets/_Project/Materials/shipBody.mat' can't be found. When moving or deleting files outside of Unity, please ensure that the corresponding .meta file is moved or deleted along with it.
+A meta data file (.meta) exists but its asset 'Assets/_Project/Materials/skybox.mat' can't be found. When moving or deleting files outside of Unity, please ensure that the corresponding .meta file is moved or deleted along with it.
+A meta data file (.meta) exists but its asset 'Assets/_Project/Materials/SunsetReflection.exr' can't be found. When moving or deleting files outside of Unity, please ensure that the corresponding .meta file is moved or deleted along with it.
+A meta data file (.meta) exists but its asset 'Assets/_Project/Materials/TowerField.asset' can't be found. When moving or deleting files outside of Unity, please ensure that the corresponding .meta file is moved or deleted along with it.
+A meta data file (.meta) exists but its asset 'Assets/_Project/Materials/windowGlow.mat' can't be found. When moving or deleting files outside of Unity, please ensure that the corresponding .meta file is moved or deleted along with it.
+A meta data file (.meta) exists but its asset 'Assets/_Project/Scenes/SkyTide_Prototype.unity' can't be found. When moving or deleting files outside of Unity, please ensure that the corresponding .meta file is moved or deleted along with it.
+[ScriptCompilation] Requested script compilation because: Assetdatabase observed changes in script compilation related files
+[40m[32minfo[39m[22m[49m: Microsoft.Hosting.Lifetime[14]
+      Now listening on: http://unix:/tmp/ilpp.sock-f07a9074cf124f978827f2e08a2ba3a4
+[40m[32minfo[39m[22m[49m: Microsoft.Hosting.Lifetime[0]
+      Application started. Press Ctrl+C to shut down.
+[40m[32minfo[39m[22m[49m: Microsoft.Hosting.Lifetime[0]
+      Hosting environment: Production
+[40m[32minfo[39m[22m[49m: Microsoft.Hosting.Lifetime[0]
+      Content root path: /github/workspace/
+[40m[32minfo[39m[22m[49m: Microsoft.AspNetCore.Hosting.Diagnostics[1]
+      Request starting HTTP/2 POST http://ilpp/UnityILPP.PostProcessing/Ping application/grpc -
+[40m[32minfo[39m[22m[49m: Microsoft.AspNetCore.Routing.EndpointMiddleware[0]
+      Executing endpoint 'gRPC - /UnityILPP.PostProcessing/Ping'
+[40m[32minfo[39m[22m[49m: Microsoft.AspNetCore.Routing.EndpointMiddleware[1]
+      Executed endpoint 'gRPC - /UnityILPP.PostProcessing/Ping'
+[40m[32minfo[39m[22m[49m: Microsoft.AspNetCore.Hosting.Diagnostics[2]
+      Request finished HTTP/2 POST http://ilpp/UnityILPP.PostProcessing/Ping application/grpc - - 200 - application/grpc 34.6269ms
+Starting: /opt/unity/Editor/Data/bee_backend --dont-print-to-structured-log --ipc --defer-dag-verification --dagfile="Library/Bee/1300b0aE.dag" --continue-on-failure --profile="Library/Bee/backend1.traceevents" ScriptAssemblies
+WorkingDir: /github/workspace
+DisplayProgressbar: Compiling Scripts
+ExitCode: 0 Duration: 2s841ms
+[152/158    2s] Csc Library/Bee/artifacts/1300b0aE.dag/Assembly-CSharp.dll (+2 others)
+Assets/_Project/Scripts/CameraRig/VolumetricClouds.cs(396,17): warning CS0219: The variable 'nx' is assigned but its value is never used
+Assets/_Project/Scripts/CameraRig/VolumetricClouds.cs(397,19): warning CS0219: The variable 'cx' is assigned but its value is never used
+Assets/_Project/Scripts/Input/ShipHud.cs(246,17): warning CS0162: Unreachable code detected
+Assets/_Project/Scripts/Input/TouchControls.cs(132,14): warning CS0414: The field 'TouchControls.touchedOnce' is assigned but its value is never used
+[153/158    0s] CopyFiles Library/ScriptAssemblies/Assembly-CSharp.dll
+[154/158    0s] CopyFiles Library/ScriptAssemblies/Assembly-CSharp.pdb
+[155/158    0s] Csc Library/Bee/artifacts/1300b0aE.dag/Assembly-CSharp-Editor.dll (+2 others)
+*** Tundra build success (2.82 seconds), 4 items updated, 158 evaluated
+Total cache size 0
+Assets/_Project/Scripts/CameraRig/VolumetricClouds.cs(396,17): warning CS0219: The variable 'nx' is assigned but its value is never used
+Assets/_Project/Scripts/CameraRig/VolumetricClouds.cs(397,19): warning CS0219: The variable 'cx' is assigned but its value is never used
+Assets/_Project/Scripts/Input/ShipHud.cs(246,17): warning CS0162: Unreachable code detected
+Assets/_Project/Scripts/Input/TouchControls.cs(132,14): warning CS0414: The field 'TouchControls.touchedOnce' is assigned but its value is never used
+Total cache size after purge 0, took 00:00:00.0047100
+AssetDatabase: script compilation time: 3.197186s
+Begin MonoManager ReloadAssembly
+- Loaded All Assemblies, in  0.238 seconds
+Start importing ProjectSettings/ProjectSettings.asset using Guid(00000000000000004000000000000000) (LibraryAssetImporter) -> (artifact id: '304999250ce3716c953aa49edeb75644') in 0.020306452 seconds
+Start importing ProjectSettings/EditorBuildSettings.asset using Guid(0000000000000000b000000000000000) (LibraryAssetImporter) -> (artifact id: '1923232d45cb936aef47cec131f33975') in 0.000848472 seconds
+Start importing ProjectSettings/GraphicsSettings.asset using Guid(00000000000000006100000000000000) (LibraryAssetImporter) -> (artifact id: '73a0d0504a18325c463e244f56ec4944') in 0.000834597 seconds
+Refreshing native plugins compatible for Editor in 0.00 ms, found 0 plugins.
+Native extension for LinuxStandalone target not found
+Native extension for Android target not found
+Mono: successfully reloaded assembly
+- Finished resetting the current domain, in  0.484 seconds
+Domain Reload Profiling: 724ms
+	BeginReloadAssembly (162ms)
+		ExecutionOrderSort (0ms)
+		DisableScriptedObjects (11ms)
+		BackupInstance (0ms)
+		ReleaseScriptingObjects (0ms)
+		CreateAndSetChildDomain (50ms)
+	RebuildCommonClasses (30ms)
+	RebuildNativeTypeToScriptingClass (6ms)
+	initialDomainReloadingComplete (19ms)
+	LoadAllAssembliesAndSetupDomain (22ms)
+		LoadAssemblies (74ms)
+		RebuildTransferFunctionScriptingTraits (0ms)
+		AnalyzeDomain (18ms)
+			TypeCache.Refresh (15ms)
+				TypeCache.ScanAssembly (8ms)
+			BuildScriptInfoCaches (1ms)
+			ResolveRequiredComponents (1ms)
+	FinalizeReload (486ms)
+		ReleaseScriptCaches (0ms)
+		RebuildScriptCaches (0ms)
+		SetupLoadedEditorAssemblies (306ms)
+			LogAssemblyErrors (0ms)
+			InitializePlatformSupportModulesInManaged (36ms)
+			SetLoadedEditorAssemblies (4ms)
+			BeforeProcessingInitializeOnLoad (100ms)
+			ProcessInitializeOnLoadAttributes (139ms)
+			ProcessInitializeOnLoadMethodAttributes (23ms)
+			AfterProcessingInitializeOnLoad (4ms)
+			EditorAssembliesLoaded (0ms)
+		ExecutionOrderSort2 (0ms)
+		AwakeInstancesAfterBackupRestoration (7ms)
+Start importing Assets/_Project/Resources/Shaders/AimArrow.shader using Guid(533fa63fe98e94184852c78466d93469) (ShaderImporter)Launched and connected shader compiler UnityShaderCompiler after 0.01 seconds
+ -> (artifact id: 'b76caee610fbc53f274bd4e2e8ace906') in 0.035076572 seconds
+Start importing Assets/_Project/Resources/BuildNumber.txt using Guid(1c02be432eeddebc48829532d75bae1b) (TextScriptImporter) -> (artifact id: '0fff1b7bd24bd3ac522188bf4ea2d29e') in 0.001443117 seconds
+Launched and connected shader compiler UnityShaderCompiler after 0.01 seconds
+Refreshing native plugins compatible for Editor in 0.00 ms, found 0 plugins.
+Preloading 0 native plugins for Editor in 0.00 ms.
+Asset Pipeline Refresh (id=8fa0b0dcb182d7abda82a893f44c438a): Total: 4.719 seconds - Initiated by InitialRefreshV2(ForceSynchronousImport)
+	Summary:
+		Imports: total=81 (actual=5, local cache=76, cache server=0)
+		Asset DB Process Time: managed=4 ms, native=705 ms
+		Asset DB Callback time: managed=69 ms, native=489 ms
+		Scripting: domain reloads=1, domain reload time=246 ms, compile time=3199 ms, other=4 ms
+		Project Asset Count: scripts=129, non-scripts=181
+		Asset File Changes: new=0, changed=6, moved=0, deleted=27
+		Scan Filter Count: 1
+	InvokeCustomDependenciesCallbacks: 0.003ms
+	InvokePackagesCallback: 0.466ms
+	ApplyChangesToAssetFolders: 0.205ms
+	Scan: 100.219ms
+	OnSourceAssetsModified: 1.090ms
+	CategorizeAssetsWithTransientArtifact: 0.655ms
+	ProcessAssetsWithTransientArtifactChanges: 3.521ms
+	UnregisterDeletedAssets: 0.012ms
+	CategorizeAssets: 3.232ms
+	ImportOutOfDateAssets: 555.459ms (-2714.980ms without children)
+		ImportManagerImport: 68.313ms (7.458ms without children)
+			ImportInProcess: 60.804ms
+			UpdateCategorizedAssets: 0.051ms
+		CompileScripts: 3199.342ms
+		ReloadNativeAssets: 0.001ms
+		UnloadImportedAssets: 0.386ms
+		ReloadImportedAssets: 2.055ms
+		EnsureUptoDateAssetsAreRegisteredWithGuidPM: 0.095ms
+		InitializingProgressBar: 0.007ms
+		PostProcessAllAssetNotificationsAddChangedAssets: 0.000ms
+		OnDemandSchedulerStart: 0.239ms
+	PostProcessAllAssets: 555.887ms
+	Hotreload: 2.320ms
+	GatherAllCurrentPrimaryArtifactRevisions: 0.001ms
+	UnloadStreamsBegin: 0.331ms
+	PersistCurrentRevisions: 0.131ms
+	UnloadStreamsEnd: 0.000ms
+	GenerateScriptTypeHashes: 0.890ms
+	Untracked: 3495.933ms
+
+Application.AssetDatabase Initial Refresh End
+Scanning for USB devices : 0.125ms
+Initializing Unity extensions:
+[Licensing::Client] Successfully resolved entitlement details
+UpdateMenuTitleForLanguage: 10
+[MODES] ModeService[none].Initialize
+[MODES] ModeService[none].LoadModes
+[MODES] Loading mode Default (0) for mode-current-id-workspace
+Unloading 3 Unused Serialized files (Serialized files now loaded: 0)
+Unloading 148 unused Assets / (0.8 MB). Loaded Objects now: 678.
+Memory consumption went from 81.5 MB to 80.8 MB.
+Total: 16.682402 ms (FindLiveObjects: 0.064309 ms CreateObjectMapping: 0.009107 ms MarkObjects: 12.397835 ms  DeleteObjects: 4.209979 ms)
+
+SkyTide: сборка APK → /github/workspace/build/Android/SkyTide.apk
+UnityEngine.Debug:ExtractStackTraceNoAlloc (byte*,int,string)
+UnityEngine.StackTraceUtility:ExtractStackTrace () (at /home/bokken/build/output/unity/unity/Runtime/Export/Scripting/StackTrace.cs:37)
+UnityEngine.DebugLogHandler:Internal_Log (UnityEngine.LogType,UnityEngine.LogOption,string,UnityEngine.Object)
+UnityEngine.DebugLogHandler:LogFormat (UnityEngine.LogType,UnityEngine.Object,string,object[])
+UnityEngine.Logger:Log (UnityEngine.LogType,object)
+UnityEngine.Debug:Log (object)
+SkyTide.EditorTools.BuildScript:BuildAndroid () (at Assets/_Project/Scripts/Editor/BuildScript.cs:33)
+
+(Filename: Assets/_Project/Scripts/Editor/BuildScript.cs Line: 33)
+
+Refreshing native plugins compatible for Editor in 0.00 ms, found 0 plugins.
+Preloading 0 native plugins for Editor in 0.00 ms.
+Asset Pipeline Refresh (id=01b8deea9f626aa49ba4cd685f3d36af): Total: 0.032 seconds - Initiated by RefreshV2(NoUpdateAssetOptions)
+Refreshing native plugins compatible for Editor in 0.00 ms, found 0 plugins.
+Preloading 0 native plugins for Editor in 0.00 ms.
+Asset Pipeline Refresh (id=23bad3f5b8635b3979b9f762ceb6cb77): Total: 0.007 seconds - Initiated by StopAssetImportingV2(NoUpdateAssetOptions)
+Start importing Assets/_Project/Materials using Guid(cb93b899987e4c1d2886e20c9271d253) (DefaultImporter) -> (artifact id: 'c74149cdee4a8ca88c25ee1775195dda') in 0.001140523 seconds
+Refreshing native plugins compatible for Editor in 0.00 ms, found 0 plugins.
+Preloading 0 native plugins for Editor in 0.00 ms.
+Asset Pipeline Refresh (id=5d831752cba9f305d8ad4e3397f710b7): Total: 0.010 seconds - Initiated by StopAssetImportingV2(NoUpdateAssetOptions)
+Unloading 0 Unused Serialized files (Serialized files now loaded: 0)
+Unloading 1 unused Assets / (0.8 KB). Loaded Objects now: 705.
+Memory consumption went from 79.0 MB to 79.0 MB.
+Total: 11.347454 ms (FindLiveObjects: 0.042701 ms CreateObjectMapping: 0.006230 ms MarkObjects: 11.280271 ms  DeleteObjects: 0.017337 ms)
+
+Start importing Assets/_Project/Resources/Audio/cannon_fire.ogg using Guid(a81da01bd36cb6c59b68647c476f6d0f) (AudioImporter) -> (artifact id: '07c27f422ae9602f3b308e36a6f7ed37') in 0.069548457 seconds
+Refreshing native plugins compatible for Editor in 0.00 ms, found 0 plugins.
+Preloading 0 native plugins for Editor in 0.00 ms.
+Asset Pipeline Refresh (id=a4fedb31c0c5ce197a2718aec9d16fcb): Total: 0.076 seconds - Initiated by StopAssetImportingV2(NoUpdateAssetOptions)
+Start importing Assets/_Project/Resources/Audio/cannon_miss.ogg using Guid(56fe7b710899fe51a86af66e5298d41a) (AudioImporter) -> (artifact id: '6cb1940d4ce0d31c729bd89621c5aa0f') in 0.046305645 seconds
+Refreshing native plugins compatible for Editor in 0.00 ms, found 0 plugins.
+Preloading 0 native plugins for Editor in 0.00 ms.
+Asset Pipeline Refresh (id=188574f7ed45d11ee98ebb3b5ebc1a7e): Total: 0.054 seconds - Initiated by StopAssetImportingV2(NoUpdateAssetOptions)
+Start importing Assets/_Project/Resources/Audio/creak_1.ogg using Guid(ea69929029d236062ae81abf25438663) (AudioImporter) -> (artifact id: 'e21c4da263cff66a004314ec6968c604') in 0.070987679 seconds
+Refreshing native plugins compatible for Editor in 0.00 ms, found 0 plugins.
+Preloading 0 native plugins for Editor in 0.00 ms.
+Asset Pipeline Refresh (id=d2570e52e04823f29afb39681fa4d978): Total: 0.077 seconds - Initiated by StopAssetImportingV2(NoUpdateAssetOptions)
+Start importing Assets/_Project/Resources/Audio/creak_2.ogg using Guid(7d841b37e84f7ca0aafb4edf0aec95a8) (AudioImporter) -> (artifact id: '60b9d45a76016a84a0dc1e4e45a2f31b') in 0.061249931 seconds
+Refreshing native plugins compatible for Editor in 0.00 ms, found 0 plugins.
+Preloading 0 native plugins for Editor in 0.00 ms.
+Asset Pipeline Refresh (id=c7c29bb51b47957c9acbdd260a587d93): Total: 0.069 seconds - Initiated by StopAssetImportingV2(NoUpdateAssetOptions)
+Start importing Assets/_Project/Resources/Audio/explosion_crunch_0.ogg using Guid(efe06f71df1d5385796f410de0463db5) (AudioImporter) -> (artifact id: '1106e1931a9150497f97622803df541a') in 0.03616679 seconds
+Refreshing native plugins compatible for Editor in 0.00 ms, found 0 plugins.
+Preloading 0 native plugins for Editor in 0.00 ms.
+Asset Pipeline Refresh (id=db1d483c6d1fee6639d1fa2c59155389): Total: 0.041 seconds - Initiated by StopAssetImportingV2(NoUpdateAssetOptions)
+Start importing Assets/_Project/Resources/Audio/explosion_crunch_1.ogg using Guid(47015fcfe2c89ba00a76a6d779f895db) (AudioImporter) -> (artifact id: '9182c97fb1191aba30e1d62c89cc14fb') in 0.039672011 seconds
+Refreshing native plugins compatible for Editor in 0.00 ms, found 0 plugins.
+Preloading 0 native plugins for Editor in 0.00 ms.
+Asset Pipeline Refresh (id=b7bbdbc5404ea34008990c2838ec4630): Total: 0.045 seconds - Initiated by StopAssetImportingV2(NoUpdateAssetOptions)
+Start importing Assets/_Project/Resources/Audio/explosion_crunch_2.ogg using Guid(8fe5b79e507656f2ea658110d244c407) (AudioImporter) -> (artifact id: 'c95790c83e8435111d2b14a900119423') in 0.047208929 seconds
+Refreshing native plugins compatible for Editor in 0.00 ms, found 0 plugins.
+Preloading 0 native plugins for Editor in 0.00 ms.
+Asset Pipeline Refresh (id=db90444299a87e6e59fc5be7e8e0fec6): Total: 0.052 seconds - Initiated by StopAssetImportingV2(NoUpdateAssetOptions)
+Start importing Assets/_Project/Resources/Audio/explosion_crunch_3.ogg using Guid(24853f346724aa74b81c4c482909bb69) (AudioImporter) -> (artifact id: '9ecfdf089e49f5dc2fdc7a95f8a67035') in 0.054366041 seconds
+Refreshing native plugins compatible for Editor in 0.00 ms, found 0 plugins.
+Preloading 0 native plugins for Editor in 0.00 ms.
+Asset Pipeline Refresh (id=89130b24c6daf798db14c3547aea54ca): Total: 0.060 seconds - Initiated by StopAssetImportingV2(NoUpdateAssetOptions)
+Start importing Assets/_Project/Resources/Audio/explosion_crunch_4.ogg using Guid(f4bf35f4129bffa5ca7e198fc67c4e2b) (AudioImporter) -> (artifact id: '152a3d857ebc6cbfe33508dbdaebcc26') in 0.068215533 seconds
+Refreshing native plugins compatible for Editor in 0.00 ms, found 0 plugins.
+Preloading 0 native plugins for Editor in 0.00 ms.
+Asset Pipeline Refresh (id=51632fc9b80925aa1a77f538c6502eb3): Total: 0.073 seconds - Initiated by StopAssetImportingV2(NoUpdateAssetOptions)
+Start importing Assets/_Project/Resources/Audio/explosion_low_0.ogg using Guid(cfbddb26b305c25c5b165f2b06f0eb62) (AudioImporter) -> (artifact id: 'bf0f3d1039710afdf5abeb5707c6f21b') in 0.055529995 seconds
+Refreshing native plugins compatible for Editor in 0.00 ms, found 0 plugins.
+Preloading 0 native plugins for Editor in 0.00 ms.
+Asset Pipeline Refresh (id=0f8ec1ddfe8c293aab4137a6da012cc4): Total: 0.061 seconds - Initiated by StopAssetImportingV2(NoUpdateAssetOptions)
+Start importing Assets/_Project/Resources/Audio/explosion_low_1.ogg using Guid(072505aa9826a5d0e9059b416e89aa2c) (AudioImporter) -> (artifact id: '81ec31192721dc4475150899864acfe7') in 0.04088252 seconds
+Refreshing native plugins compatible for Editor in 0.00 ms, found 0 plugins.
+Preloading 0 native plugins for Editor in 0.00 ms.
+Asset Pipeline Refresh (id=423c4b2c6df7aae94af62d3d6d146078): Total: 0.047 seconds - Initiated by StopAssetImportingV2(NoUpdateAssetOptions)
+Start importing Assets/_Project/Resources/Audio/hit_metal.ogg using Guid(111914aeaf8e1d43e97763ae6dfadcc7) (AudioImporter) -> (artifact id: 'df6993b8bea91d5c54c1e85a480dc1a5') in 0.07902543 seconds
+Refreshing native plugins compatible for Editor in 0.00 ms, found 0 plugins.
+Preloading 0 native plugins for Editor in 0.00 ms.
+Asset Pipeline Refresh (id=3b1ffd991f0b16e57a2d390985d85ce0): Total: 0.084 seconds - Initiated by StopAssetImportingV2(NoUpdateAssetOptions)
+Start importing Assets/_Project/Resources/Audio/hit_ship.ogg using Guid(74072ea99ddcfc129b6ce1873756cb96) (AudioImporter) -> (artifact id: '3514057017ff4da29d70163bb3071970') in 0.090897 seconds
+Refreshing native plugins compatible for Editor in 0.00 ms, found 0 plugins.
+Preloading 0 native plugins for Editor in 0.00 ms.
+Asset Pipeline Refresh (id=b690b3f2e4c77cc7ab1b4197889195a4): Total: 0.098 seconds - Initiated by StopAssetImportingV2(NoUpdateAssetOptions)
+Start importing Assets/_Project/Resources/Audio/hit_ship_heavy.ogg using Guid(b404550ed98fbafbf9ace013076a31bb) (AudioImporter) -> (artifact id: 'f36aad3b2ad2b4c5cccfd1248f4c6fe4') in 0.100126849 seconds
+Refreshing native plugins compatible for Editor in 0.00 ms, found 0 plugins.
+Preloading 0 native plugins for Editor in 0.00 ms.
+Asset Pipeline Refresh (id=324c32aa11486c22d9867e2fbbcde891): Total: 0.107 seconds - Initiated by StopAssetImportingV2(NoUpdateAssetOptions)
+Start importing Assets/_Project/Resources/Audio/reload_clank.ogg using Guid(14efe01fdef918110b7fe9655bbf8907) (AudioImporter) -> (artifact id: '45abfa21bc08c4ac94b07ac88bb0e132') in 0.056333822 seconds
+Refreshing native plugins compatible for Editor in 0.00 ms, found 0 plugins.
+Preloading 0 native plugins for Editor in 0.00 ms.
+Asset Pipeline Refresh (id=f6d91a155ded0e92d900d6f84c7fcc28): Total: 0.065 seconds - Initiated by StopAssetImportingV2(NoUpdateAssetOptions)
+Start importing Assets/_Project/Resources/Audio/sail_loop.ogg using Guid(11ff2e6f7d8618be0a5270a464a35fdf) (AudioImporter) -> (artifact id: '6b024ab6159d27956d0cb58dde6c6e53') in 0.2291859 seconds
+Refreshing native plugins compatible for Editor in 0.00 ms, found 0 plugins.
+Preloading 0 native plugins for Editor in 0.00 ms.
+Asset Pipeline Refresh (id=3b15442822020d66fb28cac16dc48872): Total: 0.236 seconds - Initiated by StopAssetImportingV2(NoUpdateAssetOptions)
+Start importing Assets/_Project/Resources/Audio/ship_destroyed.ogg using Guid(e984e0c181c592cf89e427f8af2710bd) (AudioImporter) -> (artifact id: 'b085bf75c9aaca1a49227d6cd472cf87') in 0.14691528 seconds
+Refreshing native plugins compatible for Editor in 0.00 ms, found 0 plugins.
+Preloading 0 native plugins for Editor in 0.00 ms.
+Asset Pipeline Refresh (id=eaadbcb776be444fd956da5a606caede): Total: 0.153 seconds - Initiated by StopAssetImportingV2(NoUpdateAssetOptions)
+Refreshing native plugins compatible for Editor in 0.00 ms, found 0 plugins.
+Preloading 0 native plugins for Editor in 0.00 ms.
+Asset Pipeline Refresh (id=5da14856f5133dc80ab295754beffb35): Total: 0.006 seconds - Initiated by StopAssetImportingV2(NoUpdateAssetOptions)
+Refreshing native plugins compatible for Editor in 0.00 ms, found 0 plugins.
+Preloading 0 native plugins for Editor in 0.00 ms.
+Asset Pipeline Refresh (id=d3a487fe95292f3fcb405f3312648921): Total: 0.004 seconds - Initiated by StopAssetImportingV2(NoUpdateAssetOptions)
+Refreshing native plugins compatible for Editor in 0.00 ms, found 0 plugins.
+Preloading 0 native plugins for Editor in 0.00 ms.
+Asset Pipeline Refresh (id=c885e94da7245f7169d5a62279fc7bcb): Total: 0.003 seconds - Initiated by StopAssetImportingV2(NoUpdateAssetOptions)
+Refreshing native plugins compatible for Editor in 0.00 ms, found 0 plugins.
+Preloading 0 native plugins for Editor in 0.00 ms.
+Asset Pipeline Refresh (id=dcce408aeed0dca0d8157426ba127c4c): Total: 0.003 seconds - Initiated by StopAssetImportingV2(NoUpdateAssetOptions)
+Refreshing native plugins compatible for Editor in 0.00 ms, found 0 plugins.
+Preloading 0 native plugins for Editor in 0.00 ms.
+Asset Pipeline Refresh (id=7a66686b74ddbb52098a8bc353ed6a67): Total: 0.006 seconds - Initiated by StopAssetImportingV2(NoUpdateAssetOptions)
+Refreshing native plugins compatible for Editor in 0.00 ms, found 0 plugins.
+Preloading 0 native plugins for Editor in 0.00 ms.
+Asset Pipeline Refresh (id=4b304f2f400060cbaacc3230f5c3d417): Total: 0.004 seconds - Initiated by StopAssetImportingV2(NoUpdateAssetOptions)
+Refreshing native plugins compatible for Editor in 0.00 ms, found 0 plugins.
+Preloading 0 native plugins for Editor in 0.00 ms.
+Asset Pipeline Refresh (id=de842375dee898ede8eb9de71f8ea6a8): Total: 0.004 seconds - Initiated by StopAssetImportingV2(NoUpdateAssetOptions)
+Refreshing native plugins compatible for Editor in 0.00 ms, found 0 plugins.
+Preloading 0 native plugins for Editor in 0.00 ms.
+Asset Pipeline Refresh (id=856badeb71406e29ab1e655b61ed51ea): Total: 0.004 seconds - Initiated by StopAssetImportingV2(NoUpdateAssetOptions)
+Refreshing native plugins compatible for Editor in 0.00 ms, found 0 plugins.
+Preloading 0 native plugins for Editor in 0.00 ms.
+Asset Pipeline Refresh (id=6bb7e583db906f901904675f061657ed): Total: 0.004 seconds - Initiated by StopAssetImportingV2(NoUpdateAssetOptions)
+Refreshing native plugins compatible for Editor in 0.00 ms, found 0 plugins.
+Preloading 0 native plugins for Editor in 0.00 ms.
+Asset Pipeline Refresh (id=c16580d09677d1f5583e50fd195f59cb): Total: 0.004 seconds - Initiated by StopAssetImportingV2(NoUpdateAssetOptions)
+Refreshing native plugins compatible for Editor in 0.00 ms, found 0 plugins.
+Preloading 0 native plugins for Editor in 0.00 ms.
+Asset Pipeline Refresh (id=34e7d366ce27ef381ae7e7d61b8db923): Total: 0.004 seconds - Initiated by StopAssetImportingV2(NoUpdateAssetOptions)
+Refreshing native plugins compatible for Editor in 0.00 ms, found 0 plugins.
+Preloading 0 native plugins for Editor in 0.00 ms.
+Asset Pipeline Refresh (id=1f374e9d5a0850425963af0c560c6b10): Total: 0.004 seconds - Initiated by StopAssetImportingV2(NoUpdateAssetOptions)
+Refreshing native plugins compatible for Editor in 0.00 ms, found 0 plugins.
+Preloading 0 native plugins for Editor in 0.00 ms.
+Asset Pipeline Refresh (id=89c45287df95c9b7d81d15f1eb0ed27b): Total: 0.004 seconds - Initiated by StopAssetImportingV2(NoUpdateAssetOptions)
+Refreshing native plugins compatible for Editor in 0.00 ms, found 0 plugins.
+Preloading 0 native plugins for Editor in 0.00 ms.
+Asset Pipeline Refresh (id=b89cd20f1f4a80a4fa89d03bd94f34a6): Total: 0.004 seconds - Initiated by StopAssetImportingV2(NoUpdateAssetOptions)
+Start importing ProjectSettings/ProjectSettings.asset using Guid(00000000000000004000000000000000) (LibraryAssetImporter) -> (artifact id: '1f18e020a24824533512e590676556ec') in 0.001927111 seconds
+Refreshing native plugins compatible for Editor in 0.00 ms, found 0 plugins.
+Preloading 0 native plugins for Editor in 0.00 ms.
+Asset Pipeline Refresh (id=ba7fdb3072b241fb98184c5229d819b3): Total: 0.006 seconds - Initiated by StopAssetImportingV2(NoUpdateAssetOptions)
+Refreshing native plugins compatible for Editor in 0.00 ms, found 0 plugins.
+Preloading 0 native plugins for Editor in 0.00 ms.
+Asset Pipeline Refresh (id=4d077855711d72fceaca3e205fb7c87a): Total: 0.005 seconds - Initiated by StopAssetImportingV2(NoUpdateAssetOptions)
+Refreshing native plugins compatible for Editor in 0.00 ms, found 0 plugins.
+Preloading 0 native plugins for Editor in 0.00 ms.
+Asset Pipeline Refresh (id=7cf6656c57cc7aacda2a9f7f0f462f44): Total: 0.004 seconds - Initiated by StopAssetImportingV2(NoUpdateAssetOptions)
+Refreshing native plugins compatible for Editor in 0.00 ms, found 0 plugins.
+Preloading 0 native plugins for Editor in 0.00 ms.
+Asset Pipeline Refresh (id=7f75524d7165a279d9111f7a656567bc): Total: 0.004 seconds - Initiated by StopAssetImportingV2(NoUpdateAssetOptions)
+Refreshing native plugins compatible for Editor in 0.00 ms, found 0 plugins.
+Preloading 0 native plugins for Editor in 0.00 ms.
+Asset Pipeline Refresh (id=2ebae339672a8ecf0b237e9b398dfbc0): Total: 0.004 seconds - Initiated by StopAssetImportingV2(NoUpdateAssetOptions)
+Refreshing native plugins compatible for Editor in 0.00 ms, found 0 plugins.
+Preloading 0 native plugins for Editor in 0.00 ms.
+Asset Pipeline Refresh (id=62af71f3efc05338c802e43e521fc700): Total: 0.004 seconds - Initiated by StopAssetImportingV2(NoUpdateAssetOptions)
+Refreshing native plugins compatible for Editor in 0.00 ms, found 0 plugins.
+Preloading 0 native plugins for Editor in 0.00 ms.
+Asset Pipeline Refresh (id=524aecfad41da47da9ea9a48eded75eb): Total: 0.004 seconds - Initiated by StopAssetImportingV2(NoUpdateAssetOptions)
+Refreshing native plugins compatible for Editor in 0.00 ms, found 0 plugins.
+Preloading 0 native plugins for Editor in 0.00 ms.
+Asset Pipeline Refresh (id=3cdff85ffd15dc4dda992cafa169acd5): Total: 0.004 seconds - Initiated by StopAssetImportingV2(NoUpdateAssetOptions)
+Refreshing native plugins compatible for Editor in 0.00 ms, found 0 plugins.
+Preloading 0 native plugins for Editor in 0.00 ms.
+Asset Pipeline Refresh (id=93a4864b730b53a4382858a84d42404b): Total: 0.004 seconds - Initiated by StopAssetImportingV2(NoUpdateAssetOptions)
+Refreshing native plugins compatible for Editor in 0.00 ms, found 0 plugins.
+Preloading 0 native plugins for Editor in 0.00 ms.
+Asset Pipeline Refresh (id=010c517bc4a670fd8a6f1cb9fbfb5a68): Total: 0.004 seconds - Initiated by StopAssetImportingV2(NoUpdateAssetOptions)
+SkyTide: материалы корабля — дерево/металл PBR, ткань двухсторонняя с просветом; слотов=9
+UnityEngine.Debug:ExtractStackTraceNoAlloc (byte*,int,string)
+UnityEngine.StackTraceUtility:ExtractStackTrace () (at /home/bokken/build/output/unity/unity/Runtime/Export/Scripting/StackTrace.cs:37)
+UnityEngine.DebugLogHandler:Internal_Log (UnityEngine.LogType,UnityEngine.LogOption,string,UnityEngine.Object)
+UnityEngine.DebugLogHandler:LogFormat (UnityEngine.LogType,UnityEngine.Object,string,object[])
+UnityEngine.Logger:Log (UnityEngine.LogType,object)
+UnityEngine.Debug:Log (object)
+SkyTide.EditorTools.SceneBuilder:SceneVariant (string,string) (at Assets/_Project/Scripts/Editor/SceneBuilder.cs:329)
+SkyTide.EditorTools.SceneBuilder:BuildShipVariants (SkyTide.GameMaterials) (at Assets/_Project/Scripts/Editor/SceneBuilder.cs:233)
+SkyTide.EditorTools.SceneBuilder:Build () (at Assets/_Project/Scripts/Editor/SceneBuilder.cs:74)
+SkyTide.EditorTools.BuildScript:BuildAndroid () (at Assets/_Project/Scripts/Editor/BuildScript.cs:39)
+
+(Filename: Assets/_Project/Scripts/Editor/SceneBuilder.cs Line: 329)
+
+Refreshing native plugins compatible for Editor in 0.00 ms, found 0 plugins.
+Preloading 0 native plugins for Editor in 0.00 ms.
+Asset Pipeline Refresh (id=5e6d0b6d2fe31443b9ec829e334c1e6d): Total: 0.005 seconds - Initiated by StopAssetImportingV2(NoUpdateAssetOptions)
+Refreshing native plugins compatible for Editor in 0.00 ms, found 0 plugins.
+Preloading 0 native plugins for Editor in 0.00 ms.
+Asset Pipeline Refresh (id=e49542e4468d9f6e08a762cb8e6333db): Total: 0.005 seconds - Initiated by StopAssetImportingV2(NoUpdateAssetOptions)
+SkyTide: моделей корабля: 1
+UnityEngine.Debug:ExtractStackTraceNoAlloc (byte*,int,string)
+UnityEngine.StackTraceUtility:ExtractStackTrace () (at /home/bokken/build/output/unity/unity/Runtime/Export/Scripting/StackTrace.cs:37)
+UnityEngine.DebugLogHandler:Internal_Log (UnityEngine.LogType,UnityEngine.LogOption,string,UnityEngine.Object)
+UnityEngine.DebugLogHandler:LogFormat (UnityEngine.LogType,UnityEngine.Object,string,object[])
+UnityEngine.Logger:Log (UnityEngine.LogType,object)
+UnityEngine.Debug:Log (object)
+SkyTide.EditorTools.SceneBuilder:Build () (at Assets/_Project/Scripts/Editor/SceneBuilder.cs:111)
+SkyTide.EditorTools.BuildScript:BuildAndroid () (at Assets/_Project/Scripts/Editor/BuildScript.cs:39)
+
+(Filename: Assets/_Project/Scripts/Editor/SceneBuilder.cs Line: 111)
+
+Start importing Assets/_Project/Materials/SunsetReflection.exr using Guid(716f31db51d1507bb8b1efc817fd318d) (TextureImporter) -> (artifact id: 'c698661374d1e557619beeca1d54431a') in 0.003653647 seconds
+Refreshing native plugins compatible for Editor in 0.00 ms, found 0 plugins.
+Preloading 0 native plugins for Editor in 0.00 ms.
+Asset Pipeline Refresh (id=00776ac0137011ce9b9760f52c7807fc): Total: 0.009 seconds - Initiated by StopAssetImportingV2(NoUpdateAssetOptions)
+Start importing Assets/_Project/Materials/SunsetReflection.exr using Guid(716f31db51d1507bb8b1efc817fd318d) (TextureImporter)Starting cubemap convolution for '' (size 256)
+...took 0.657 seconds
