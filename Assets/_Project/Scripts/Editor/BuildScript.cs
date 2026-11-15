@@ -204,7 +204,7 @@ namespace SkyTide.EditorTools
         /// <summary>Флаги сборки из build-flags.txt (пишет CI по сообщению коммита: [shots], [sim]).</summary>
         static bool Flag(string name)
         {
-            try { return File.Exists("build-flags.txt") && (" " + File.ReadAllText("build-flags.txt") + " ").Contains(" " + name + " "); }
+            try { return File.Exists("build-flags.txt") && System.Array.IndexOf(File.ReadAllText("build-flags.txt").Split(new[] { (char)32, (char)10, (char)13, (char)9 }, StringSplitOptions.RemoveEmptyEntries), name) >= 0; }
             catch (Exception) { return false; }
         }
 
