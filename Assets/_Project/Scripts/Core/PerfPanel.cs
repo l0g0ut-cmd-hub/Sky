@@ -11,7 +11,7 @@ namespace SkyTide
     /// </summary>
     public class PerfPanel : MonoBehaviour
     {
-        public static bool Open { get; private set; }
+        public static bool Open { get; internal set; }
         /// <summary>Касание плашки FPS в HUD.</summary>
         public static void Toggle() { Open = !Open; }
         /// <summary>Область панели на экране (пиксели, начало сверху-слева) — касания внутри не уходят кораблю.</summary>
@@ -222,6 +222,7 @@ namespace SkyTide
             if (Cell(x, ref y, cw, h, ref col, "Сумерки", SkyTidePost.DuskOn)) SkyTidePost.DuskOn = !SkyTidePost.DuskOn;
             if (Cell(x, ref y, cw, h, ref col, "Новые эффекты", FxSystem.Extras)) FxSystem.Extras = !FxSystem.Extras;
             if (Cell(x, ref y, cw, h, ref col, "60 кадров (иначе 30)", SkyTideBootstrap.Fps60)) SkyTideBootstrap.ChooseFps60(!SkyTideBootstrap.Fps60);
+            if (ReportUploader.Instance != null && ReportUploader.Instance.Ready && Cell(x, ref y, cw, h, ref col, "МЕТКА: снимок+отчёт → GitHub", false)) ReportUploader.Instance.Mark();
             if (!string.IsNullOrEmpty(DebugRecorder.PreviousSession) && Cell(x, ref y, cw, h, ref col, "отчёт прошлой сессии → буфер", false)) { GUIUtility.systemCopyBuffer = DebugRecorder.PreviousSession; copiedAt = Time.unscaledTime; }
             if (nativeW == 0) { nativeW = Screen.width; nativeH = Screen.height; }
             // Кнопка по кругу: 100% → 85% → 70% → авто (держит ~30 FPS) → 100%.

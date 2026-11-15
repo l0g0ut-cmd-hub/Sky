@@ -21,3 +21,4 @@ ci-scrubbed.log
 put.json
 Assets/_Project/Resources/BuildNumber.txt*
 __pycache__/
+Assets/_Project/Resources/ReportToken.txt*

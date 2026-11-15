@@ -75,6 +75,14 @@ jobs:
           mkdir -p Assets/_Project/Resources
           echo -n "${GITHUB_RUN_NUMBER}" > Assets/_Project/Resources/BuildNumber.txt
 
+      # Токен для отправки отчётов игры в приватный l0g0ut-cmd-hub/Sky-reports (только этот репозиторий, Contents RW).
+      # Нет секрета — файла нет, игра ничего не отправляет.
+      - name: Report token
+        env:
+          REPORT_TOKEN: ${{ secrets.REPORT_TOKEN }}
+        run: |
+          if [ -n "$REPORT_TOKEN" ]; then echo -n "$REPORT_TOKEN" > Assets/_Project/Resources/ReportToken.txt; echo "report token: set"; else echo "report token: none"; fi
+
       - name: Build APK
         env:
           UNITY_EMAIL: ${{ secrets.UNITY_EMAIL }}

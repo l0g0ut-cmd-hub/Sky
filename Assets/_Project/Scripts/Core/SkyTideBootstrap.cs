@@ -83,7 +83,7 @@ namespace SkyTide
             if (Application.isPlaying) volumetricClouds = PlayerPrefs.GetInt(VolumetricKey, 0) == 1;
             QualitySettings.vSyncCount = 0;
             Screen.sleepTimeout = SleepTimeout.NeverSleep;
-            if (Application.isPlaying) { DebugReport.Hook(); if (GetComponent<DebugRecorder>() == null) gameObject.AddComponent<DebugRecorder>(); }
+            if (Application.isPlaying) { DebugReport.Hook(); if (GetComponent<DebugRecorder>() == null) gameObject.AddComponent<DebugRecorder>(); if (GetComponent<ReportUploader>() == null) gameObject.AddComponent<ReportUploader>(); }
             if (Application.isPlaying)
             {
                 // Физики в игре нет (столкновения и попадания считаются своим кодом) — её шаг каждый кадр не нужен.

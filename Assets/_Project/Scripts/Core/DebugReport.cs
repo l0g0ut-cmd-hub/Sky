@@ -198,6 +198,7 @@ namespace SkyTide
             b.AppendLine("=== Небесный прилив · отладочный отчёт · " + (full ? "ПОЛНЫЙ" : "КОРОТКИЙ") + " ===");
             b.AppendLine("сборка " + Application.version + " · " + SystemInfo.deviceModel + " · " + SystemInfo.graphicsDeviceName + " · " + SystemInfo.graphicsDeviceType
                 + " · " + Screen.width + "×" + Screen.height + " · ОЗУ " + SystemInfo.systemMemorySize + " МБ · Android " + SystemInfo.operatingSystem);
+            b.AppendLine(ReportUploader.LastStatus);
             b.AppendLine("время в бою " + Stamp() + " · FPS " + fps.ToString("F1") + " · потолок " + Application.targetFrameRate + " · ошибок " + errorCount + " · предупреждений " + warningCount);
             FrameTiming[] ft = new FrameTiming[1];
             FrameTimingManager.CaptureFrameTimings();
