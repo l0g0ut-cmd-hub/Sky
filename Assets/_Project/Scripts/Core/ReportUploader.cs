@@ -12,8 +12,8 @@ namespace SkyTide
     ///   reports/latest.txt          — последний полный отчёт (раз в 5 мин, при сворачивании, при автометке);
     ///   reports/session0..4.txt     — последний отчёт каждой из 5 последних сессий (номер сессии по кругу);
     ///   reports/mark0..9.jpg / .txt — 10 последних меток: снимок экрана + отчёт в этот момент.
-    /// Автометки (сами, не чаще раза в 90 с и не больше 8 за сессию): гибель флагмана, ошибка Unity, FPS ниже 15 дольше
-    /// 10 с, найдено пересечение (корабль в камне, облако в крепости…), сорванный абордаж. Плюс ручная «МЕТКА» в панели FPS.
+    /// Автометки (сами, не чаще раза в 60 с и не больше 15 за сессию): гибель флагмана, ошибка Unity, FPS ниже 15 дольше
+    /// 10 с, найдено пересечение, сорванный абордаж; враг потоплен, приз, свой потоплен, тяжёлый рядом, гроза. Плюс ручная «МЕТКА».
     /// Перезапись по GitHub Contents API: GET (sha старого файла) → PUT с sha. Токен — секрет REPORT_TOKEN, вшивает CI
     /// (Resources/ReportToken.txt, в репозиторий не попадает). Нет токена — ничего не отправляется.
     /// </summary>
@@ -24,7 +24,8 @@ namespace SkyTide
         public static string LastStatus = "отправка отчётов: нет токена";
         string token;
         float nextUpload = 300f, lastMark = -1000f, lowFpsFor, nextScan = 20f;
-        int marksThisSession, lastErrors, lastDeaths, lastAborts;
+        int marksThisSession, lastErrors, lastDeaths, lastAborts, lastKills, lastPrizes, lastAllyLost;
+        bool lastHeavy; WeatherSystem.Kind lastWeather = WeatherSystem.Kind.Clear;
         int sessionSlot, markSlot;
         readonly HashSet<string> seenIntersections = new HashSet<string>();
         bool busy;
@@ -65,6 +66,19 @@ namespace SkyTide
             if (deaths > lastDeaths) { lastDeaths = deaths; AutoMark("флагман потоплен"); }
             int aborts = DebugReport.CountOf("абордажей сорвано");
             if (aborts > lastAborts) { lastAborts = aborts; AutoMark("абордаж сорван"); }
+            // События боя: снимок через 1.2 с — чтобы в кадр попал взрыв/потопление, а не момент до него.
+            int kills = DebugReport.CountOf("врагов потоплено");
+            if (kills > lastKills) { lastKills = kills; AutoMark("враг потоплен", 1.2f); }
+            int prizes = DebugReport.CountOf("призов взято");
+            if (prizes > lastPrizes) { lastPrizes = prizes; AutoMark("приз взят"); }
+            int allyLost = DebugReport.CountOf("своих потоплено");
+            if (allyLost > lastAllyLost) { lastAllyLost = allyLost; AutoMark("свой корабль потоплен", 1.2f); }
+            bool heavy = false;
+            foreach (TargetShip t in TargetShip.All) if (t != null && t.Alive && t.Heavy && PlayerHull.Instance != null && Vector3.Distance(t.transform.position, PlayerHull.Instance.transform.position) < 1500f) { heavy = true; break; }
+            if (heavy && !lastHeavy) AutoMark("тяжёлый враг рядом");
+            lastHeavy = heavy;
+            WeatherSystem ws = WeatherSystem.Instance;
+            if (ws != null && ws.Current != lastWeather) { lastWeather = ws.Current; if (ws.Current == WeatherSystem.Kind.Storm) AutoMark("гроза", 45f); }
             if (Time.realtimeSinceStartup >= nextScan)
             {
                 nextScan = Time.realtimeSinceStartup + 30f;
@@ -88,12 +102,15 @@ namespace SkyTide
             Enqueue("reports/session" + sessionSlot + ".txt", r);
         }
 
-        void AutoMark(string why)
+        // Важные (поломки) — не чаще раза в 60 с; события боя — раз в 60 с; всего не больше 15 за сессию.
+        void AutoMark(string why, float delay = 0f)
         {
-            if (Time.realtimeSinceStartup - lastMark < 90f || marksThisSession >= 8) return;
+            if (Time.realtimeSinceStartup - lastMark < 60f || marksThisSession >= 15) return;
+            lastMark = Time.realtimeSinceStartup;
             DebugReport.Event("АВТОМЕТКА: " + why);
-            Mark(why);
+            if (delay > 0f) StartCoroutine(Later(why, delay)); else Mark(why);
         }
+        IEnumerator Later(string why, float delay) { yield return new WaitForSecondsRealtime(delay); Mark(why); }
 
         /// <summary>Метка: снимок экрана (без панели FPS) + отчёт в слот mark0..9 по кругу.</summary>
         public void Mark(string why = "метка игрока")
