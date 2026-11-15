@@ -1011,7 +1011,7 @@ namespace SkyTide
                         // Штурвал поворачивается вместе с рулём, ручка — палец.
                         Vector2 off=input.StickOffset(l.radius);
                         float ang=Mathf.Clamp(off.x/Mathf.Max(1f,l.radius),-1f,1f)*1.2f;
-                        float d=r*2.35f;
+                        float d=tConsole!=null?l.console.width*560f/1536f:r*2.35f;   // штурвал — по гнезду пульта
                         if(tWheel!=null) ImagePivot(tWheel,home,new Vector2(tWheel.width*0.5f,tWheel.height*0.5f),d/tWheel.width,-ang*Mathf.Rad2Deg,Color.white);
                         else SpriteRot(home,new Vector2(d,d*KWheel.height/KWheel.width),ang,KWheel,new Color(1f,1f,1f,input.StickActive?1f:0.7f));
                         float kd=r*0.66f; Sprite(new Rect(home.x+off.x-kd*0.5f,home.y+off.y-kd*0.5f,kd,kd*KKnob.height/KKnob.width),KKnob,new Color(1f,1f,1f,input.StickActive?1f:0.8f));

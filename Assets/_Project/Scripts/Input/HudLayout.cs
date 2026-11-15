@@ -41,12 +41,13 @@ namespace SkyTide
             l.radius = u * stickRadius;
             // Пульт «штурвал + телеграф» (ui_console.png 1536×1024): гнездо штурвала — центр (385,560), латунь — y 169…908;
             // ступица телеграфа — (1118,728). Масштаб — по штурвалу (диаметр 2,35 радиуса = 560 пикселей пульта).
-            float ck = l.radius * 2.35f / 560f;
-            l.console = new Rect(colX - 2f * ck, safeArea.yMax - m - 908f * ck, 1536f * ck, 1024f * ck);
+            float ck = l.radius * 2.0f / 560f;   // меньше (владелец 16.11)
+            float edgeX = safeArea.x * 0.4f + m * 0.2f;   // ближе к краю экрана — в запас безопасной области
+            l.console = new Rect(edgeX - 20f * ck, safeArea.yMax - m * 0.5f - 908f * ck, 1536f * ck, 1024f * ck);
             l.wheel = new Vector2(l.console.x + 385f * ck, l.console.y + 560f * ck);
             float mTop = l.fps.yMax + gap, mBottom = l.console.y + 169f * ck - gap;
-            float mH = Mathf.Max(u * 0.3f, Mathf.Min(u * 0.47f, mBottom - mTop)), k = mH / 1024f;   // меньше: загораживал обзор (владелец 16.11)
-            l.radarModule = new Rect(safeArea.x + m * 0.25f, mTop, 1536f * k, mH);   // и левее — к краю экрана
+            float mH = Mathf.Max(u * 0.3f, Mathf.Min(u * 0.41f, mBottom - mTop)), k = mH / 1024f;   // меньше: загораживал обзор (владелец 16.11)
+            l.radarModule = new Rect(edgeX - 4f * k, mTop, 1536f * k, mH);   // и левее — к краю экрана
             float mx = l.radarModule.x, my = l.radarModule.y;
             l.radar = new Rect(mx + (357f - 247f) * k, my + (357f - 247f) * k, 494f * k, 494f * k);   // стекло радара (касание — масштаб)
             l.tabEnemy = new Rect(mx + 900f * k, my + 119f * k, 505f * k, 112f * k);
