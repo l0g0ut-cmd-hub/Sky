@@ -13,6 +13,9 @@ namespace SkyTide
     {
         public Transform target;
         public float yaw;
+        /// <summary>Прицел бортом (как в Black Flag): пока игрок держит кнопку борта, камера уходит за этот борт —
+        /// смотрит поверх корабля в сторону залпа, ниже и чуть ближе. 0 — нет, ±1 — борт.</summary>
+        [System.NonSerialized] public int SideAim; float sideBlend, sideDir = 1f;
         public float pitch = 14f;
         public float distance = 62f;
         public float minPitch = -25f;
@@ -114,12 +117,15 @@ namespace SkyTide
             }
 
             Vector3 pivot = target.position + Vector3.up * (lookHeight - lookDrop);
-            Quaternion rot = Quaternion.Euler(pitch, smoothHeading + yaw, 0f);
+            if (SideAim != 0) sideDir = SideAim;
+            sideBlend = Mathf.MoveTowards(sideBlend, SideAim != 0 ? 1f : 0f, dt * 2.6f);
+            float sb = Mathf.SmoothStep(0f, 1f, sideBlend);
+            Quaternion rot = Quaternion.Euler(Mathf.Lerp(pitch, 9f, sb), smoothHeading + yaw + sideDir * 82f * sb, 0f);
             // Ход: на полном камера на 14% дальше и обзор на 5° шире (только в игре — кадры CI не меняются).
             if (target != shipCtrlFor) { shipCtrlFor = target; shipCtrl = target.GetComponent<ShipController>(); }
             float speed01 = shipCtrl != null && shipCtrl.maxSpeed > 0f ? Mathf.Clamp01(shipCtrl.Speed / shipCtrl.maxSpeed) : 0f;
             speedPull = Mathf.Lerp(speedPull, speed01, 1f - Mathf.Exp(-1.2f * dt));
-            float reach = distance * (1f + 0.14f * speedPull);
+            float reach = distance * (1f + 0.14f * speedPull) * (1f - 0.12f * sb);
             if (Application.isPlaying)
             {
                 if (lens == null) lens = GetComponent<Camera>();

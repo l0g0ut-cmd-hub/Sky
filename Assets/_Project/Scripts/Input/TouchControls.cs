@@ -22,7 +22,7 @@ namespace SkyTide
         [Tooltip("Градусов поворота камеры на ширину экрана")]
         public float orbitDegreesPerScreen = 220f;
 
-        enum Owner { Stick, Camera, Button, Telegraph }
+        enum Owner { Stick, Camera, Button, Telegraph, VolleyL, VolleyR }
 
         readonly Dictionary<int, Owner> owners = new Dictionary<int, Owner>();
         readonly Dictionary<int, Vector2> lastPos = new Dictionary<int, Vector2>();
@@ -292,8 +292,9 @@ namespace SkyTide
                 if (Application.isPlaying && cam != null && hl.spy.Contains(p)) { owners[id] = Owner.Button; lastPos[id] = p; cam.ToggleScope(); return; }
                 if (Application.isPlaying && hl.auto.Contains(p)) { owners[id] = Owner.Button; lastPos[id] = p; SetAutoBattle(!AutoBattle); return; }
                 if (bs != null && VolleyModeRect().Contains(p)) { owners[id] = Owner.Button; lastPos[id] = p; bs.ripple = !bs.ripple; return; }
-                if (bs != null && VolleyRect(-1).Contains(p)) { owners[id] = Owner.Button; lastPos[id] = p; if (bs.Readiness(-1) >= 0.9999f) Haptics.Pulse(45); bs.Fire(-1); return; }
-                if (bs != null && VolleyRect(1).Contains(p)) { owners[id] = Owner.Button; lastPos[id] = p; if (bs.Readiness(1) >= 0.9999f) Haptics.Pulse(45); bs.Fire(1); return; }
+                // Прицел как в Black Flag: держишь кнопку борта — камера за борт, видна траектория залпа; отпустил — залп.
+                if (bs != null && VolleyRect(-1).Contains(p)) { owners[id] = Owner.VolleyL; lastPos[id] = p; BeginHold(bs, -1); return; }
+                if (bs != null && VolleyRect(1).Contains(p)) { owners[id] = Owner.VolleyR; lastPos[id] = p; BeginHold(bs, 1); return; }
                 if (p.x < ViewWidth * 0.5f && stickId == int.MinValue)
                 {
                     owners[id] = Owner.Stick;
@@ -335,6 +336,12 @@ namespace SkyTide
             }
             lastPos[id] = p;
 
+            if (ended && (o == Owner.VolleyL || o == Owner.VolleyR))
+            {
+                Broadside hb = Guns(); int hs = o == Owner.VolleyL ? -1 : 1;
+                if (hb != null && hb.HoldSide == hs) { if (hb.Readiness(hs) >= 0.9999f) Haptics.Pulse(45); hb.Fire(hs); hb.HoldSide = 0; }
+                if (cam != null && cam.SideAim == hs) cam.SideAim = 0;
+            }
             if (ended)
             {
                 // Короткое касание без сдвига по кораблю врага — взять его в цель (повторно по той же — снять).
@@ -497,6 +504,13 @@ namespace SkyTide
             return true;
         }
 
+        void BeginHold(Broadside bs, int side)
+        {
+            bs.HoldSide = side;
+            if (cam != null) { cam.SideAim = side; cam.CancelRecenter(); }
+            Haptics.Pulse(15);
+        }
+
         public Broadside Guns()
         {
             if(ship==null)return null;
@@ -543,7 +557,7 @@ namespace SkyTide
         public bool Pressed(Rect rect)
         {
             foreach(KeyValuePair<int,Owner> kv in owners)
-                if(kv.Value==Owner.Button&&rect.Contains(lastPos[kv.Key]))return true;
+                if((kv.Value==Owner.Button||kv.Value==Owner.VolleyL||kv.Value==Owner.VolleyR)&&rect.Contains(lastPos[kv.Key]))return true;
             return false;
         }
         int ViewWidth
@@ -598,6 +612,7 @@ namespace SkyTide
         {
             owners.Clear();lastPos.Clear();stickId=int.MinValue;stickValue=Vector2.zero;lastPinch=-1f;gear=1;gearArmed=true;AutoBattle=false;
             if(ship!=null){ship.turn=0f;ship.throttle=0f;}
+            {Broadside hb=Guns();if(hb!=null)hb.HoldSide=0;} if(cam!=null)cam.SideAim=0;   // прицел бортом не залипает
         }
         void OnApplicationFocus(bool focused) {if(!focused)ResetInteraction();}
         void OnDisable() {if(Paused)SetPaused(false);ResetInteraction();}

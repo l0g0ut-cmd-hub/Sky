@@ -255,6 +255,8 @@ namespace SkyTide
         [System.NonSerialized] public bool HasLead; [System.NonSerialized] public Vector3 LeadPoint;
         /// <summary>Автобой сам выбирает цель (как раньше — ближайшую к траверзу).</summary>
         public bool AutoAim;
+        /// <summary>Игрок держит кнопку борта (прицел как в Black Flag): борт задан, стрелка видна только сейчас; отпустил — залп.</summary>
+        [System.NonSerialized] public int HoldSide;
         /// <summary>Цель прицельного борта (радар выделяет её).</summary>
         public TargetShip AimTargetShip { get { return aimTarget; } }
         public bool OffOnTarget { get; private set; }
@@ -463,12 +465,14 @@ namespace SkyTide
             if (Locked != null && (!Locked.Alive || !Locked.gameObject.activeInHierarchy)) Locked = null;
             TargetShip best = null; float bestScore = float.MaxValue, curScore = float.MaxValue;
             if (Locked != null) best = Locked;
-            else if (AutoAim)
+            if (HoldSide != 0 && best != null && Mathf.Sign(transform.InverseTransformPoint(best.transform.position).x) != HoldSide) best = null;   // взятая цель с другого борта — не эта
+            if (best == null && (AutoAim || HoldSide != 0))
             {
                 foreach (TargetShip t in TargetShip.All)
                 {
                     if (t == null || !t.Alive || !t.gameObject.activeInHierarchy) continue;
                     Vector3 lp = transform.InverseTransformPoint(t.transform.position);
+                    if (HoldSide != 0 && Mathf.Sign(lp.x) != HoldSide) continue;   // прицел бортом — только враги с этого борта
                     float d = lp.magnitude;
                     if (d > reach) continue;
                     float score = d * (1f + 0.8f * Mathf.Abs(lp.z) / Mathf.Max(1f, d));
@@ -480,8 +484,9 @@ namespace SkyTide
             aimTarget = best;
             // Борт: меняется, только когда цель уверенно ушла на другую сторону (мёртвая зона ±12 м у диаметральной плоскости).
             float side = aimSide;
+            if (HoldSide != 0) { side = HoldSide; sideHoldUntil = -1f; }
             // Борт меняется, только если цель уверенно (за 20 м от диаметральной плоскости) на другой стороне 0.6 с подряд.
-            if (best != null)
+            if (best != null && HoldSide == 0)
             {
                 float lx = transform.InverseTransformPoint(best.transform.position).x;
                 float want = lx > 20f ? 1f : lx < -20f ? -1f : side;
@@ -548,7 +553,10 @@ namespace SkyTide
             {
                 if (scopeCam == null && Camera.main != null) scopeCam = Camera.main.GetComponent<OrbitCamera>();
                 bool scoped = scopeCam != null && scopeCam.ScopeOn;   // в трубе лента шла у самой камеры жёлтой стеной (снимки 155)
-                if (!scoped && best != null && solved && aimedK > 0.02f && BuildArc(fore != null ? fore : mid, aft != null ? aft : mid, mid, side, g, fx))
+                // Стрелка — только пока игрок держит кнопку борта. Без цели — куда ляжет залп «прямо» (стволы на упоре).
+                bool holding = HoldSide != 0 && HoldSide == (int)side;
+                if (holding && (best == null || !solved || aimedK < 0.3f)) { aimPoint = transform.position + transform.right * side * MaxRange * 0.6f + Vector3.down * 15f; aimedK = 1f; }
+                if (!scoped && holding && aimedK > 0.02f && BuildArc(fore != null ? fore : mid, aft != null ? aft : mid, mid, side, g, fx))
                     arrow.Draw(arcA, arcB, hullAny ? 2 : ready ? 0 : 1, (ready ? 0.85f : 0.5f) * Mathf.SmoothStep(0f, 1f, aimedK));
                 else { arrow.Hide(); arcValid = false; }
             }
