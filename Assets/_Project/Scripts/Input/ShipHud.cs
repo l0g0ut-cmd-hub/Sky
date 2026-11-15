@@ -38,8 +38,9 @@ namespace SkyTide
         void IconText(Rect plate, int icon, string text, float size, Color color)
         {
             Rect c = Content(plate); float ic = Mathf.Min(c.height * 1.25f, plate.height * 0.9f);
-            Icon2(icon, new Rect(c.x - ic * 0.15f, plate.center.y - ic * 0.5f, ic, ic), Color.white);
-            Text(new Rect(c.x + ic * 0.9f, c.y, c.width - ic * 0.9f, c.height), text, size, color);
+            ic = Mathf.Min(ic, c.height * 1.05f);   // значок — внутри поля, не на угловом орнаменте (снимки 155)
+            Icon2(icon, new Rect(c.x, plate.center.y - ic * 0.5f, ic, ic), Color.white);
+            Text(new Rect(c.x + ic * 1.05f, c.y, c.width - ic * 1.05f, c.height), text, size, color);
         }
         void Tint(Color c) { GL.Color(QualitySettings.activeColorSpace == ColorSpace.Linear ? c.linear : c); }
         static void Vertex(Vector2 p, Vector2 uv) { GL.TexCoord2(uv.x, uv.y); GL.Vertex3(p.x, p.y, 0f); }
@@ -481,17 +482,28 @@ namespace SkyTide
             float dist = Vector3.Distance(t.transform.position, input.ship.transform.position);
             if (sp.z > 0f)
             {
-                Vector2 q = new Vector2(sp.x, Screen.height - sp.y);
-                Vector3 sp2 = c.WorldToScreenPoint(t.Center + c.transform.right * 22f * t.transform.lossyScale.x);
-                float r = Mathf.Clamp(Mathf.Abs(sp2.x - sp.x), l.unit * 0.04f, l.unit * 0.3f), arm = r * 0.4f, w = Mathf.Max(2f, l.unit * 0.004f);
+                // Рамка — по проекции корпуса (8 углов его коробки), а не кругом от центра: на снимках 155 уголки
+                // съезжали с корабля и висели ниже корпуса.
+                float x0 = float.MaxValue, y0 = float.MaxValue, x1 = float.MinValue, y1 = float.MinValue; bool any = false;
+                for (int i = 0; i < 8; i++)
+                {
+                    Vector3 cp = c.WorldToScreenPoint(t.BoxCorner(i)); if (cp.z <= 0f) continue; any = true;
+                    float yy = Screen.height - cp.y; x0 = Mathf.Min(x0, cp.x); x1 = Mathf.Max(x1, cp.x); y0 = Mathf.Min(y0, yy); y1 = Mathf.Max(y1, yy);
+                }
+                if (!any) return;
+                float pad = l.unit * 0.012f, minS = l.unit * 0.06f;
+                Vector2 q = new Vector2((x0 + x1) * 0.5f, (y0 + y1) * 0.5f);
+                float hw = Mathf.Max(minS, (x1 - x0) * 0.5f + pad), hh = Mathf.Max(minS * 0.7f, (y1 - y0) * 0.5f + pad);
+                hw = Mathf.Min(hw, l.unit * 0.6f); hh = Mathf.Min(hh, l.unit * 0.4f);
+                float arm = Mathf.Min(hw, hh) * 0.45f, w = Mathf.Max(2f, l.unit * 0.004f);
                 for (int i = 0; i < 4; i++)
                 {
                     float sx = i % 2 == 0 ? -1f : 1f, sy = i < 2 ? -1f : 1f;
-                    Vector2 corner = q + new Vector2(sx * r, sy * r * 0.7f);
+                    Vector2 corner = q + new Vector2(sx * hw, sy * hh);
                     Line(corner, corner - new Vector2(sx * arm, 0f), w, col);
                     Line(corner, corner - new Vector2(0f, sy * arm), w, col);
                 }
-                Text(new Rect(q.x - l.unit * 0.1f, q.y + r * 0.7f + l.unit * 0.005f, l.unit * 0.2f, l.unit * 0.035f), Mathf.RoundToInt(dist / 10f) * 10 + " м", l.unit * 0.026f, col);
+                Text(new Rect(q.x - l.unit * 0.1f, q.y + hh + l.unit * 0.005f, l.unit * 0.2f, l.unit * 0.035f), Mathf.RoundToInt(dist / 10f) * 10 + " м", l.unit * 0.026f, col);
             }
         }
 
@@ -789,7 +801,7 @@ namespace SkyTide
             if (f >= hullGhost) hullGhost = f;
             else if (now > hullGhostHold) hullGhost = Mathf.MoveTowards(hullGhost, f, Time.unscaledDeltaTime * 0.6f);
             float flash = Mathf.Clamp01(1f - (Time.time - hull.LastHitTime) / 0.5f);
-            float bw = l.course.width * 1.5f;
+            float bw = l.unit * 0.45f;   // полоса корпуса прежней ширины (компас стал шире)
             Rect bar = new Rect(l.course.center.x - bw * 0.5f, l.course.yMax + l.unit * 0.012f, bw, l.unit * 0.04f);
             Color fill = Color.Lerp(new Color(1f, 0.35f, 0.2f), Color.white, Mathf.Clamp01((f - 0.25f) / 0.5f));
             fill = Color.Lerp(fill, new Color(1f, 0.15f, 0.08f), flash);
@@ -810,7 +822,7 @@ namespace SkyTide
                 Solid(new Rect(bar.x + bar.width * f, bar.y + pad, bar.width * (hullGhost - f), bar.height - pad * 2f), new Color(1f, 0.95f, 0.85f, 0.9f));
             }
             // Подпись — на тёмной подложке (на светлых облаках терялась); ниже 30% подложка пульсирует красным.
-            Rect cap = new Rect(bar.center.x - l.unit * 0.13f, bar.yMax + l.unit * 0.002f, l.unit * 0.26f, l.unit * 0.04f);   // шире: по краям заклёпки плашки
+            Rect cap = new Rect(bar.center.x - l.unit * 0.13f, bar.yMax + l.unit * 0.008f, l.unit * 0.26f, l.unit * 0.04f);   // с зазором: плашка наезжала на полосу корпуса   // шире: по краям заклёпки плашки
             float alarm = f < 0.3f && f > 0f ? 0.5f + 0.5f * Mathf.Sin(Time.unscaledTime * 6f) : 0f;
             InfoPlate(cap, cap.height, Color.white);
             if (alarm > 0f) Solid(new Rect(cap.x + cap.height * 0.6f, cap.y + cap.height * 0.2f, cap.width - cap.height * 1.2f, cap.height * 0.6f), new Color(0.55f, 0.06f, 0.04f, 0.7f * alarm));   // ниже 30% — пульсирует красным

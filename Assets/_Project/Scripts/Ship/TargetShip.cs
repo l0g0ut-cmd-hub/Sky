@@ -244,6 +244,8 @@ namespace SkyTide
         Transform playerFor; Broadside playerGuns; ShipController playerCtrl;   // без покадрового GetComponent
         Transform model;
         Bounds box;
+        /// <summary>Угол рамки корпуса в мире (i = 0..7) — для рамки цели на экране.</summary>
+        public Vector3 BoxCorner(int i) { Vector3 e = box.extents; Vector3 l = box.center + new Vector3((i & 1) == 0 ? -e.x : e.x, (i & 2) == 0 ? -e.y : e.y, (i & 4) == 0 ? -e.z : e.z); return model != null ? model.TransformPoint(l) : transform.position; }
         Vector3 waypoint;
         float nextPick;
         int hits;

@@ -29,7 +29,7 @@ namespace SkyTide
             l.mode = new Rect(l.mode.x, l.mode.y, half, l.mode.height);
             l.clouds = new Rect(safeArea.xMax - m - u * 0.43f, safeArea.y + m, u * 0.43f, u * 0.105f);
             l.ship = new Rect(l.clouds.x, l.clouds.yMax + gap, l.clouds.width, u * 0.08f);
-            l.course = new Rect(safeArea.center.x - u * 0.15f, safeArea.y + m, u * 0.3f, u * 0.075f);
+            l.course = new Rect(safeArea.center.x - u * 0.2f, safeArea.y + m, u * 0.4f, u * 0.075f);   // шире: лента компаса была заметно уже полосы корпуса
             l.fps = new Rect(safeArea.x + m, safeArea.y + m, u * 0.22f, u * 0.065f);
             l.speed = new Rect(safeArea.x + m, safeArea.yMax - u * 0.46f, u * 0.34f, u * 0.07f);   // выше штурвала: на 0.425 верхняя рукоять и шарик джойстика лезли на текст (видео сборки 102)
             // Под радаром — две строки дальностей (враг, причал): место под них вычитается из радара на низких экранах.
