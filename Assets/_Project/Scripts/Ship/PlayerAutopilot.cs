@@ -67,7 +67,7 @@ namespace SkyTide
             if (foe == null) { if (!Hunt()) Patrol(fort); return; }
             if (TryBoard()) return;
             // Линейный и адмиральский в одиночку не по зубам: без своих рядом и при неполном корпусе — отходим к крепости.
-            if (foe.Class >= ShipClass.ShipOfLine && fort != null && !StrongEnough(foe))
+            if (ShipClasses.IsGiant(foe.Class) && fort != null && !StrongEnough(foe))
             {
                 state = "АВТОБОЙ · ОТХОД ОТ: " + ShipClasses.Get(foe.Class).name;
                 Vector3 home = fort.BerthWorld - transform.position; home.y = 0f;
@@ -107,7 +107,7 @@ namespace SkyTide
                     if (al != null && al.Alive && (al.transform.position - t.transform.position).sqrMagnitude < 450f * 450f) { score *= al.role == AllyShip.Role.Merchant ? 0.45f : 0.7f; break; }
                 score *= Mathf.Lerp(0.55f, 1f, t.Health01);   // подбитого — добить
                 if (t.Heavy && count > 1) score *= 1.8f;      // тяжёлого — последним
-                if (t.Class >= ShipClass.ShipOfLine && !StrongEnough(t)) score *= 4f;   // гиганта — только если по силам
+                if (ShipClasses.IsGiant(t.Class) && !StrongEnough(t)) score *= 4f;   // гиганта — только если по силам
                 if (t == foe) score *= 0.8f;                  // не мечется между целями
                 if (score < bestScore) { bestScore = score; best = t; }
             }
@@ -282,7 +282,7 @@ namespace SkyTide
             guns.chainShot = runner;
 
             bool zone = SkyFortress.InSafeZone(transform.position);
-            if (zone && !foe.Outlaw && !bold) return;
+            if ((zone || SkyFortress.InSafeZone(foe.transform.position)) && !foe.Outlaw && !bold) return;   // в зоне крепости (и в неё) — только крепость
             // Расчёт борта наводится на ближайшего врага — стреляем, когда это и есть цель (или любой враг в прицеле: не жалеем ядер).
             if (guns.AimOnTarget && guns.Readiness(guns.AimSide) >= 0.999f) guns.Fire(guns.AimSide);
             // Окружили — второй борт бьёт свою цель, если его залп ложится в корпус.
@@ -304,7 +304,7 @@ namespace SkyTide
             }
             state = "АВТОБОЙ · К ПРИЧАЛУ";
             // По пути отстреливаемся: враг в прицеле и борт заряжен — залп (вне зоны крепости).
-            if (guns != null && !SkyFortress.InSafeZone(transform.position) && guns.AimOnTarget && guns.Readiness(guns.AimSide) >= 0.999f) guns.Fire(guns.AimSide);
+            if (guns != null && !SkyFortress.InSafeZone(transform.position) && (!SkyFortress.InSafeZone(foe.transform.position) || foe.Outlaw) && guns.AimOnTarget && guns.Readiness(guns.AimSide) >= 0.999f) guns.Fire(guns.AimSide);   // в зону крепости не стреляем
             Vector3 heading = to / Mathf.Max(dist, 1f);
             if (dist > 220f)
             {

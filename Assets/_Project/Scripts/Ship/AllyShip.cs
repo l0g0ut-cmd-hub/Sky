@@ -398,6 +398,7 @@ namespace SkyTide
             {
                 if (t == null || !t.Alive) continue;
                 if (!t.AtWar && !t.Outlaw) continue;   // политика: только враждебные к гарнизону (повод был) — мирных не трогаем
+                if (SkyFortress.InSafeZone(t.transform.position)) continue;   // в зоне крепости с ним разбирается крепость
                 if (t.InPort && !t.Outlaw) continue;   // гость порта — не цель
                 Vector3 off = t.transform.position - anchor; off.y = 0f;
                 float limit = role == Role.Wingman ? engageRange : float.MaxValue;   // сторожевые ходят по всей карте — бьют, где встретят
@@ -541,6 +542,8 @@ namespace SkyTide
         void Gunnery(TargetShip t)
         {
             if (t.Surrendered) { pendingLeft = 0; return; }   // сдавшегося не бьют
+            // Безопасная зона: в ней стреляет только крепость (владелец 16.11: «слишком часто все стали стрелять в зоне»).
+            if (SkyFortress.InSafeZone(transform.position) || SkyFortress.InSafeZone(t.transform.position)) { pendingLeft = 0; return; }
             GunneryAt(t.Center, t.Controller != null ? t.transform.forward * t.Controller.Speed : Vector3.zero, false, t.name.Replace(" Ship", ""));
         }
         void GunneryAt(Vector3 tp, Vector3 tv, bool atPlayer, string who)

@@ -14,6 +14,7 @@ from convert_glb import read_glb, to_unity, write_bytes, dilate, emission_from_a
 FLEET = {
     'cutter': (16, '-x'), 'sloop': (22, '-x'), 'fireship': (20, '-x'), 'corvette': (30, '-x'), 'brig': (40, '-x'),
     'ketch': (42, '+x'), 'frigate': (70, '-x'), 'heavyfrigate': (100, '-x'), 'ship_of_line': (160, '-x'), 'admiral': (260, '+x'),
+    'clipper': (48, '-x'), 'gunboat': (85, '-x'),
 }
 OUT = os.path.join(os.path.dirname(__file__), '..', 'Assets', '_Project', 'Models', 'Fleet')
 

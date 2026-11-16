@@ -76,6 +76,7 @@ namespace SkyTide
         public string MoodText { get; private set; } = "";
         public float MoodTextUntil { get; private set; } = -1f;
         public bool Raiding { get; private set; }
+        float zoneClock;
         float moodUntil, aimClock, calmClock, fightStartHealth = 1f, nextMorale, surrenderAt, lastHitAt = -100f, warnedAt = -100f, nextRelate;
         string moodWhy = "";
         AllyShip foeAlly;
@@ -236,6 +237,14 @@ namespace SkyTide
 
                         break;
                     }
+                    // Враждебный в безопасной зоне дольше 6 с (не проходом) — крепость считает нарушителем и бьёт.
+                    zoneClock = SkyFortress.InSafeZone(transform.position) ? zoneClock + 0.25f : 0f;
+                    if (zoneClock > 6f && !Outlaw)
+                    {
+                        MarkOutlaw();
+                        if (HudNotice.DistToPlayer(transform.position) < 2500f)
+                            HudNotice.Post("КРЕПОСТЬ БЬЁТ: " + HudNotice.Who(this), "ВРАЖДЕБНЫЙ В ЗОНЕ КРЕПОСТИ · " + HudNotice.Where(transform.position), 0, 3f, HudNotice.Prio.Combat, "fortout" + GetInstanceID(), transform);
+                    }
                     // Остывает: противник далеко дольше CalmAfter (набег — не остывает, пока флагман жив).
                     bool near = (playerOk && dist < Mathf.Max(1800f, aggroRange)) || (FoeAlly != null && (FoeAlly.transform.position - transform.position).sqrMagnitude < 1800f * 1800f);
                     calmClock = near || Raiding ? 0f : calmClock + 0.25f;
@@ -298,6 +307,7 @@ namespace SkyTide
                         PlayerHull ph = PlayerHull.Instance;
                         Vector3 tp = player != null ? player.position - transform.position : Vector3.zero; tp.y = 0f;
                         bool playerTarget = ph != null && ph.Alive && player != null && (!SkyFortress.InSafeZone(player.position) || Bold);
+                        if (fa != null && !Bold && SkyFortress.InSafeZone(fa.transform.position)) fa = null;   // свой под пушками крепости — не лезем
                         if (fa != null && (!playerTarget || (fa.transform.position - transform.position).sqrMagnitude < tp.sqrMagnitude * 0.8f))
                         {
                             Vector3 ta = fa.transform.position - transform.position; ta.y = 0f;
@@ -397,7 +407,7 @@ namespace SkyTide
             if (Class != ShipClass.None)
             {
                 // Класс: числа — из таблицы классов, без случайного «тяжёлого» и без тёмного тона (у модели своя окраска).
-                Heavy = Class >= ShipClass.HeavyFrigate;
+                Heavy = ShipClasses.IsHeavy(Class);
                 hitsToSink = baseHits; ctrl.maxSpeed = baseSpeed; ctrl.maxYawRate = baseYaw;
                 if (gunner != null) { gunner.gunsPerSide = baseGuns; gunner.maxRange = baseRange; gunner.cooldown = baseCooldown; }
                 return;   // «линейный корабль врага» при появлении — шум: о гиганте скажет его враждебность (Announce)
@@ -432,7 +442,7 @@ namespace SkyTide
             float tr = Random.value;
             temper = tr < 0.3f ? Temper.Coward : tr < 0.8f ? Temper.Cautious : Temper.Bold;
             if (Class == ShipClass.Admiral || Class == ShipClass.ShipOfLine) temper = Temper.Bold;
-            Fool = Class < ShipClass.HeavyFrigate && Random.value < 0.07f;
+            Fool = !ShipClasses.IsHeavy(Class) && Random.value < 0.07f;
             float dr = Random.value;
             duty = dr < 0.45f ? Duty.Travel : dr < 0.8f ? Duty.Patrol : Duty.Port;
             Mood = Attitude.Calm; moodWhy = ""; Raiding = false; foeAlly = null; aimClock = 0f;
@@ -498,7 +508,7 @@ namespace SkyTide
                 bool go = Health01 < 0.45f ? Random.value < 0.6f : Random.value < (duty == Duty.Port ? 0.6f : 0.06f);
                 // Гости порта — по местам (их шесть, у мелких и средних; тяжёлый фрегат и крупнее в порт не ходят). Нет свободного —
                 // не идёт (раньше все шли в одну точку — пробка у причала, владелец 16.11).
-                if (go && (Class >= ShipClass.HeavyFrigate || !TakeGuestSlot())) go = false;
+                if (go && (ShipClasses.IsHeavy(Class) || !TakeGuestSlot())) go = false;
                 if (!go) return false;
                 mode = Mode.ToPort;
                 DebugReport.Count("врагов ушло в порт");

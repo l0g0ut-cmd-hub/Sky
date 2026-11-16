@@ -273,7 +273,7 @@ namespace SkyTide
                 // Торговца нет (владелец 16.11: «торговца вырезать вообще»). Жизнь гарнизона: два таможенных катера у края вод
                 // гарнизона (выпроваживают чужих) и два курьера по делам (бриг и фрегат) — всего свои 7 с ведомым.
                 AllyShip.Role[] roles = { AllyShip.Role.Customs, AllyShip.Role.Customs, AllyShip.Role.Courier, AllyShip.Role.Courier };
-                ShipClass[] rc = { ShipClass.Cutter, ShipClass.Cutter, ShipClass.Brig, ShipClass.Frigate };
+                ShipClass[] rc = { ShipClass.Cutter, ShipClass.Cutter, ShipClass.Clipper, ShipClass.Brig };
                 for (int r = 0; r < roles.Length; r++)
                 {
                     float ang = (r * 90f + 45f) * Mathf.Deg2Rad;
@@ -411,7 +411,7 @@ namespace SkyTide
         {
             ShipVariant v = ClassVariant(cls);
             bool classed = v != targetShip;
-            bool scout = !classed && cls <= ShipClass.Corvette;
+            bool scout = !classed && (cls <= ShipClass.Corvette || cls == ShipClass.Clipper);
             ShipController s = ShipFactory.Build(name, at, heading, materials, v);
             if (scout) s.transform.localScale = Vector3.one * 0.72f;
             TargetShip t = s.gameObject.AddComponent<TargetShip>();

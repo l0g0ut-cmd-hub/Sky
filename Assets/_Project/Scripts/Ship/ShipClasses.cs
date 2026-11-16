@@ -6,7 +6,9 @@ namespace SkyTide
     /// (запечён в модель: от 16 м у катера до 260 м у адмиральского; Корсар — 38 м) и своя огневая мощь.
     /// Числа — база для рядового брига (ход 20, поворот 24, 30 попаданий, 420 м, перезарядка 6 с, как прежний враг);
     /// конфиг Sky-reports (enemySpeed/Yaw/Hits/Range/Cooldown) масштабирует все классы разом относительно брига.</summary>
-    public enum ShipClass { None = -1, Cutter, Sloop, Corvette, Fireship, Brig, Ketch, Frigate, HeavyFrigate, ShipOfLine, Admiral }
+    /// <summary>Порядок — для индексов моделей; «тяжесть» и «гигант» — только через IsHeavy/IsGiant (клиппер и канонерка
+    /// добавлены в конец списка, по порядку они не «крупнее адмиральского»).</summary>
+    public enum ShipClass { None = -1, Cutter, Sloop, Corvette, Fireship, Brig, Ketch, Frigate, HeavyFrigate, ShipOfLine, Admiral, Clipper, Gunboat }
 
     public struct ShipClassInfo
     {
@@ -29,7 +31,11 @@ namespace SkyTide
 
     public static class ShipClasses
     {
-        public const int Count = 10;
+        public const int Count = 12;
+        /// <summary>Тяжёлый (в порт не ходит, не «дурень», тёмная отметка): тяжёлый фрегат, линейный, адмиральский, канонерка.</summary>
+        public static bool IsHeavy(ShipClass c) { return c == ShipClass.HeavyFrigate || c == ShipClass.ShipOfLine || c == ShipClass.Admiral || c == ShipClass.Gunboat; }
+        /// <summary>Гигант (автобой без своих не лезет): линейный и адмиральский.</summary>
+        public static bool IsGiant(ShipClass c) { return c == ShipClass.ShipOfLine || c == ShipClass.Admiral; }
         //                                         id              имя              длина пушек прочн. ход  поворот дальн. перезар.
         // Владелец 16.11: «адмиральские прям гигантские, и вообще сильно всё по размеру отличалось; большой размер — не скорость,
         // а прочность, малая манёвренность и ударная мощь; у всех своя скорострельность». Логика линейки:
@@ -53,6 +59,10 @@ namespace SkyTide
             new ShipClassInfo("heavyfrigate", "ТЯЖЁЛЫЙ ФРЕГАТ", 100f, 10, 120, 15f, 11f,  3.5f, 520f, 8.0f, 1.75f, 90f, 0.85f),
             new ShipClassInfo("ship_of_line", "ЛИНЕЙНЫЙ",       160f, 14, 200, 12f,  8f,  2.5f, 570f, 10.0f, 2.0f, 93f, 0.80f),
             new ShipClassInfo("admiral",      "АДМИРАЛЬСКИЙ",   260f, 20, 360, 10f,  5f,  1.6f, 620f, 12.0f, 2.5f, 95f, 0.75f),
+            // Вытянутые баллоны, как у флагмана (владелец 16.11): клиппер — самый быстрый из боевых, лёгкий борт;
+            // дирижабль-канонерка — медленная, но корпус-гондола под двумя баллонами держит 8 пушек на борт калибра ×1,75.
+            new ShipClassInfo("clipper",      "КЛИППЕР",         48f,  3,  24, 33f, 30f,  9f, 380f,  4.0f, 1.0f,  88f, 0.95f),
+            new ShipClassInfo("gunboat",      "КАНОНЕРКА",       85f,  8, 110, 13f, 12f,  3f, 500f,  7.5f, 1.75f, 90f, 0.85f),
         };
 
         public static ShipClassInfo Get(ShipClass c) { return Info[Mathf.Clamp((int)c, 0, Count - 1)]; }
@@ -65,7 +75,7 @@ namespace SkyTide
             ShipClass.Brig, ShipClass.Sloop, ShipClass.Corvette, ShipClass.Brig, ShipClass.Frigate, ShipClass.Sloop,
             ShipClass.Brig, ShipClass.Corvette, ShipClass.Ketch, ShipClass.Frigate, ShipClass.Brig, ShipClass.HeavyFrigate,
             ShipClass.Corvette, ShipClass.Brig, ShipClass.Frigate, ShipClass.ShipOfLine, ShipClass.Brig, ShipClass.Admiral,
-            ShipClass.Brig, ShipClass.Sloop, ShipClass.Corvette, ShipClass.Brig, ShipClass.Frigate, ShipClass.Ketch, ShipClass.Brig, ShipClass.Corvette,
+            ShipClass.Brig, ShipClass.Clipper, ShipClass.Corvette, ShipClass.Gunboat, ShipClass.Frigate, ShipClass.Ketch, ShipClass.Clipper, ShipClass.Corvette,
         };
         public static ShipClass ForEnemy(int index) { return index < Roster.Length ? Roster[index] : (index % 3 == 2 ? ShipClass.Corvette : ShipClass.Brig); }
     }
