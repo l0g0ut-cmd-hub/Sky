@@ -1,10 +1,11 @@
 {
  "id": "frigate",
- "preview": "01a1e1f3-5405-7441-9a8a-e53435fbda34",
- "refine": "01a1e1f5-2948-7172-9fad-dca70c644b4f",
- "prompt": "(текстура к форме 2-го захода)",
- "texture_prompt": "Weathered dark oak planks, polished brass and dark iron fittings, tan canvas balloons with leather straps, warm amber lanterns, muted crimson painted trim. Painterly game texture, clean readable materials.",
- "polycount": null,
- "credits": 15,
- "glb_bytes": 8038788
+ "account": 2,
+ "image_prompt": "Same art style, materials and colors as the reference airships: weathered reddish-brown wooden hull, brass fittings, round cream canvas gas balloons with dark brown stripes mounted above the deck on masts and struts. Single flying airship, three-quarter side view, whole ship visible, plain background, no water, no ground, no characters. A THREE-MASTED FRIGATE, a bit smaller than the heavy frigate reference and without iron plates: long elegant wooden hull, six cannon ports per side, four round balloons in two pairs above the deck, ornate stern gallery, long pennant.",
+ "concept": "01a1e205-2b8f-7110-b663-23e42b9cb720",
+ "concept_credits": 3,
+ "model": "01a1e205-8e1e-7266-a83c-c80d36b68dcb",
+ "model_credits": 30,
+ "glb_bytes": 14384852,
+ "stage": "done"
 }
