@@ -1,0 +1,10 @@
+{
+ "id": "heavyfrigate",
+ "preview": "01a1e1ed-20f1-702a-8fb0-27cb0c019440",
+ "refine": "01a1e1ee-7427-7191-851d-0000c38fca8c",
+ "prompt": "Stylized dark-fantasy flying sky-ship, single isolated game asset, no water, no ground, no base, no characters. Wooden sailing-ship hull with brass trim and iron fittings, held aloft by spherical canvas gas balloons on a brass frame above the deck, propellers at the stern, rudder fin under the keel. Heavy armored frigate: large hull reinforced with riveted iron plates, eight cannon ports on each side, five balloons, armored stern castle.",
+ "texture_prompt": "Weathered dark oak planks, polished brass and dark iron fittings, tan canvas balloons with leather straps, warm amber lanterns, muted crimson painted trim. Painterly game texture, clean readable materials.",
+ "polycount": 45000,
+ "credits": 30,
+ "glb_bytes": 11809628
+}

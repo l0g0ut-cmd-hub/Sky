@@ -1,0 +1,10 @@
+{
+ "id": "ship_of_line",
+ "preview": "01a1e1ed-2b8f-77ca-9e37-4107aa906500",
+ "refine": "01a1e1ee-2a23-7626-a5e7-dc84a6b2d179",
+ "prompt": "Stylized dark-fantasy flying sky-ship, single isolated game asset, no water, no ground, no base, no characters. Wooden sailing-ship hull with brass trim and iron fittings, held aloft by spherical canvas gas balloons on a brass frame above the deck, propellers at the stern, rudder fin under the keel. Massive ship of the line: very large hull with two stacked gun decks, ten cannon ports on each side per deck, six big balloons, towering stern castle with rows of windows.",
+ "texture_prompt": "Weathered dark oak planks, polished brass and dark iron fittings, tan canvas balloons with leather straps, warm amber lanterns, muted crimson painted trim. Painterly game texture, clean readable materials.",
+ "polycount": 60000,
+ "credits": 30,
+ "glb_bytes": 11570596
+}

@@ -1,0 +1,10 @@
+{
+ "id": "corvette",
+ "preview": "01a1e1ec-e4de-76cc-86e4-6242658693da",
+ "refine": "01a1e1ed-cc62-72eb-b4da-8a7645052867",
+ "prompt": "Stylized dark-fantasy flying sky-ship, single isolated game asset, no water, no ground, no base, no characters. Wooden sailing-ship hull with brass trim and iron fittings, held aloft by spherical canvas gas balloons on a brass frame above the deck, propellers at the stern, rudder fin under the keel. Corvette hunter: sleek aggressive narrow hull with a sharp iron ram on the bow, two medium balloons in tandem, three cannon ports on each side, low profile, built for speed.",
+ "texture_prompt": "Weathered dark oak planks, polished brass and dark iron fittings, tan canvas balloons with leather straps, warm amber lanterns, muted crimson painted trim. Painterly game texture, clean readable materials.",
+ "polycount": 22000,
+ "credits": 30,
+ "glb_bytes": 9683124
+}

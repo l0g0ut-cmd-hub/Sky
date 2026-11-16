@@ -1,0 +1,10 @@
+{
+ "id": "ketch",
+ "preview": "01a1e1ed-0835-75e6-b030-6836405979aa",
+ "refine": "01a1e1ee-201d-72dd-8357-6434860b4421",
+ "prompt": "Stylized dark-fantasy flying sky-ship, single isolated game asset, no water, no ground, no base, no characters. Wooden sailing-ship hull with brass trim and iron fittings, held aloft by spherical canvas gas balloons on a brass frame above the deck, propellers at the stern, rudder fin under the keel. Bomb ketch: short broad heavily reinforced hull with one huge stubby mortar mounted mid-deck pointing upward, two round balloons fore and aft, one cannon port on each side.",
+ "texture_prompt": "Weathered dark oak planks, polished brass and dark iron fittings, tan canvas balloons with leather straps, warm amber lanterns, muted crimson painted trim. Painterly game texture, clean readable materials.",
+ "polycount": 28000,
+ "credits": 30,
+ "glb_bytes": 10920412
+}

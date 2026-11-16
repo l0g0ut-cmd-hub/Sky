@@ -1,0 +1,10 @@
+{
+ "id": "sloop",
+ "preview": "01a1e1ec-d4ea-7240-9a7a-b442726e088c",
+ "refine": "01a1e1ed-c7da-77f0-9445-e5c194124515",
+ "prompt": "Stylized dark-fantasy flying sky-ship, single isolated game asset, no water, no ground, no base, no characters. Wooden sailing-ship hull with brass trim and iron fittings, held aloft by spherical canvas gas balloons on a brass frame above the deck, propellers at the stern, rudder fin under the keel. Small fast scout sloop: narrow light hull, one tall mast with a crow's nest lookout platform, one long cigar-shaped balloon, two cannon ports on each side.",
+ "texture_prompt": "Weathered dark oak planks, polished brass and dark iron fittings, tan canvas balloons with leather straps, warm amber lanterns, muted crimson painted trim. Painterly game texture, clean readable materials.",
+ "polycount": 15000,
+ "credits": 30,
+ "glb_bytes": 9387080
+}

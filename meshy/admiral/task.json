@@ -1,0 +1,10 @@
+{
+ "id": "admiral",
+ "preview": "01a1e1ed-355d-7087-a0ce-d5df23291d9b",
+ "refine": "01a1e1ee-79d6-76ed-9dfa-9ce165887fc3",
+ "prompt": "Stylized dark-fantasy flying sky-ship, single isolated game asset, no water, no ground, no base, no characters. Wooden sailing-ship hull with brass trim and iron fittings, held aloft by spherical canvas gas balloons on a brass frame above the deck, propellers at the stern, rudder fin under the keel. Colossal admiral flagship: enormous hull with three stacked gun decks, fourteen cannon ports on each side, eight large balloons on a heavy brass frame, gilded towering stern castle, large carved figurehead, banners.",
+ "texture_prompt": "Weathered dark oak planks, polished brass and dark iron fittings, tan canvas balloons with leather straps, warm amber lanterns, muted crimson painted trim. Painterly game texture, clean readable materials.",
+ "polycount": 70000,
+ "credits": 30,
+ "glb_bytes": 14134880
+}

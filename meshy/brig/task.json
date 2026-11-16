@@ -1,0 +1,10 @@
+{
+ "id": "brig",
+ "preview": "01a1e1ec-fe1f-71c0-bc5d-f5ca960e4ee0",
+ "refine": "01a1e1ee-1aa4-7716-b6ba-d22b834a6d0b",
+ "prompt": "Stylized dark-fantasy flying sky-ship, single isolated game asset, no water, no ground, no base, no characters. Wooden sailing-ship hull with brass trim and iron fittings, held aloft by spherical canvas gas balloons on a brass frame above the deck, propellers at the stern, rudder fin under the keel. Two-masted brig warship: medium hull, three round balloons in a row above the deck, four cannon ports on each side, stern cabin with lit windows.",
+ "texture_prompt": "Weathered dark oak planks, polished brass and dark iron fittings, tan canvas balloons with leather straps, warm amber lanterns, muted crimson painted trim. Painterly game texture, clean readable materials.",
+ "polycount": 30000,
+ "credits": 30,
+ "glb_bytes": 11290204
+}

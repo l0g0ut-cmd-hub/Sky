@@ -1,0 +1,72 @@
+{
+ "cutter": {
+  "stage": "done",
+  "task": "01a1e1ed-79b8-700f-925b-0ea2b298ca83",
+  "preview": "01a1e1ec-c9cf-71c1-a35e-7daea8deaf36",
+  "preview_credits": 20,
+  "refine_credits": 10
+ },
+ "sloop": {
+  "stage": "done",
+  "task": "01a1e1ed-c7da-77f0-9445-e5c194124515",
+  "preview": "01a1e1ec-d4ea-7240-9a7a-b442726e088c",
+  "preview_credits": 20,
+  "refine_credits": 10
+ },
+ "corvette": {
+  "stage": "done",
+  "task": "01a1e1ed-cc62-72eb-b4da-8a7645052867",
+  "preview": "01a1e1ec-e4de-76cc-86e4-6242658693da",
+  "preview_credits": 20,
+  "refine_credits": 10
+ },
+ "fireship": {
+  "stage": "done",
+  "task": "01a1e1ed-d0af-76c6-805f-a259a9e70147",
+  "preview": "01a1e1ec-eee4-7027-b16d-ede6715b3f6b",
+  "preview_credits": 20,
+  "refine_credits": 10
+ },
+ "brig": {
+  "stage": "done",
+  "task": "01a1e1ee-1aa4-7716-b6ba-d22b834a6d0b",
+  "preview": "01a1e1ec-fe1f-71c0-bc5d-f5ca960e4ee0",
+  "preview_credits": 20,
+  "refine_credits": 10
+ },
+ "ketch": {
+  "stage": "done",
+  "task": "01a1e1ee-201d-72dd-8357-6434860b4421",
+  "preview": "01a1e1ed-0835-75e6-b030-6836405979aa",
+  "preview_credits": 20,
+  "refine_credits": 10
+ },
+ "frigate": {
+  "stage": "done",
+  "task": "01a1e1ee-24c1-7763-b5bf-ce8144b5e890",
+  "preview": "01a1e1ed-1707-7715-83ac-d2126936ff70",
+  "preview_credits": 20,
+  "refine_credits": 10
+ },
+ "heavyfrigate": {
+  "stage": "done",
+  "task": "01a1e1ee-7427-7191-851d-0000c38fca8c",
+  "preview": "01a1e1ed-20f1-702a-8fb0-27cb0c019440",
+  "preview_credits": 20,
+  "refine_credits": 10
+ },
+ "ship_of_line": {
+  "stage": "done",
+  "task": "01a1e1ee-2a23-7626-a5e7-dc84a6b2d179",
+  "preview": "01a1e1ed-2b8f-77ca-9e37-4107aa906500",
+  "preview_credits": 20,
+  "refine_credits": 10
+ },
+ "admiral": {
+  "stage": "done",
+  "task": "01a1e1ee-79d6-76ed-9dfa-9ce165887fc3",
+  "preview": "01a1e1ed-355d-7087-a0ce-d5df23291d9b",
+  "preview_credits": 20,
+  "refine_credits": 10
+ }
+}
