@@ -18,7 +18,7 @@ namespace SkyTide
         /// <summary>Партия закончилась, но снимки ещё уходят: «ОТПРАВКА N» → «ГОТОВО — МОЖНО СВОРАЧИВАТЬ» (15.11: владелец уходил
         /// в чат раньше, игра вставала на паузу, отправка обрывалась).</summary>
         public static bool AwaitUpload;
-        float doneUntil;
+        static float doneUntil;
 
         /// <summary>Кнопка «ОТМЕНИТЬ» на табличке (экранные координаты GUI) — единственный способ забрать управление у Claude
         /// (владелец 15.11: случайное касание сбрасывало 15-минутную проверку).</summary>
@@ -48,20 +48,23 @@ namespace SkyTide
             if (HiddenForShot) return;
             ReportUploader up = ReportUploader.Instance;
             int pend = up != null ? up.Pending : 0;
-            // Очередь больше 3 файлов — всегда видно, сколько осталось и сколько ждать (владелец 15.11).
-            if (!Busy && (AwaitUpload || pend > 3 || Time.realtimeSinceStartup < doneUntil))
-            {
-                if (AwaitUpload && pend == 0) { AwaitUpload = false; doneUntil = Time.realtimeSinceStartup + 8f; }
-                if (pend > 0) Strip("ОСТАЛОСЬ ОТПРАВИТЬ: " + pend + " · ~" + Eta(up) + " · НЕ СВОРАЧИВАЙ", "");
-                else Strip("ГОТОВО — МОЖНО СВОРАЧИВАТЬ", "");
-                return;
-            }
+            // Очередь отправки — только в меню паузы, в плашке сборки (владелец 16.11: «только на экране паузы и не так уродско»).
+            if (AwaitUpload && pend == 0) { AwaitUpload = false; doneUntil = Time.realtimeSinceStartup + 8f; }
             if (!Busy) return;
             float left = BusyUntil - Time.realtimeSinceStartup;
             string t = left > 0f ? "ЖДИ " + Mathf.FloorToInt(left / 60f) + ":" + Mathf.FloorToInt(left % 60f).ToString("00") : "ИДЁТ ПРОВЕРКА";
             Strip("УПРАВЛЯЕТ CLAUDE · " + t + (pend > 3 ? " · В ОЧЕРЕДИ " + pend : ""), "ОТМЕНИТЬ");
         }
 
+        /// <summary>Строка для плашки сборки в паузе: «ОТЧЁТЫ: 13 · ~2 МИН · НЕ СВОРАЧИВАЙ» / «ОТЧЁТЫ ОТПРАВЛЕНЫ» / пусто.</summary>
+        public static string UploadText()
+        {
+            ReportUploader up = ReportUploader.Instance;
+            int pend = up != null ? up.Pending : 0;
+            if (pend > 0) return "ОТЧЁТЫ " + pend + " · ~" + Eta(up).ToUpperInvariant() + " · НЕ СВОРАЧИВАЙ";
+            if (Time.realtimeSinceStartup < doneUntil) return "ОТЧЁТЫ ОТПРАВЛЕНЫ";
+            return "";
+        }
         static string Eta(ReportUploader up)
         {
             float m = up != null ? up.PendingMinutes : 0f;

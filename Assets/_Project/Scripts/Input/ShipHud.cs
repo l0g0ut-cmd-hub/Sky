@@ -606,7 +606,8 @@ namespace SkyTide
             Rect p = l.PausePanel; LoadBanners();
             if (tPause != null) ImageRect(tPause, p, Whole, Color.white); else Solid(p, new Color(0.05f, 0.06f, 0.08f, 0.88f));
             CapText(p.center.x, p.y + p.height * 199f / 1265f, "ПАУЗА", l.unit * 0.034f, cream, true);   // по центру таблички шапки
-            CapText(p.center.x, p.y + p.height * 1175.5f / 1265f, input.BuildText, l.unit * 0.014f, new Color(cream.r, cream.g, cream.b, 0.6f), true);   // номер сборки — в нижней плашке
+            string up = ControlBanner.UploadText();
+            CapText(p.center.x, p.y + p.height * 1175.5f / 1265f, up.Length > 0 ? input.BuildText + " · " + up : input.BuildText, l.unit * (up.Length > 20 ? 0.0125f : 0.014f), new Color(cream.r, cream.g, cream.b, up.Length > 0 ? 0.85f : 0.6f), true);   // номер сборки и отправка отчётов — в нижней плашке
             for (int i = 0; i < HudLayout.PauseRows; i++)
             {
                 Rect r = l.PauseRow(i);
