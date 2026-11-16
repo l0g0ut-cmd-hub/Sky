@@ -91,6 +91,10 @@ namespace SkyTide
                     if (string.IsNullOrEmpty(c)) continue;
                     if (ControlBanner.Cancelled) { ack.AppendLine("ОТМЕНЕНО владельцем на: " + c); break; }
                     if (c == "hold") { ack.AppendLine("hold → управление остаётся"); continue; }
+                    // Игра посреди партии оказалась в главном меню (17.11: партия ушла в меню и 12 минут шла вхолостую) —
+                    // обратно «В БОЙ» перед следующей командой боя.
+                    if (MainMenu.Active && !c.StartsWith("wait") && !c.StartsWith("photo") && !c.StartsWith("say") && c != "play")
+                    { MainMenu.RemotePlay(); ack.AppendLine("в меню → снова В БОЙ"); yield return new WaitForSecondsRealtime(3f); }
                     if (c.StartsWith("wait"))
                     {
                         float s = 2f; float.TryParse(c.Substring(4).Trim(), System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out s);

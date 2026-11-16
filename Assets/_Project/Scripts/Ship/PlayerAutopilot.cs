@@ -401,7 +401,9 @@ namespace SkyTide
             float ang = Vector3.SignedAngle(transform.forward, heading.normalized, Vector3.up);
             ship.turn = Mathf.Clamp(ang / 20f, -1f, 1f);
             Throttle = throttle; ship.throttle = throttle;
-            Traffic.AvoidProps(ship, 19f);   // маяк, башни, логова — обходит
+            // Строения и корабли (кроме цели): 17.11 автобой встал «ПОЛНЫЙ · 1 м/с», упёршись в стоянку у причала.
+            TargetShip foeT = guns != null ? guns.AimTargetShip : null;
+            Traffic.Avoid(ship, 19f, foeT != null ? foeT.transform : null);
             Throttle = ship.throttle;
         }
     }

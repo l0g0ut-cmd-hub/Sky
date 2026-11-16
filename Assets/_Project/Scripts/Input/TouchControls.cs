@@ -70,12 +70,14 @@ namespace SkyTide
         {
             if (hintStage >= 4) { hintAlpha = 0f; return; }
             float dt = Time.unscaledDeltaTime;
+            // Под автобоем и удалённым пилотом подсказки прячутся (17.11: «ДЖОЙСТИК ВВЕРХ» висела на «ПОЛНОМ · 37 м/с»).
+            if (AutoBattle || RemotePilot.Active) { hintAlpha = Mathf.MoveTowards(hintAlpha, 0f, dt * 3f); return; }
             if (!hintDone)
             {
                 hintAlpha = Mathf.MoveTowards(hintAlpha, 1f, dt * 2f);
                 hintShownFor += dt;
                 Broadside guns = Guns();
-                if (hintStage == 0) hintDone = gear > 1;
+                if (hintStage == 0) hintDone = gear > 1 || (ship != null && ship.Speed > 6f);
                 else if (hintStage == 1) hintDone = guns == null || guns.Readiness(-1) < 0.99f || guns.Readiness(1) < 0.99f;
                 else if (hintStage == 2) hintDone = recentered || hintShownFor > 20f;
                 else hintDone = hintShownFor > 6f;
@@ -222,6 +224,10 @@ namespace SkyTide
         {
             HudLayout hl = Layout(ViewWidth, ViewHeight);
             Rect r;
+            // На паузе кнопку паузы перекрывает меню: повторный tap pause — «ПРОДОЛЖИТЬ» (17.11: проверка 15 мин простояла на паузе).
+            if (what == "pause" && Paused) { SetPaused(false); return "пауза снята"; }
+            // На паузе нажатия по кнопкам боя попадали в строки меню (17.11: «tap board» → «В ГЛАВНОЕ МЕНЮ»).
+            if (Paused && what != "row" && what != "xy") return "пауза — нажатие «" + what + "» не отправлено";
             switch (what)
             {
                 case "pause": r = hl.pause; break;

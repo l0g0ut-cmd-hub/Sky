@@ -644,6 +644,17 @@ namespace SkyTide
         }
         /// <summary>Плашки намерения над чужими кораблями ближе 600 м (политика отношений): «УХОДИ ИЗ НАШИХ ВОД · 20 С»,
         /// «ОТВЕДИ ПУШКИ», «БЕЖИТ», «СПУСТИЛ ФЛАГ»… — 4 с после смены отношения; у враждебного и настороже — постоянно короткая.</summary>
+        /// <summary>Подпись в мире ложится на панель HUD? (17.11: «ВРАЖДЕБЕН · УПРЕЖДЕНИЕ», «УХОДИ ИЗ НАШИХ ВОД» — поверх радара,
+        /// подпись цели за краем — на штурвале.)</summary>
+        bool OverHud(HudLayout l, float cx, float cy, string txt, float capH)
+        {
+            float w = CapRatio(txt) * capH + capH;
+            Rect r = new Rect(cx - w * 0.5f, cy - capH, w, capH * 2f);
+            Rect[] ui = { l.radarModule, l.radar, l.tabEnemy, l.tabBerth, l.tabRadar, l.console, l.telegraph, l.port, l.starboard, l.mode, l.ammo, l.auto, l.board, l.spy, l.pause, l.fps, l.speed };
+            for (int i = 0; i < ui.Length; i++) if (ui[i].width > 0f && r.Overlaps(ui[i])) return true;
+            return false;
+        }
+
         void MoodPlates(TouchControls input, HudLayout l)
         {
             Camera c = Camera.main; if (c == null || !Application.isPlaying) return;
@@ -664,6 +675,7 @@ namespace SkyTide
                 float capH = l.unit * 0.016f;
                 float sy = Screen.height - sp.y;
                 if (sy < l.unit * 0.22f || sy > Screen.height - l.unit * 0.06f) continue;   // не поверх компаса, корпуса и верхних плашек
+                if (OverHud(l, sp.x, sy, txt, capH)) continue;
                 CapText(sp.x, sy, txt, capH, col, true);
             }
         }
@@ -742,7 +754,11 @@ namespace SkyTide
                     Line(at + n * a, at - n * a * 0.6f + s * a * 0.8f, w0, col); Line(at + n * a, at - n * a * 0.6f - s * a * 0.8f, w0, col);
                     Line(at - n * a * 0.6f + s * a * 0.8f, at - n * a * 0.15f, w0, col); Line(at - n * a * 0.6f - s * a * 0.8f, at - n * a * 0.15f, w0, col);
                     Vector2 tp = at - n * l.unit * 0.06f;
-                    CapText(tp.x, tp.y, LockName(t) + " · " + Cached(12, Mathf.RoundToInt(dist / 10f), v => v * 10 + " м"), l.unit * 0.018f, col, true);
+                    string et = LockName(t) + " · " + Cached(12, Mathf.RoundToInt(dist / 10f), v => v * 10 + " м");
+                    float ec = l.unit * 0.018f;
+                    // Не на панелях HUD: дальше от края, а если и там панель — только дальность.
+                    if (OverHud(l, tp.x, tp.y, et, ec)) { Vector2 t2 = at - n * l.unit * 0.17f; if (!OverHud(l, t2.x, t2.y, et, ec)) tp = t2; else et = Cached(12, Mathf.RoundToInt(dist / 10f), v => v * 10 + " м"); }
+                    if (!OverHud(l, tp.x, tp.y, et, ec)) CapText(tp.x, tp.y, et, ec, col, true);
                     return;
                 }
             }
@@ -773,8 +789,7 @@ namespace SkyTide
                     string lt = LockName(t) + " · " + Cached(12, Mathf.RoundToInt(dist / 10f), v => v * 10 + " м");
                     float capH = l.unit * 0.018f, lw = CapRatio(lt) * capH + capH, ly = q.y + hh + l.unit * 0.024f;
                     Rect lr = new Rect(q.x - lw * 0.5f, ly - capH, lw, capH * 2f);
-                    if (lr.Overlaps(l.auto) || lr.Overlaps(l.port) || lr.Overlaps(l.starboard) || lr.Overlaps(l.mode) || lr.Overlaps(l.ammo)
-                        || lr.Overlaps(l.console) || lr.Overlaps(l.telegraph) || ly + capH > Screen.height)
+                    if (OverHud(l, q.x, ly, lt, capH) || ly + capH > Screen.height)
                         ly = q.y - hh - l.unit * 0.06f;
                     CapText(q.x, ly, lt, capH, col, true);
                 }
@@ -804,7 +819,8 @@ namespace SkyTide
                             float seg = l.unit * 0.012f, len = (b - a).magnitude;
                             for (float t0 = 0f; t0 < len; t0 += seg * 2f) Line(a + dn * t0, a + dn * Mathf.Min(len, t0 + seg), lw2, new Color(lc.r, lc.g, lc.b, 0.7f));
                         }
-                        CapText(lq.x, lq.y - rr - l.unit * 0.018f, "УПРЕЖДЕНИЕ", l.unit * 0.016f, lc, true);
+                        if (!OverHud(l, lq.x, lq.y - rr - l.unit * 0.018f, "УПРЕЖДЕНИЕ", l.unit * 0.016f))
+                            CapText(lq.x, lq.y - rr - l.unit * 0.018f, "УПРЕЖДЕНИЕ", l.unit * 0.016f, lc, true);
                     }
                 }
             }
@@ -1311,7 +1327,7 @@ namespace SkyTide
                         Color hint=new Color(cream.r,cream.g,cream.b,ha), act=new Color(1f,0.84f,0.5f,ha);
                         string h1,h2;
                         if(input.HintStage==0){h1="ДЖОЙСТИК ВВЕРХ";h2="ДАТЬ ХОД";}
-                        else if(input.HintStage==1){h1="ДЕРЖИ КНОПКУ БОРТА";h2="ОТПУСТИ — ЗАЛП";}
+                        else if(input.HintStage==1){h1="КНОПКА БОРТА";h2="ЗАЛП";}   // удержание убрано 16.11
                         else if(input.HintStage==2){h1="ДВА КАСАНИЯ СПРАВА";h2="КАМЕРА ЗА КОРМУ";}
                         else{h1="СПРАВА — ОБЗОР";h2="2 ПАЛЬЦА — МАСШТАБ";}
                         PlateText(plate,0f,0.5f,h1,l.unit*0.026f,hint);
