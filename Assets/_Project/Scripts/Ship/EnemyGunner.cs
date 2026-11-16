@@ -21,6 +21,10 @@ namespace SkyTide
         public float rangeError = 0.08f, sideError = 0.03f;
         float errScale = 1f; Vector3 aimErr, lastVolleyVel; bool engaged;
         public int gunsPerSide = 4;
+        /// <summary>Калибр (класс корабля): во сколько раз ядро тяжелее обычного — урон по флагману и своим.</summary>
+        public float caliber = 1f;
+        /// <summary>Точность класса: множитель ошибки наводки (мелочь мажет чаще, линейные канониры точнее).</summary>
+        [System.NonSerialized] public float classError = 1f;
 
         TargetShip target;
         ShipController ctrl;
@@ -72,6 +76,8 @@ namespace SkyTide
             if (!bold && SkyFortress.InSafeZone(transform.position)) return;   // из зоны крепости не стреляет (кроме глупости и дерзости)
             // Цель залпа — ближайший на траверзе в пределах пушек: корабль игрока или свой (сторожевой, ведомый, торговец).
             // Под пушками крепости (в безопасной зоне) враг ни по кому не стреляет.
+            // Политика отношений: стреляет только в бою с гарнизоном (повод был) — по флагману и своим вне зоны крепости.
+            if (Application.isPlaying && !target.AtWar) { engaged = false; return; }
             victimAlly = null; float dist = float.MaxValue; Vector3 rel = Vector3.zero, local = Vector3.zero;
             if (player.Alive && (bold || !SkyFortress.InSafeZone(pp))) TryVictim(pp, null, ref dist, ref rel, ref local);
             foreach (AllyShip al in AllyShip.All)
@@ -89,7 +95,7 @@ namespace SkyTide
             float wild = Random.value < 0.2f ? 2.2f : 1f;
             // Подбитый стреляет хуже и реже: ниже половины прочности ошибка ×1.5, ниже 30% — ×2.2.
             float hurt = target.Health01 < 0.3f ? 2.2f : target.Health01 < 0.5f ? 1.5f : 1f;
-            aimErr = (fwd * Gauss() * rangeError * dist + sideDir * Gauss() * sideError * dist + Vector3.up * Gauss() * 0.012f * dist) * errScale * wild * hurt * skillError;
+            aimErr = (fwd * Gauss() * rangeError * dist + sideDir * Gauss() * sideError * dist + Vector3.up * Gauss() * 0.012f * dist) * errScale * wild * hurt * skillError * classError;
             volleyAtOnce = Random.value < 0.35f;   // иногда весь борт разом, чаще — волной
             pendingLeft = gunsPerSide;
             pendingAt = Time.time;
@@ -124,7 +130,7 @@ namespace SkyTide
             Vector3 dir;
             if (!Solve(muzzle, aimAt, out dir)) return;
             dir = Quaternion.Euler(Random.Range(-spreadDeg, spreadDeg), Random.Range(-spreadDeg, spreadDeg), 0f) * dir;
-            fx.Fire(muzzle, dir, selfVel, muzzleSpeed, true);
+            fx.Fire(muzzle, dir, selfVel, muzzleSpeed, true, 7f, caliber);
         }
 
         Vector3[] muzzles; bool[] muzzleFound;

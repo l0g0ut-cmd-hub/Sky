@@ -169,7 +169,7 @@ namespace SkyTide
             float best = float.MaxValue, bestHealth = 1f;
             foreach (TargetShip t in TargetShip.All)
             {
-                if (t == null || !t.Alive) continue;
+                if (t == null || !t.Alive || (Application.isPlaying && !t.AtWar)) continue;   // вкладка «ВРАГ» — только враждебные
                 Vector3 d = t.transform.position - input.ship.transform.position; d.y = 0f;
                 if (d.magnitude < best) { best = d.magnitude; bestHealth = t.Health01; }
             }
@@ -182,7 +182,7 @@ namespace SkyTide
                 if (bestHealth < 0.995f) TabPair(l.tabEnemy, a + " · ", ac, Mathf.RoundToInt(bestHealth * 100f) + "%", new Color(1f, 0.35f, 0.28f, 1f), fs);
                 else TabText(l.tabEnemy, a, fs, ac);
             }
-            else TabText(l.tabEnemy, "ВРАГ —", fs, grey);
+            else TabText(l.tabEnemy, Application.isPlaying ? "ВРАЖДЕБНЫХ НЕТ" : "ВРАГ —", fs, grey);
             SkyFortress fort = SkyFortress.Instance;
             if (fort != null) { Vector3 d = fort.BerthWorld - input.ship.transform.position; d.y = 0f; TabText(l.tabBerth, "ПРИЧАЛ " + Range(d.magnitude), fs, fort.Hostile ? new Color(1f, 0.55f, 0.45f, 1f) : cream); }
             else TabText(l.tabBerth, "ПРИЧАЛ —", fs, grey);
@@ -285,9 +285,18 @@ namespace SkyTide
                 // Мельче (было 0.24 R): при 18 врагах отметки сливались; цель борта — крупнее, с курсом.
                 float g = R * (outside ? 0.2f : isTarget ? 0.2f : 0.13f) * (0.9f + 0.15f * Mathf.Exp(-since * 3f));
                 float rel = (ts.transform.eulerAngles.y - input.ship.transform.eulerAngles.y) * Mathf.Deg2Rad;
-                // Близкий враг — красная стрелка по его курсу (вверх — наш нос); за краем — ромб у обода.
-                if (outside && rFar != null) Image(rFar, p, g * 0.8f, beta + Mathf.PI * 0.5f, new Color(1f, 1f, 1f, glow));
-                else if (rEnemy != null) Image(rEnemy, p, g * 1.15f, rel, new Color(1f, 1f, 1f, glow));
+                // Политика отношений: цвет — по отношению к нам, а не по флагу. Красная стрелка — враждебен; светлая — спокоен,
+                // жёлтая — настороже, оранжевая — бежит, серая — сдался. Размер — по классу (адмиральский заметно крупнее).
+                if (ts.Class != ShipClass.None) g *= 0.75f + 0.28f * Mathf.Sqrt(ShipClasses.Get(ts.Class).length / 40f);
+                bool hostile = !Application.isPlaying || ts.AtWar;
+                if (outside && rFar != null) Image(rFar, p, g * 0.8f, beta + Mathf.PI * 0.5f, hostile ? new Color(1f, 1f, 1f, glow) : new Color(0.6f, 0.6f, 0.6f, glow * 0.7f));
+                else if (hostile && rEnemy != null) Image(rEnemy, p, g * 1.15f, rel, new Color(1f, 1f, 1f, glow));
+                else if (rShip != null)
+                {
+                    Color mc = ts.Mood == Attitude.Wary ? new Color(1f, 0.85f, 0.3f, glow) : ts.Mood == Attitude.Flee ? new Color(1f, 0.58f, 0.3f, glow)
+                             : ts.Mood == Attitude.Surrender ? new Color(0.55f, 0.55f, 0.55f, glow) : new Color(0.92f, 0.9f, 0.84f, glow * 0.85f);
+                    Image(rShip, p, g * 1.1f, rel, mc);
+                }
                 if (!outside && isTarget) { float rr = g * 0.95f; for (int q = 0; q < 24; q += 2) { float a0 = q * Mathf.PI / 12f, a1 = (q + 1) * Mathf.PI / 12f; Line(p + new Vector2(Mathf.Cos(a0), Mathf.Sin(a0)) * rr, p + new Vector2(Mathf.Cos(a1), Mathf.Sin(a1)) * rr, Mathf.Max(1.2f, R * 0.02f), new Color(1f, 0.82f, 0.45f, glow)); } }   // цель борта — пунктирное кольцо
             }
             // Союзники (сторожевой крепости): зелёная отметка-кораблик, за краем радара — у обода.
@@ -630,6 +639,29 @@ namespace SkyTide
                 float alpha = Mathf.Clamp01((1600f - dist) / 300f) * 0.85f;
                 Color g = a.UnderAttack && Mathf.Repeat(Time.unscaledTime * 3f, 1f) < 0.5f ? new Color(1f, 0.5f, 0.4f, alpha) : new Color(0.45f, 1f, 0.5f, alpha);   // под огнём — мигает красным
                 Ring(q, r, Mathf.Max(2f, l.unit * 0.0035f), g);
+            }
+        }
+        /// <summary>Плашки намерения над чужими кораблями ближе 600 м (политика отношений): «УХОДИ ИЗ НАШИХ ВОД · 20 С»,
+        /// «ОТВЕДИ ПУШКИ», «БЕЖИТ», «СПУСТИЛ ФЛАГ»… — 4 с после смены отношения; у враждебного и настороже — постоянно короткая.</summary>
+        void MoodPlates(TouchControls input, HudLayout l)
+        {
+            Camera c = Camera.main; if (c == null || !Application.isPlaying) return;
+            foreach (TargetShip t in TargetShip.All)
+            {
+                if (t == null || !t.Alive) continue;
+                bool fresh = Time.time < t.MoodTextUntil;
+                if (!fresh && t.Mood == Attitude.Calm) continue;
+                float dist = Vector3.Distance(input.ship.transform.position, t.transform.position);
+                if (dist > 600f) continue;
+                Vector3 top = t.BoxCorner(7); top.x = t.Center.x; top.z = t.Center.z;
+                Vector3 sp = c.WorldToScreenPoint(top + Vector3.up * 4f); if (sp.z <= 0f) continue;
+                string txt = fresh ? t.MoodText : Relations.Name(t.Mood);
+                Color col = t.Mood == Attitude.Hostile ? new Color(1f, 0.45f, 0.35f, 1f) : t.Mood == Attitude.Wary ? new Color(1f, 0.85f, 0.4f, 1f)
+                          : t.Mood == Attitude.Surrender ? new Color(0.85f, 0.85f, 0.85f, 1f) : new Color(1f, 0.92f, 0.8f, 1f);
+                float a = Mathf.Clamp01((600f - dist) / 120f);
+                col.a *= a;
+                float capH = l.unit * 0.016f;
+                CapText(sp.x, Screen.height - sp.y, txt, capH, col, true);
             }
         }
         void LockMarker(TouchControls input, HudLayout l)
@@ -1148,7 +1180,7 @@ namespace SkyTide
                     Compass(input,l);
                     if(tModule==null){Panel(l.speed,l.unit);PlateText(l.speed,0f,1f,Cached(3,input.Gear*1000+Mathf.RoundToInt(Mathf.Abs(input.ship.Speed)),v=>TouchControls.GearNames[v/1000]+" · "+(v%1000)+" м/с"),l.unit*0.034f,cream);}   // ступень рукояти и скорость (с модулем радара — во вкладке хода)
                     Telegraph(input,l);
-                    LockMarker(input,l);
+                    LockMarker(input,l);MoodPlates(input,l);
                     Radar(input,l);
                     Hull(l);
                     if(Application.isPlaying&&input.cam!=null)SpyButton(input,l);   // подзорная труба — квадратная кнопка под паузой

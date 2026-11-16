@@ -46,7 +46,10 @@ namespace SkyTide
         // бывалый 0.16, ветеран 0.3 — шанс на каждую «мысль» (раз в 15–25 с), пока флагман или свои рядом в зоне.
         public bool Bold { get; private set; }
         float boldHealth, boldUntil, nextBoldThink;
-        float Boldness { get { return skill == Skill.Novice ? 0.08f : skill == Skill.Veteran ? 0.3f : 0.16f; } }
+        // Политика отношений: дерзость и глупости — только у «дурней» (владелец 16.11: «всяких дурней тоже оставь… у них будет
+        // печальная судьба»): ~7% капитанов мелких и средних кораблей. Дерзит в порту, бьёт первым, таранит, не уступает дорогу.
+        public bool Fool { get; private set; }
+        float Boldness { get { return Fool ? 0.3f : 0f; } }
         /// <summary>Огонь в зоне крепости: нарушитель на 45 с, крепость отвечает.</summary>
         public void MarkOutlaw() { if (!Outlaw) { DebugReport.Count("дерзких залпов в порту"); } OutlawUntil = Time.time + 45f; SkyFortress.NotifyEnemyFired(this); }
         Mode mode = Mode.Fight;
@@ -56,6 +59,220 @@ namespace SkyTide
         public bool Outlaw { get { return Time.time < OutlawUntil; } }
         public bool InPort { get { return mode == Mode.ToPort || mode == Mode.InPort; } }
         EnemyGunner gunner; bool captainRolled;
+
+        // ---------- отношения (Core/Relations) ----------
+        /// <summary>Дело корабля в мирное время: идёт по своим делам, дозор своих вод, ходит в порт.</summary>
+        public enum Duty { Travel, Patrol, Port }
+        public static readonly string[] DutyNames = { "ПО ДЕЛАМ", "ДОЗОР", "В ПОРТ" };
+        [System.NonSerialized] public Duty duty = Duty.Travel;
+        public Temper temper = Temper.Cautious;
+        public Attitude Mood { get; private set; } = Attitude.Calm;
+        /// <summary>В бою с гарнизоном (флагман и свои): только тогда пушки стреляют.</summary>
+        public bool AtWar { get { return Alive && Mood == Attitude.Hostile; } }
+        public bool Fleeing { get { return Mood == Attitude.Flee; } }
+        public bool Surrendered { get { return Mood == Attitude.Surrender; } }
+        /// <summary>Короткая плашка намерения над кораблём (HUD рисует ближе 600 м).</summary>
+        public string MoodText { get; private set; } = "";
+        public float MoodTextUntil { get; private set; } = -1f;
+        public bool Raiding { get; private set; }
+        float moodUntil, aimClock, calmClock, fightStartHealth = 1f, nextMorale, surrenderAt, lastHitAt = -100f, warnedAt = -100f, nextRelate;
+        string moodWhy = "";
+        AllyShip foeAlly;
+        public AllyShip FoeAlly { get { return foeAlly != null && foeAlly.Alive ? foeAlly : null; } }
+        static float lastWatersNotice = -100f;
+
+        void SetMood(Attitude a, string why, string plate = null)
+        {
+            if (a == Mood && why == moodWhy) return;
+            Attitude was = Mood; Mood = a; moodWhy = why;
+            if (a == Attitude.Hostile && was != Attitude.Hostile) { fightStartHealth = Health01; nextMorale = Time.time + 4f; calmClock = 0f; }
+            if (a == Attitude.Calm) { Raiding = false; foeAlly = null; aimClock = 0f; }
+            if (a == Attitude.Surrender) { surrenderAt = Time.time; ctrl.throttle = 0f; ctrl.turn = 0f; }
+            MoodText = plate ?? Relations.Name(a); MoodTextUntil = Time.time + 4f;
+            if (Application.isPlaying)
+            {
+                DebugReport.Event(name + " (" + (Class != ShipClass.None ? ShipClasses.Get(Class).name : "корсар") + "): " + Relations.Name(was) + " → " + Relations.Name(a) + " (" + why + ")");
+                DebugReport.Count("корсар: " + Relations.Name(a).ToLower());
+            }
+        }
+        /// <summary>Набег (Relations.Tick): враждебен к флагману без повода, идёт к нему через всю карту.</summary>
+        public void StartRaid() { if (mode != Mode.Fight) mode = Mode.Fight; SetMood(Attitude.Hostile, "набег"); Raiding = true; }
+        /// <summary>Отладка (команда mood): поставить отношение вручную.</summary>
+        public void ForceMood(Attitude a) { SetMood(a, "команда"); if (a == Attitude.Wary) moodUntil = Time.time + Relations.WarnSeconds; }
+        /// <summary>Таможня/сторожевой гарнизона подошёл к чужому в своих водах: уходи. Лихой изредка отвечает огнём.</summary>
+        public void Warned(AllyShip by)
+        {
+            if (Mood != Attitude.Calm || Time.time - warnedAt < 40f) return;
+            warnedAt = Time.time;
+            if (temper == Temper.Bold && Random.value < 0.12f) { foeAlly = by; Decide("отказ уйти из вод гарнизона", true, false); return; }
+            MoodText = "УХОДИТ ИЗ ВОД ГАРНИЗОНА"; MoodTextUntil = Time.time + 4f;
+            waypoint = Relations.CorsairPoint(transform.position.y); nextPick = Time.time + 60f;
+            DebugReport.Count("корсаров выпровожено");
+        }
+        /// <summary>Столкнулись на ходу с кораблём гарнизона (Traffic): обида — иногда это и начинает бой.</summary>
+        public void Collided(AllyShip with, float closing)
+        {
+            if (!Alive || Mood != Attitude.Calm) return;
+            float chance = Fool ? 0.95f : temper == Temper.Bold ? 0.6f : temper == Temper.Cautious ? 0.3f : 0.1f;
+            if (Random.value < chance * Mathf.Clamp01(closing / 15f)) { foeAlly = with; Decide("столкновение со своим", false, false); HudNotice.Show("СТОЛКНОВЕНИЕ — КОРСАР ОТКРЫВАЕТ ОГОНЬ", 1, 3f); }
+            else { MoodText = "ОСТОРОЖНЕЕ!"; MoodTextUntil = Time.time + 3f; }
+        }
+
+        /// <summary>Решение, когда задели интересы: отпор, бегство или сдача — по силам (класс, прочность, друзья ближе 1,5 км),
+        /// нраву капитана и тому, защищает ли он свои воды.</summary>
+        void Decide(string why, bool defending, bool allowSurrender)
+        {
+            if (!Alive) return;
+            if (mode != Mode.Fight) mode = Mode.Fight;
+            float mine = Relations.Power(this), friends = 0f;
+            foreach (TargetShip t in All)
+                if (t != null && t != this && t.Alive && !t.Fleeing && !t.Surrendered && (t.transform.position - transform.position).sqrMagnitude < 1500f * 1500f) friends += Relations.Power(t) * 0.6f;
+            AllyShip fa = FoeAlly;
+            float theirs = fa != null && (player == null || (fa.transform.position - transform.position).sqrMagnitude < (player.position - transform.position).sqrMagnitude)
+                ? fa.hitsToSink * fa.Health01 * Mathf.Max(1, fa.gunsPerSide) : Relations.PlayerPower();
+            float ratio = (mine + friends) / Mathf.Max(1f, theirs);
+            float need = temper == Temper.Bold ? 0.3f : temper == Temper.Cautious ? 0.7f : 1.3f;
+            if (defending) need *= 0.7f;
+            if (Class == ShipClass.Cutter || Class == ShipClass.Sloop || Class == ShipClass.Fireship) need = 99f;   // мелочь не дерётся — бежит
+            if (Class == ShipClass.Admiral) need = 0f;                                                              // адмиральский не бежит
+            if (allowSurrender && Health01 < 0.25f && Class != ShipClass.Admiral) { SetMood(Attitude.Surrender, why, "СПУСТИЛ ФЛАГ"); HudNotice.Show("ВРАГ СПУСТИЛ ФЛАГ", 0, 3f); DebugReport.Count("сдач"); return; }
+            if (ratio >= need) { SetMood(Attitude.Hostile, why + ", силы ×" + ratio.ToString("F1")); CallHelp(); }
+            else SetMood(Attitude.Flee, why + ", силы ×" + ratio.ToString("F1"));
+        }
+        /// <summary>Зов о помощи: свои ближе 1,5 км приходят по нраву (лихой 75%, осторожный 45%, трус 15%) — не вся карта.</summary>
+        void CallHelp()
+        {
+            foreach (TargetShip t in All)
+            {
+                if (t == null || t == this || !t.Alive || (t.Mood != Attitude.Calm && t.Mood != Attitude.Wary)) continue;
+                if ((t.transform.position - transform.position).sqrMagnitude > 1500f * 1500f) continue;
+                float chance = t.temper == Temper.Bold ? 0.75f : t.temper == Temper.Cautious ? 0.45f : 0.15f;
+                if (Random.value < chance) { t.foeAlly = foeAlly; t.SetMood(Attitude.Hostile, "зов о помощи от " + name, "ИДЁТ НА ПОМОЩЬ"); }
+            }
+        }
+
+        /// <summary>Поводы раз в 0,25 с: флагман в водах корсаров рядом, долгий прицел в упор; остывание вражды.</summary>
+        void Relate(float dt)
+        {
+            PlayerHull ph = PlayerHull.Instance;
+            bool playerOk = ph != null && ph.Alive && player != null;
+            float dist = playerOk ? Vector3.Distance(player.position, transform.position) : float.MaxValue;
+            // Прицел в упор: игрок держит заряженный борт на этом корабле ближе AimRange.
+            if (playerFor != player) { playerFor = player; playerGuns = player != null ? player.GetComponent<Broadside>() : null; playerCtrl = player != null ? player.GetComponent<ShipController>() : null; }
+            bool aimed = playerOk && playerGuns != null && playerGuns.AimOnTarget && playerGuns.AimTargetShip == this && dist < Relations.AimRange && playerGuns.Readiness(playerGuns.AimSide) >= 0.999f;
+            aimClock = aimed ? aimClock + dt : Mathf.Max(0f, aimClock - dt * 0.5f);
+            if (Time.time < nextRelate) return;
+            nextRelate = Time.time + 0.25f;
+            switch (Mood)
+            {
+                case Attitude.Calm:
+                    if (!playerOk || InPort) break;
+                    if (aimClock >= Relations.AimSeconds) { SetMood(Attitude.Wary, "прицел в упор", "ОТВЕДИ ПУШКИ"); moodUntil = Time.time + 6f; break; }
+                    // Дурень: изредка лезет на флагман без повода (в нейтральных и своих водах, не у крепости).
+                    if (Fool && dist < 450f && Relations.At(transform.position) != Waters.Safe && Random.value < 0.005f) { Decide("дурень лезет в драку", false, false); if (Mood == Attitude.Flee) SetMood(Attitude.Hostile, "дурень всё равно лезет", "ДЕРЗИТ"); break; }
+                    if (Relations.At(player.position) == Waters.Corsair && dist < 1200f)
+                    {
+                        SetMood(Attitude.Wary, "флагман в водах корсаров", "УХОДИ ИЗ НАШИХ ВОД");
+                        moodUntil = Time.time + Relations.WarnSeconds;
+                        if (Time.time - lastWatersNotice > 60f) { lastWatersNotice = Time.time; HudNotice.Show("КОРСАРЫ: УХОДИ ИЗ НАШИХ ВОД · " + Mathf.RoundToInt(Relations.WarnSeconds) + " С", 1, 4f); }
+                    }
+                    break;
+                case Attitude.Wary:
+                    if (!playerOk) { SetMood(Attitude.Calm, "флагман погиб"); break; }
+                    if (moodWhy == "флагман в водах корсаров")
+                    {
+                        if (Relations.At(player.position) != Waters.Corsair || dist > 1500f) { SetMood(Attitude.Calm, "флагман ушёл из вод"); break; }
+                        if (Time.time >= moodUntil) { Relations.AddGrudge(4f, "не ушёл из вод корсаров"); Decide("не ушёл из наших вод", true, false); }
+                        else { MoodText = "УХОДИ ИЗ НАШИХ ВОД · " + Mathf.CeilToInt(moodUntil - Time.time) + " С"; MoodTextUntil = Time.time + 1f; }
+                    }
+                    else if (Time.time >= moodUntil)
+                    {
+                        if (aimClock > 0.5f && temper == Temper.Bold && Random.value < 0.5f) Decide("держал на прицеле — бьёт первым", false, false);
+                        else if (aimClock > 0.5f) SetMood(Attitude.Flee, "держал на прицеле", "ОТВОРАЧИВАЕТ");
+                        else SetMood(Attitude.Calm, "пушки отведены");
+                    }
+                    break;
+                case Attitude.Hostile:
+                    if (!playerOk && FoeAlly == null) { Bold = false; SetMood(Attitude.Calm, "противника нет"); break; }
+                    if (Bold && (Health01 < boldHealth - 0.2f || Health01 < 0.35f || Time.time > boldUntil))
+                    {
+                        Bold = false; SetMood(Attitude.Flee, "дерзкий сваливает из порта", "СВАЛИВАЕТ");
+                        if (dist < 900f) HudNotice.Show("ДЕРЗКИЙ ВРАГ СВАЛИВАЕТ ИЗ ПОРТА", 9, 3f);
+                        break;
+                    }
+                    // Остывает: противник далеко дольше CalmAfter (набег — не остывает, пока флагман жив).
+                    bool near = (playerOk && dist < Mathf.Max(1800f, aggroRange)) || (FoeAlly != null && (FoeAlly.transform.position - transform.position).sqrMagnitude < 1800f * 1800f);
+                    calmClock = near || Raiding ? 0f : calmClock + 0.25f;
+                    if (calmClock > Relations.CalmAfter) { SetMood(Attitude.Calm, "противник ушёл"); break; }
+                    // Мораль: потерял 40% прочности с начала боя — решает заново (бежать или сдаться).
+                    if (Time.time >= nextMorale) { nextMorale = Time.time + 4f; if (Health01 < fightStartHealth - 0.4f) { fightStartHealth = Health01; Decide("мораль", false, true); } }
+                    break;
+                case Attitude.Flee:
+                    {
+                        Vector3 threat = ThreatPos();
+                        float td = Vector3.Distance(threat, transform.position);
+                        if (td > 1500f) { SetMood(Attitude.Calm, "оторвался"); break; }
+                        float threatSpeed = FoeAlly != null ? FoeAlly.Velocity.magnitude : (playerCtrl != null ? Mathf.Abs(playerCtrl.Speed) : 0f);
+                        if (td < 250f && threatSpeed > Mathf.Abs(ctrl.Speed) + 2f && lastHitAt > Time.time - 20f)   // догнали и бьют — загнанный
+                        {
+                            if (Health01 < 0.25f && Class != ShipClass.Admiral) { SetMood(Attitude.Surrender, "загнан", "СПУСТИЛ ФЛАГ"); HudNotice.Show("ВРАГ СПУСТИЛ ФЛАГ", 0, 3f); DebugReport.Count("сдач"); }
+                            else SetMood(Attitude.Hostile, "загнан — дерётся", "ЗАГНАН — ДЕРЁТСЯ");
+                        }
+                        break;
+                    }
+                case Attitude.Surrender:
+                    // Отпустили: 20 с без попаданий и флагман не на абордаже рядом — уходит к своим, злоба меньше.
+                    if (!BeingBoarded && Time.time - surrenderAt > 20f && Time.time - lastHitAt > 20f && dist > 120f)
+                    {
+                        Relations.AddGrudge(-6f, "отпущен сдавшийся");
+                        SetMood(Attitude.Calm, "отпущен", "ОТПУЩЕН — УХОДИТ");
+                        waypoint = Relations.CorsairPoint(transform.position.y); nextPick = Time.time + 90f;
+                    }
+                    break;
+            }
+        }
+        Vector3 ThreatPos() { AllyShip fa = FoeAlly; if (fa != null && (player == null || (fa.transform.position - transform.position).sqrMagnitude < (player.position - transform.position).sqrMagnitude)) return fa.transform.position; return player != null ? player.position : transform.position; }
+
+        /// <summary>Поведение по отношению: true — кадр занят (бой, бегство, сдача, настороже).</summary>
+        bool ActByMood()
+        {
+            switch (Mood)
+            {
+                case Attitude.Surrender: Ai("СДАЛСЯ"); ctrl.throttle = 0f; ctrl.turn = Mathf.MoveTowards(ctrl.turn, 0f, Time.deltaTime); return true;
+                case Attitude.Flee:
+                    {
+                        Vector3 away = transform.position - ThreatPos(); away.y = 0f;
+                        Vector3 home = Relations.CorsairPoint(transform.position.y) - transform.position; home.y = 0f;
+                        Vector3 h = (away.normalized * 0.65f + home.normalized * 0.35f);
+                        Ai("БЕЖИТ", Mathf.RoundToInt(away.magnitude) + " м");
+                        SteerTo(transform.position + h.normalized * 500f, 1f);
+                        return true;
+                    }
+                case Attitude.Wary:
+                    {
+                        // Настороже — бортом к флагману на своей дальности (готов ответить), без огня.
+                        if (player == null) return false;
+                        Vector3 tp = player.position - transform.position; tp.y = 0f;
+                        Ai("НАСТОРОЖЕ", moodWhy);
+                        Engage(tp); return true;
+                    }
+                case Attitude.Hostile:
+                    {
+                        AllyShip fa = FoeAlly;
+                        PlayerHull ph = PlayerHull.Instance;
+                        Vector3 tp = player != null ? player.position - transform.position : Vector3.zero; tp.y = 0f;
+                        bool playerTarget = ph != null && ph.Alive && player != null && (!SkyFortress.InSafeZone(player.position) || Bold);
+                        if (fa != null && (!playerTarget || (fa.transform.position - transform.position).sqrMagnitude < tp.sqrMagnitude * 0.8f))
+                        {
+                            Vector3 ta = fa.transform.position - transform.position; ta.y = 0f;
+                            Ai("БОЙ-" + AllyShip.RoleNames[(int)fa.role].Substring(0, 4), Mathf.RoundToInt(ta.magnitude) + " м"); Engage(ta); return true;
+                        }
+                        if (playerTarget) { Ai(Raiding ? "НАБЕГ" : Health01 < 0.3f ? "ОТХОД" : "БОЙ", "флагман " + Mathf.RoundToInt(tp.magnitude) + " м"); Engage(tp); return true; }
+                        return false;   // флагман под пушками крепости — ждём снаружи (дозор)
+                    }
+            }
+            return false;
+        }
         /// <summary>Поведение сейчас (для хроники и журнала решений ИИ отладочного отчёта).</summary>
         public string AiState { get; private set; } = "";
         void Ai(string s, string why = "")
@@ -93,6 +310,8 @@ namespace SkyTide
             ShipClassInfo k = ShipClasses.Get(c);
             if (gunner == null) gunner = GetComponent<EnemyGunner>();
             baseSaved = true; baseHits = k.hits; baseSpeed = k.speed; baseYaw = k.yaw; baseGuns = k.guns; baseRange = k.range; baseCooldown = k.cooldown;
+            if (gunner != null) { gunner.caliber = k.caliber; gunner.muzzleSpeed = k.muzzle; gunner.classError = k.accuracy; }
+            if (ctrl != null) { ctrl.acceleration = k.accel; ctrl.deceleration = k.accel * 1.2f; }
             ApplyClass();
         }
         /// <summary>Конфиг для классов: множители к базе класса (относительно брига: ход 20, поворот 24, 30 попаданий, 420 м, 6 с).</summary>
@@ -163,6 +382,13 @@ namespace SkyTide
                 gunner.skillCooldown = skill == Skill.Novice ? 1.25f : skill == Skill.Veteran ? 0.85f : 1f;
             }
             mode = Mode.Fight; OutlawUntil = -1f; dumbAt = -1f; Bold = false;
+            float tr = Random.value;
+            temper = tr < 0.3f ? Temper.Coward : tr < 0.8f ? Temper.Cautious : Temper.Bold;
+            if (Class == ShipClass.Admiral || Class == ShipClass.ShipOfLine) temper = Temper.Bold;
+            Fool = Class < ShipClass.HeavyFrigate && Random.value < 0.07f;
+            float dr = Random.value;
+            duty = dr < 0.45f ? Duty.Travel : dr < 0.8f ? Duty.Patrol : Duty.Port;
+            Mood = Attitude.Calm; moodWhy = ""; Raiding = false; foeAlly = null; aimClock = 0f;
             nextPortThink = Time.time + Random.Range(25f, 45f);
             if (ctrl != null) ctrl.ClearCrits();
         }
@@ -211,6 +437,7 @@ namespace SkyTide
                 if (foeHere && Random.value < Boldness)
                 {
                     Bold = true; boldHealth = Health01; boldUntil = Time.time + 45f; mode = Mode.Fight;
+                    SetMood(Attitude.Hostile, "дурень дерзит в порту", "ДЕРЗИТ");
                     DebugReport.Count("дерзостей врага"); DebugReport.Event(name + ": дерзит — бой в порту");
                     if (player != null && (player.position - transform.position).sqrMagnitude < 900f * 900f) HudNotice.Show("ВРАГ ДЕРЗИТ — БОЙ В ПОРТУ!", 9, 3.5f);
                     return false;
@@ -221,13 +448,13 @@ namespace SkyTide
             {
                 if (Time.time < nextPortThink) return false;
                 nextPortThink = Time.time + Random.Range(20f, 35f);
-                bool go = Health01 < 0.45f ? Random.value < 0.6f : Random.value < 0.1f;
+                bool go = Health01 < 0.45f ? Random.value < 0.6f : Random.value < (duty == Duty.Port ? 0.6f : 0.06f);
                 if (!go) return false;
                 mode = Mode.ToPort;
                 DebugReport.Count("врагов ушло в порт");
                 // Глупость случается не с каждым: новичок срывается чаще, ветеран — почти никогда.
                 float dumb = skill == Skill.Novice ? 0.55f : skill == Skill.Veteran ? 0.08f : 0.3f;
-                dumbAt = Random.value < dumb ? Time.time + Random.Range(25f, 70f) : -1f;
+                dumbAt = Fool && Random.value < Mathf.Max(0.6f, dumb) ? Time.time + Random.Range(25f, 70f) : -1f;   // глупый залп в порту — только дурень
                 if (player != null && (player.position - transform.position).sqrMagnitude < 900f * 900f) HudNotice.Show("ВРАГ УХОДИТ В ПОРТ", 9, 3.5f);
             }
             Vector3 outDir = f.BerthWorld - f.Center; outDir.y = 0f;
@@ -250,7 +477,7 @@ namespace SkyTide
             {
                 dumbAt = -1f;
                 if (gunner == null) gunner = GetComponent<EnemyGunner>();
-                if (gunner != null && gunner.ForceVolley()) { DebugReport.Count("глупых залпов врага в зоне"); OutlawUntil = Time.time + 40f; SkyFortress.NotifyEnemyFired(this); mode = Mode.Flee; return true; }
+                if (gunner != null && gunner.ForceVolley()) { DebugReport.Count("глупых залпов врага в зоне"); OutlawUntil = Time.time + 40f; SkyFortress.NotifyEnemyFired(this); mode = Mode.Flee; SetMood(Attitude.Flee, "дурень дал залп в порту", "ГЛУПЫЙ ЗАЛП"); return true; }
             }
             if (mode == Mode.ToPort)
             {
@@ -344,6 +571,32 @@ namespace SkyTide
             if (roam && new Vector2(c.x + Mathf.Cos(a) * d, c.z + Mathf.Sin(a) * d).magnitude > 3000f)
                 a = Mathf.Atan2(-c.z, -c.x) + Random.Range(-0.8f, 0.8f);   // не уходить за край района — разворот к центру
             waypoint = new Vector3(c.x + Mathf.Cos(a) * d, transform.position.y, c.z + Mathf.Sin(a) * d);
+            SkyFortress ff = SkyFortress.Instance;
+            if (roam && ff != null)
+            {
+                // Политика: дозор — по кругу у границы своих вод; по делам — дальние точки, но не в воды гарнизона.
+                Vector3 fc = ff.Center; fc.y = 0f;
+                if (duty == Duty.Patrol)
+                {
+                    Vector3 off = transform.position - fc; off.y = 0f;
+                    float ang = Mathf.Atan2(off.z, off.x) + Random.Range(0.25f, 0.6f) * (GetInstanceID() % 2 == 0 ? 1f : -1f);
+                    waypoint = fc + new Vector3(Mathf.Cos(ang), 0f, Mathf.Sin(ang)) * (Relations.CorsairRadius + Random.Range(150f, 500f));
+                    if (new Vector2(waypoint.x, waypoint.z).magnitude > 3300f) waypoint = Relations.CorsairPoint(transform.position.y);
+                }
+                else
+                {
+                    for (int i = 0; i < 10; i++)
+                    {
+                        float aa = Random.Range(0f, Mathf.PI * 2f), dd = Random.Range(1200f, 3200f);
+                        Vector3 w = transform.position + new Vector3(Mathf.Cos(aa), 0f, Mathf.Sin(aa)) * dd;
+                        if (new Vector2(w.x, w.z).magnitude > 3300f) continue;
+                        Waters wt = Relations.At(w);
+                        if (wt == Waters.Garrison || wt == Waters.Safe) continue;
+                        waypoint = w; break;
+                    }
+                }
+                waypoint.y = transform.position.y;
+            }
             // В безопасную зону крепости враг не заходит — точку выносим за её край.
             SkyFortress f = SkyFortress.Instance;
             if (f != null)
@@ -352,11 +605,20 @@ namespace SkyTide
                 float r = f.safeRadius + 120f;
                 if (off.sqrMagnitude < r * r) { if (off.sqrMagnitude < 1f) off = Vector3.forward; waypoint = f.Center + off.normalized * r; waypoint.y = transform.position.y; }
             }
-            nextPick = Time.time + Random.Range(10f, 18f);
+            nextPick = Time.time + (roam ? Random.Range(60f, 120f) : Random.Range(10f, 18f));
         }
 
         void Update(){long __pt=PerfTimers.Start();UpdateTimed();PerfTimers.Stop("Мишень",__pt);}
         void UpdateTimed()
+        {
+            Think();
+            // Расхождение с соседями (Traffic): мирные и бегущие уступают дорогу; в бою — только чтобы не таранить чужих.
+            // Дурень половину времени прёт напролом (не уступает дорогу) — отсюда и столкновения.
+            if (ctrl != null && Alive && !BeingBoarded && Mood != Attitude.Surrender && Application.isPlaying && !(Fool && Mathf.Repeat(Time.time + GetInstanceID(), 20f) < 10f))
+                Traffic.Avoid(ctrl, Mathf.Max(10f, Length * 0.5f), Mood == Attitude.Hostile ? ThreatTransform() : null);
+        }
+        Transform ThreatTransform() { AllyShip fa = FoeAlly; return fa != null ? fa.transform : player; }
+        void Think()
         {
             if (ctrl == null) return;
             if (!captainRolled && Application.isPlaying) { RollCaptain(); captainRolled = true; }
@@ -376,7 +638,9 @@ namespace SkyTide
                 if (burnClock >= 7f) { burnClock = 0f; Burn(); if (!Alive) return; }
             }
             else burnClock = 0f;
-            if (PortLife()) return;
+            if (Application.isPlaying) Relate(Time.deltaTime);
+            if (Mood != Attitude.Calm && InPort) mode = Mode.Fight;   // враждебный или бегущий — не гость порта
+            if (Mood == Attitude.Calm && PortLife()) return;
             if (nextDaze <= 0f) nextDaze = Time.time + Random.Range(10f, 20f) * dazeScale;
             if (Time.time >= nextDaze && !Dazed)
             {
@@ -387,26 +651,13 @@ namespace SkyTide
             if (Dazed) { Ai("ТУПИТ"); ctrl.turn = dazeTurn; ctrl.throttle = 0.08f; return; }
             Vector3 toPlayer = player != null ? player.position - transform.position : Vector3.zero;
             toPlayer.y = 0f;
-            PlayerHull playerHull = PlayerHull.Instance;
-            float aggro = Time.time < angryUntil ? aggroRange * 1.6f : aggroRange;
-            bool playerFair = player != null && playerHull != null && playerHull.Alive && !SkyFortress.InSafeZone(player.position) && toPlayer.magnitude < aggro;
-            // Свои корабли тоже цели: торговца враг выбирает охотнее (лёгкая добыча), сторожевого и ведомого — если они
-            // заметно ближе флагмана. Всё — вне безопасной зоны крепости.
-            AllyShip prey = null; float preyD = playerFair ? toPlayer.magnitude * 0.7f : aggro;
-            foreach (AllyShip al in AllyShip.All)
-            {
-                if (al == null || !al.Alive || SkyFortress.InSafeZone(al.transform.position)) continue;
-                Vector3 ta = al.transform.position - transform.position; ta.y = 0f;
-                float d = ta.magnitude * (al.role == AllyShip.Role.Merchant ? 0.6f : 1f);
-                if (d < preyD && ta.magnitude < aggro) { preyD = d; prey = al; }
-            }
-            if (prey != null) { Vector3 tp = prey.transform.position - transform.position; tp.y = 0f; Ai("БОЙ-" + AllyShip.RoleNames[(int)prey.role].Substring(0, 4), Mathf.RoundToInt(tp.magnitude) + " м"); Engage(tp); return; }
-            if (playerFair) { Ai(Health01 < 0.3f ? "ОТХОД" : "БОЙ", "флагман " + Mathf.RoundToInt(toPlayer.magnitude) + " м"); Engage(toPlayer); return; }
+            // Политика отношений: в бой — только по поводу (Relate/Decide), а не «всех, кого видим».
+            if (Application.isPlaying && ActByMood()) return;
             fightSide = 0f;
             if (!Application.isPlaying && player != null && toPlayer.magnitude > leash && !SkyFortress.InSafeZone(player.position)) { waypoint = player.position; nextPick = Time.time + 8f; }
             Vector3 to = waypoint - transform.position;
             to.y = 0f;
-            Ai("ДОЗОР");
+            Ai(Application.isPlaying ? DutyNames[(int)duty] : "ДОЗОР");
             if (to.magnitude < 40f || Time.time > nextPick) Pick();
             float ang = Vector3.SignedAngle(transform.forward, to, Vector3.up);
             ctrl.turn = Mathf.Clamp(ang / 35f, -1f, 1f);
@@ -516,7 +767,7 @@ namespace SkyTide
                 Vector3 ramAt = (pa + pb) * 0.5f; ramAt.y = a0.y + 2f;
                 DebugReport.Count("таранов");
                 hull.OnHit(ramAt, closing > 45f ? 2f : 1f);
-                OnHit(ramAt);
+                OnHit(ramAt, false, true);   // таран — повод (политика отношений)
                 if (!Alive) return;
             }
             Vector3 at = (pa + pb) * 0.5f; at.y = a0.y + 2f;
@@ -550,9 +801,19 @@ namespace SkyTide
         }
 
         float chainAcc;
-        public void OnHit(Vector3 point, bool chain = false)
+        public void OnHit(Vector3 point, bool chain = false, bool byPlayer = false, float caliber = 1f)
         {
             if (!Alive) return;
+            lastHitAt = Time.time;
+            if (Application.isPlaying)
+            {
+                if (Mood == Attitude.Surrender && byPlayer) Relations.AddGrudge(8f, "огонь по сдавшемуся");
+                else if (Mood != Attitude.Hostile)
+                {
+                    if (!byPlayer) { AllyShip near = null; float nd = 1200f * 1200f; foreach (AllyShip al in AllyShip.All) { if (al == null || !al.Alive) continue; float d2 = (al.transform.position - transform.position).sqrMagnitude; if (d2 < nd) { nd = d2; near = al; } } if (near != null) foeAlly = near; }
+                    Decide(byPlayer ? "попадание флагмана" : "попадание гарнизона", Relations.At(transform.position) == Waters.Corsair, true);
+                }
+            }
             // Книппель режет баллоны и такелаж: ход падает надолго, а корпус получает треть удара.
             if (chain)
             {
@@ -561,7 +822,7 @@ namespace SkyTide
                 if (chainAcc < 1f) { FxSystem cfx = FxSystem.Instance; if (cfx != null) cfx.Explosion(point, 0.5f); return; }
                 chainAcc -= 1f;
             }
-            hits++;
+            hits += Mathf.Max(1, Mathf.RoundToInt(caliber));   // тяжёлое ядро (класс, крепость) — больше урона
             angryUntil = Time.time + 40f;
             if (Time.time - TallyAt > 2.5f) Tally = 0;
             Tally++; TallyAt = Time.time;
@@ -589,6 +850,7 @@ namespace SkyTide
             SkySound.HullHit(point, hits % 3 == 0);
             if (hits >= hitsToSink)
             {
+                if (Application.isPlaying) Relations.AddGrudge(Mood == Attitude.Surrender ? 30f : 12f, Mood == Attitude.Surrender ? "добит сдавшийся " + name : "потоплен " + name);
                 DebugReport.Event(name + " потоплен");
                 DebugReport.Count("врагов потоплено");
                 SkySound.ShipDestroyed(point);
@@ -625,8 +887,12 @@ namespace SkyTide
             if (damageVisual != null) damageVisual.ResetDamage();
             Vector3 c = player != null ? player.position : Vector3.zero;
             float a = Random.Range(0f, Mathf.PI * 2f);
-            // Новый враг приходит издалека (spawnRange), а не возникает в кадре в 320 м.
+            // Новый враг приходит издалека (spawnRange), а не возникает в кадре в 320 м; в игре — в водах корсаров.
             Vector3 at = new Vector3(c.x + Mathf.Cos(a) * spawnRange, transform.position.y, c.z + Mathf.Sin(a) * spawnRange);
+            if (Application.isPlaying && SkyFortress.Instance != null)
+            {
+                for (int i = 0; i < 8; i++) { Vector3 q = Relations.CorsairPoint(transform.position.y); if (player == null || (q - player.position).sqrMagnitude > 900f * 900f) { at = q; break; } }
+            }
             // Новый враг не появляется в безопасной зоне крепости (и тем более внутри неё) — выносим за край.
             SkyFortress f = SkyFortress.Instance;
             if (f != null)

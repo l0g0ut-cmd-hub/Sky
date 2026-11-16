@@ -14,13 +14,39 @@ namespace SkyTide
     /// </summary>
     public class AllyShip : MonoBehaviour
     {
-        public enum Role { Guard, Wingman, Merchant }
+        /// <summary>Guard — сторожевой (дозор вод гарнизона), Wingman — ведомый, Merchant — не создаётся (торговец вырезан),
+        /// Customs — таможенный катер (выпроваживает чужих из вод гарнизона), Courier — курьер (ходит по делам гарнизона).</summary>
+        public enum Role { Guard, Wingman, Merchant, Customs, Courier, Harbor }
         public static readonly List<AllyShip> All = new List<AllyShip>();
         public Role role = Role.Guard;
         public float engageRange = 750f, fightRange = 300f, leash = 2300f, cooldown = 7f, muzzleSpeed = 85f;
         public float rangeError = 0.06f, sideError = 0.025f, respawnDelay = 30f;
         public int gunsPerSide = 4, hitsToSink = 30;
-        public static readonly string[] RoleNames = { "СТОРОЖЕВОЙ", "ВЕДОМЫЙ", "ТОРГОВЕЦ" };
+        public static readonly string[] RoleNames = { "СТОРОЖЕВОЙ", "ВЕДОМЫЙ", "ТОРГОВЕЦ", "ТАМОЖНЯ", "КУРЬЕР", "СТОЯНКА" };
+        // ---------- стоянка в порту (владелец 16.11: «в порту красиво припаркованы несколько судов, включая адмиральские,
+        // иногда выходят по делам или в патруль») ----------
+        enum HarborLeg { Docked, Out, Back }
+        HarborLeg harborLeg = HarborLeg.Docked;
+        Vector3 homeSlot; Quaternion homeRot = Quaternion.identity; float harborUntil; bool harborPatrol;
+        /// <summary>Место стоянки у причала (Harbor): корабль стоит носом от крепости, иногда уходит и возвращается.</summary>
+        public void SetHome(Vector3 slot, Quaternion rot) { homeSlot = slot; homeRot = rot; harborLeg = HarborLeg.Docked; harborUntil = Time.time + Random.Range(120f, 420f); }
+        public ShipClass Class { get; private set; } = ShipClass.None;
+        public float caliber = 1f;
+        /// <summary>Класс корабля гарнизона: модель задана при постройке, здесь — ход, поворот, пушки, прочность, калибр.</summary>
+        public void SetClass(ShipClass c)
+        {
+            Class = c; ShipClassInfo k = ShipClasses.Get(c);
+            ctrl.maxSpeed = k.speed * (role == Role.Wingman ? 1.5f : 1.1f); ctrl.maxYawRate = k.yaw * 1.1f;   // ведомый держится за флагманом
+            gunsPerSide = k.guns; hitsToSink = k.hits + (role == Role.Wingman ? 10 : 0); caliber = k.caliber;
+            fightRange = Mathf.Clamp(k.range * 0.7f, 200f, 420f);
+            cooldown = k.cooldown; muzzleSpeed = k.muzzle; rangeError *= k.accuracy; sideError *= k.accuracy;
+            ctrl.acceleration = k.accel * 1.1f; ctrl.deceleration = k.accel * 1.3f;
+        }
+        // ---------- огонь по своим (политика отношений) ----------
+        float friendlyHitAt = -100f, hostileUntil = -1f; int friendlyStrikes;
+        /// <summary>Флагман бил по нему (или флагман вне закона): отбивается или бежит к крепости.</summary>
+        public bool HostileToPlayer { get { return Alive && (Time.time < hostileUntil || Relations.PlayerOutlaw); } }
+        public TargetShip Foe { get { return foe; } }
 
         ShipController ctrl;
         Transform model;
@@ -37,6 +63,8 @@ namespace SkyTide
         Vector3 merchantFrom;
 
         public ShipController Controller { get { return ctrl; } }
+        /// <summary>Длина корпуса, м (по модели) — для расхождения и столкновений.</summary>
+        public float Length { get { return Mathf.Max(10f, box.size.z * transform.lossyScale.z); } }
         public string AiState { get; private set; } = "";
         void Ai(string st, string why = "")
         {
@@ -60,7 +88,7 @@ namespace SkyTide
                 TargetShip best = null; float bd = 900f * 900f;
                 foreach (TargetShip t in TargetShip.All)
                 {
-                    if (t == null || !t.Alive) continue;
+                    if (t == null || !t.Alive || !t.AtWar) continue;   // политика: «атакует» только тот, кто в бою с гарнизоном
                     float d = (t.transform.position - transform.position).sqrMagnitude;
                     if (d < bd) { bd = d; best = t; }
                 }
@@ -122,10 +150,22 @@ namespace SkyTide
             return false;
         }
 
-        public void OnHit(Vector3 point, float power = 1f)
+        public void OnHit(Vector3 point, float power = 1f, bool byPlayer = false)
         {
             if (!Alive) return;
-            hits += power > 1.5f ? 3 : 1;
+            hits += Mathf.Max(1, Mathf.RoundToInt(power));
+            if (byPlayer)
+            {
+                // Первое попадание — «ПРЕКРАТИТЬ ОГОНЬ!» (случайность прощается через 20 с), второе подряд — отвечает или бежит.
+                if (Time.time - friendlyHitAt > 20f) { friendlyStrikes = 0; HudNotice.Show(RoleNames[(int)role] + ": ПРЕКРАТИТЬ ОГОНЬ!", 1, 3f); }
+                friendlyStrikes++; friendlyHitAt = Time.time;
+                if (friendlyStrikes >= 2)
+                {
+                    if (Time.time >= hostileUntil) { DebugReport.Event(name + ": флагман бьёт по своим — " + (Health01 > 0.5f && role != Role.Customs ? "отвечает огнём" : "уходит к крепости")); DebugReport.Count("свои ответили флагману"); }
+                    hostileUntil = Time.time + 60f;
+                    if (Health01 <= 0.5f || role == Role.Customs) repairing = true;
+                }
+            }
             // Первое попадание после затишья — сигнал бедствия: оповещение флагману с расстоянием.
             if (Time.time - LastHitTime > 20f)
             {
@@ -148,13 +188,14 @@ namespace SkyTide
                 ctrl.throttle = 0f; ctrl.turn = 0f;
                 HudNotice.Show(RoleNames[(int)role] + " ПОТОПЛЕН", 1, 3.5f);
                 DebugReport.Count("своих потоплено");
+                if (byPlayer || Time.time - friendlyHitAt < 3f) Relations.DeclarePlayerOutlaw("потопил своего: " + RoleNames[(int)role].ToLower());
             }
             else if (fx != null) fx.HullImpact(point, normal, Velocity);
         }
 
         void Respawn()
         {
-            deadUntil = -1f; hits = 0; repairing = false; foe = null; pendingLeft = 0;
+            deadUntil = -1f; hits = 0; repairing = false; foe = null; pendingLeft = 0; hostileUntil = -1f; friendlyStrikes = 0;
             if (damage != null) damage.ResetDamage();
             SkyFortress f = SkyFortress.Instance;
             Vector3 at;
@@ -168,7 +209,8 @@ namespace SkyTide
             else
             {
                 Vector3 outDir = f.BerthWorld - f.Center; outDir.y = 0f; outDir = outDir.sqrMagnitude > 1f ? outDir.normalized : Vector3.forward;
-                at = f.BerthWorld + outDir * 160f + Vector3.Cross(Vector3.up, outDir) * (role == Role.Wingman ? -220f : 220f);
+                at = role == Role.Harbor && homeSlot != Vector3.zero ? homeSlot : f.BerthWorld + outDir * 160f + Vector3.Cross(Vector3.up, outDir) * (role == Role.Wingman ? -220f : 220f);
+                if (role == Role.Harbor) { transform.rotation = homeRot; harborLeg = HarborLeg.Docked; harborUntil = Time.time + Random.Range(120f, 420f); }
             }
             at.y = transform.position.y;
             transform.position = at;
@@ -181,6 +223,8 @@ namespace SkyTide
         {
             long pt = PerfTimers.Start();
             Tick(Time.deltaTime);
+            if (ctrl != null && Alive && Application.isPlaying)   // расхождение с соседями: свои уступают дорогу, в бою — не таранят
+                Traffic.Avoid(ctrl, Mathf.Max(10f, box.size.z * transform.lossyScale.z * 0.5f), foe != null ? foe.transform : (HostileToPlayer && PlayerHull.Instance != null ? PlayerHull.Instance.transform : null));
             // Подсветка своих: зелёное светящееся кольцо под корпусом, как у зоны ремонта (владелец 16.11).
             if (!glowTried && Application.isPlaying) { glowTried = true; float len = Mathf.Max(20f, box.size.z * transform.lossyScale.z); glow = BerthRing.Create(transform.position, len * 0.42f, len * 0.62f, transform.rotation, -3f, 5f); }
             if (glow != null)
@@ -205,6 +249,18 @@ namespace SkyTide
             SkyFortress f = SkyFortress.Instance;
             if (role == Role.Merchant) { Ai(leg == Leg.Inbound ? "ИДЁТ" : leg == Leg.Docked ? "ПОРТ" : "УХОДИТ"); Merchant(f); return; }
             if (Health01 < 0.35f) repairing = true;
+            // Флагман вне закона: ведомый уходит в порт, остальные охотятся на флагман. Бил по нему — отвечает (или бежит).
+            PlayerHull fph = PlayerHull.Instance;
+            if (role == Role.Wingman && Relations.PlayerOutlaw) { Ai("УХОДИТ", "флагман вне закона"); foe = null; pendingLeft = 0; if (f != null) GoRepair(f); return; }
+            if (HostileToPlayer && !repairing && fph != null && fph.Alive)
+            {
+                foe = null;
+                Vector3 pc = fph.Center;
+                Ai("ОТВЕЧАЕТ ФЛАГМАНУ", Mathf.RoundToInt(Vector3.Distance(pc, transform.position)) + " м");
+                if (!SkyFortress.InSafeZone(transform.position) || Relations.PlayerOutlaw) { EngageAt(fph.transform.position); GunneryAt(pc, fph.transform.forward * (fph.GetComponent<ShipController>() != null ? fph.GetComponent<ShipController>().Speed : 0f), true, "флагман"); }
+                else Steer(fph.transform.position - transform.position, 0.5f);
+                return;
+            }
             if (repairing && f != null) { Ai("РЕМОНТ", Mathf.RoundToInt(Health01 * 100f) + "%"); foe = null; pendingLeft = 0; GoRepair(f); return; }
             foe = PickFoe(f);
             // Свой под огнём в 2.5 км — идём на помощь и бьём того, кто его атакует (торговец сам не воюет).
@@ -216,8 +272,12 @@ namespace SkyTide
             if (foe == null)
             {
                 announced = false; pendingLeft = 0;
-                Ai(role == Role.Wingman ? "СТРОЙ" : "ДОЗОР");
-                if (role == Role.Wingman) Follow(); else Patrol(f);
+                Ai(role == Role.Wingman ? "СТРОЙ" : role == Role.Customs ? "ТАМОЖНЯ" : role == Role.Courier ? "ПО ДЕЛАМ" : "ДОЗОР");
+                if (role == Role.Wingman) Follow();
+                else if (role == Role.Customs) CustomsPatrol(f);
+                else if (role == Role.Courier) Errand(f);
+                else if (role == Role.Harbor) Harbor(f);
+                else Patrol(f);
                 return;
             }
             if (!announced)
@@ -232,6 +292,95 @@ namespace SkyTide
             Gunnery(foe);
         }
 
+        // ---------- таможня и курьер ----------
+        TargetShip escorting; float escortUntil;
+        /// <summary>Таможня: дозор у внешнего края вод гарнизона; чужой (не идущий в порт) в водах гарнизона — подойти на 300 м
+        /// и выпроводить (TargetShip.Warned). Сам не нападает.</summary>
+        void CustomsPatrol(SkyFortress f)
+        {
+            if (f == null) { Patrol(null); return; }
+            if (escorting == null || !escorting.Alive || Time.time > escortUntil || Relations.At(escorting.transform.position) != Waters.Garrison)
+            {
+                escorting = null;
+                foreach (TargetShip t in TargetShip.All)
+                {
+                    if (t == null || !t.Alive || t.Mood != Attitude.Calm || t.InPort) continue;
+                    if (Relations.At(t.transform.position) != Waters.Garrison) continue;
+                    if ((t.transform.position - transform.position).sqrMagnitude > 1500f * 1500f) continue;
+                    escorting = t; escortUntil = Time.time + 90f; break;
+                }
+            }
+            if (escorting != null)
+            {
+                Vector3 to = escorting.transform.position - transform.position; to.y = 0f;
+                Ai("ВЫПРОВАЖИВАЕТ", escorting.name);
+                if (to.magnitude < 320f) { escorting.Warned(this); Steer(escorting.transform.forward, 0.5f); }
+                else SteerAround(f, escorting.transform.position, 1f);
+                return;
+            }
+            if (Time.time >= nextRoam || (roamPoint - transform.position).sqrMagnitude < 150f * 150f)
+            {
+                nextRoam = Time.time + 60f;
+                Vector3 off = transform.position - f.Center; off.y = 0f;
+                float ang = Mathf.Atan2(off.z, off.x) + Random.Range(0.3f, 0.7f);
+                roamPoint = f.Center + new Vector3(Mathf.Cos(ang), 0f, Mathf.Sin(ang)) * (Relations.GarrisonRadius - 250f); roamPoint.y = transform.position.y;
+            }
+            SteerAround(f, roamPoint, 0.55f);
+        }
+        void Harbor(SkyFortress f)
+        {
+            if (f == null) { Patrol(null); return; }
+            Vector3 to = homeSlot - transform.position; to.y = 0f;
+            switch (harborLeg)
+            {
+                case HarborLeg.Docked:
+                    Ai("НА СТОЯНКЕ");
+                    if (to.magnitude > 60f) { SteerAround(f, homeSlot, to.magnitude > 300f ? 0.6f : 0.25f); return; }
+                    // У места: подтягивается и разворачивается в стойку (как автошвартовка флагмана), ход ноль.
+                    ctrl.throttle = 0f; ctrl.turn = 0f;
+                    Vector3 spot = homeSlot; spot.y = transform.position.y;
+                    transform.SetPositionAndRotation(Vector3.MoveTowards(transform.position, spot, 4f * Time.deltaTime), Quaternion.RotateTowards(transform.rotation, homeRot, 6f * Time.deltaTime));
+                    if (Time.time >= harborUntil)
+                    {
+                        if (Random.value < 0.5f) { harborLeg = HarborLeg.Out; harborPatrol = Random.value < 0.5f; harborUntil = Time.time + Random.Range(180f, 420f); nextRoam = 0f; DebugReport.Event(name + " (" + ShipClasses.Get(Class).name + ") выходит " + (harborPatrol ? "в дозор" : "по делам")); }
+                        else harborUntil = Time.time + Random.Range(120f, 360f);
+                    }
+                    return;
+                case HarborLeg.Out:
+                    Ai(harborPatrol ? "ДОЗОР" : "ПО ДЕЛАМ", "со стоянки");
+                    if (harborPatrol) Patrol(f); else Errand(f);
+                    if (Time.time >= harborUntil) harborLeg = HarborLeg.Back;
+                    return;
+                default:
+                    Ai("НА СТОЯНКУ");
+                    if (to.magnitude < 60f) { harborLeg = HarborLeg.Docked; harborUntil = Time.time + Random.Range(180f, 480f); return; }
+                    SteerAround(f, homeSlot, to.magnitude > 300f ? 0.7f : 0.3f);
+                    return;
+            }
+        }
+        bool errandOut = true;
+        /// <summary>Курьер: от причала к дальней точке нейтральной полосы и обратно — по делам, никого не трогает.</summary>
+        void Errand(SkyFortress f)
+        {
+            if (f == null) { Patrol(null); return; }
+            if (Time.time >= nextRoam || (roamPoint - transform.position).sqrMagnitude < 120f * 120f)
+            {
+                errandOut = !errandOut; nextRoam = Time.time + 240f;
+                if (errandOut)
+                {
+                    for (int i = 0; i < 10; i++)
+                    {
+                        float a = Random.Range(0f, Mathf.PI * 2f);
+                        Vector3 w = f.Center + new Vector3(Mathf.Cos(a), 0f, Mathf.Sin(a)) * Random.Range(Relations.GarrisonRadius + 150f, Relations.CorsairRadius - 150f);
+                        if (new Vector2(w.x, w.z).magnitude < 3300f) { roamPoint = w; break; }
+                    }
+                }
+                else { Vector3 o = f.BerthWorld - f.Center; o.y = 0f; roamPoint = f.BerthWorld + o.normalized * 140f; }
+                roamPoint.y = transform.position.y;
+            }
+            SteerAround(f, roamPoint, 0.7f);
+        }
+
         TargetShip PickFoe(SkyFortress f)
         {
             PlayerHull ph = PlayerHull.Instance;
@@ -240,12 +389,13 @@ namespace SkyTide
             foreach (TargetShip t in TargetShip.All)
             {
                 if (t == null || !t.Alive) continue;
+                if (!t.AtWar && !t.Outlaw) continue;   // политика: только враждебные к гарнизону (повод был) — мирных не трогаем
                 if (t.InPort && !t.Outlaw) continue;   // гость порта — не цель
                 Vector3 off = t.transform.position - anchor; off.y = 0f;
                 float limit = role == Role.Wingman ? engageRange : float.MaxValue;   // сторожевые ходят по всей карте — бьют, где встретят
                 if (off.magnitude > limit) continue;
                 float d = Vector3.Distance(t.transform.position, transform.position);
-                if (role == Role.Guard && !t.Outlaw && d > engageRange) continue;
+                if (role != Role.Wingman && !t.Outlaw && d > engageRange) continue;   // сторожевые, таможня, курьеры, стоянка — бьют рядом
                 if (d < bestD) { bestD = d; best = t; }
             }
             return best;
@@ -290,6 +440,15 @@ namespace SkyTide
 
         void GoRepair(SkyFortress f)
         {
+            if (role == Role.Harbor && homeSlot != Vector3.zero)
+            {
+                Vector3 th = homeSlot - transform.position; th.y = 0f;
+                if (th.magnitude > 45f) { SteerAround(f, homeSlot, th.magnitude > 300f ? 0.8f : 0.3f); return; }
+                ctrl.throttle = 0f; ctrl.turn = 0f;
+                if (Time.time >= nextRepair && hits > 0) { nextRepair = Time.time + 1.2f; hits--; if (hits == 0 && damage != null) damage.ResetDamage(); }
+                if (hits == 0) repairing = false;
+                return;
+            }
             Vector3 outDir = f.BerthWorld - f.Center; outDir.y = 0f; outDir = outDir.sqrMagnitude > 1f ? outDir.normalized : Vector3.forward;
             Vector3 spot = f.BerthWorld + outDir * 90f + Vector3.Cross(Vector3.up, outDir) * (role == Role.Wingman ? -150f : 150f);
             Vector3 to = spot - transform.position; to.y = 0f;
@@ -348,9 +507,10 @@ namespace SkyTide
             Steer(heading, throttle);
         }
 
-        void Engage(TargetShip t)
+        void Engage(TargetShip t) { EngageAt(t.transform.position); }
+        void EngageAt(Vector3 pos)
         {
-            Vector3 to = t.transform.position - transform.position; to.y = 0f;
+            Vector3 to = pos - transform.position; to.y = 0f;
             float dist = to.magnitude;
             if (dist < 1f) { ctrl.turn = 0f; ctrl.throttle = 0.4f; return; }
             Vector3 dir = to / dist;
@@ -372,18 +532,21 @@ namespace SkyTide
 
         void Gunnery(TargetShip t)
         {
+            if (t.Surrendered) { pendingLeft = 0; return; }   // сдавшегося не бьют
+            GunneryAt(t.Center, t.Controller != null ? t.transform.forward * t.Controller.Speed : Vector3.zero, false, t.name.Replace(" Ship", ""));
+        }
+        void GunneryAt(Vector3 tp, Vector3 tv, bool atPlayer, string who)
+        {
             FxSystem fx = FxSystem.Instance;
             if (fx == null || model == null || gunsPerSide <= 0) return;
-            Vector3 tp = t.Center;
             if (pendingLeft > 0 && Time.time >= pendingAt)
             {
                 int index = gunsPerSide - pendingLeft;
                 float z = Mathf.Lerp(box.min.z + box.size.z * 0.3f, box.max.z - box.size.z * 0.3f, gunsPerSide > 1 ? index / (float)(gunsPerSide - 1) : 0.5f);
                 Vector3 muzzle = model.TransformPoint(new Vector3(box.center.x + pendingSide * (box.extents.x * 0.95f + 0.6f), box.min.y + box.size.y * 0.28f, z));
-                Vector3 tv = t.Controller != null ? t.transform.forward * t.Controller.Speed : Vector3.zero;
                 Vector3 dir;
                 if (Solve(muzzle, tp + aimErr, tv, fx.gravity, out dir))
-                    fx.Fire(muzzle, Quaternion.Euler(Random.Range(-2f, 2f), Random.Range(-2f, 2f), 0f) * dir, selfVel, muzzleSpeed);
+                    fx.Fire(muzzle, Quaternion.Euler(Random.Range(-2f, 2f), Random.Range(-2f, 2f), 0f) * dir, selfVel, muzzleSpeed, atPlayer, 7f, caliber);   // по флагману — «враждебным» ядром
                 pendingLeft--; pendingAt = Time.time + Random.Range(0.12f, 0.2f);
                 return;
             }
@@ -396,12 +559,12 @@ namespace SkyTide
             if (bearing < 55f || bearing > 125f) return;
             // По врагу, который трётся о флагман, не бьём: ядра могли бы лечь в своих (свои ядра своих не ранят, но смотрится глупо).
             PlayerHull ph = PlayerHull.Instance;
-            if (ph != null && (ph.transform.position - t.transform.position).sqrMagnitude < 45f * 45f) return;
+            if (!atPlayer && ph != null && (ph.transform.position - tp).sqrMagnitude < 45f * 45f) return;
             pendingSide = local.x > 0f ? 1 : -1;
             Vector3 fwd = rel / Mathf.Max(dist, 1f), side = Vector3.Cross(Vector3.up, fwd);
             aimErr = fwd * Gauss() * rangeError * dist + side * Gauss() * sideError * dist;
             pendingLeft = gunsPerSide; pendingAt = Time.time;
-            DebugReport.Volley(RoleNames[(int)role].ToLower() + " → " + t.name.Replace(" Ship", "") + " " + Mathf.RoundToInt(dist) + " м");
+            DebugReport.Volley(RoleNames[(int)role].ToLower() + " → " + who + " " + Mathf.RoundToInt(dist) + " м");
             ready = Time.time + cooldown + Random.Range(0f, 2f);
         }
 

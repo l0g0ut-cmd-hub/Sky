@@ -63,9 +63,27 @@ namespace SkyTide
                 if (rescue != null && !(rescue.InPort && !rescue.Outlaw)) { foe = rescue; helping = mate; }
                 else { foe = PickFoe(); helping = null; }
             }
+            if (foe != null && (!foe.Alive || !foe.AtWar)) foe = null;   // политика: в бой — только с теми, кто в бою с нами
             if (foe == null) { if (!Hunt()) Patrol(fort); return; }
             if (TryBoard()) return;
+            // Линейный и адмиральский в одиночку не по зубам: без своих рядом и при неполном корпусе — отходим к крепости.
+            if (foe.Class >= ShipClass.ShipOfLine && fort != null && !StrongEnough(foe))
+            {
+                state = "АВТОБОЙ · ОТХОД ОТ: " + ShipClasses.Get(foe.Class).name;
+                Vector3 home = fort.BerthWorld - transform.position; home.y = 0f;
+                Steer(home, 1f);
+                return;
+            }
             Fight(foe, fort);
+        }
+
+        bool StrongEnough(TargetShip t)
+        {
+            int mates = 0;
+            foreach (AllyShip al in AllyShip.All) if (al != null && al.Alive && !al.HostileToPlayer && (al.transform.position - t.transform.position).sqrMagnitude < 900f * 900f) mates++;
+            float need = t.Class == ShipClass.Admiral ? 2.2f : 1.4f;   // наша сила с союзниками против его
+            float ours = Relations.PlayerPower() * (1f + 0.5f * mates);
+            return ours >= Relations.Power(t) * need || t.Health01 < 0.3f;
         }
 
         /// <summary>Оценка цели: меньше — лучше. Расстояние, со скидками за угрозу своим и за низкую прочность.</summary>
@@ -73,10 +91,11 @@ namespace SkyTide
         {
             TargetShip best = null; float bestScore = float.MaxValue;
             int count = 0;
-            foreach (TargetShip t in TargetShip.All) if (t != null && t.Alive && !(t.InPort && !t.Outlaw)) count++;
+            foreach (TargetShip t in TargetShip.All) if (t != null && t.Alive && t.AtWar && !(t.InPort && !t.Outlaw)) count++;
             foreach (TargetShip t in TargetShip.All)
             {
                 if (t == null || !t.Alive) continue;
+                if (!t.AtWar) continue;                // политика: мирных, бегущих и сдавшихся не трогаем — бой только с враждебными
                 if (t.InPort && !t.Outlaw) continue;   // гость порта — не цель
                 float d = Vector3.Distance(t.transform.position, transform.position);
                 // Видим только то, что на радаре (1.5 км) или что заметили свои корабли (у них свои глаза — 1 км).
@@ -88,6 +107,7 @@ namespace SkyTide
                     if (al != null && al.Alive && (al.transform.position - t.transform.position).sqrMagnitude < 450f * 450f) { score *= al.role == AllyShip.Role.Merchant ? 0.45f : 0.7f; break; }
                 score *= Mathf.Lerp(0.55f, 1f, t.Health01);   // подбитого — добить
                 if (t.Heavy && count > 1) score *= 1.8f;      // тяжёлого — последним
+                if (t.Class >= ShipClass.ShipOfLine && !StrongEnough(t)) score *= 4f;   // гиганта — только если по силам
                 if (t == foe) score *= 0.8f;                  // не мечется между целями
                 if (score < bestScore) { bestScore = score; best = t; }
             }
@@ -99,7 +119,7 @@ namespace SkyTide
         bool Hunt()
         {
             bool any = false;
-            foreach (TargetShip t in TargetShip.All) if (t != null && t.Alive && !(t.InPort && !t.Outlaw)) { any = true; break; }
+            foreach (TargetShip t in TargetShip.All) if (t != null && t.Alive && t.AtWar && !(t.InPort && !t.Outlaw)) { any = true; break; }
             if (!any) return false;
             Vector3 goal;
             if (Time.time - lastSeenAt < 90f && (lastSeen - transform.position).sqrMagnitude > 150f * 150f) { goal = lastSeen; state = "АВТОБОЙ · ПРЕСЛЕДОВАНИЕ"; }
@@ -118,6 +138,9 @@ namespace SkyTide
                         Vector3 off = searchPoint - f.Center; off.y = 0f;
                         float r = f.safeRadius + 200f;
                         if (off.sqrMagnitude < r * r) searchPoint = f.Center + (off.sqrMagnitude > 1f ? off.normalized : Vector3.forward) * r;
+                        // В воды корсаров автобой не суётся (там это вторжение) — поиск по нейтральной полосе.
+                        if (off.magnitude > Relations.CorsairRadius - 150f) searchPoint = f.Center + off.normalized * (Relations.CorsairRadius - 250f);
+                        searchPoint.y = transform.position.y;
                     }
                 }
                 goal = searchPoint; state = "АВТОБОЙ · ПОИСК ВРАГА";
@@ -156,7 +179,7 @@ namespace SkyTide
                 }
                 return bold;
             }
-            if (Time.time < fleeUntil || Time.time < nextBoldThink) return false;
+            if (Time.time < fleeUntil || Time.time < nextBoldThink || nextBoldThink >= 0f) return false;   // дерзость автобоя отменена политикой отношений
             nextBoldThink = Time.time + Random.Range(18f, 28f);
             if (foe == null || foe.Outlaw || hull.Health01 < 0.7f) return false;
             if (!SkyFortress.InSafeZone(foe.transform.position) && !SkyFortress.InSafeZone(transform.position)) return false;
@@ -255,7 +278,7 @@ namespace SkyTide
             // Заряд: цель быстрая или уходит — книппели (остановить), иначе ядра.
             ShipController fc = foe.Controller;
             float foeSpeed = fc != null ? Mathf.Abs(fc.Speed) : 0f;
-            bool runner = (foeSpeed > 23f || foe.InPort || (foe.Health01 < 0.3f && Vector3.Dot(foe.transform.forward, dir) > 0.5f)) && !fc.BalloonHit && dist < own * 0.7f;
+            bool runner = (foe.Fleeing || foeSpeed > 40f || foe.InPort || (foe.Health01 < 0.3f && Vector3.Dot(foe.transform.forward, dir) > 0.5f)) && !fc.BalloonHit && dist < own * 0.7f;
             guns.chainShot = runner;
 
             bool zone = SkyFortress.InSafeZone(transform.position);

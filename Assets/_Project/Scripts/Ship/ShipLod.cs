@@ -90,7 +90,8 @@ namespace SkyTide
                 float d2 = (l.transform.position - c).sqrMagnitude * z2;
                 bool far = l.lodDistance > 0f && d2 > l.lodDistance * l.lodDistance;
                 float sd = QualitySettings.shadowDistance + 60f;
-                l.Apply(far, d2 > CullDistance * CullDistance, d2 < sd * sd, l.farR != null && d2 > l.farDistance * l.farDistance * FarScale * FarScale);
+                float cs = Mathf.Max(1f, l.lodDistance / 90f);   // крупные классы (адмиральский 260 м) видно дальше — по размеру
+                l.Apply(far, d2 > CullDistance * CullDistance * cs * cs, d2 < sd * sd, l.farR != null && d2 > l.farDistance * l.farDistance * FarScale * FarScale);
             }
         }
 

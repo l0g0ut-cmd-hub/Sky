@@ -431,7 +431,7 @@ namespace SkyTide
             new[] { "к причалу крепости", "berth" }, new[] { "починить флагман", "repair" },
             new[] { "флагману 25%", "hurt 25" }, new[] { "погода: гроза", "weather storm" },
             new[] { "погода: дымка", "weather haze" }, new[] { "погода: ясно", "weather clear" },
-            new[] { "враг к торговцу", "merchant" }, new[] { "все враги в 1 км", "all1km" },
+            new[] { "флот в ряд", "fleet" }, new[] { "все враги в 1 км", "all1km" },
             new[] { "конфиг заново с GitHub", "config" }, new[] { "отчёт на GitHub сейчас", "report" },
         };
         void TestCells(float x, float y, float w, float h)

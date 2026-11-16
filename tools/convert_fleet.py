@@ -2,7 +2,7 @@
 """Флот из Meshy (ветка meshy-out, meshy/<класс>/model.glb) → Models/Ship_<класс>.bytes + текстуры + LOD.
     g++ -O2 -include cstdint -Itools/decimate tools/decimate/dec.cpp -o /tmp/dec
     python3 tools/convert_fleet.py /путь/к/meshy /tmp/dec
-Размер — по классу (длина в метрах, адмиральский ≈3,5 корсара 38 м); киль на −2,2·(L/38), как у Корсара.
+Размер — по классу (длина в метрах: катер 16 … адмиральский 260, ≈7 корсаров по 38 м); киль на −2,2·(L/38), как у Корсара.
 Сетка Meshy уже облегчена (remesh 12–71k), поэтому без кластеризации; лёгкая копия ~40%, дальняя ~12%."""
 import sys, os, subprocess
 import numpy as np
@@ -12,8 +12,8 @@ from convert_glb import read_glb, to_unity, write_bytes, dilate, emission_from_a
 
 # класс: (длина м, нос модели в glTF)
 FLEET = {
-    'cutter': (20, '-x'), 'sloop': (26, '-x'), 'fireship': (24, '-x'), 'corvette': (32, '-x'), 'brig': (40, '-x'),
-    'ketch': (38, '+x'), 'frigate': (58, '-x'), 'heavyfrigate': (74, '-x'), 'ship_of_line': (100, '-x'), 'admiral': (135, '+x'),
+    'cutter': (16, '-x'), 'sloop': (22, '-x'), 'fireship': (20, '-x'), 'corvette': (30, '-x'), 'brig': (40, '-x'),
+    'ketch': (42, '+x'), 'frigate': (70, '-x'), 'heavyfrigate': (100, '-x'), 'ship_of_line': (160, '-x'), 'admiral': (260, '+x'),
 }
 OUT = os.path.join(os.path.dirname(__file__), '..', 'Assets', '_Project', 'Models', 'Fleet')
 

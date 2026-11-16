@@ -612,7 +612,7 @@ namespace SkyTide
                             else for (int j = 0; j < AllyShip.All.Count; j++)
                             {
                                 AllyShip al = AllyShip.All[j];
-                                if (al != null && (al.transform.position - p.pos).sqrMagnitude < 60f * 60f && al.TryHit(prev, end, out hp)) { end = hp; hit = true; DebugReport.Hit(Shooter(p.hostile, p.caliber, p.fromPlayer)); al.OnHit(hp, Mathf.Max(1f, p.caliber)); break; }
+                                if (al != null && p.age > 0.3f && (al.transform.position - p.pos).sqrMagnitude < 60f * 60f && al.TryHit(prev, end, out hp)) { end = hp; hit = true; DebugReport.Hit(Shooter(p.hostile, p.caliber, p.fromPlayer)); al.OnHit(hp, Mathf.Max(1f, p.caliber)); break; }
                             }
                         }
                         else for (int j = 0; j < TargetShip.All.Count; j++)
@@ -625,7 +625,17 @@ namespace SkyTide
                                 target = TargetShip.All[j];
                             }
                         }
-                        if (target != null) { end = hitPoint; hit = true; if (p.fromPlayer) DebugReport.Count("попаданий флагмана"); DebugReport.Hit(Shooter(p.hostile, p.caliber, p.fromPlayer)); target.OnHit(hitPoint, p.chain); }
+                        // Огонь по своим разрешён (политика отношений): ядро флагмана бьёт и сторожевых/ведомого — кто ближе по пути.
+                        AllyShip friend = null;
+                        if (!p.hostile && p.fromPlayer && p.age > 0.2f)
+                            for (int j = 0; j < AllyShip.All.Count; j++)
+                            {
+                                AllyShip al = AllyShip.All[j]; Vector3 hp;
+                                if (al != null && (al.transform.position - p.pos).sqrMagnitude < 80f * 80f && al.TryHit(prev, end, out hp) && (hp - prev).sqrMagnitude < nearest)
+                                { nearest = (hp - prev).sqrMagnitude; hitPoint = hp; friend = al; target = null; }
+                            }
+                        if (friend != null) { end = hitPoint; hit = true; DebugReport.Count("попаданий флагмана по своим"); friend.OnHit(hitPoint, 1f, true); }
+                        if (target != null) { end = hitPoint; hit = true; if (p.fromPlayer) DebugReport.Count("попаданий флагмана"); DebugReport.Hit(Shooter(p.hostile, p.caliber, p.fromPlayer)); target.OnHit(hitPoint, p.chain, p.fromPlayer, p.caliber); }
                         // Крепость: ядро не пролетает сквозь стены. Своё ядро крепости первую секунду не проверяется (дуло на башне).
                         SkyFortress fort = SkyFortress.Instance;
                         Vector3 fp;

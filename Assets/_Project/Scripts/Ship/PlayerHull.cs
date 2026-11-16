@@ -307,7 +307,7 @@ namespace SkyTide
                 Vector3 at = berth + away * 30f;
                 at.y = ctrl.transform.position.y;
                 ctrl.transform.SetPositionAndRotation(at, Quaternion.LookRotation(away, Vector3.up));
-                fort.Pardon();
+                fort.Pardon(); Relations.Pardon();
             }
             if (oc != null) oc.Snap();
         }

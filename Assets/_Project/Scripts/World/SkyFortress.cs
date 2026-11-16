@@ -242,6 +242,14 @@ namespace SkyTide
 
         /// <summary>Крепость снимает тревогу (игрок вернулся к причалу после гибели).</summary>
         public void Pardon() { hostileUntil = -1f; }
+        /// <summary>Флагман вне закона (потопил своего): крепость бьёт по нему seconds секунд, где бы он ни был в досягаемости.</summary>
+        public static void DeclareOutlaw(float seconds)
+        {
+            SkyFortress f = Instance; if (f == null) return;
+            if (!f.Hostile) { f.nextShot = Time.time + 0.7f; f.warned = false; }
+            f.hostileUntil = Mathf.Max(f.hostileUntil, Time.time + seconds);
+            FortressAlarmAt = Time.time;
+        }
 
         /// <summary>Клуб дыма из очередной трубы. Публичный — для кадров CI.</summary>
         public void EmitSmoke()

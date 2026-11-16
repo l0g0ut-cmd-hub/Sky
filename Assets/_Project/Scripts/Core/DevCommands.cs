@@ -12,7 +12,9 @@ namespace SkyTide
     {
         public const string Help =
             "near — ближний враг на траверз 450 м · enemy15 — ближнему врагу 15% · god on|off · time 1|3|0.5 · berth — к причалу · " +
-            "repair · hurt 25 — флагману 25% · weather storm|haze|clear · merchant — враг к торговцу · all1km — все враги в 1 км · " +
+            "repair · hurt 25 — флагману 25% · weather storm|haze|clear · all1km — все враги в 1 км · " +
+            "class <катер|шлюп|корвет|брандер|бриг|кеч|фрегат|тяжёлый|линейный|адмирал или id> — корабль класса на траверз · fleet — все классы в ряд у флагмана · " +
+            "mood calm|wary|hostile|flee|surrender [цель] — отношение вручную · rel — воды, злоба, отношения · raid — набег сейчас · grudge N — злоба · " +
             "auto on|off — автобой · config — перечитать config.json · cfg поле число — правка баланса на лету · " +
             "shot [почему] — метка со снимком · report — отчёт сейчас · bench — автозамер · " +
             "snap N — снимок каждые N с · burst кадров шаг [подпись] — серия · " +
@@ -20,7 +22,7 @@ namespace SkyTide
             "play — «В БОЙ» из меню · hold left|right сек — держать кнопку борта (прицел), потом залп · font 0…3 — шрифт HUD · lock near|enemy N|off — взять цель · tap pause|row N|radar|ammo|board|spy|auto|ripple|left|right|fps|gear N|xy 0.5,0.5 — нажатие как пальцем · " +
             "where — координаты всех · pilot goto x z [ход]|heading град|speed|stop|release · go цель [N] [ход] · tp x z [курс] · " +
             "cam orbit цель [N] угол наклон дист|at x y z курс наклон|look x y z цель [N]|fov N|height N|off · hud 0|1 · photo [full] подпись · " +
-            "цели: me fortress berth near enemy N ally N merchant · set clouds|fps60|post|crew|sharpen|fortress|fortshadow|lod|fx 0|1 · set shadows 0|1|2 · fps N — замер N с (в отчёт) · say текст — надпись на экране";
+            "цели: me fortress berth near enemy N ally N, классы (admiral, brig…) — ближайший такого класса · set clouds|fps60|post|crew|sharpen|fortress|fortshadow|lod|fx 0|1 · set shadows 0|1|2 · fps N — замер N с (в отчёт) · say текст — надпись на экране";
 
         public static float TimeScaleSet = 1f;
         static readonly StringBuilder measures = new StringBuilder();
@@ -52,6 +54,33 @@ namespace SkyTide
             return result;
         }
 
+        /// <summary>Класс по имени или id (адмирал, admiral, линейный, ship_of_line…).</summary>
+        public static ShipClass ParseClass(string s)
+        {
+            if (string.IsNullOrEmpty(s)) return ShipClass.None;
+            s = s.ToLowerInvariant();
+            for (int i = 0; i < ShipClasses.Count; i++)
+            {
+                ShipClassInfo k = ShipClasses.Info[i];
+                if (s == k.id || k.name.ToLowerInvariant().StartsWith(s) || (s.Length >= 4 && k.id.StartsWith(s))) return (ShipClass)i;
+            }
+            if (s.StartsWith("адмирал")) return ShipClass.Admiral;
+            if (s.StartsWith("тяж")) return ShipClass.HeavyFrigate;
+            if (s == "line" || s == "линкор") return ShipClass.ShipOfLine;
+            return ShipClass.None;
+        }
+        static TargetShip NearestOf(Transform me, ShipClass c)
+        {
+            TargetShip near = null; float nd = float.MaxValue;
+            if (me == null) return null;
+            foreach (TargetShip t in TargetShip.All)
+            {
+                if (t == null || !t.Alive || !t.gameObject.activeInHierarchy || t.Class != c) continue;
+                float d = Vector3.Distance(t.transform.position, me.position);
+                if (d < nd) { nd = d; near = t; }
+            }
+            return near;
+        }
         static TargetShip Nearest(Transform me)
         {
             TargetShip near = null; float nd = float.MaxValue;
@@ -107,11 +136,46 @@ namespace SkyTide
                     if (ws == null) return "нет погоды";
                     ws.Force(arg == "storm" ? WeatherSystem.Kind.Storm : arg == "haze" ? WeatherSystem.Kind.Haze : WeatherSystem.Kind.Clear);
                     return "погода " + WeatherSystem.Names[(int)ws.Current];
-                case "merchant":
-                    if (near == null) return "нет врага";
-                    foreach (AllyShip al in AllyShip.All)
-                        if (al != null && al.Alive && al.role == AllyShip.Role.Merchant) { near.transform.position = al.transform.position + al.transform.right * 350f; return near.name + " у торговца"; }
-                    return "нет торговца";
+                case "merchant": return "торговца нет (вырезан)";
+                case "class":
+                    {
+                        ShipClass c = ParseClass(arg); if (c == ShipClass.None) return "класс? " + arg;
+                        TargetShip t = NearestOf(me, c); if (me == null || t == null) return "нет корабля класса " + ShipClasses.Get(c).name;
+                        float off = 160f + t.Length * 0.6f;   // гигант — дальше, чтобы влез в кадр и не таранил
+                        t.transform.SetPositionAndRotation(me.position + me.right * off + me.forward * 40f, me.rotation);
+                        return t.name + " (" + ShipClasses.Get(c).name + ", " + Mathf.RoundToInt(t.Length) + " м, " + Relations.Name(t.Mood) + ") на траверзе " + Mathf.RoundToInt(off) + " м";
+                    }
+                case "fleet":
+                    {
+                        // Все классы в ряд по правому борту (от мелкого к крупному), носом как флагман — для снимков размеров.
+                        if (me == null) return "нет флагмана";
+                        float along = -200f; int k = 0;
+                        for (int i = 0; i < ShipClasses.Count; i++)
+                        {
+                            TargetShip t = NearestOf(me, (ShipClass)i); if (t == null) continue;
+                            float half = t.Length * 0.5f;
+                            along += half;
+                            t.transform.SetPositionAndRotation(me.position + me.right * 420f + me.forward * along, me.rotation);
+                            t.ForceMood(Attitude.Calm); t.Controller.throttle = 0f;
+                            along += half + 30f; k++;
+                        }
+                        return "в ряд: " + k + " классов по правому борту в 420 м";
+                    }
+                case "mood":
+                    {
+                        Attitude m = arg == "wary" ? Attitude.Wary : arg == "hostile" ? Attitude.Hostile : arg == "flee" ? Attitude.Flee : arg == "surrender" ? Attitude.Surrender : Attitude.Calm;
+                        Transform tt = a.Length > 2 ? Find(a[2], a.Length > 3 ? a[3] : "") : (near != null ? near.transform : null);
+                        TargetShip t = tt != null ? tt.GetComponent<TargetShip>() : null; if (t == null) return "нет цели";
+                        t.ForceMood(m); return t.name + " → " + Relations.Name(m);
+                    }
+                case "rel":
+                    {
+                        int[] n = new int[5]; foreach (TargetShip t in TargetShip.All) if (t != null && t.Alive) n[(int)t.Mood]++;
+                        return "флагман: " + (me != null ? Relations.Name(Relations.At(me.position)) : "—") + " · злоба " + Relations.Grudge.ToString("F0") + " (набег от " + Relations.RaidGrudge.ToString("F0") + ")" +
+                               " · спокойны " + n[0] + " · настороже " + n[1] + " · враждебны " + n[2] + " · бегут " + n[3] + " · сдались " + n[4] + (Relations.PlayerOutlaw ? " · ФЛАГМАН ВНЕ ЗАКОНА" : "");
+                    }
+                case "raid": Relations.Grudge = Mathf.Max(Relations.Grudge, Relations.RaidGrudge); Relations.LastRaidAt = -1000f; return "набег при следующей проверке (злоба " + Relations.Grudge.ToString("F0") + ")";
+                case "grudge": { float v = 0f; float.TryParse(arg, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out v); Relations.Grudge = v; return "злоба " + v; }
                 case "all1km":
                     {
                         if (me == null) return "нет флагмана";
@@ -305,8 +369,9 @@ namespace SkyTide
                 case "near": { TargetShip t = Nearest(me); return t != null ? t.transform : null; }
                 case "enemy": { TargetShip.Created.RemoveAll(x => x == null); return k >= 1 && k <= TargetShip.Created.Count ? TargetShip.Created[k - 1].transform : null; }
                 case "ally": { int i = 0; foreach (AllyShip al in AllyShip.All) if (al != null && ++i == k) return al.transform; return null; }
-                case "merchant": foreach (AllyShip al in AllyShip.All) if (al != null && al.role == AllyShip.Role.Merchant) return al.transform; return null;
             }
+            ShipClass cls = ParseClass(what);
+            if (cls != ShipClass.None) { TargetShip t = NearestOf(me, cls); return t != null ? t.transform : null; }
             return null;
         }
 
@@ -317,9 +382,9 @@ namespace SkyTide
             SkyFortress f = SkyFortress.Instance;
             if (f != null) b.Append(" · крепость ").Append(V(f.Center)).Append(" причал ").Append(V(f.BerthWorld));
             int i = 0;
-            foreach (TargetShip t in TargetShip.Created) { i++; if (t != null && t.gameObject.activeInHierarchy) b.Append(" · враг ").Append(i).Append(t.Alive ? " " + V(t.transform.position) : " потоплен"); }
+            foreach (TargetShip t in TargetShip.Created) { i++; if (t != null && t.gameObject.activeInHierarchy) b.Append(" · враг ").Append(i).Append(' ').Append(t.Class != ShipClass.None ? ShipClasses.Get(t.Class).name : "корсар").Append(t.Fool ? " (дурень)" : "").Append(t.Alive ? " " + V(t.transform.position) + " " + Relations.Name(t.Mood) + " " + TargetShip.DutyNames[(int)t.duty] : " потоплен"); }
             i = 0;
-            foreach (AllyShip al in AllyShip.All) { i++; if (al != null) b.Append(" · свой ").Append(i).Append(' ').Append(al.role).Append(' ').Append(V(al.transform.position)); }
+            foreach (AllyShip al in AllyShip.All) { i++; if (al != null) b.Append(" · свой ").Append(i).Append(' ').Append(AllyShip.RoleNames[(int)al.role]).Append(' ').Append(al.Class != ShipClass.None ? ShipClasses.Get(al.Class).name : "").Append(' ').Append(V(al.transform.position)).Append(al.HostileToPlayer ? " ВРАЖДЕБЕН ФЛАГМАНУ" : ""); }
             Camera cam = Camera.main;
             if (cam != null) b.Append(" · камера ").Append(V(cam.transform.position)).Append(" (").Append(RemoteCam.State).Append(")");
             return b.ToString();

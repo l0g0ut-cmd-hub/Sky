@@ -20,13 +20,16 @@ namespace SkyTide
             // свой корабль
             public float playerSpeed = 40f, playerYaw = 50f, playerHealth = 540f, playerShellSpeed = 125f, playerElevation = 14f, playerCooldown = 2.2f;
             // враги
-            public int enemyCount = 18;
+            public int enemyCount = 26;
             public float cullDistance = 2200f;
             public float enemySpeed = 20f, enemyYaw = 24f, enemyRange = 420f, enemyError = 0.11f, enemySideError = 0.04f, enemyCooldown = 6f;
             public int enemyHits = 30, scoutHits = 16;
             public float scoutSpeed = 27f, scoutRange = 360f, heavyChance = 0.22f, aggroRange = 1300f, enemyDamage = 6f;
             // свои
-            public int allyCount = 4;
+            public int allyCount = 11;
+            // отношения (Core/Relations): пояса вод от центра крепости, предупреждение, прицел, остывание, злоба и набеги
+            public float garrisonRadius = 2300f, corsairRadius = 3300f, warnSeconds = 30f, aimSeconds = 6f, aimRange = 400f, calmAfter = 45f;
+            public float raidGrudge = 40f, raidEveryMin = 10f, grudgeCoolPerMin = 3f, outlawMin = 5f;
             public int guardHits = 40, wingmanHits = 34, merchantHits = 20;
             public float allyEngage = 750f;
             // автобой
@@ -126,12 +129,15 @@ namespace SkyTide
             int allies = 0;
             foreach (AllyShip a in Object.FindObjectsByType<AllyShip>(FindObjectsInactive.Include, FindObjectsSortMode.None))
             {
-                a.hitsToSink = a.role == AllyShip.Role.Merchant ? c.merchantHits : a.role == AllyShip.Role.Wingman ? c.wingmanHits : c.guardHits;
+                if (a.Class == ShipClass.None) a.hitsToSink = a.role == AllyShip.Role.Merchant ? c.merchantHits : a.role == AllyShip.Role.Wingman ? c.wingmanHits : c.guardHits;
                 a.engageRange = c.allyEngage;
                 allies++;
                 a.gameObject.SetActive(allies <= c.allyCount);
             }
             if (ph != null) ph.damagePerHit = c.enemyDamage;
+            Relations.GarrisonRadius = c.garrisonRadius; Relations.CorsairRadius = Mathf.Max(c.garrisonRadius + 300f, c.corsairRadius);
+            Relations.WarnSeconds = c.warnSeconds; Relations.AimSeconds = c.aimSeconds; Relations.AimRange = c.aimRange; Relations.CalmAfter = c.calmAfter;
+            Relations.RaidGrudge = c.raidGrudge; Relations.RaidEvery = c.raidEveryMin * 60f; Relations.GrudgeCoolPerMin = c.grudgeCoolPerMin; Relations.OutlawSeconds = c.outlawMin * 60f;
             WeatherSystem w = WeatherSystem.Instance;
             if (w != null) { w.enabled = c.weather; w.clearMin = c.clearMinutesMin * 60f; w.clearMax = c.clearMinutesMax * 60f; }
             WindField.Mul = c.wind ? c.windMul : 0f;

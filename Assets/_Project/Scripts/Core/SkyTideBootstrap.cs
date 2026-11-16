@@ -243,7 +243,7 @@ namespace SkyTide
                 Vector3[] extra = { new Vector3(-2200f, 0f, -1600f), new Vector3(2400f, 0f, 1500f), new Vector3(-600f, 0f, -2600f) };
                 ShipClass[] extraClass = { ShipClass.Brig, ShipClass.Frigate, ShipClass.Sloop };
                 for (int k = 0; k < extra.Length; k++) SpawnEnemy("Enemy " + (k + 4), spawnPosition + extra[k], Random.Range(0f, 360f), extraClass[k], crewFrom2);
-                EnsureEnemies(RemoteConfig.Current != null ? RemoteConfig.Current.enemyCount : 18);
+                EnsureEnemies(RemoteConfig.Current != null ? RemoteConfig.Current.enemyCount : 26);
                 ShipVariant crewFrom = CurrentShip;
                 if (crewFrom != null && crewFrom.crew != null && crewFrom.crew.IsValid) s.gameObject.AddComponent<EnemyCrew>().Setup(Scout, crewFrom.crew);
             }
@@ -263,12 +263,28 @@ namespace SkyTide
                     ShipController a = ShipFactory.Build("Guard Ship " + g, guard, spawnHeading + 90f + g * 180f, materials, gv);
                     AllyShip al = a.gameObject.AddComponent<AllyShip>();
                     al.Setup(a, AllyShip.Role.Guard, gv.mesh, materials.darkWood);
+                    if (gv != targetShip) al.SetClass(ShipClass.Brig);
                     if (g == 0) Ally = al;
                 }
                 ShipVariant wv = ClassVariant(ShipClass.Frigate);
                 ShipController w = ShipFactory.Build("Wingman", spawnPosition + new Vector3(130f, 0f, -90f), spawnHeading, materials, wv);
-                w.gameObject.AddComponent<AllyShip>().Setup(w, AllyShip.Role.Wingman, wv.mesh, materials.darkWood);
-                // Торговца нет (владелец 16.11: «торговца вырезать вообще»).
+                AllyShip wa = w.gameObject.AddComponent<AllyShip>(); wa.Setup(w, AllyShip.Role.Wingman, wv.mesh, materials.darkWood);
+                if (wv != targetShip) wa.SetClass(ShipClass.Frigate);
+                // Торговца нет (владелец 16.11: «торговца вырезать вообще»). Жизнь гарнизона: два таможенных катера у края вод
+                // гарнизона (выпроваживают чужих) и два курьера по делам (бриг и фрегат) — всего свои 7 с ведомым.
+                AllyShip.Role[] roles = { AllyShip.Role.Customs, AllyShip.Role.Customs, AllyShip.Role.Courier, AllyShip.Role.Courier };
+                ShipClass[] rc = { ShipClass.Cutter, ShipClass.Cutter, ShipClass.Brig, ShipClass.Frigate };
+                for (int r = 0; r < roles.Length; r++)
+                {
+                    float ang = (r * 90f + 45f) * Mathf.Deg2Rad;
+                    Vector3 at = Fortress.Center + new Vector3(Mathf.Cos(ang), 0f, Mathf.Sin(ang)) * (r < 2 ? Relations.GarrisonRadius - 250f : Fortress.safeRadius + 300f); at.y = spawnPosition.y;
+                    ShipVariant v = ClassVariant(rc[r]);
+                    ShipController c = ShipFactory.Build((r < 2 ? "Customs " : "Courier ") + (r % 2 + 1), at, r * 90f, materials, v);
+                    if (v == targetShip && rc[r] == ShipClass.Cutter) c.transform.localScale = Vector3.one * 0.6f;
+                    AllyShip al2 = c.gameObject.AddComponent<AllyShip>(); al2.Setup(c, roles[r], v.mesh, materials.darkWood);
+                    if (v != targetShip) al2.SetClass(rc[r]);
+                }
+                if (HasFleet) SpawnHarbor();
             }
 
             // Ход боя: волны, счёт, замедление при потоплении (только в игре; в кадрах CI — значения по умолчанию).
@@ -292,6 +308,7 @@ namespace SkyTide
         void UpdateTimed()
         {
             if (Application.isPlaying) SetClothWind(Time.time, 1f);
+            if (Application.isPlaying) { Relations.Tick(); Traffic.Tick(); }
         }
 
         void SetClothWind(float time, float amount)
@@ -323,11 +340,11 @@ namespace SkyTide
             if (!Application.isPlaying || Ship == null || targetShip == null) return 0;
             TargetShip.Created.RemoveAll(x => x == null);
             int have = TargetShip.Created.Count;
-            int want = Mathf.Min(total, 30) - have;
+            int want = Mathf.Min(total, 40) - have;
             if (want <= 0) return 0;
             // Дальние враги (1,8–3,8 км) рождаются по одному за кадр уже после старта: 12 кораблей разом в Awake давали
             // ~15 с серого экрана при каждом запуске (владелец 15.11).
-            StartCoroutine(SpawnSpread(have, Mathf.Min(total, 30)));
+            StartCoroutine(SpawnSpread(have, Mathf.Min(total, 40)));
             return want;
         }
         System.Collections.IEnumerator SpawnSpread(int from, int to)
@@ -344,11 +361,48 @@ namespace SkyTide
                 {
                     float a = Random.Range(0f, Mathf.PI * 2f), r = Random.Range(1800f, 3800f);
                     at = spawnPosition + new Vector3(Mathf.Cos(a) * r, 0f, Mathf.Sin(a) * r);
+                    Waters wt = Relations.At(at);
+                    if (new Vector2(at.x, at.z).magnitude > 3300f || wt == Waters.Garrison || wt == Waters.Safe) { if (tries < 11) continue; at = Relations.CorsairPoint(spawnPosition.y); }
                     if ((at - Ship.transform.position).sqrMagnitude > 900f * 900f) break;
                 }
                 SpawnEnemy("Enemy " + (k + 1), at, Random.Range(0f, 360f), ShipClasses.ForEnemy(k), k < 9 ? CurrentShip : null);
             }
             DebugReport.Event("дальние враги догружены за " + (Time.realtimeSinceStartup - t0).ToString("F1") + " с");
+        }
+
+        /// <summary>Стоянка у причала (владелец 16.11): адмиральский, линейный, фрегат и бриг гарнизона стоят носом от крепости
+        /// по обе стороны от места флагмана, крупные — дальше; место сдвигается наружу, пока под корпусом нет камня крепости.
+        /// Иногда корабль выходит по делам или в дозор и возвращается на своё место (AllyShip.Role.Harbor).</summary>
+        void SpawnHarbor()
+        {
+            Vector3 o = Fortress.BerthWorld - Fortress.Center; o.y = 0f; o = o.sqrMagnitude > 1f ? o.normalized : Vector3.forward;
+            Vector3 across = Vector3.Cross(Vector3.up, o);
+            Quaternion rot = Quaternion.LookRotation(o, Vector3.up);
+            ShipClass[] cls = { ShipClass.Brig, ShipClass.Frigate, ShipClass.ShipOfLine, ShipClass.Admiral };
+            float[] side = { 1f, 1f, -1f, -1f };
+            float right = 70f, left = 70f;   // место флагмана — посередине, ±70 м свободно
+            for (int i = 0; i < cls.Length; i++)
+            {
+                ShipClassInfo k = ShipClasses.Get(cls[i]);
+                float half = k.length * 0.5f, halfW = Mathf.Max(10f, k.length * 0.15f);
+                float off = side[i] > 0f ? right + halfW : left + halfW;
+                if (side[i] > 0f) right += halfW * 2f + 30f; else left += halfW * 2f + 30f;
+                Vector3 slot = Fortress.BerthWorld + across * (off * side[i]) + o * (half + 20f);
+                for (int push = 0; push < 20; push++)
+                {
+                    bool clear = true;
+                    for (int q = -2; q <= 2 && clear; q++)
+                        for (int w = -1; w <= 1 && clear; w++)
+                            if (Fortress.TopAt(slot + o * (half * 0.5f * q) + across * (halfW * w)) > spawnPosition.y - 6f) clear = false;
+                    if (clear) break;
+                    slot += o * 25f;
+                }
+                slot.y = spawnPosition.y;
+                ShipVariant v = ClassVariant(cls[i]);
+                ShipController c = ShipFactory.Build("Harbor " + k.id, slot, rot.eulerAngles.y, materials, v);
+                AllyShip al = c.gameObject.AddComponent<AllyShip>(); al.Setup(c, AllyShip.Role.Harbor, v.mesh, materials.darkWood);
+                al.SetClass(cls[i]); al.SetHome(slot, rot);
+            }
         }
 
         /// <summary>Враг на карте (только в игре) своего класса: модель, размер и огневая мощь класса (ShipClasses).
