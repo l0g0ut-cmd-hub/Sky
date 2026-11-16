@@ -1,7 +1,10 @@
 {
  "id": "frigate",
  "preview": "01a1e1f3-5405-7441-9a8a-e53435fbda34",
- "prompt": "ONE single connected flying airship, isolated game asset, no water, no ground, no base, no characters, no wheels, no separate objects. Dark-fantasy sky-ship: wooden sailing-ship hull with brass trim and iron fittings. The ship floats beneath large round tan canvas gas balloons fixed directly above the deck with brass struts and ropes; the balloons are essential and clearly visible. Small propellers at the stern. Three-masted frigate: long hull, six cannon ports per side, four round balloons in two pairs above the deck, ornate stern gallery.",
- "credits": 5,
- "shape_bytes": 1558064
+ "refine": "01a1e1f5-2948-7172-9fad-dca70c644b4f",
+ "prompt": "(текстура к форме 2-го захода)",
+ "texture_prompt": "Weathered dark oak planks, polished brass and dark iron fittings, tan canvas balloons with leather straps, warm amber lanterns, muted crimson painted trim. Painterly game texture, clean readable materials.",
+ "polycount": null,
+ "credits": 15,
+ "glb_bytes": 8038788
 }

@@ -1,0 +1,16 @@
+{
+ "brig": {
+  "stage": "done",
+  "task": "01a1e1f5-235a-73bc-b012-b8026be08ef5",
+  "preview": "01a1e1f3-3efe-7062-b434-198f9f7e3392",
+  "preview_credits": 5,
+  "refine_credits": 10
+ },
+ "frigate": {
+  "stage": "done",
+  "task": "01a1e1f5-2948-7172-9fad-dca70c644b4f",
+  "preview": "01a1e1f3-5405-7441-9a8a-e53435fbda34",
+  "preview_credits": 5,
+  "refine_credits": 10
+ }
+}
