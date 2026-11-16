@@ -1,7 +1,11 @@
 {
  "id": "fireship",
- "preview": "01a1e1f3-498f-7523-a10e-e8d3eb7fe98f",
- "prompt": "ONE single connected flying airship, isolated game asset, no water, no ground, no base, no characters, no wheels, no separate objects. Dark-fantasy sky-ship: wooden sailing-ship hull with brass trim and iron fittings. The ship floats beneath large round tan canvas gas balloons fixed directly above the deck with brass struts and ropes; the balloons are essential and clearly visible. Small propellers at the stern. Fire ship: small battered hull with NO cannons, the open deck is piled high with stacked gunpowder barrels, iron ram spikes on the bow, one patched round balloon.",
- "credits": 5,
- "shape_bytes": 1700140
+ "account": 2,
+ "image_prompt": "Same art style, materials and colors as the reference airships: weathered reddish-brown wooden hull, brass fittings, round tan canvas gas balloons with dark stripes mounted above the deck on masts and struts. Single flying airship, three-quarter side view, whole ship visible, plain background, no water, no ground, no characters. A small battered FIRE SHIP: old patched hull with no cannons, the open deck piled high with stacked gunpowder barrels and fuses, iron ram spikes on the bow, one patched round balloon.",
+ "concept": "01a1e1fc-2f6e-70a7-b4b5-2427ec4e5f08",
+ "concept_credits": 3,
+ "model": "01a1e1fc-8fcc-77d4-9843-c07cc6fbca63",
+ "model_credits": 30,
+ "glb_bytes": 12237992,
+ "stage": "done"
 }

@@ -1,7 +1,11 @@
 {
  "id": "cutter",
- "preview": "01a1e1f3-32a3-7409-981a-401bccb368fb",
- "prompt": "ONE single connected flying airship, isolated game asset, no water, no ground, no base, no characters, no wheels, no separate objects. Dark-fantasy sky-ship: wooden sailing-ship hull with brass trim and iron fittings. The ship floats beneath large round tan canvas gas balloons fixed directly above the deck with brass struts and ropes; the balloons are essential and clearly visible. Small propellers at the stern. Tiny customs patrol cutter: very small sleek hull, one short mast, one round balloon above the deck, one cannon port per side, lantern on the bow.",
- "credits": 5,
- "shape_bytes": 1702736
+ "account": 2,
+ "image_prompt": "Same art style, materials and colors as the reference airships: weathered reddish-brown wooden hull, brass fittings, round tan canvas gas balloons with dark stripes mounted above the deck on masts and struts. Single flying airship, three-quarter side view, whole ship visible, plain background, no water, no ground, no characters. A TINY customs patrol cutter, much smaller than the references: short narrow hull, one short mast, one round balloon, one cannon port per side, lantern on the bow.",
+ "concept": "01a1e1fc-2f6c-768f-83f7-ec4cd1c792f1",
+ "concept_credits": 3,
+ "model": "01a1e1fc-8fd5-714b-bd93-86560ca218c2",
+ "model_credits": 30,
+ "glb_bytes": 10980620,
+ "stage": "done"
 }

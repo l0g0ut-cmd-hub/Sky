@@ -1,7 +1,11 @@
 {
  "id": "admiral",
- "preview": "01a1e1f3-6bef-71f0-a1cc-b9189ff676ea",
- "prompt": "ONE single connected flying airship, isolated game asset, no water, no ground, no base, no characters, no wheels, no separate objects. Dark-fantasy sky-ship: wooden sailing-ship hull with brass trim and iron fittings. The ship floats beneath large round tan canvas gas balloons fixed directly above the deck with brass struts and ropes; the balloons are essential and clearly visible. Small propellers at the stern. Colossal admiral flagship: enormous hull with three stacked rows of cannon ports, eight large round balloons on a heavy brass frame above the deck, gilded stern castle, carved figurehead, red banners.",
- "credits": 5,
- "shape_bytes": 1826440
+ "account": 2,
+ "image_prompt": "Same art style, materials and colors as the reference airships: weathered reddish-brown wooden hull, brass fittings, round tan canvas gas balloons with dark stripes mounted above the deck on masts and struts. Single flying airship, three-quarter side view, whole ship visible, plain background, no water, no ground, no characters. A COLOSSAL ADMIRAL FLAGSHIP, the largest airship: enormous tall hull with three stacked rows of cannon ports, eight large round balloons on a heavy brass frame above the whole deck, gilded stern castle, carved figurehead, long red banners.",
+ "concept": "01a1e1fc-2f6c-7690-aa21-dece326acd5c",
+ "concept_credits": 3,
+ "model": "01a1e1fc-8fc9-741e-89ab-66964415cf8b",
+ "model_credits": 30,
+ "glb_bytes": 15221500,
+ "stage": "done"
 }

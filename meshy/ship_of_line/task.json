@@ -1,7 +1,11 @@
 {
  "id": "ship_of_line",
- "preview": "01a1e1f3-5e5c-7550-859e-091c84bc9098",
- "prompt": "ONE single connected flying airship, isolated game asset, no water, no ground, no base, no characters, no wheels, no separate objects. Dark-fantasy sky-ship: wooden sailing-ship hull with brass trim and iron fittings. The ship floats beneath large round tan canvas gas balloons fixed directly above the deck with brass struts and ropes; the balloons are essential and clearly visible. Small propellers at the stern. Huge ship of the line: very large tall hull with two stacked rows of cannon ports, ten per side per row, six big round balloons above the deck, high stern castle with windows. No towers.",
- "credits": 5,
- "shape_bytes": 1864208
+ "account": 2,
+ "image_prompt": "Same art style, materials and colors as the reference airships: weathered reddish-brown wooden hull, brass fittings, round tan canvas gas balloons with dark stripes mounted above the deck on masts and struts. Single flying airship, three-quarter side view, whole ship visible, plain background, no water, no ground, no characters. A HUGE SHIP OF THE LINE, much bigger and taller than the references: tall hull with two stacked rows of cannon ports, six big round balloons in two rows above the deck, high stern castle with rows of windows.",
+ "concept": "01a1e1fc-2f6b-7139-9175-73001138c550",
+ "concept_credits": 3,
+ "model": "01a1e1fc-ee39-70d8-b989-3a97b789129a",
+ "model_credits": 30,
+ "glb_bytes": 15440596,
+ "stage": "done"
 }
