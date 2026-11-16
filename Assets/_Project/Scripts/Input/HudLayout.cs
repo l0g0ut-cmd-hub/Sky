@@ -36,7 +36,6 @@ namespace SkyTide
             float colW = u * 0.34f, colX = safeArea.x + m;
             float topH = u * 0.065f, fpsW = u * 0.2f;   // шире: в новых кнопках с завитками текст не лезет на орнамент
             l.fps = new Rect(colX, safeArea.y + m, fpsW, topH);
-            l.spy = new Rect(colX + fpsW + gap, l.fps.y, u * 0.26f, topH);   // «ТРУБА» шире: в половине колонки надпись ужималась в мелочь
             // Радар со вкладками — одна картинка (ui_radar_module.png 1536×1024): круг радара слева (центр 357,357, r 247),
             // вкладки ВРАГ / ПРИЧАЛ / РАДАР справа, ниже — вкладка хода. Высота — сколько влезает до штурвала.
             l.radius = u * stickRadius;
@@ -58,6 +57,9 @@ namespace SkyTide
             l.radarInfo = l.tabEnemy;
             l.version = new Rect(l.port.x, safeArea.yMax - u * 0.065f, l.ammo.xMax - l.port.x, u * 0.04f);
             l.pause = new Rect(safeArea.xMax - m - u * 0.085f, safeArea.y + m, u * 0.085f, u * 0.075f);   // кнопка паузы — в правом верхнем углу
+            // Подзорная труба — квадратная кнопка (btn_spy.png 704×668) под паузой, у правого края (владелец 16.11).
+            float spyW = u * 0.11f;
+            l.spy = new Rect(l.pause.xMax - spyW, l.pause.yMax + gap, spyW, spyW * 668f / 704f);
             // Машинный телеграф: полукруглый циферблат справа от штурвала (5 секторов: назад, стоп, малый, средний, полный).
             l.telegraph = new Rect(l.console.x + 740f * ck, l.console.y + 380f * ck, 780f * ck, 440f * ck);   // поле касаний циферблата
             float left = l.telegraph.xMax + m;   // вкладка хода теперь наверху, в модуле радара

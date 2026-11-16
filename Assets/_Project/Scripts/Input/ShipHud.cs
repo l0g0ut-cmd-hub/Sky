@@ -407,7 +407,7 @@ namespace SkyTide
             Color tint=pressed?new Color(0.85f,0.85f,0.85f,1f):Color.white;
             if(tex==tSideAim&&tSideGlow!=null)   // ореол раскалённой кнопки — позади, за краями рамки (рамка в нём: x 51…2036 из 2083, y 57…417 из 481)
                 ImageRect(tSideGlow,new Rect(r.x-r.width*15f/858f,r.y-r.height*60f/288f,r.width*887f/858f,r.height*408f/288f),Whole,tint);   // ореол: рамка в нём x 15…873 из 887, y 60…348 из 408
-            float TW=tex.width*256f/tex.height, cw=128f;   // атлас владельца: все три кнопки 768×256 одной формы
+            float TW=768f, cw=128f;   // исходная ширина (импорт NPOT меняет tex.width)   // атлас владельца: все три кнопки 768×256 одной формы
             float[] sx={0f,cw,TW*0.5f-32f,TW*0.5f+32f,TW-cw,TW}, sy={0f,60f,180f,256f};
             float[] dx={r.x,r.x+cw*k,0f,0f,r.xMax-cw*k,r.xMax}; float mid=(dx[1]+dx[4])*0.5f; dx[2]=mid-32f*k; dx[3]=mid+32f*k;
             float[] dy={r.y,r.y+60f*k,r.yMax-76f*k,r.yMax};
@@ -783,7 +783,7 @@ namespace SkyTide
 
         // ---------- баннеры, оповещения, виньетка (Resources/UI: banner_victory/defeat 2048×512, plate_notice 1024×192,
         // vignette_damage 2:1, icons 4×4). Текст всегда в пределах внутреннего поля плашки (пиксели картинки ниже). ----------
-        Texture2D bVictory, bDefeat, bPlate, bVignette, bIcons, bIcons2, tInfo, tFill, tCompass, tDial, tLever, tModule, tConsole, tWheel, tSide, tSideAim, tSideReload, tSideGlow, tThin, tThinLit, tPause; bool bannersTried;
+        Texture2D bVictory, bDefeat, bPlate, bVignette, bIcons, bIcons2, tInfo, tFill, tCompass, tDial, tLever, tModule, tConsole, tWheel, tSide, tSideAim, tSideReload, tSideGlow, tThin, tThinLit, tPause, tSpy, tSpyLit; bool bannersTried;
         string victoryText = "ЦЕЛЬ УНИЧТОЖЕНА";
         readonly HashSet<TargetShip> sunkSeen = new HashSet<TargetShip>();
         float victoryAt = -100f;
@@ -802,6 +802,20 @@ namespace SkyTide
             tConsole = Resources.Load<Texture2D>("UI/ui_console"); tWheel = Resources.Load<Texture2D>("UI/ui_wheel");
             tSide = Resources.Load<Texture2D>("UI/btn_side"); tSideAim = Resources.Load<Texture2D>("UI/btn_side_aim"); tSideReload = Resources.Load<Texture2D>("UI/btn_side_reload"); tSideGlow = Resources.Load<Texture2D>("UI/btn_side_glow");
             tThin = Resources.Load<Texture2D>("UI/btn_thin"); tThinLit = Resources.Load<Texture2D>("UI/btn_thin_lit"); tPause = Resources.Load<Texture2D>("UI/ui_pause");
+            tSpy = Resources.Load<Texture2D>("UI/btn_spy"); tSpyLit = Resources.Load<Texture2D>("UI/btn_spy_lit");
+        }
+        /// <summary>Кнопка подзорной трубы — квадратная из картинок владельца: btn_spy.png 704×668 (рамка во всю картинку),
+        /// btn_spy_lit.png 826×870 — раскалённая, рамка в ней с (61;101), ореол вокруг. Горит, пока труба поднята.</summary>
+        void SpyButton(TouchControls input, HudLayout l)
+        {
+            LoadBanners(); Rect r = l.spy; bool on = input.cam.ScopeOn;
+            Color tint = input.Pressed(r) ? new Color(0.8f, 0.8f, 0.8f, 1f) : Color.white;
+            float k = r.width / 704f;
+            if (on && tSpyLit != null) ImageRect(tSpyLit, new Rect(r.x - 61f * k, r.y - 101f * k, 826f * k, 870f * k), Whole, tint);
+            else if (tSpy != null) ImageRect(tSpy, r, Whole, tint);
+            else Panel(r, l.unit, on, input.Pressed(r));
+            float ic = r.height * 0.6f;   // значок трубы в кожаном поле (поле — внутри рамки с орнаментом)
+            Icon2(0, new Rect(r.center.x - ic * 0.5f, r.center.y - ic * 0.5f, ic, ic), Color.white);
         }
         /// <summary>Тонкая кнопка из картинок владельца (btn_thin.png 1074×181; раскалённая btn_thin_lit.png 1160×307 — та же рамка
         /// со свечением: поля 43 по бокам, 64 сверху). Режется на три части: концы с завитками не тянутся; у короткой кнопки
@@ -809,10 +823,12 @@ namespace SkyTide
         void ThinPanel(Rect r, bool lit, bool pressed, float alpha = 1f)
         {
             bool glow = lit && tThinLit != null; Texture2D tex = glow ? tThinLit : tThin;
-            float k = r.height / 181f, ox = glow ? 43f : 0f, oy = glow ? 64f : 0f, W = tex.width;
+            // Размеры — исходные, а не tex.width/height: Unity при импорте приводит картинку к степени двойки
+            // (1074×181 → 1024×128), и рамка рисовалась на 71% высоты кнопки — текст и значки съезжали на нижний кант.
+            float k = r.height / 181f, ox = glow ? 43f : 0f, oy = glow ? 64f : 0f, W = glow ? 1160f : 1074f, TH = glow ? 307f : 181f;
             float cap = Mathf.Min(100f, r.width / k * 0.5f), sc = ox + cap;
             Color tint = pressed ? new Color(0.8f, 0.8f, 0.8f, alpha) : new Color(1f, 1f, 1f, alpha);
-            Rect d = new Rect(r.x - ox * k, r.y - oy * k, r.width + ox * k * 2f, r.height * tex.height / 181f);
+            Rect d = new Rect(r.x - ox * k, r.y - oy * k, r.width + ox * k * 2f, r.height * TH / 181f);
             ImageRect(tex, new Rect(d.x, d.y, sc * k, d.height), new Rect(0f, 0f, sc / W, 1f), tint);
             if (d.width - sc * k * 2f > 0.5f) ImageRect(tex, new Rect(d.x + sc * k, d.y, d.width - sc * k * 2f, d.height), new Rect(sc / W, 0f, 1f - sc * 2f / W, 1f), tint);
             ImageRect(tex, new Rect(d.xMax - sc * k, d.y, sc * k, d.height), new Rect(1f - sc / W, 0f, sc / W, 1f), tint);
@@ -1135,7 +1151,7 @@ namespace SkyTide
                     LockMarker(input,l);
                     Radar(input,l);
                     Hull(l);
-                    if(Application.isPlaying&&input.cam!=null){Panel(l.spy,l.unit,input.cam.ScopeOn,input.Pressed(l.spy));IconText(l.spy,0,input.cam.ScopeOn?"×4":"ТРУБА",l.unit*0.03f,input.cam.ScopeOn?new Color(1f,0.88f,0.55f):cream);}   // подзорная труба
+                    if(Application.isPlaying&&input.cam!=null)SpyButton(input,l);   // подзорная труба — квадратная кнопка под паузой
                     Panel(l.fps,l.unit);PlateText(l.fps,0f,1f,Application.isPlaying?Cached(2,Mathf.RoundToInt(input.Fps),v=>v+" FPS"):"FPS —",l.unit*0.03f,Application.isPlaying&&input.Fps<24f?new Color(1f,0.55f,0.45f,1f):muted);   // ниже 24 — красным: просадку видно сразу
                     Broadside guns=input.Guns();
                     if(guns!=null)
