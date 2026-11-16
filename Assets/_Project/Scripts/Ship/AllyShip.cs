@@ -556,7 +556,11 @@ namespace SkyTide
             {
                 int index = gunsPerSide - pendingLeft;
                 float z = Mathf.Lerp(box.min.z + box.size.z * 0.3f, box.max.z - box.size.z * 0.3f, gunsPerSide > 1 ? index / (float)(gunsPerSide - 1) : 0.5f);
-                Vector3 muzzle = model.TransformPoint(new Vector3(box.center.x + pendingSide * (box.extents.x * 0.95f + 0.6f), box.min.y + box.size.y * 0.28f, z));
+                Vector3 local = new Vector3(box.center.x + pendingSide * (box.extents.x * 0.95f + 0.6f), box.min.y + box.size.y * 0.28f, z);
+                MeshFilter gmf = model.GetComponent<MeshFilter>();
+                Vector3 gp;
+                if (gmf != null && GunPoints.TryGet(gmf.sharedMesh, pendingSide, index, gunsPerSide, out gp)) local = gp;   // из самих пушек модели
+                Vector3 muzzle = model.TransformPoint(local);
                 Vector3 dir;
                 if (Solve(muzzle, tp + aimErr, tv, fx.gravity, out dir))
                     fx.Fire(muzzle, Quaternion.Euler(Random.Range(-2f, 2f), Random.Range(-2f, 2f), 0f) * dir, selfVel, muzzleSpeed, atPlayer, 7f, caliber);   // по флагману — «враждебным» ядром

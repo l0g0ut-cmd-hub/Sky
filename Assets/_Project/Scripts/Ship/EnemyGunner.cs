@@ -145,6 +145,10 @@ namespace SkyTide
         Vector3 MuzzleLocal(int side, int index)
         {
             int n = Mathf.Max(1, gunsPerSide);
+            // Модели флота: дула размечены по самим пушкам (GunPoints).
+            MeshFilter gmf = model != null ? model.GetComponent<MeshFilter>() : null;
+            Vector3 gp;
+            if (gmf != null && GunPoints.TryGet(gmf.sharedMesh, side, index, n, out gp)) return gp;
             if (muzzles == null || muzzles.Length != n * 2) { muzzles = new Vector3[n * 2]; muzzleFound = new bool[n * 2]; }
             index = Mathf.Clamp(index, 0, n - 1);
             int slot = (side > 0 ? n : 0) + index;

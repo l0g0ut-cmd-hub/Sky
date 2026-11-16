@@ -134,7 +134,7 @@ namespace SkyTide
             g.RecalculateBounds();
 
             if (id == "watchtower")
-                towers.Add(new Tower { t = go.transform, muzzle = go.transform.TransformPoint(new Vector3(6.9f, 40f, 5.2f)),   // верхняя площадка, над стволом next = UnityEngine.Random.Range(0f, 3f),
+                towers.Add(new Tower { t = go.transform, muzzle = go.transform.TransformPoint(new Vector3(-7.6f, 36.2f, 7.8f)) /* срез пушки на верхней площадке */, next = UnityEngine.Random.Range(0f, 3f),
                                        name = "БАШНЯ " + (towers.Count + 1) });
             foreach (Vector3 c in d.circles)
             {
