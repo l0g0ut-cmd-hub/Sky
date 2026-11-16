@@ -1,0 +1,11 @@
+{
+ "id": "lighthouse",
+ "account": 2,
+ "image_prompt": "Same art style, materials and colors as the reference airships: weathered reddish-brown wood, dark stone, brass fittings, cream canvas with dark brown stripes. Dark-fantasy sky world, everything floats above a sea of clouds. Single isolated object, three-quarter view, whole object visible, plain background, no water, no ground plane, no characters. A tall stone-and-brass SKY LIGHTHOUSE standing on a small floating rock island with dangling roots and chains below; big glazed lantern room with a large lens at the top, iron balcony around it, small door and windows.",
+ "concept": "01a1e31e-f155-72d2-8b91-8513c8631bc4",
+ "concept_credits": 3,
+ "model": "01a1e31f-548c-7133-ba68-266b6fe128b7",
+ "model_credits": 30,
+ "glb_bytes": 11026516,
+ "stage": "done"
+}

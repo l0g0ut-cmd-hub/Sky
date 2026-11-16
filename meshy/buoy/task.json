@@ -1,0 +1,11 @@
+{
+ "id": "buoy",
+ "account": 2,
+ "image_prompt": "Same art style, materials and colors as the reference airships: weathered reddish-brown wood, dark stone, brass fittings, cream canvas with dark brown stripes. Dark-fantasy sky world, everything floats above a sea of clouds. Single isolated object, three-quarter view, whole object visible, plain background, no water, no ground plane, no characters. A floating SIGNAL BUOY marking a border in the sky: a brass lantern cage on top of one round cream balloon with dark brown stripes, heavy iron weights and a short chain hanging below, a small red flag.",
+ "concept": "01a1e31e-f148-75e0-8718-f8f043ceaeb5",
+ "concept_credits": 3,
+ "model": "01a1e31f-5499-7067-a51a-6f7433186680",
+ "model_credits": 30,
+ "glb_bytes": 11338464,
+ "stage": "done"
+}

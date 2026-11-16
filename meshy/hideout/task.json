@@ -1,0 +1,11 @@
+{
+ "id": "hideout",
+ "account": 2,
+ "image_prompt": "Same art style, materials and colors as the reference airships: weathered reddish-brown wood, dark stone, brass fittings, cream canvas with dark brown stripes. Dark-fantasy sky world, everything floats above a sea of clouds. Single isolated object, three-quarter view, whole object visible, plain background, no water, no ground plane, no characters. A ramshackle PIRATE HIDEOUT built on a floating rock island: crooked wooden shacks, patched tents, a small wooden dock sticking out with a crane, lanterns, rope bridges, a skull-less black flag.",
+ "concept": "01a1e31e-f14a-7585-af4f-e26e948ae0c2",
+ "concept_credits": 3,
+ "model": "01a1e31f-5432-702d-a24a-b8e9706e1fd2",
+ "model_credits": 30,
+ "glb_bytes": 5738584,
+ "stage": "done"
+}

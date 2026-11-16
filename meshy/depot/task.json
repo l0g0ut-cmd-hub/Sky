@@ -1,0 +1,11 @@
+{
+ "id": "depot",
+ "account": 2,
+ "image_prompt": "Same art style, materials and colors as the reference airships: weathered reddish-brown wood, dark stone, brass fittings, cream canvas with dark brown stripes. Dark-fantasy sky world, everything floats above a sea of clouds. Single isolated object, three-quarter view, whole object visible, plain background, no water, no ground plane, no characters. A garrison SUPPLY DEPOT on a floating rock: stone warehouse with a brass roof, two big round gas tanks for refilling airship balloons, pipes, a small mooring mast with a hanging lantern.",
+ "concept": "01a1e31e-f180-726b-9e18-903f001bb8d2",
+ "concept_credits": 3,
+ "model": "01a1e31f-5498-7649-b9a5-2e642b30ef1f",
+ "model_credits": 30,
+ "glb_bytes": 7749084,
+ "stage": "done"
+}
