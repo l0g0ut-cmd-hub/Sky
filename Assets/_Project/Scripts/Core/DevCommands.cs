@@ -420,6 +420,7 @@ namespace SkyTide
                 case "heading": RemotePilot.Heading(Num(a, 2, 0f), Num(a, 3, 0.6f)); return RemotePilot.State;
                 case "speed": RemotePilot.Speed(Num(a, 2, 0.6f)); return "ход " + Num(a, 2, 0.6f);
                 case "stop": RemotePilot.Stop(); return "стоп";
+                case "ram": RemotePilot.Ram = Num(a, 2, 1f) > 0f; return RemotePilot.Ram ? "обход выкл (таран)" : "обход вкл";
                 case "release": case "off": RemotePilot.Release(); return "управление владельцу";
             }
             return "pilot goto x z [ход] | heading град [ход] | speed 0..1 | stop | release";

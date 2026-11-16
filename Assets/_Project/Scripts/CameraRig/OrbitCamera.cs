@@ -183,6 +183,8 @@ namespace SkyTide
             // Подзорная труба: с юта своего корабля прямо на цель (ближайший враг), обзор ×0.28. Цель погибла — труба убирается.
             if (Application.isPlaying && scopeBlend > 0.001f)
             {
+                // Труба смотрит только на цель, взятую в таргет (владелец 17.11): цель сменили — труба на новую, сняли — убирается.
+                if (ScopeOn) { IAimTarget lk = Broadside.PlayerLock; if (lk != null && lk.Alive) scopeTarget = lk; else ScopeOn = false; }
                 if (ScopeOn && (scopeTarget == null || !scopeTarget.Alive)) ScopeOn = false;
                 // Над баллонами своего корабля (на ~25 м): с юта на 14 м труба смотрела сквозь свои паруса и баллон
                 // (удалённая проверка 15.11, снимок «труба» — весь кадр в парусине).
@@ -193,7 +195,9 @@ namespace SkyTide
                 if (scopeTarget != null && baseFov > 0f)
                 {
                     float dist = Mathf.Max(1f, Vector3.Distance(deck, look));
-                    float wantFov = 2f * Mathf.Atan(45f * scopeTarget.transform.lossyScale.x / dist) * Mathf.Rad2Deg;
+                    TargetShip st = scopeTarget as TargetShip; AllyShip sa = scopeTarget as AllyShip;
+                    float len = st != null ? st.Length : sa != null ? sa.Length : 38f;   // по длине класса: адмиральский 260 м целиком в кадре
+                    float wantFov = 2f * Mathf.Atan(Mathf.Max(30f, len * 1.2f) / dist) * Mathf.Rad2Deg;
                     scopeZoom = Mathf.Lerp(scopeZoom, Mathf.Clamp(wantFov / baseFov, 0.2f, 1f), 1f - Mathf.Exp(-6f * dt));
                 }
                 deck = AvoidShips(deck);   // точка трубы тоже не входит в чужие корабли
@@ -207,25 +211,16 @@ namespace SkyTide
         }
 
         public bool ScopeOn { get; private set; }
-        float scopeBlend, scopeZoom = 0.5f; TargetShip scopeTarget;
-        /// <summary>Подзорная труба вкл/выкл (кнопка рядом с FPS): наводится на ближайшего живого врага.</summary>
+        float scopeBlend, scopeZoom = 0.5f; IAimTarget scopeTarget;
+        /// <summary>Подзорная труба вкл/выкл (кнопка под паузой): только на цель, взятую в таргет — свою или чужую.
+        /// Без цели не включается (владелец 17.11: «смотреть через неё можно только на цели, взятые в таргет»).</summary>
         public void ToggleScope()
         {
             if (ScopeOn) { ScopeOn = false; return; }
-            scopeTarget = null; float best = float.MaxValue;
-            // Цель бортов — в первую очередь (на неё и наводится прицел); иначе ближайший враг дальше 60 м, иначе просто ближайший.
-            Broadside guns = target != null ? target.GetComponentInChildren<Broadside>() : null;
-            if (guns != null && guns.AimTargetShip != null && guns.AimTargetShip.Alive) scopeTarget = guns.AimTargetShip;
-            if (scopeTarget == null && target != null)
-                foreach (TargetShip t in TargetShip.All)
-                {
-                    if (t == null || !t.Alive) continue;
-                    float d = (t.transform.position - target.position).sqrMagnitude;
-                    if (d < 60f * 60f) d += 1e8f;   // вплотную — в последнюю очередь
-                    if (d < best) { best = d; scopeTarget = t; }
-                }
+            IAimTarget lk = Broadside.PlayerLock;
+            scopeTarget = lk != null && lk.Alive ? lk : null;
             ScopeOn = scopeTarget != null;
-            if (!ScopeOn) HudNotice.Post("ВРАГОВ НЕ ВИДНО", "", 1, 1.5f, HudNotice.Prio.Hint, null, null);
+            if (!ScopeOn) HudNotice.Post("ТРУБА — ВОЗЬМИ ЦЕЛЬ", "КОСНИСЬ КОРАБЛЯ", 1, 1.8f, HudNotice.Prio.Hint, null, null);
         }
     }
 }

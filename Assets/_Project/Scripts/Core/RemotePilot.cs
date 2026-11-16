@@ -17,7 +17,7 @@ namespace SkyTide
         static Transform follow;
         public static string State = "выкл";
 
-        public static void Release() { duel = false; Active = false; hasPoint = false; follow = null; heading = float.NaN; State = "выкл"; }
+        public static void Release() { duel = false; Active = false; hasPoint = false; follow = null; heading = float.NaN; State = "выкл"; Ram = false; }
 
         public static void GoTo(Vector3 p, float thr) { Active = true; point = p; hasPoint = true; follow = null; heading = float.NaN; throttle = thr; State = "к точке " + Mathf.RoundToInt(p.x) + "," + Mathf.RoundToInt(p.z); }
         public static void GoTo(Transform t, float thr, string name) { Active = true; follow = t; hasPoint = false; heading = float.NaN; throttle = thr; State = "к " + name; }
@@ -55,6 +55,10 @@ namespace SkyTide
             float turn = 0f;
             if (dir.sqrMagnitude > 1f) turn = Mathf.Clamp(Vector3.SignedAngle(ship.transform.forward, dir, Vector3.up) / 20f, -1f, 1f);
             ship.turn = turn; ship.throttle = thr;
+            // Удалённый пилот обходит корабли и строения, как живой игрок (17.11: на проверке врезался во всё и застревал).
+            // pilot ram — без обхода (проверка столкновений).
+            if (!Ram) Traffic.Avoid(ship, 19f, follow);
         }
+        public static bool Ram;
     }
 }
