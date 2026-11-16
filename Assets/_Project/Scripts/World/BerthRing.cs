@@ -51,6 +51,14 @@ namespace SkyTide
             c.a *= 0.8f + 0.2f * Mathf.Sin(time * 2f);
             mat.color = c; transform.SetPositionAndRotation(centre, rot);
         }
+        /// <summary>Кольцо под взятой целью (владелец 16.11: «круги враг/союзник — когда берёшь в таргет, а не постоянно»).</summary>
+        public void TickTarget(Vector3 centre, Quaternion rot, bool visible, Color c, float time)
+        {
+            if (gameObject.activeSelf != visible) gameObject.SetActive(visible);
+            if (!visible || mat == null) return;
+            c.a *= 0.8f + 0.2f * Mathf.Sin(time * 2f);
+            mat.color = c; transform.SetPositionAndRotation(centre, rot);
+        }
         public void Tick(Vector3 centre, bool visible, bool repairing, float time)
         {
             if (gameObject.activeSelf != visible) gameObject.SetActive(visible);

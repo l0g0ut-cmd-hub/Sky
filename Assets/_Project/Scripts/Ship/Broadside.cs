@@ -252,6 +252,9 @@ namespace SkyTide
         /// Без неё и без автобоя прицела нет: стрелка не рисуется, стволы стоят прямо.</summary>
         /// <summary>Взятая касанием цель — любой корабль: враг или свой (огонь по своим разрешён).</summary>
         public IAimTarget Locked;
+        /// <summary>Цель, взятая флагманом (для колец под кораблями).</summary>
+        public static IAimTarget PlayerLock { get { return playerGuns != null ? playerGuns.Locked : null; } }
+        static Broadside playerGuns;
         /// <summary>Точка упреждения по взятой цели (где она будет, когда долетит ядро); есть, пока залп не ложится в корпус.</summary>
         [System.NonSerialized] public bool HasLead; [System.NonSerialized] public Vector3 LeadPoint;
         /// <summary>Автобой сам выбирает цель (как раньше — ближайшую к траверзу).</summary>
@@ -455,6 +458,7 @@ namespace SkyTide
             // пропадала совсем («прицел не работает»). Порядок Update в Unity не задан — отсюда «то есть, то нет».
             if (ownHull == null && (!ownTried || Time.realtimeSinceStartup >= ownRetry)) { ownTried = true; ownRetry = Time.realtimeSinceStartup + 1f; ownHull = GetComponent<PlayerHull>(); }
             if (ownHull == null) return;
+            playerGuns = this;
             fx.ClearPreview();
             solved = false;
             if (!showAim || model == null || mounts.Length == 0) return;

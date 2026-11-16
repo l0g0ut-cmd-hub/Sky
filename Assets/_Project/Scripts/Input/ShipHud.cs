@@ -630,7 +630,7 @@ namespace SkyTide
             Camera c = Camera.main; if (c == null || !Application.isPlaying) return;
             foreach (AllyShip a in AllyShip.All)
             {
-                if (a == null || !a.Alive) continue;
+                if (a == null || !a.Alive || (object)Broadside.PlayerLock != a) continue;   // только взятая цель (владелец 16.11)
                 Vector3 sp = c.WorldToScreenPoint(a.Center); if (sp.z <= 0f) continue;
                 float dist = Vector3.Distance(c.transform.position, a.Center); if (dist > 1600f) continue;
                 Vector3 sp2 = c.WorldToScreenPoint(a.Center + c.transform.right * 24f * a.transform.lossyScale.x);

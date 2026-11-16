@@ -59,6 +59,7 @@ namespace SkyTide
         public bool Outlaw { get { return Time.time < OutlawUntil; } }
         public bool InPort { get { return mode == Mode.ToPort || mode == Mode.InPort; } }
         EnemyGunner gunner; bool captainRolled;
+        BerthRing ring; bool ringTried;
 
         // ---------- отношения (Core/Relations) ----------
         /// <summary>Дело корабля в мирное время: идёт по своим делам, дозор своих вод, ходит в порт.</summary>
@@ -660,6 +661,19 @@ namespace SkyTide
             // Дурень половину времени прёт напролом (не уступает дорогу) — отсюда и столкновения.
             if (ctrl != null && Alive && !BeingBoarded && Mood != Attitude.Surrender && Application.isPlaying && !(Fool && Mathf.Repeat(Time.time + GetInstanceID(), 20f) < 10f))
                 Traffic.Avoid(ctrl, Mathf.Max(10f, Length * 0.5f), Mood == Attitude.Hostile ? ThreatTransform() : null);
+            // Кольцо под кораблём — только у взятой цели: цвет по отношению (красный — враждебен, светлый — спокоен…).
+            if (Application.isPlaying)
+            {
+                bool locked = (object)Broadside.PlayerLock == this && Alive && gameObject.activeInHierarchy;
+                if (locked && ring == null && !ringTried) { ringTried = true; ring = BerthRing.Create(transform.position, Length * 0.42f, Length * 0.62f, transform.rotation, -3f, 5f); }
+                if (ring != null)
+                {
+                    Color rc = Mood == Attitude.Hostile ? new Color(1f, 0.38f, 0.3f, 0.9f) : Mood == Attitude.Wary ? new Color(1f, 0.85f, 0.35f, 0.85f)
+                             : Mood == Attitude.Flee ? new Color(1f, 0.6f, 0.3f, 0.85f) : Mood == Attitude.Surrender ? new Color(0.7f, 0.7f, 0.7f, 0.8f) : new Color(0.95f, 0.92f, 0.85f, 0.8f);
+                    Vector3 at = Center; at.y = BoxCorner(0).y + 1f;
+                    ring.TickTarget(at, Quaternion.Euler(0f, transform.eulerAngles.y, 0f), locked, rc, Time.time);
+                }
+            }
         }
         Transform ThreatTransform() { AllyShip fa = FoeAlly; return fa != null ? fa.transform : player; }
         void Think()

@@ -380,7 +380,7 @@ namespace SkyTide
             Quaternion rot = Quaternion.LookRotation(o, Vector3.up);
             ShipClass[] cls = { ShipClass.Brig, ShipClass.Frigate, ShipClass.ShipOfLine, ShipClass.Admiral };
             float[] side = { 1f, 1f, -1f, -1f };
-            float right = 70f, left = 70f;   // место флагмана — посередине, ±70 м свободно
+            float right = SkyFortress.RepairAlong + 25f, left = SkyFortress.RepairAlong + 25f;   // овал ремонта (±170 м) свободен
             for (int i = 0; i < cls.Length; i++)
             {
                 ShipClassInfo k = ShipClasses.Get(cls[i]);

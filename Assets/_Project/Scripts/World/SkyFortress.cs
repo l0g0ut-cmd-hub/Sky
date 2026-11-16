@@ -264,7 +264,8 @@ namespace SkyTide
         /// <summary>Зона ремонта — круг перед причалом (на воздухе, а не на пирсе): центр в 35 м наружу от края причала,
         /// туда же встаёт автошвартовка (30 м). Кольцо рисуется ровно по ней (владелец 15.11: кольцо заезжало на причал).</summary>
         // Овал вдоль причала (владелец 16.11: «овальную и больше»): 85 м вдоль кромки, 50 м наружу, центр в 55 м от кромки.
-        public const float RepairAlong = 85f, RepairOut = 50f;
+        // Владелец 16.11 (пробка): «увеличить зону ремонта в два раза, вытянув овал в обе стороны» — 170 м вдоль кромки.
+        public const float RepairAlong = 170f, RepairOut = 50f;
         Vector3 BerthOut { get { Vector3 o = BerthWorld - Center; o.y = 0f; return o.sqrMagnitude > 1f ? o.normalized : Vector3.forward; } }
         public Vector3 RepairCentre { get { return BerthWorld + BerthOut * 55f; } }
         public Quaternion RepairRotation { get { return Quaternion.LookRotation(BerthOut, Vector3.up); } }

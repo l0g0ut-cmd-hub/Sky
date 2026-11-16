@@ -233,7 +233,8 @@ namespace SkyTide
             if (glow != null)
             {
                 Vector3 at = Center; at.y = Center.y - box.extents.y * transform.lossyScale.y * 0.9f;
-                glow.TickAlly(at, Quaternion.Euler(0f, transform.eulerAngles.y, 0f), Alive && gameObject.activeInHierarchy, UnderAttack, Time.time);
+                // Только у взятой цели (владелец 16.11); под огнём — мигает красным.
+                glow.TickAlly(at, Quaternion.Euler(0f, transform.eulerAngles.y, 0f), Alive && gameObject.activeInHierarchy && (object)Broadside.PlayerLock == this, UnderAttack, Time.time);
             }
             PerfTimers.Stop("Союзники", pt);
         }
