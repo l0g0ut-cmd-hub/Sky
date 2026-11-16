@@ -1,10 +1,11 @@
 {
  "id": "sloop",
- "preview": "01a1e1ec-d4ea-7240-9a7a-b442726e088c",
- "refine": "01a1e1ed-c7da-77f0-9445-e5c194124515",
- "prompt": "Stylized dark-fantasy flying sky-ship, single isolated game asset, no water, no ground, no base, no characters. Wooden sailing-ship hull with brass trim and iron fittings, held aloft by spherical canvas gas balloons on a brass frame above the deck, propellers at the stern, rudder fin under the keel. Small fast scout sloop: narrow light hull, one tall mast with a crow's nest lookout platform, one long cigar-shaped balloon, two cannon ports on each side.",
- "texture_prompt": "Weathered dark oak planks, polished brass and dark iron fittings, tan canvas balloons with leather straps, warm amber lanterns, muted crimson painted trim. Painterly game texture, clean readable materials.",
- "polycount": 15000,
- "credits": 30,
- "glb_bytes": 9387080
+ "account": 2,
+ "image_prompt": "Same art style, materials and colors as the reference airships: weathered reddish-brown wooden hull, brass fittings, round cream canvas gas balloons with dark brown stripes mounted above the deck on masts and struts. Single flying airship, three-quarter side view, whole ship visible, plain background, no water, no ground, no characters. A SMALL FAST SCOUT SLOOP, smaller than the references: narrow light hull, one tall mast with a crow's nest lookout platform, one long sail, two round balloons above the deck (not on the bowsprit), two cannon ports per side.",
+ "concept": "01a1e201-3ee0-7774-bee9-a9f87ee65ab5",
+ "concept_credits": 3,
+ "model": "01a1e201-a062-7687-a4f9-5bfe5e72b4bb",
+ "model_credits": 30,
+ "glb_bytes": 12943124,
+ "stage": "done"
 }
