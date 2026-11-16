@@ -500,8 +500,10 @@ namespace SkyTide
         }
 
         /// <summary>Курс на точку в обход камня крепости.</summary>
+        public Vector3 Goal;
         void SteerAround(SkyFortress f, Vector3 goal, float throttle)
         {
+            Goal = goal;
             Vector3 to = goal - transform.position; to.y = 0f;
             Vector3 heading = to.sqrMagnitude > 1f ? to.normalized : transform.forward;
             if (to.magnitude > 200f)
@@ -541,11 +543,12 @@ namespace SkyTide
             ctrl.throttle = Mathf.Abs(ang) > 100f ? Mathf.Min(0.3f, throttle) : throttle;
         }
 
+        public string Hold = "";
         void Gunnery(TargetShip t)
         {
-            if (t.Surrendered) { pendingLeft = 0; return; }   // сдавшегося не бьют
+            if (t.Surrendered) { pendingLeft = 0; Hold = "сдался — не бьём"; return; }   // сдавшегося не бьют
             // Безопасная зона: в ней стреляет только крепость (владелец 16.11: «слишком часто все стали стрелять в зоне»).
-            if (SkyFortress.InSafeZone(transform.position) || SkyFortress.InSafeZone(t.transform.position)) { pendingLeft = 0; return; }
+            if (SkyFortress.InSafeZone(transform.position) || SkyFortress.InSafeZone(t.transform.position)) { pendingLeft = 0; Hold = "зона крепости"; return; }
             GunneryAt(t.Center, t.Controller != null ? t.transform.forward * t.Controller.Speed : Vector3.zero, false, t.name.Replace(" Ship", ""));
         }
         void GunneryAt(Vector3 tp, Vector3 tv, bool atPlayer, string who)
@@ -563,20 +566,21 @@ namespace SkyTide
                 Vector3 muzzle = model.TransformPoint(gunLocal);
                 Vector3 dir;
                 if (Solve(muzzle, tp + aimErr, tv, fx.gravity, out dir))
-                    { FxSystem.NextShooter = WorldLog.Name(this); fx.Fire(muzzle, Quaternion.Euler(Random.Range(-2f, 2f), Random.Range(-2f, 2f), 0f) * dir, selfVel, muzzleSpeed, atPlayer, 7f, caliber); }   // по флагману — «враждебным» ядром
+                    { FxSystem.NextShooter = WorldLog.Name(this); FxSystem.NextTarget = atPlayer ? (PlayerHull.Instance != null ? PlayerHull.Instance.transform : null) : (foe != null ? foe.transform : null); fx.Fire(muzzle, Quaternion.Euler(Random.Range(-2f, 2f), Random.Range(-2f, 2f), 0f) * dir, selfVel, muzzleSpeed, atPlayer, 7f, caliber); }   // по флагману — «враждебным» ядром
                 pendingLeft--; pendingAt = Time.time + Random.Range(0.12f, 0.2f);
                 return;
             }
-            if (Time.time < ready) return;
+            if (Time.time < ready) { Hold = "перезарядка"; return; }
             Vector3 rel = tp - transform.position; rel.y = 0f;
             float dist = rel.magnitude;
-            if (dist < 80f || dist > 620f) return;
+            if (dist < 80f || dist > 620f) { Hold = dist < 80f ? "слишком близко" : "далеко " + Mathf.RoundToInt(dist); return; }
             Vector3 local = transform.InverseTransformDirection(rel);
             float bearing = Mathf.Atan2(Mathf.Abs(local.x), local.z) * Mathf.Rad2Deg;
-            if (bearing < 55f || bearing > 125f) return;
+            if (bearing < 55f || bearing > 125f) { Hold = "не на траверзе " + Mathf.RoundToInt(bearing) + "°"; return; }
             // По врагу, который трётся о флагман, не бьём: ядра могли бы лечь в своих (свои ядра своих не ранят, но смотрится глупо).
             PlayerHull ph = PlayerHull.Instance;
-            if (!atPlayer && ph != null && (ph.transform.position - tp).sqrMagnitude < 45f * 45f) return;
+            if (!atPlayer && ph != null && (ph.transform.position - tp).sqrMagnitude < 45f * 45f) { Hold = "флагман у цели"; return; }
+            Hold = "залп по " + who;
             pendingSide = local.x > 0f ? 1 : -1;
             Vector3 fwd = rel / Mathf.Max(dist, 1f), side = Vector3.Cross(Vector3.up, fwd);
             aimErr = fwd * Gauss() * rangeError * dist + side * Gauss() * sideError * dist;

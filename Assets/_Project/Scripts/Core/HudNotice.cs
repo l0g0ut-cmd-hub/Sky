@@ -32,6 +32,8 @@ namespace SkyTide
 
         struct Item { public string text, sub, key; public int icon; public float hold, at; public Prio prio; public Transform focus; public Color color; }
         static readonly List<Item> queue = new List<Item>();
+        /// <summary>Очередь ожидающих сообщений (журнал мира).</summary>
+        public static string QueueText() { System.Text.StringBuilder b = new System.Text.StringBuilder(); foreach (Item q in queue) b.Append(" [").Append(q.prio).Append("] ").Append(q.text); return b.ToString(); }
         static readonly Dictionary<string, float> lastByKey = new Dictionary<string, float>();
 
         /// <summary>Совместимость: простое сообщение (Info, без «где»).</summary>
@@ -44,12 +46,12 @@ namespace SkyTide
             k = string.IsNullOrEmpty(k) ? text : k;
             float last;
             bool showingSame = Alpha > 0f && key == k;
-            if (!showingSame && cooldown > 0f && lastByKey.TryGetValue(k, out last) && Time.time - last < cooldown) return;
+            if (!showingSame && cooldown > 0f && lastByKey.TryGetValue(k, out last) && Time.time - last < cooldown) { WorldLog.Raw("УВЕДОМЛЕНИЕ ПОДАВЛЕНО (повтор) «" + text + "»"); return; }
             lastByKey[k] = Time.time;
             DebugReport.Event(sub.Length > 0 ? text + " — " + sub : text);
             Item it = new Item { text = text, sub = sub ?? "", key = k, icon = icon, hold = hold, at = Time.time, prio = prio, focus = focus, color = focusColor ?? DefaultColor(icon) };
             if (showingSame) { Apply(it, false); return; }                       // тот же ключ — обновить, не мигать
-            if (Alpha > 0.05f && Level > prio) { Enqueue(it); return; }          // важнее на экране — подождать
+            if (Alpha > 0.05f && Level > prio) { Enqueue(it); WorldLog.Raw("УВЕДОМЛЕНИЕ В ОЧЕРЕДЬ «" + text + "» (на экране важнее)"); return; }          // важнее на экране — подождать
             Apply(it, true);
         }
         static Color DefaultColor(int icon) { return icon == 0 ? new Color(1f, 0.85f, 0.45f, 1f) : new Color(1f, 0.4f, 0.3f, 1f); }

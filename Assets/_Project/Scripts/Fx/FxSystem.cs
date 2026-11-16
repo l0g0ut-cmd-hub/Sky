@@ -41,6 +41,8 @@ namespace SkyTide
             public float caliber;  // ядро: во сколько раз крупнее корабельного (0 и 1 — обычное); множитель урона
             public bool fromPlayer; // ядро флагмана — для счёта точности в отладочном отчёте
             public string who;     // кто стрелял (журнал мира)
+            public Transform aim;  // в кого целились (журнал мира: промах — на сколько)
+            public float miss;
             public bool chain;     // книппель: два ядра на цепи — бьёт по баллонам и ходу, корпусу почти не вредит
             public float trail;    // горящий обломок: > 0 — оставляет дымный хвост (счётчик до следующего клуба)
         }
@@ -116,9 +118,11 @@ namespace SkyTide
         }
         /// <summary>Кто стреляет следующим Fire (журнал мира): ставит стрелок перед вызовом.</summary>
         public static string NextShooter;
+        public static Transform NextTarget;
         public void Fire(Vector3 muzzle, Vector3 dir, Vector3 shipVel, float muzzleSpeed, bool hostile = false, float shellLife = 7f, float caliber = 1f, bool chain = false, bool fromPlayer = false)
         {
             string who = NextShooter ?? (fromPlayer ? "ФЛАГМАН" : hostile ? "враг?" : "свой?"); NextShooter = null;
+            Transform aimT = NextTarget; NextTarget = null;
             if (Application.isPlaying) WorldLog.Shot(who, muzzle, dir.normalized * muzzleSpeed + shipVel, caliber, chain);
             TargetShip assist = fromPlayer ? AssistTarget : null; AssistTarget = null;
             if (fromPlayer) DebugReport.Count("ядер флагмана выпущено");
@@ -130,7 +134,7 @@ namespace SkyTide
             // Ядро
             Add(new P
             {
-                kind = Kind.Ball, who = who, pos = muzzle, vel = dir * muzzleSpeed + shipVel, life = shellLife, hostile = hostile, caliber = caliber, chain = chain, fromPlayer = fromPlayer, assist = assist,
+                kind = Kind.Ball, who = who, aim = aimT, miss = float.MaxValue, pos = muzzle, vel = dir * muzzleSpeed + shipVel, life = shellLife, hostile = hostile, caliber = caliber, chain = chain, fromPlayer = fromPlayer, assist = assist,
                 size0 = chain ? 1.6f : 0.85f, size1 = chain ? 1.4f : 0.7f, color = chain ? new Color(0.12f, 0.1f, 0.09f) : new Color(0.2f, 0.15f, 0.12f), alpha = 1f, seed = s
             });
             Flash(muzzle, 2.5f * caliber, 32f * caliber);
@@ -696,6 +700,9 @@ namespace SkyTide
                         }
                     }
                     p.pos = end;
+                    if (p.kind == Kind.Ball && p.aim != null) { Vector3 ad = p.aim.position - p.pos; ad.y *= 0.5f; p.miss = Mathf.Min(p.miss, ad.magnitude); }
+                    if ((entered || hit) && !hit && p.kind == Kind.Ball)
+                        WorldLog.Raw("ПРОМАХ " + p.who + (p.aim != null ? " по " + p.aim.name + " ближе всего " + Mathf.RoundToInt(p.miss) + " м" : "") + " легло " + Mathf.RoundToInt(p.pos.x) + "," + Mathf.RoundToInt(p.pos.y) + "," + Mathf.RoundToInt(p.pos.z) + (entered ? " в облака" : ""));
                     if (entered || hit)
                     {
                         p.life = 0f;

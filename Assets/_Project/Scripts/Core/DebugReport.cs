@@ -22,6 +22,7 @@ namespace SkyTide
         static readonly List<string> counterOrder = new List<string>();
         public static void Count(string name, int add = 1)
         {
+            WorldLog.Raw("СЧЁТ " + name + (add != 1 ? " +" + add : ""));
             if (!Application.isPlaying) return;
             int v; if (!counters.TryGetValue(name, out v)) counterOrder.Add(name);
             counters[name] = v + add;
@@ -42,6 +43,7 @@ namespace SkyTide
         static void OnLog(string message, string stack, LogType type)
         {
             if (type == LogType.Log) return;
+            WorldLog.Raw((type == LogType.Warning ? "ПРЕДУПРЕЖДЕНИЕ " : "ОШИБКА ") + message + (string.IsNullOrEmpty(stack) ? "" : " @ " + stack.Replace('\n', '|')));
             if (type == LogType.Warning) { warningCount++; if (warningCount > 40) return; }
             else errorCount++;
             string first = "";
@@ -64,7 +66,7 @@ namespace SkyTide
         static readonly Queue<string> volleys = new Queue<string>();
         public static string LastEventText = "";
         /// <summary>Смена поведения ИИ (враги и свои) с причиной.</summary>
-        public static void Ai(string text) { Push(ai, 40, Stamp() + " " + text); }
+        public static void Ai(string text) { Push(ai, 40, Stamp() + " " + text); WorldLog.Raw("ИИ " + text); }
         /// <summary>Касание: куда и что его поймало.</summary>
         public static void Touch(string text) { Push(touches, 20, Stamp() + " " + text); }
         /// <summary>Залп: кто, по кому, дистанция, угол.</summary>
@@ -76,7 +78,7 @@ namespace SkyTide
         public static void Hit(int side) { if (side >= 0 && side < 4) hitsBy[side]++; }
 
         /// <summary>Событие игры в журнал (оповещения HUD, гибели, абордаж, автобой и т. п.).</summary>
-        public static void Event(string text) { LastEventText = text; Push(events, 60, Stamp() + " " + text); }
+        public static void Event(string text) { LastEventText = text; Push(events, 60, Stamp() + " " + text); WorldLog.Raw("СОБЫТИЕ " + text); }
 
         /// <summary>Сцена в цифрах: камера, корабли (модель, LOD, треугольники, масштаб, место в кадре), крепость, облака.
         /// Координаты — x,y,z от камеры в метрах (x вправо по миру, z — на север), «э» — место в кадре 0..1 (0,0 — низ-лево).</summary>

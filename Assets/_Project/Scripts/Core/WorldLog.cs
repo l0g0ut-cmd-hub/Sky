@@ -54,7 +54,14 @@ namespace SkyTide
         static int Yaw(Transform t) { return Mathf.RoundToInt(Mathf.Repeat(t.eulerAngles.y, 360f)); }
         static string F1(float f) { return f.ToString("F1", Inv); }
 
-        static void Line(string s) { if (Instance != null && chunk.Length < 900000) chunk.Append(T()).Append(' ').Append(s).Append('\n'); }
+        /// <summary>Строка события как есть (ИИ, события, ошибки, звуки, промахи) — со временем боя.</summary>
+        public static void Raw(string s)
+        {
+            Line(s);
+            if (s.StartsWith("ОШИБКА")) AutoPhoto("ошибка");
+            else if (s.Contains("ФЛАГМАН ПОТОПЛЕН")) AutoPhoto("флагман потоплен");
+        }
+        static void Line(string s) { if (Instance != null && chunk.Length < 4000000) chunk.Append(T()).Append(' ').Append(s).Append('\n'); }
 
         // ——— события ———
         public static void Shot(string who, Vector3 muzzle, Vector3 vel, float caliber, bool chain)
@@ -76,6 +83,7 @@ namespace SkyTide
             if (bumpAt.TryGetValue(k, out t) && Time.time - t < 1f) return;
             bumpAt[k] = Time.time;
             Line("СТОЛКНОВЕНИЕ " + a + " ↔ " + b + " в " + V(at) + " ход " + F1(speed));
+            if ((a == "ФЛАГМАН" || b == "ФЛАГМАН") && speed > 8f) AutoPhoto("столкновение флагмана: " + (a == "ФЛАГМАН" ? b : a));
         }
         public static void Mark(string what) { Line("МЕТКА " + what); if (Instance != null) Instance.Frame(); }
 
@@ -99,6 +107,7 @@ namespace SkyTide
                 }
                 lastHull = h;
             }
+            if (Time.unscaledTime >= nextWatch) { nextWatch = Time.unscaledTime + 0.5f; Watch(); }
             if (Time.unscaledTime >= nextFrame) { nextFrame = Time.unscaledTime + 1f; Frame(); }
             if (Time.time - chunkStart >= 60f) Flush();
         }
@@ -111,6 +120,7 @@ namespace SkyTide
             TouchControls tc = g != null ? g.GetComponent<TouchControls>() : null;
             OrbitCamera oc = g != null ? g.Cam : null;
             b.Append("КАДР fps ").Append(tc != null ? Mathf.RoundToInt(tc.Fps) : 0);
+            if (tc != null && tc.Fps > 1f && tc.Fps < 15f && Time.timeSinceLevelLoad > 20f) AutoPhoto("FPS " + Mathf.RoundToInt(tc.Fps));
             if (tc != null && tc.Paused) b.Append(" ПАУЗА");
             if (c != null)
             {
@@ -160,6 +170,9 @@ namespace SkyTide
                 if (t.InPort) e.Append(" в-порту"); if (t.Fool) e.Append(" дурень"); if (t.Outlaw) e.Append(" НАРУШИТЕЛЬ"); if (t.Raiding) e.Append(" НАБЕГ");
                 if (t.HostileToPlayer) e.Append(" враг-флагману"); if (t.FoeAlly != null) e.Append(" воюет-с ").Append(Name(t.FoeAlly));
                 e.Append(" воды ").Append(Relations.At(t.transform.position));
+                Extra(e, t.transform, t.Controller, t.Goal, t.DamageVisual);
+                EnemyGunner eg = t.GetComponent<EnemyGunner>(); if (eg != null && eg.Hold.Length > 0) e.Append(" пушки: ").Append(eg.Hold);
+                e.Append(" | ").Append(t.Timers());
                 chunk.Append(e).Append('\n');
             }
             foreach (AllyShip a in AllyShip.All)
@@ -172,9 +185,128 @@ namespace SkyTide
                  .Append(' ').Append(Mathf.RoundToInt(a.Health01 * 100f)).Append("% ИИ:").Append(a.AiState);
                 if (a.Foe != null) e.Append(" бьёт ").Append(Name(a.Foe));
                 if (a.HostileToPlayer) e.Append(" ЗОЛ-НА-ФЛАГМАН");
+                Extra(e, a.transform, a.Controller, a.Goal, a.GetComponentInChildren<ShipDamageVisual>());
+                if (a.Hold.Length > 0) e.Append(" пушки: ").Append(a.Hold);
                 chunk.Append(e).Append('\n');
             }
             if (lastLabels.Count > 0) chunk.Append("  ПОДПИСИ ").Append(string.Join(" ", lastLabels.ToArray())).Append('\n');
+            // HUD, меню, настройки, техника.
+            StringBuilder h = new StringBuilder(512);
+            h.Append("  HUD меню:").Append(MainMenu.Active ? "главное" : tc != null && tc.Paused ? "пауза" : "нет").Append(" скрыт:").Append(TouchControls.HideHud ? "да" : "нет");
+            if (tc != null)
+                h.Append(" звук:").Append(tc.SoundOn ? "вкл" : "выкл").Append(" камера-скор:").Append(tc.CameraSpeed).Append(" кнопки:").Append(tc.BigButtons ? "крупные" : "обычные")
+                 .Append(" вибрация:").Append(Haptics.Enabled ? "вкл" : "выкл").Append(" радар:").Append(Mathf.RoundToInt(tc.RadarRange)).Append(" штурвал:").Append(tc.StickActive ? "держат" : "нет")
+                 .Append(" подсказка:").Append(tc.HintAlpha > 0.05f ? tc.HintStage.ToString() : "нет");
+            PlayerBoarding pb = g != null && g.Ship != null ? g.Ship.GetComponent<PlayerBoarding>() : null;
+            if (pb != null) h.Append(" абордаж: ").Append(pb.Active ? "идёт " + Mathf.RoundToInt(pb.Progress01 * 100f) + "%" : pb.Candidate != null ? "можно " + Name(pb.Candidate) : "нет");
+            if (ph != null) h.Append(" флагман-пробоин:").Append(ph.VentCount);
+            string q = HudNotice.QueueText(); if (q.Length > 0) h.Append(" очередь:").Append(q);
+            h.Append(" | 60fps:").Append(SkyTideBootstrap.Fps60 ? "да" : "нет").Append(" тени:").Append(QualitySettings.shadows).Append(" timeScale:").Append(F1(Time.timeScale));
+            if (DebugRecorder.Instance != null) h.Append(" | ").Append(DebugRecorder.Instance.RenderLine());
+            h.Append(" кадр ").Append(F1(Time.unscaledDeltaTime * 1000f)).Append("мс gc0:").Append(System.GC.CollectionCount(0));
+            if (RemoteCommands.Running) h.Append(" | КОМАНДЫ CLAUDE идут");
+            chunk.Append(h).Append('\n');
+            // Свет.
+            Light sun = RenderSettings.sun;
+            chunk.Append("  СВЕТ солнце ").Append(sun != null ? Yaw(sun.transform) + "/" + Mathf.RoundToInt(sun.transform.eulerAngles.x) + " ярк " + F1(sun.intensity) : "-")
+                 .Append(" туман ").Append(RenderSettings.fog ? RenderSettings.fogDensity.ToString("F5", Inv) : "выкл").Append(" погода ").Append(WeatherSystem.Instance != null ? WeatherSystem.Names[(int)WeatherSystem.Instance.Current] : "-").Append('\n');
+        }
+
+        /// <summary>Высота, крен, дифферент, точка назначения, повреждения, место на экране, видимость.</summary>
+        static void Extra(StringBuilder e, Transform t, ShipController c, Vector3 goal, ShipDamageVisual dv)
+        {
+            if (c != null && c.visual != null)
+            {
+                Vector3 ve = c.visual.localEulerAngles;
+                e.Append(" крен ").Append(Mathf.RoundToInt(Mathf.DeltaAngle(0f, ve.z))).Append(" диф ").Append(Mathf.RoundToInt(Mathf.DeltaAngle(0f, ve.x)));
+                e.Append(" рук ").Append(F1(c.throttle)).Append(" руль ").Append(F1(c.turn));
+                if (c.RudderHit) e.Append(" руль-повр"); if (c.BalloonHit) e.Append(" баллон-повр");
+            }
+            if (goal.sqrMagnitude > 1f) e.Append(" идёт-к ").Append(Mathf.RoundToInt(goal.x)).Append(',').Append(Mathf.RoundToInt(goal.z)).Append(" (").Append(Mathf.RoundToInt(new Vector2(goal.x - t.position.x, goal.z - t.position.z).magnitude)).Append(" м)");
+            if (dv != null) e.Append(" пробоин ").Append(dv.ScarCount).Append(" дым ").Append(dv.VentCount).Append(dv.Burning ? " ГОРИТ" : "");
+            Camera cam = Camera.main;
+            if (cam != null)
+            {
+                Renderer best = null; int lod = -1, k = 0;
+                foreach (Renderer r in t.GetComponentsInChildren<Renderer>())
+                {
+                    if (!r.enabled || !r.gameObject.activeInHierarchy || r.forceRenderingOff || r is ParticleSystemRenderer) continue;
+                    if (best == null || r.bounds.size.sqrMagnitude > best.bounds.size.sqrMagnitude) { best = r; lod = r.name.Contains("Far") ? 2 : r.name.Contains("LOD") || r.name.Contains("Lite") ? 1 : 0; }
+                    k++;
+                }
+                if (best != null)
+                {
+                    Bounds b = best.bounds; float x0 = 1e9f, y0 = 1e9f, x1 = -1e9f, y1 = -1e9f; bool front = false;
+                    for (int i = 0; i < 8; i++)
+                    {
+                        Vector3 p = b.center + Vector3.Scale(b.extents, new Vector3((i & 1) == 0 ? -1 : 1, (i & 2) == 0 ? -1 : 1, (i & 4) == 0 ? -1 : 1));
+                        Vector3 sp = cam.WorldToScreenPoint(p); if (sp.z <= 0f) continue; front = true;
+                        x0 = Mathf.Min(x0, sp.x); x1 = Mathf.Max(x1, sp.x); y0 = Mathf.Min(y0, Screen.height - sp.y); y1 = Mathf.Max(y1, Screen.height - sp.y);
+                    }
+                    bool on = front && x1 > 0 && x0 < Screen.width && y1 > 0 && y0 < Screen.height;
+                    e.Append(on ? " ЭКРАН " + Mathf.RoundToInt(x0) + "," + Mathf.RoundToInt(y0) + "–" + Mathf.RoundToInt(x1) + "," + Mathf.RoundToInt(y1) + " модель " + (lod == 2 ? "дальняя" : lod == 1 ? "лёгкая" : "полная") : " вне-кадра");
+                    if (on)
+                    {
+                        Vector3 cp = cam.transform.position, to = b.center - cp; RaycastHit rh;
+                        if (Physics.Raycast(cp, to.normalized, out rh, to.magnitude - b.extents.magnitude * 0.5f) && !rh.transform.IsChildOf(t)) e.Append(" заслонён ").Append(rh.transform.name);
+                    }
+                }
+            }
+        }
+
+        // Застревание, смена цели и хода — проверка каждые 0,5 с.
+        readonly Dictionary<Transform, float> stuckSince = new Dictionary<Transform, float>();
+        IAimTarget lastLock; int lastGear = -1; float nextWatch;
+        void Watch()
+        {
+            SkyTideBootstrap g = SkyTideBootstrap.Instance;
+            TouchControls tc = g != null ? g.GetComponent<TouchControls>() : null;
+            string src = RemoteCommands.Running ? "Claude" : tc != null && tc.AutoBattle ? "автобой" : "игрок";
+            if (g != null && g.Ship != null)
+            {
+                Broadside bs = g.Ship.GetComponent<Broadside>();
+                if (bs != null && bs.Locked != lastLock) { Line("ЦЕЛЬ " + (bs.Locked == null ? "снята" : bs.Locked is TargetShip ? Name((TargetShip)bs.Locked) : Name(bs.Locked as AllyShip)) + " · " + src); lastLock = bs.Locked; }
+                if (tc != null && tc.Gear != lastGear) { if (lastGear >= 0) Line("СТУПЕНЬ " + lastGear + " → " + tc.Gear + " · " + src); lastGear = tc.Gear; }
+                Stuck("ФЛАГМАН", g.Ship.transform, g.Ship);
+            }
+            foreach (TargetShip t in TargetShip.All) if (t != null && t.Alive && !t.Surrendered) Stuck(Name(t), t.transform, t.Controller);
+            foreach (AllyShip a in AllyShip.All) if (a != null && a.Alive) Stuck(Name(a), a.transform, a.Controller);
+        }
+        void Stuck(string who, Transform t, ShipController c)
+        {
+            if (c == null) return;
+            bool s = Mathf.Abs(c.throttle) > 0.25f && Mathf.Abs(c.Speed) < 1.5f;
+            float since;
+            if (!s) { if (stuckSince.TryGetValue(t, out since) && since < 0f) Line("ВЫБРАЛСЯ " + who); stuckSince.Remove(t); return; }
+            if (!stuckSince.TryGetValue(t, out since)) { stuckSince[t] = Time.time; return; }
+            if (since > 0f && Time.time - since > 3f)
+            {
+                stuckSince[t] = -1f;   // уже сообщили
+                Line("ЗАСТРЯЛ " + who + " в " + V(t.position) + " рукоять " + F1(c.throttle) + " рядом: " + Nearby(t));
+                if (who == "ФЛАГМАН") AutoPhoto("застрял флагман");
+            }
+        }
+        static string Nearby(Transform t)
+        {
+            StringBuilder b = new StringBuilder();
+            Vector3 p = t.position;
+            foreach (TargetShip o in TargetShip.All) if (o != null && o.Alive && o.transform != t && (o.transform.position - p).sqrMagnitude < 250f * 250f) b.Append(Name(o)).Append(' ').Append(Mathf.RoundToInt((o.transform.position - p).magnitude)).Append("м; ");
+            foreach (AllyShip o in AllyShip.All) if (o != null && o.Alive && o.transform != t && (o.transform.position - p).sqrMagnitude < 250f * 250f) b.Append(Name(o)).Append(' ').Append(Mathf.RoundToInt((o.transform.position - p).magnitude)).Append("м; ");
+            foreach (WorldProps.Solid s in WorldProps.Solids) { float d = new Vector2(s.c.x - p.x, s.c.z - p.z).magnitude - s.r; if (d < 150f) b.Append(s.name).Append(' ').Append(Mathf.RoundToInt(d)).Append("м; "); }
+            SkyFortress f = SkyFortress.Instance;
+            if (f != null) { float d = new Vector2(f.Center.x - p.x, f.Center.z - p.z).magnitude; if (d < f.BoundRadius + 200f) b.Append("крепость ").Append(Mathf.RoundToInt(d)).Append("м от центра; высота стен тут ").Append(Mathf.RoundToInt(f.TopAt(p))).Append("; "); }
+            PlayerHull ph = PlayerHull.Instance; if (ph != null && ph.transform != t && (ph.transform.position - p).sqrMagnitude < 250f * 250f) b.Append("ФЛАГМАН ").Append(Mathf.RoundToInt((ph.transform.position - p).magnitude)).Append("м; ");
+            return b.Length > 0 ? b.ToString() : "ничего";
+        }
+
+        // Автоснимок при важных событиях — не чаще раза в 20 с.
+        static float nextAuto;
+        public static void AutoPhoto(string why)
+        {
+            if (Time.unscaledTime < nextAuto || ReportUploader.Instance == null) return;
+            nextAuto = Time.unscaledTime + 20f;
+            Line("АВТОСНИМОК " + why);
+            ReportUploader.Instance.Photo("авто: " + why, true);
         }
 
         /// <summary>Неподвижное и медленное: крепость, воды, строения, облака, море, погода.</summary>
@@ -182,6 +314,12 @@ namespace SkyTide
         {
             StringBuilder b = new StringBuilder(16384);
             b.Append("МИР\n");
+            if (chunkNo == 0)
+            {
+                b.Append("  СЕССИЯ сборка ").Append(DebugReport.BuildNo).Append(' ').Append(SystemInfo.deviceModel).Append(' ').Append(SystemInfo.graphicsDeviceName).Append(" экран ").Append(Screen.width).Append('×').Append(Screen.height)
+                 .Append(" безоп ").Append(Screen.safeArea).Append(" качество ").Append(QualitySettings.names[QualitySettings.GetQualityLevel()]).Append(" цель-кадров ").Append(Application.targetFrameRate).Append('\n');
+                b.Append("  КОНФИГ ").Append(JsonUtility.ToJson(RemoteConfig.Current)).Append('\n');
+            }
             SkyFortress f = SkyFortress.Instance;
             if (f != null) b.Append("  КРЕПОСТЬ центр ").Append(V(f.Center)).Append(" радиус ").Append(Mathf.RoundToInt(f.BoundRadius)).Append(" причал ").Append(V(f.BerthWorld))
                             .Append(" ремонт ").Append(V(f.RepairCentre)).Append(" овал ").Append(Mathf.RoundToInt(SkyFortress.RepairAlong)).Append('×').Append(Mathf.RoundToInt(SkyFortress.RepairOut))
@@ -223,7 +361,8 @@ namespace SkyTide
             World();
         }
 
-        void OnApplicationPause(bool p) { if (p && chunk.Length > 0) Flush(); }
+        void OnApplicationPause(bool p) { Line(p ? "ИГРА СВЁРНУТА" : "ИГРА РАЗВЁРНУТА"); if (p && chunk.Length > 0) Flush(); }
+        void OnApplicationFocus(bool f) { Line(f ? "ФОКУС ЕСТЬ" : "ФОКУС ПОТЕРЯН"); }
         void OnApplicationQuit() { if (chunk.Length > 0) Flush(); }
     }
 }

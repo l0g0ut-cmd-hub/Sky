@@ -69,6 +69,7 @@ namespace SkyTide
         {
             if (clip == null) return;
             float d = Vector3.Distance(pos, Listener);
+            WorldLog.Raw("ЗВУК " + clip.name + " " + Mathf.RoundToInt(pos.x) + "," + Mathf.RoundToInt(pos.y) + "," + Mathf.RoundToInt(pos.z) + " д" + Mathf.RoundToInt(d) + " гр" + volume.ToString("F2") + (d > maxDist ? " (не слышно)" : ""));
             float pitch = 1f + Random.Range(-pitchJitter, pitchJitter);
             Pending p = new Pending { at = Time.time + (d > 60f ? d / SpeedOfSound : 0f), clip = clip, pos = pos, vol = volume, pitch = pitch, minD = minDist, maxD = maxDist };
             if (p.at <= Time.time) Play(p); else pending.Add(p);

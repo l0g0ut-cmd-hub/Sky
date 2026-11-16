@@ -18,6 +18,7 @@ namespace SkyTide
 
         public static void Pulse(long ms)
         {
+            WorldLog.Raw("ВИБРАЦИЯ " + ms + " мс" + (Enabled ? "" : " (выкл в настройках)"));
             if (!Enabled || Time.unscaledTime < nextAllowed) return;
             nextAllowed = Time.unscaledTime + 0.08f;
 #if UNITY_ANDROID && !UNITY_EDITOR

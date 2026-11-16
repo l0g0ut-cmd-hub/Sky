@@ -90,6 +90,7 @@ namespace SkyTide
         {
             if (a == Mood && why == moodWhy) return;
             Attitude was = Mood; Mood = a; moodWhy = why;
+            WorldLog.Raw("НАСТРОЙ " + WorldLog.Name(this) + " " + was + " → " + a + " («" + why + "»)");
             if (a == Attitude.Hostile && was != Attitude.Hostile) { fightStartHealth = Health01; nextMorale = Time.time + 4f; calmClock = 0f; }
             if (a == Attitude.Calm) { Raiding = false; foeAlly = null; aimClock = 0f; }
             if (a == Attitude.Surrender) { surrenderAt = Time.time; ctrl.throttle = 0f; ctrl.turn = 0f; }
@@ -470,8 +471,18 @@ namespace SkyTide
         }
 
         /// <summary>Курс на точку в обход камня крепости: внутри круга причала курс не ведёт к центру, пока цель далеко.</summary>
+        public Vector3 Goal;
+        /// <summary>Таймеры отношений (журнал мира).</summary>
+        public string Timers()
+        {
+            return "зона " + zoneClock.ToString("F0") + "с прицел " + aimClock.ToString("F1") + "с покой " + calmClock.ToString("F0") + "с"
+                + (Outlaw ? " нарушитель ещё " + (OutlawUntil - Time.time).ToString("F0") + "с" : "")
+                + (Surrendered ? " сдался " + (Time.time - surrenderAt).ToString("F0") + "с назад" : "")
+                + (Raiding ? " набег " + (Time.time - raidAt).ToString("F0") + "с" : "") + (moodWhy != null && moodWhy.Length > 0 ? " повод «" + moodWhy + "»" : "");
+        }
         void SteerTo(Vector3 goal, float throttle)
         {
+            Goal = goal;
             Vector3 to = goal - transform.position; to.y = 0f;
             float dist = to.magnitude;
             Vector3 heading = dist > 1f ? to / dist : transform.forward;

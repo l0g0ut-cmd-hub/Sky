@@ -52,6 +52,8 @@ namespace SkyTide
         }
 
         void Update(){long __pt=PerfTimers.Start();UpdateTimed();PerfTimers.Stop("Огонь врага",__pt);}
+        /// <summary>Почему сейчас не стреляет (журнал мира).</summary>
+        public string Hold = "";
         void UpdateTimed()
         {
             float dt = Time.deltaTime;
@@ -70,23 +72,24 @@ namespace SkyTide
                 pendingAt = Time.time + (volleyAtOnce ? Random.Range(0.01f, 0.04f) : Random.Range(0.12f, 0.2f));
                 return;
             }
-            if (Time.time < ready) return;
-            if (target.Dazed) return;   // капитан растерялся — и пушки молчат
+            if (Time.time < ready) { Hold = "перезарядка " + (ready - Time.time).ToString("F1"); return; }
+            if (target.Dazed) { Hold = "растерялся"; return; }   // капитан растерялся — и пушки молчат
             bool bold = target.Bold;
-            if (!bold && SkyFortress.InSafeZone(transform.position)) return;   // из зоны крепости не стреляет (кроме глупости и дерзости)
+            if (!bold && SkyFortress.InSafeZone(transform.position)) { Hold = "в зоне крепости"; return; }   // из зоны крепости не стреляет (кроме глупости и дерзости)
             // Цель залпа — ближайший на траверзе в пределах пушек: корабль игрока или свой (сторожевой, ведомый, торговец).
             // Под пушками крепости (в безопасной зоне) враг ни по кому не стреляет.
             // Политика отношений: стреляет только в бою с гарнизоном (повод был) — по флагману и своим вне зоны крепости.
-            if (Application.isPlaying && !target.AtWar) { engaged = false; return; }
+            if (Application.isPlaying && !target.AtWar) { engaged = false; Hold = "не воюет"; return; }
             victimAlly = null; float dist = float.MaxValue; Vector3 rel = Vector3.zero, local = Vector3.zero;
             if (player.Alive && (!Application.isPlaying || target.HostileToPlayer || bold) && (bold || !SkyFortress.InSafeZone(pp))) TryVictim(pp, null, ref dist, ref rel, ref local);
             foreach (AllyShip al in AllyShip.All)
                 if (al != null && al.Alive && (bold || !SkyFortress.InSafeZone(al.transform.position))) TryVictim(al.Center, al, ref dist, ref rel, ref local);
-            if (dist == float.MaxValue) return;
+            if (dist == float.MaxValue) { Hold = "нет цели на траверзе"; return; }
             // Дерзкий залп в зоне (своей или цели) — нарушитель: крепость откроет огонь.
             if (bold && (SkyFortress.InSafeZone(transform.position) || SkyFortress.InSafeZone(pp))) target.MarkOutlaw();
             // Затупы расчёта: иногда залп запаздывает (замешкались с фитилями), иногда — «на авось» с двойной ошибкой.
-            if (Random.value < 0.2f) { ready = Time.time + Random.Range(1f, 3f); return; }
+            if (Random.value < 0.2f) { ready = Time.time + Random.Range(1f, 3f); Hold = "замешкались"; return; }
+            Hold = "залп по " + (victimAlly != null ? WorldLog.Name(victimAlly) : "ФЛАГМАН");
             pendingSide = local.x > 0f ? 1 : -1;
             Vector3 dv = VictimVel - lastVolleyVel;
             if (!engaged || dv.magnitude > 5f) errScale = 1f; else errScale = Mathf.Max(0.2f, errScale * 0.6f);
@@ -135,7 +138,7 @@ namespace SkyTide
             Vector3 dir;
             if (!Solve(muzzle, aimAt, out dir)) return;
             dir = Quaternion.Euler(Random.Range(-spreadDeg, spreadDeg), Random.Range(-spreadDeg, spreadDeg), 0f) * dir;
-            FxSystem.NextShooter = WorldLog.Name(GetComponent<TargetShip>()); fx.Fire(muzzle, dir, selfVel, muzzleSpeed, true, 7f, caliber);
+            FxSystem.NextShooter = WorldLog.Name(GetComponent<TargetShip>()); FxSystem.NextTarget = victimAlly != null ? victimAlly.transform : (PlayerHull.Instance != null ? PlayerHull.Instance.transform : null); fx.Fire(muzzle, dir, selfVel, muzzleSpeed, true, 7f, caliber);
         }
 
         Vector3[] muzzles; bool[] muzzleFound;

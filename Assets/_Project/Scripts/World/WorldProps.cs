@@ -213,7 +213,7 @@ namespace SkyTide
                 Vector3 dir;
                 if (!Solve(m, aim, lead, out dir)) continue;
                 dir = Quaternion.Euler(UnityEngine.Random.Range(-TowerSpread, TowerSpread), UnityEngine.Random.Range(-TowerSpread, TowerSpread), 0f) * dir;
-                FxSystem.NextShooter = w.name; FxSystem.Instance.Fire(m + dir * 4f, dir, Vector3.zero, TowerMuzzle, atPlayer, 8f, 1f);
+                FxSystem.NextShooter = w.name; FxSystem.NextTarget = atPlayer ? g.Ship.transform : best.transform; FxSystem.Instance.Fire(m + dir * 4f, dir, Vector3.zero, TowerMuzzle, atPlayer, 8f, 1f);
                 w.next = Time.time + TowerReload + UnityEngine.Random.Range(0f, 1.5f);
                 DebugReport.Count("выстрелов сторожевых башен");
                 if (atPlayer)

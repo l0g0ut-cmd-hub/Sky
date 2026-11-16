@@ -47,6 +47,8 @@ namespace SkyTide
             drawCalls.Dispose(); batches.Dispose(); setPass.Dispose(); triangles.Dispose(); gcAlloc.Dispose(); usedMemory.Dispose();
         }
 
+        /// <summary>Отрисовка одной строкой (журнал мира, каждую секунду).</summary>
+        public string RenderLine() { return "вызовов " + Rec(drawCalls, 1f, "") + " SetPass " + Rec(setPass, 1f, "") + " треуг " + Rec(triangles, 1000f, "k") + " мусор " + Rec(gcAlloc, 1024f, "КБ") + " память " + Rec(usedMemory, 1048576f, "МБ") + " бат " + BatteryTemp.ToString("F1") + "°"; }
         static string Rec(ProfilerRecorder r, float div, string unit) { return r.Valid ? (r.LastValue / div).ToString("F0") + unit : "н/д"; }
 
         public string RenderLine()
