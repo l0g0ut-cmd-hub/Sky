@@ -1,52 +1,28 @@
 {
  "jobs": [
   {
-   "id": "sloop",
+   "id": "brig",
    "concept": true,
    "account": 2,
    "refs": [
-    "refs/brig.png",
-    "refs/frigate.png",
-    "refs/ship_of_line.png"
+    "refs/ship_of_line.png",
+    "refs/heavyfrigate.png",
+    "refs/ketch.png"
    ],
-   "polycount": 18000,
-   "image_prompt": "Same art style, materials and colors as the reference airships: weathered reddish-brown wooden hull, brass fittings, round cream canvas gas balloons with dark brown stripes mounted above the deck on masts and struts. Single flying airship, three-quarter side view, whole ship visible, plain background, no water, no ground, no characters. A SMALL FAST SCOUT SLOOP, smaller than the references: narrow light hull, one tall mast with a crow's nest lookout platform, one long sail, two round balloons above the deck (not on the bowsprit), two cannon ports per side."
+   "polycount": 32000,
+   "image_prompt": "Same art style, materials and colors as the reference airships: weathered reddish-brown wooden hull, brass fittings, round cream canvas gas balloons with dark brown stripes mounted above the deck on masts and struts. Single flying airship, three-quarter side view, whole ship visible, plain background, no water, no ground, no characters. A TWO-MASTED BRIG warship, medium size, smaller than the references: medium hull, three round balloons in a row above the deck, four cannon ports per side, stern cabin with windows."
   },
   {
-   "id": "corvette",
+   "id": "frigate",
    "concept": true,
    "account": 2,
    "refs": [
-    "refs/brig.png",
-    "refs/frigate.png",
-    "refs/ship_of_line.png"
+    "refs/ship_of_line.png",
+    "refs/heavyfrigate.png",
+    "refs/ketch.png"
    ],
-   "polycount": 25000,
-   "image_prompt": "Same art style, materials and colors as the reference airships: weathered reddish-brown wooden hull, brass fittings, round cream canvas gas balloons with dark brown stripes mounted above the deck on masts and struts. Single flying airship, three-quarter side view, whole ship visible, plain background, no water, no ground, no characters. A CORVETTE HUNTER, slightly smaller than the brig: sleek aggressive narrow low hull with a sharp iron ram on the bow, two round balloons in tandem above the deck, three cannon ports per side, dark sails."
-  },
-  {
-   "id": "ketch",
-   "concept": true,
-   "account": 2,
-   "refs": [
-    "refs/brig.png",
-    "refs/frigate.png",
-    "refs/ship_of_line.png"
-   ],
-   "polycount": 28000,
-   "image_prompt": "Same art style, materials and colors as the reference airships: weathered reddish-brown wooden hull, brass fittings, round cream canvas gas balloons with dark brown stripes mounted above the deck on masts and struts. Single flying airship, three-quarter side view, whole ship visible, plain background, no water, no ground, no characters. A BOMB KETCH: short broad heavily reinforced hull; in the middle of the deck one huge black iron MORTAR, a fat short cannon barrel pointing steeply upward on a round turntable; two round balloons fore and aft, one cannon port per side."
-  },
-  {
-   "id": "heavyfrigate",
-   "concept": true,
-   "account": 2,
-   "refs": [
-    "refs/brig.png",
-    "refs/frigate.png",
-    "refs/ship_of_line.png"
-   ],
-   "polycount": 50000,
-   "image_prompt": "Same art style, materials and colors as the reference airships: weathered reddish-brown wooden hull, brass fittings, round cream canvas gas balloons with dark brown stripes mounted above the deck on masts and struts. Single flying airship, three-quarter side view, whole ship visible, plain background, no water, no ground, no characters. A HEAVY ARMORED FRIGATE, bigger than the frigate reference: long hull reinforced with riveted dark iron plates, eight cannon ports per side, five big round balloons above the deck, armored stern castle."
+   "polycount": 42000,
+   "image_prompt": "Same art style, materials and colors as the reference airships: weathered reddish-brown wooden hull, brass fittings, round cream canvas gas balloons with dark brown stripes mounted above the deck on masts and struts. Single flying airship, three-quarter side view, whole ship visible, plain background, no water, no ground, no characters. A THREE-MASTED FRIGATE, a bit smaller than the heavy frigate reference and without iron plates: long elegant wooden hull, six cannon ports per side, four round balloons in two pairs above the deck, ornate stern gallery, long pennant."
   }
  ]
 }
