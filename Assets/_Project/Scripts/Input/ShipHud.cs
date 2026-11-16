@@ -652,7 +652,7 @@ namespace SkyTide
                 bool fresh = Time.time < t.MoodTextUntil;
                 if (!fresh && t.Mood == Attitude.Calm) continue;
                 float dist = Vector3.Distance(input.ship.transform.position, t.transform.position);
-                if (dist > 600f) continue;
+                if (dist > (fresh ? 600f : 400f)) continue;   // постоянная плашка «ВРАЖДЕБЕН» — только ближе 400 м
                 Vector3 top = t.BoxCorner(7); top.x = t.Center.x; top.z = t.Center.z;
                 Vector3 sp = c.WorldToScreenPoint(top + Vector3.up * 4f); if (sp.z <= 0f) continue;
                 string txt = fresh ? t.MoodText : Relations.Name(t.Mood);
@@ -661,7 +661,9 @@ namespace SkyTide
                 float a = Mathf.Clamp01((600f - dist) / 120f);
                 col.a *= a;
                 float capH = l.unit * 0.016f;
-                CapText(sp.x, Screen.height - sp.y, txt, capH, col, true);
+                float sy = Screen.height - sp.y;
+                if (sy < l.unit * 0.22f || sy > Screen.height - l.unit * 0.06f) continue;   // не поверх компаса, корпуса и верхних плашек
+                CapText(sp.x, sy, txt, capH, col, true);
             }
         }
         void LockMarker(TouchControls input, HudLayout l)

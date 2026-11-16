@@ -278,9 +278,9 @@ namespace SkyTide.EditorTools
                 float scale = k.length / 38f;
                 fleet[i] = new ShipVariant { name = k.name, mesh = mesh, materials = new[] { m },
                     lite = AssetDatabase.LoadAssetAtPath<TextAsset>(n + "_lod.bytes"), liteSrc = AssetDatabase.LoadAssetAtPath<TextAsset>(n + "_lod_src.bytes"),
-                    lodDistance = 90f * scale,
+                    lodDistance = 60f * scale,   // полная модель ближе (адмиральский — 410 м): FPS у причала
                     far = AssetDatabase.LoadAssetAtPath<TextAsset>(n + "_far.bytes"), farSrc = AssetDatabase.LoadAssetAtPath<TextAsset>(n + "_far_src.bytes"),
-                    farDistance = 450f * scale };
+                    farDistance = 320f * scale };
                 made++;
             }
             Debug.Log("SkyTide: флот — моделей классов " + made + " из " + ShipClasses.Count);

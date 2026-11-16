@@ -113,6 +113,7 @@ namespace SkyTide
         public void Collided(AllyShip with, float closing)
         {
             if (!Alive || Mood != Attitude.Calm) return;
+            if (SkyFortress.InSafeZone(transform.position) && !Fool) { MoodText = "ОСТОРОЖНЕЕ!"; MoodTextUntil = Time.time + 3f; return; }   // у крепости не дерутся (кроме дурня)
             float chance = Fool ? 0.95f : temper == Temper.Bold ? 0.6f : temper == Temper.Cautious ? 0.3f : 0.1f;
             if (Random.value < chance * Mathf.Clamp01(closing / 15f)) { foeAlly = with; Decide("столкновение со своим", false, false); HudNotice.Show("СТОЛКНОВЕНИЕ — КОРСАР ОТКРЫВАЕТ ОГОНЬ", 1, 3f); }
             else { MoodText = "ОСТОРОЖНЕЕ!"; MoodTextUntil = Time.time + 3f; }
@@ -268,7 +269,17 @@ namespace SkyTide
                             Ai("БОЙ-" + AllyShip.RoleNames[(int)fa.role].Substring(0, 4), Mathf.RoundToInt(ta.magnitude) + " м"); Engage(ta); return true;
                         }
                         if (playerTarget) { Ai(Raiding ? "НАБЕГ" : Health01 < 0.3f ? "ОТХОД" : "БОЙ", "флагман " + Mathf.RoundToInt(tp.magnitude) + " м"); Engage(tp); return true; }
-                        return false;   // флагман под пушками крепости — ждём снаружи (дозор)
+                        SkyFortress sf = SkyFortress.Instance;
+                        if (sf != null)
+                        {
+                            // Флагман под пушками крепости — ждём снаружи, на 300 м за краем зоны, не заходя в порт.
+                            Vector3 off = transform.position - sf.Center; off.y = 0f; if (off.sqrMagnitude < 1f) off = Vector3.forward;
+                            Vector3 wait = sf.Center + off.normalized * (sf.safeRadius + 300f); wait.y = transform.position.y;
+                            Ai("ЖДЁТ", "у края зоны крепости");
+                            SteerTo(wait, (wait - transform.position).magnitude > 150f ? 0.6f : 0.15f);
+                            return true;
+                        }
+                        return false;
                     }
             }
             return false;
@@ -384,7 +395,7 @@ namespace SkyTide
                 gunner.skillError = skill == Skill.Novice ? 1.5f : skill == Skill.Veteran ? 0.7f : 1f;
                 gunner.skillCooldown = skill == Skill.Novice ? 1.25f : skill == Skill.Veteran ? 0.85f : 1f;
             }
-            mode = Mode.Fight; OutlawUntil = -1f; dumbAt = -1f; Bold = false;
+            mode = Mode.Fight; OutlawUntil = -1f; dumbAt = -1f; Bold = false; FreeGuestSlot();
             float tr = Random.value;
             temper = tr < 0.3f ? Temper.Coward : tr < 0.8f ? Temper.Cautious : Temper.Bold;
             if (Class == ShipClass.Admiral || Class == ShipClass.ShipOfLine) temper = Temper.Bold;
@@ -452,6 +463,9 @@ namespace SkyTide
                 if (Time.time < nextPortThink) return false;
                 nextPortThink = Time.time + Random.Range(20f, 35f);
                 bool go = Health01 < 0.45f ? Random.value < 0.6f : Random.value < (duty == Duty.Port ? 0.6f : 0.06f);
+                // Гости порта — по местам (их шесть, у мелких и средних; тяжёлый фрегат и крупнее в порт не ходят). Нет свободного —
+                // не идёт (раньше все шли в одну точку — пробка у причала, владелец 16.11).
+                if (go && (Class >= ShipClass.HeavyFrigate || !TakeGuestSlot())) go = false;
                 if (!go) return false;
                 mode = Mode.ToPort;
                 DebugReport.Count("врагов ушло в порт");
@@ -470,8 +484,9 @@ namespace SkyTide
                 SteerTo(transform.position + (off.sqrMagnitude > 1f ? off.normalized : outDir) * 600f, 1f);
                 return true;
             }
-            // Место гостя — в стороне от места игрока и пришвартованных кораблей.
-            Vector3 spot = f.BerthWorld + outDir * 70f + Vector3.Cross(Vector3.up, outDir) * 170f; spot.y = transform.position.y;
+            // Место гостя — своё из шести (GuestSpot): дугой вокруг крепости по обе стороны, в стороне от стоянки и места флагмана.
+            if (guestSlot < 0 && !TakeGuestSlot()) { mode = Mode.Fight; Pick(); return false; }
+            Vector3 spot = GuestSpot(f, guestSlot); spot.y = transform.position.y;
             float d = Vector3.Distance(new Vector3(transform.position.x, spot.y, transform.position.z), spot);
             bool inZone = SkyFortress.InSafeZone(transform.position);
             // Глупость: в зоне крепости, игрок рядом и жив — залп. Крепость этого не прощает.
@@ -497,8 +512,33 @@ namespace SkyTide
                 nextPortRepair = Time.time + 1.5f; hits--;
                 if (hits == 0 && damageVisual != null) damageVisual.ResetDamage();
             }
-            if (Time.time >= portUntil && hits <= hitsToSink / 4) { mode = Mode.Fight; nextPortThink = Time.time + Random.Range(40f, 70f); Pick(); return false; }
+            if (Time.time >= portUntil && hits <= hitsToSink / 4) { mode = Mode.Fight; FreeGuestSlot(); nextPortThink = Time.time + Random.Range(40f, 70f); Pick(); return false; }
             return true;
+        }
+
+        // ---------- места гостей порта ----------
+        static readonly TargetShip[] guests = new TargetShip[6];
+        int guestSlot = -1;
+        bool TakeGuestSlot()
+        {
+            if (guestSlot >= 0 && guests[guestSlot] == this) return true;
+            for (int i = 0; i < guests.Length; i++)
+                if (guests[i] == null || !guests[i].Alive || guests[i].guestSlot != i || (guests[i].mode != Mode.ToPort && guests[i].mode != Mode.InPort))
+                { if (guests[i] != null && guests[i] != this) guests[i].guestSlot = -1; guests[i] = this; guestSlot = i; return true; }
+            return false;
+        }
+        void FreeGuestSlot() { if (guestSlot >= 0 && guests[guestSlot] == this) guests[guestSlot] = null; guestSlot = -1; }
+        /// <summary>Место гостя: дуга вокруг крепости на 280 м дальше причала, под углами ±70°, ±100°, ±130° от направления
+        /// причала (стоянка гарнизона и место флагмана — прямо у причала, ±0…40°). Под корпусом не камень — иначе дальше.</summary>
+        static Vector3 GuestSpot(SkyFortress f, int i)
+        {
+            Vector3 o = f.BerthWorld - f.Center; o.y = 0f;
+            float r = o.magnitude + 280f; o = o.sqrMagnitude > 1f ? o.normalized : Vector3.forward;
+            float ang = (70f + (i / 2) * 30f) * (i % 2 == 0 ? 1f : -1f);
+            Vector3 dir = Quaternion.Euler(0f, ang, 0f) * o;
+            Vector3 p = f.Center + dir * r;
+            for (int k = 0; k < 12 && f.TopAt(p) > f.BerthWorld.y - 30f; k++) p += dir * 40f;
+            return p;
         }
         public float respawnDelay = 6f;
 
@@ -643,7 +683,7 @@ namespace SkyTide
             }
             else burnClock = 0f;
             if (Application.isPlaying) Relate(Time.deltaTime);
-            if (Mood != Attitude.Calm && InPort) mode = Mode.Fight;   // враждебный или бегущий — не гость порта
+            if (Mood != Attitude.Calm && (InPort || mode == Mode.ToPort)) { mode = Mode.Fight; FreeGuestSlot(); }   // враждебный или бегущий — не гость порта
             if (Mood == Attitude.Calm && PortLife()) return;
             if (nextDaze <= 0f) nextDaze = Time.time + Random.Range(10f, 20f) * dazeScale;
             if (Time.time >= nextDaze && !Dazed)
