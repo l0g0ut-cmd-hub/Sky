@@ -1,0 +1,11 @@
+{
+ "id": "gunboat",
+ "account": 2,
+ "image_prompt": "Same art style, materials and colors as the reference airships: weathered reddish-brown wood, brass fittings. IMPORTANT: the gas envelopes are LONG CIGAR-SHAPED ZEPPELIN BALLOONS (elongated, pointed ends, tan canvas with a fine rope net), exactly like the ship in the last reference image — NOT round balloons. Single isolated object, three-quarter side view, whole object visible, plain background, no water, no ground, no characters. A HEAVY ZEPPELIN GUNBOAT: two long cigar-shaped zeppelin balloons side by side above, a heavy armored wooden-and-iron gondola hull hanging below them with eight cannon ports per side, propellers at the stern.",
+ "concept": "01a1e327-deb6-744a-afc6-c5c07fc129e1",
+ "concept_credits": 3,
+ "model": "01a1e328-42b3-76a3-b72e-efa1ac1dc91e",
+ "model_credits": 30,
+ "glb_bytes": 16230708,
+ "stage": "done"
+}
