@@ -2,63 +2,45 @@
  "jobs": [
   {
    "id": "cutter",
-   "polycount": 12000,
-   "prompt": "Stylized dark-fantasy flying sky-ship, single isolated game asset, no water, no ground, no base, no characters. Wooden sailing-ship hull with brass trim and iron fittings, held aloft by spherical canvas gas balloons on a brass frame above the deck, propellers at the stern, rudder fin under the keel. Tiny customs patrol cutter: very small sleek narrow hull, one short mast, one small elongated balloon, a single cannon port on each side, bright lantern on the bow, light painted hull.",
-   "texture_prompt": "Weathered dark oak planks, polished brass and dark iron fittings, tan canvas balloons with leather straps, warm amber lanterns, muted crimson painted trim. Painterly game texture, clean readable materials."
-  },
-  {
-   "id": "sloop",
-   "polycount": 15000,
-   "prompt": "Stylized dark-fantasy flying sky-ship, single isolated game asset, no water, no ground, no base, no characters. Wooden sailing-ship hull with brass trim and iron fittings, held aloft by spherical canvas gas balloons on a brass frame above the deck, propellers at the stern, rudder fin under the keel. Small fast scout sloop: narrow light hull, one tall mast with a crow's nest lookout platform, one long cigar-shaped balloon, two cannon ports on each side.",
-   "texture_prompt": "Weathered dark oak planks, polished brass and dark iron fittings, tan canvas balloons with leather straps, warm amber lanterns, muted crimson painted trim. Painterly game texture, clean readable materials."
-  },
-  {
-   "id": "corvette",
-   "polycount": 22000,
-   "prompt": "Stylized dark-fantasy flying sky-ship, single isolated game asset, no water, no ground, no base, no characters. Wooden sailing-ship hull with brass trim and iron fittings, held aloft by spherical canvas gas balloons on a brass frame above the deck, propellers at the stern, rudder fin under the keel. Corvette hunter: sleek aggressive narrow hull with a sharp iron ram on the bow, two medium balloons in tandem, three cannon ports on each side, low profile, built for speed.",
-   "texture_prompt": "Weathered dark oak planks, polished brass and dark iron fittings, tan canvas balloons with leather straps, warm amber lanterns, muted crimson painted trim. Painterly game texture, clean readable materials."
-  },
-  {
-   "id": "fireship",
-   "polycount": 15000,
-   "prompt": "Stylized dark-fantasy flying sky-ship, single isolated game asset, no water, no ground, no base, no characters. Wooden sailing-ship hull with brass trim and iron fittings, held aloft by spherical canvas gas balloons on a brass frame above the deck, propellers at the stern, rudder fin under the keel. Fire ship: small battered old hull with no cannons, deck packed with stacked gunpowder barrels and crates, one patched balloon, iron spikes on the bow for ramming, crude repairs.",
-   "texture_prompt": "Weathered dark oak planks, polished brass and dark iron fittings, tan canvas balloons with leather straps, warm amber lanterns, muted crimson painted trim. Painterly game texture, clean readable materials."
+   "only_preview": true,
+   "ai_model": "meshy-6-lite",
+   "polycount": 30000,
+   "prompt": "ONE single connected flying airship, isolated game asset, no water, no ground, no base, no characters, no wheels, no separate objects. Dark-fantasy sky-ship: wooden sailing-ship hull with brass trim and iron fittings. The ship floats beneath large round tan canvas gas balloons fixed directly above the deck with brass struts and ropes; the balloons are essential and clearly visible. Small propellers at the stern. Tiny customs patrol cutter: very small sleek hull, one short mast, one round balloon above the deck, one cannon port per side, lantern on the bow."
   },
   {
    "id": "brig",
+   "only_preview": true,
+   "ai_model": "meshy-6-lite",
    "polycount": 30000,
-   "prompt": "Stylized dark-fantasy flying sky-ship, single isolated game asset, no water, no ground, no base, no characters. Wooden sailing-ship hull with brass trim and iron fittings, held aloft by spherical canvas gas balloons on a brass frame above the deck, propellers at the stern, rudder fin under the keel. Two-masted brig warship: medium hull, three round balloons in a row above the deck, four cannon ports on each side, stern cabin with lit windows.",
-   "texture_prompt": "Weathered dark oak planks, polished brass and dark iron fittings, tan canvas balloons with leather straps, warm amber lanterns, muted crimson painted trim. Painterly game texture, clean readable materials."
+   "prompt": "ONE single connected flying airship, isolated game asset, no water, no ground, no base, no characters, no wheels, no separate objects. Dark-fantasy sky-ship: wooden sailing-ship hull with brass trim and iron fittings. The ship floats beneath large round tan canvas gas balloons fixed directly above the deck with brass struts and ropes; the balloons are essential and clearly visible. Small propellers at the stern. Two-masted brig warship: medium hull, three round balloons in a row above the deck, four cannon ports per side, stern cabin with windows."
   },
   {
-   "id": "ketch",
-   "polycount": 28000,
-   "prompt": "Stylized dark-fantasy flying sky-ship, single isolated game asset, no water, no ground, no base, no characters. Wooden sailing-ship hull with brass trim and iron fittings, held aloft by spherical canvas gas balloons on a brass frame above the deck, propellers at the stern, rudder fin under the keel. Bomb ketch: short broad heavily reinforced hull with one huge stubby mortar mounted mid-deck pointing upward, two round balloons fore and aft, one cannon port on each side.",
-   "texture_prompt": "Weathered dark oak planks, polished brass and dark iron fittings, tan canvas balloons with leather straps, warm amber lanterns, muted crimson painted trim. Painterly game texture, clean readable materials."
+   "id": "fireship",
+   "only_preview": true,
+   "ai_model": "meshy-6-lite",
+   "polycount": 30000,
+   "prompt": "ONE single connected flying airship, isolated game asset, no water, no ground, no base, no characters, no wheels, no separate objects. Dark-fantasy sky-ship: wooden sailing-ship hull with brass trim and iron fittings. The ship floats beneath large round tan canvas gas balloons fixed directly above the deck with brass struts and ropes; the balloons are essential and clearly visible. Small propellers at the stern. Fire ship: small battered hull with NO cannons, the open deck is piled high with stacked gunpowder barrels, iron ram spikes on the bow, one patched round balloon."
   },
   {
    "id": "frigate",
-   "polycount": 40000,
-   "prompt": "Stylized dark-fantasy flying sky-ship, single isolated game asset, no water, no ground, no base, no characters. Wooden sailing-ship hull with brass trim and iron fittings, held aloft by spherical canvas gas balloons on a brass frame above the deck, propellers at the stern, rudder fin under the keel. Three-masted frigate: long hull, one full gun deck with six cannon ports on each side, four balloons in two pairs, ornate stern gallery with windows, long pennant on the main mast.",
-   "texture_prompt": "Weathered dark oak planks, polished brass and dark iron fittings, tan canvas balloons with leather straps, warm amber lanterns, muted crimson painted trim. Painterly game texture, clean readable materials."
-  },
-  {
-   "id": "heavyfrigate",
-   "polycount": 45000,
-   "prompt": "Stylized dark-fantasy flying sky-ship, single isolated game asset, no water, no ground, no base, no characters. Wooden sailing-ship hull with brass trim and iron fittings, held aloft by spherical canvas gas balloons on a brass frame above the deck, propellers at the stern, rudder fin under the keel. Heavy armored frigate: large hull reinforced with riveted iron plates, eight cannon ports on each side, five balloons, armored stern castle.",
-   "texture_prompt": "Weathered dark oak planks, polished brass and dark iron fittings, tan canvas balloons with leather straps, warm amber lanterns, muted crimson painted trim. Painterly game texture, clean readable materials."
+   "only_preview": true,
+   "ai_model": "meshy-6-lite",
+   "polycount": 30000,
+   "prompt": "ONE single connected flying airship, isolated game asset, no water, no ground, no base, no characters, no wheels, no separate objects. Dark-fantasy sky-ship: wooden sailing-ship hull with brass trim and iron fittings. The ship floats beneath large round tan canvas gas balloons fixed directly above the deck with brass struts and ropes; the balloons are essential and clearly visible. Small propellers at the stern. Three-masted frigate: long hull, six cannon ports per side, four round balloons in two pairs above the deck, ornate stern gallery."
   },
   {
    "id": "ship_of_line",
-   "polycount": 60000,
-   "prompt": "Stylized dark-fantasy flying sky-ship, single isolated game asset, no water, no ground, no base, no characters. Wooden sailing-ship hull with brass trim and iron fittings, held aloft by spherical canvas gas balloons on a brass frame above the deck, propellers at the stern, rudder fin under the keel. Massive ship of the line: very large hull with two stacked gun decks, ten cannon ports on each side per deck, six big balloons, towering stern castle with rows of windows.",
-   "texture_prompt": "Weathered dark oak planks, polished brass and dark iron fittings, tan canvas balloons with leather straps, warm amber lanterns, muted crimson painted trim. Painterly game texture, clean readable materials."
+   "only_preview": true,
+   "ai_model": "meshy-6-lite",
+   "polycount": 30000,
+   "prompt": "ONE single connected flying airship, isolated game asset, no water, no ground, no base, no characters, no wheels, no separate objects. Dark-fantasy sky-ship: wooden sailing-ship hull with brass trim and iron fittings. The ship floats beneath large round tan canvas gas balloons fixed directly above the deck with brass struts and ropes; the balloons are essential and clearly visible. Small propellers at the stern. Huge ship of the line: very large tall hull with two stacked rows of cannon ports, ten per side per row, six big round balloons above the deck, high stern castle with windows. No towers."
   },
   {
    "id": "admiral",
-   "polycount": 70000,
-   "prompt": "Stylized dark-fantasy flying sky-ship, single isolated game asset, no water, no ground, no base, no characters. Wooden sailing-ship hull with brass trim and iron fittings, held aloft by spherical canvas gas balloons on a brass frame above the deck, propellers at the stern, rudder fin under the keel. Colossal admiral flagship: enormous hull with three stacked gun decks, fourteen cannon ports on each side, eight large balloons on a heavy brass frame, gilded towering stern castle, large carved figurehead, banners.",
-   "texture_prompt": "Weathered dark oak planks, polished brass and dark iron fittings, tan canvas balloons with leather straps, warm amber lanterns, muted crimson painted trim. Painterly game texture, clean readable materials."
+   "only_preview": true,
+   "ai_model": "meshy-6-lite",
+   "polycount": 30000,
+   "prompt": "ONE single connected flying airship, isolated game asset, no water, no ground, no base, no characters, no wheels, no separate objects. Dark-fantasy sky-ship: wooden sailing-ship hull with brass trim and iron fittings. The ship floats beneath large round tan canvas gas balloons fixed directly above the deck with brass struts and ropes; the balloons are essential and clearly visible. Small propellers at the stern. Colossal admiral flagship: enormous hull with three stacked rows of cannon ports, eight large round balloons on a heavy brass frame above the deck, gilded stern castle, carved figurehead, red banners."
   }
  ]
 }

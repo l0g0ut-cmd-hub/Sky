@@ -46,6 +46,8 @@ def main():
     jobs = [j for j in json.load(open(jobs_path, encoding="utf-8"))["jobs"] if not j.get("skip")]
     state = {}
     for j in jobs:
+        if j.get("refine_of"):
+            state[j["id"]] = {"job": j, "stage": "preview", "task": j["refine_of"]}; print(j["id"], "текстура к", j["refine_of"]); continue
         body = {"mode": "preview", "prompt": j["prompt"][:800], "ai_model": j.get("ai_model", "latest"),
                 "should_remesh": True, "topology": "triangle", "target_polycount": int(j.get("polycount", 40000)),
                 "target_formats": ["glb"], "origin_at": "bottom"}
@@ -66,6 +68,17 @@ def main():
             if st in ("FAILED", "CANCELED"):
                 s["stage"] = "error"; s["error"] = json.dumps(t.get("task_error")); print(jid, s["stage"], st, s["error"]); continue
             if st != "SUCCEEDED": continue
+            if s["stage"] == "preview" and s["job"].get("only_preview"):
+                d = os.path.join(out, jid); os.makedirs(d, exist_ok=True)
+                try:
+                    if t.get("thumbnail_url"): fetch(t["thumbnail_url"], os.path.join(d, "thumb.png"))
+                    size = fetch(t["model_urls"]["glb"], os.path.join(d, "shape.glb")) if t.get("model_urls", {}).get("glb") else 0
+                    json.dump({"id": jid, "preview": t["id"], "prompt": s["job"]["prompt"], "credits": t.get("consumed_credits"),
+                               "shape_bytes": size}, open(os.path.join(d, "task.json"), "w", encoding="utf-8"), ensure_ascii=False, indent=1)
+                    s["stage"] = "done"; s["preview"] = t["id"]; print(jid, "ФОРМА ГОТОВА", t["id"])
+                except Exception as e:
+                    s["stage"] = "error"; s["error"] = str(e); print(jid, "ОШИБКА скачивания", e)
+                continue
             if s["stage"] == "preview":
                 s["preview"] = t["id"]; s["preview_credits"] = t.get("consumed_credits")
                 body = {"mode": "refine", "preview_task_id": t["id"], "enable_pbr": True, "texture_resolution": "2k",
