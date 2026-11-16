@@ -487,7 +487,7 @@ namespace SkyTide
             }
             // Место гостя — своё из шести (GuestSpot): дугой вокруг крепости по обе стороны, в стороне от стоянки и места флагмана.
             if (guestSlot < 0 && !TakeGuestSlot()) { mode = Mode.Fight; Pick(); return false; }
-            Vector3 spot = GuestSpot(f, guestSlot); spot.y = transform.position.y;
+            Vector3 spot = GuestSpot(f, guestSlot, HullHalfWidth, HullHalfLength); spot.y = transform.position.y;
             float d = Vector3.Distance(new Vector3(transform.position.x, spot.y, transform.position.z), spot);
             bool inZone = SkyFortress.InSafeZone(transform.position);
             // Глупость: в зоне крепости, игрок рядом и жив — залп. Крепость этого не прощает.
@@ -506,8 +506,10 @@ namespace SkyTide
                 return true;
             }
             Ai("ПОРТ");
-            // У причала: стоит, чинится (попадание в 1.5 с), потом уходит обратно в бой.
+            // У причала: стоит бортом к пирсу носом от крепости, чинится (попадание в 1.5 с), потом уходит.
             ctrl.throttle = 0f; ctrl.turn = 0f;
+            transform.SetPositionAndRotation(Vector3.MoveTowards(transform.position, spot, 3f * Time.deltaTime),
+                Quaternion.RotateTowards(transform.rotation, Quaternion.LookRotation(outDir, Vector3.up), 8f * Time.deltaTime));
             if (Time.time >= nextPortRepair && hits > 0)
             {
                 nextPortRepair = Time.time + 1.5f; hits--;
@@ -529,17 +531,17 @@ namespace SkyTide
             return false;
         }
         void FreeGuestSlot() { if (guestSlot >= 0 && guests[guestSlot] == this) guests[guestSlot] = null; guestSlot = -1; }
-        /// <summary>Место гостя: дуга вокруг крепости на 280 м дальше причала, под углами ±70°, ±100°, ±130° от направления
-        /// причала (стоянка гарнизона и место флагмана — прямо у причала, ±0…40°). Под корпусом не камень — иначе дальше.</summary>
-        static Vector3 GuestSpot(SkyFortress f, int i)
+        /// <summary>Место гостя — сбоку у причала (владелец 16.11: «не перед причалом, где ремонт, а с боков у причала»):
+        /// по три с каждой стороны, вдоль пирса к крепости (нос в 12 м за кромкой причала, шаг 85 м), бортом к пирсу, зазор 10 м;
+        /// край пирса ищется по поверхности крепости (TopAt) — гость встаёт сразу за ним.</summary>
+        static Vector3 GuestSpot(SkyFortress f, int i, float halfW, float halfL)
         {
-            Vector3 o = f.BerthWorld - f.Center; o.y = 0f;
-            float r = o.magnitude + 280f; o = o.sqrMagnitude > 1f ? o.normalized : Vector3.forward;
-            float ang = (70f + (i / 2) * 30f) * (i % 2 == 0 ? 1f : -1f);
-            Vector3 dir = Quaternion.Euler(0f, ang, 0f) * o;
-            Vector3 p = f.Center + dir * r;
-            for (int k = 0; k < 12 && f.TopAt(p) > f.BerthWorld.y - 30f; k++) p += dir * 40f;
-            return p;
+            Vector3 o = f.BerthWorld - f.Center; o.y = 0f; o = o.sqrMagnitude > 1f ? o.normalized : Vector3.forward;
+            Vector3 across = Vector3.Cross(Vector3.up, o) * (i % 2 == 0 ? 1f : -1f);
+            Vector3 along = f.BerthWorld - o * (12f + halfL + (i / 2) * 85f);   // нос — не дальше кромки причала (там овал ремонта)
+            float edge = 12f;
+            for (float w = 8f; w < 260f; w += 4f) { if (f.TopAt(along + across * w) < f.BerthWorld.y - 40f) { edge = w; break; } }
+            return along + across * (edge + halfW + 10f);
         }
         public float respawnDelay = 6f;
 
