@@ -15,6 +15,15 @@ namespace SkyTide
         [Tooltip("Варианты модели: меш из tools/convert_glb*.py и материалы. Пусто — заглушка из примитивов.")]
         public ShipVariant[] ships;
         public ShipVariant targetShip;   // корабль-мишень (модель Meshy)
+        /// <summary>Флот по классам (ShipClass: катер … адмиральский) — модели Meshy Models/Fleet/Ship_&lt;id&gt;. Нет модели — Корсар.</summary>
+        public ShipVariant[] fleet;
+        public bool HasFleet { get { return fleet != null && fleet.Length == ShipClasses.Count && fleet[(int)ShipClass.Brig] != null && fleet[(int)ShipClass.Brig].IsValid; } }
+        /// <summary>Модель класса или Корсар, если модели класса нет.</summary>
+        public ShipVariant ClassVariant(ShipClass c)
+        {
+            if (fleet != null && (int)c >= 0 && (int)c < fleet.Length && fleet[(int)c] != null && fleet[(int)c].IsValid) return fleet[(int)c];
+            return targetShip;
+        }
         [Header("Небесная крепость-причал (Models/SkyFortress*, tools/convert_glb.py + tools/fortress_data.py)")]
         public TextAsset fortressMesh, fortressData;
         public Material[] fortressMaterials;
@@ -171,9 +180,10 @@ namespace SkyTide
 
             if (targetShip != null && targetShip.IsValid)
             {
-                ShipController t = ShipFactory.Build("Target Ship", spawnPosition + new Vector3(260f, 0f, 220f), spawnHeading + 140f, materials, targetShip);
+                ShipVariant tv = ClassVariant(ShipClass.Brig);
+                ShipController t = ShipFactory.Build("Target Ship", spawnPosition + new Vector3(260f, 0f, 220f), spawnHeading + 140f, materials, tv);
                 Target = t.gameObject.AddComponent<TargetShip>();
-                Target.Setup(t, Ship.transform, materials.darkWood,targetShip.mesh,targetShip.lights);
+                Target.Setup(t, Ship.transform, materials.darkWood,tv.mesh,tv.lights);
                 if (Application.isPlaying)
                 {
                     EnemyGunner eg = t.gameObject.AddComponent<EnemyGunner>();
@@ -182,6 +192,7 @@ namespace SkyTide
                     eg.maxRange = 420f; eg.rangeError = 0.11f; eg.sideError = 0.04f;
                     Target.retreatRange = 380f;
                 }
+                if (tv != targetShip) Target.SetClass(ShipClass.Brig);
                 // Экипаж на палубе врага — та же модель матроса, что у своего корабля (в кадрах CI тоже: виден на 211–213).
                 ShipVariant own = CurrentShip;
                 if (own != null && own.crew != null && own.crew.IsValid) t.gameObject.AddComponent<EnemyCrew>().Setup(Target, own.crew);
@@ -202,31 +213,36 @@ namespace SkyTide
             if (Application.isPlaying && Target != null && targetShip != null && targetShip.IsValid)
             {
                 ShipVariant crewFrom2 = CurrentShip;
-                ShipController s = ShipFactory.Build("Scout Ship", spawnPosition + new Vector3(-420f, 0f, 520f), spawnHeading - 120f, materials, targetShip);
-                s.transform.localScale = Vector3.one * 0.72f;
+                ShipVariant sv = ClassVariant(ShipClass.Sloop);
+                ShipController s = ShipFactory.Build("Scout Ship", spawnPosition + new Vector3(-420f, 0f, 520f), spawnHeading - 120f, materials, sv);
+                if (sv == targetShip) s.transform.localScale = Vector3.one * 0.72f;
                 Scout = s.gameObject.AddComponent<TargetShip>();
                 Scout.lampSlot = -1;
-                Scout.Setup(s, Ship.transform, materials.darkWood, targetShip.mesh, targetShip.lights);
+                Scout.Setup(s, Ship.transform, materials.darkWood, sv.mesh, sv.lights);
                 Scout.hitsToSink = 16; Scout.spawnRange = 1500f;
                 s.maxSpeed = 27f; s.maxYawRate = 34f;
                 EnemyGunner sg = s.gameObject.AddComponent<EnemyGunner>();
                 sg.Setup(Scout, s);
                 sg.gunsPerSide = 3; sg.maxRange = 360f; sg.cooldown = 5f; sg.rangeError = 0.12f; sg.sideError = 0.045f;
                 Scout.retreatRange = 340f;
+                if (sv != targetShip) Scout.SetClass(ShipClass.Sloop);
                 // Второй рядовой — заходит с другой стороны; иногда (при возрождении) любой рядовой выходит тяжёлым.
-                ShipController e2 = ShipFactory.Build("Raider Ship", spawnPosition + new Vector3(640f, 0f, -380f), spawnHeading + 60f, materials, targetShip);
+                ShipVariant rv = ClassVariant(ShipClass.Corvette);
+                ShipController e2 = ShipFactory.Build("Raider Ship", spawnPosition + new Vector3(640f, 0f, -380f), spawnHeading + 60f, materials, rv);
                 Raider = e2.gameObject.AddComponent<TargetShip>();
                 Raider.lampSlot = -1;
-                Raider.Setup(e2, Ship.transform, materials.darkWood, targetShip.mesh, targetShip.lights);
+                Raider.Setup(e2, Ship.transform, materials.darkWood, rv.mesh, rv.lights);
                 e2.maxSpeed = 20f; e2.maxYawRate = 24f;
                 EnemyGunner rg = e2.gameObject.AddComponent<EnemyGunner>();
                 rg.Setup(Raider, e2);
                 rg.maxRange = 420f; rg.rangeError = 0.11f; rg.sideError = 0.04f;
                 Raider.retreatRange = 380f; Raider.canBeHeavy = true; Target.canBeHeavy = true;
+                if (rv != targetShip) Raider.SetClass(ShipClass.Corvette);
                 if (crewFrom2 != null && crewFrom2.crew != null && crewFrom2.crew.IsValid) e2.gameObject.AddComponent<EnemyCrew>().Setup(Raider, crewFrom2.crew);
                 // Ещё трое по углам карты (2 рядовых, 1 разведчик): бродят своими курсами, в бой — когда увидят.
                 Vector3[] extra = { new Vector3(-2200f, 0f, -1600f), new Vector3(2400f, 0f, 1500f), new Vector3(-600f, 0f, -2600f) };
-                for (int k = 0; k < extra.Length; k++) SpawnEnemy("Enemy " + (k + 4), spawnPosition + extra[k], Random.Range(0f, 360f), k == 2, crewFrom2);
+                ShipClass[] extraClass = { ShipClass.Brig, ShipClass.Frigate, ShipClass.Sloop };
+                for (int k = 0; k < extra.Length; k++) SpawnEnemy("Enemy " + (k + 4), spawnPosition + extra[k], Random.Range(0f, 360f), extraClass[k], crewFrom2);
                 EnsureEnemies(RemoteConfig.Current != null ? RemoteConfig.Current.enemyCount : 18);
                 ShipVariant crewFrom = CurrentShip;
                 if (crewFrom != null && crewFrom.crew != null && crewFrom.crew.IsValid) s.gameObject.AddComponent<EnemyCrew>().Setup(Scout, crewFrom.crew);
@@ -243,17 +259,16 @@ namespace SkyTide
                 for (int g = 0; g < 2; g++)
                 {
                     Vector3 guard = Fortress.Center + Quaternion.Euler(0f, g == 0 ? 0f : 180f, 0f) * toSpawn * (Fortress.safeRadius - 180f); guard.y = spawnPosition.y;
-                    ShipController a = ShipFactory.Build("Guard Ship " + g, guard, spawnHeading + 90f + g * 180f, materials, targetShip);
+                    ShipVariant gv = ClassVariant(ShipClass.Brig);
+                    ShipController a = ShipFactory.Build("Guard Ship " + g, guard, spawnHeading + 90f + g * 180f, materials, gv);
                     AllyShip al = a.gameObject.AddComponent<AllyShip>();
-                    al.Setup(a, AllyShip.Role.Guard, targetShip.mesh, materials.darkWood);
+                    al.Setup(a, AllyShip.Role.Guard, gv.mesh, materials.darkWood);
                     if (g == 0) Ally = al;
                 }
-                ShipController w = ShipFactory.Build("Wingman", spawnPosition + new Vector3(110f, 0f, -70f), spawnHeading, materials, targetShip);
-                w.gameObject.AddComponent<AllyShip>().Setup(w, AllyShip.Role.Wingman, targetShip.mesh, materials.darkWood);
-                Vector3 far = Fortress.Center - toSpawn * (Fortress.safeRadius + 1400f); far.y = spawnPosition.y;
-                ShipController m = ShipFactory.Build("Merchant", far, spawnHeading + 180f, materials, targetShip);
-                m.transform.localScale = Vector3.one * 0.85f;
-                m.gameObject.AddComponent<AllyShip>().Setup(m, AllyShip.Role.Merchant, targetShip.mesh, materials.darkWood);
+                ShipVariant wv = ClassVariant(ShipClass.Frigate);
+                ShipController w = ShipFactory.Build("Wingman", spawnPosition + new Vector3(130f, 0f, -90f), spawnHeading, materials, wv);
+                w.gameObject.AddComponent<AllyShip>().Setup(w, AllyShip.Role.Wingman, wv.mesh, materials.darkWood);
+                // Торговца нет (владелец 16.11: «торговца вырезать вообще»).
             }
 
             // Ход боя: волны, счёт, замедление при потоплении (только в игре; в кадрах CI — значения по умолчанию).
@@ -331,23 +346,28 @@ namespace SkyTide
                     at = spawnPosition + new Vector3(Mathf.Cos(a) * r, 0f, Mathf.Sin(a) * r);
                     if ((at - Ship.transform.position).sqrMagnitude > 900f * 900f) break;
                 }
-                SpawnEnemy("Enemy " + (k + 1), at, Random.Range(0f, 360f), k % 3 == 2, k < 9 ? CurrentShip : null);
+                SpawnEnemy("Enemy " + (k + 1), at, Random.Range(0f, 360f), ShipClasses.ForEnemy(k), k < 9 ? CurrentShip : null);
             }
             DebugReport.Event("дальние враги догружены за " + (Time.realtimeSinceStartup - t0).ToString("F1") + " с");
         }
 
-        /// <summary>Враг на карте (только в игре): рядовой (может выйти тяжёлым) или разведчик (корпус ×0.72).</summary>
-        TargetShip SpawnEnemy(string name, Vector3 at, float heading, bool scout, ShipVariant crewFrom)
+        /// <summary>Враг на карте (только в игре) своего класса: модель, размер и огневая мощь класса (ShipClasses).
+        /// Без моделей флота — прежний Корсар: рядовой (может выйти тяжёлым) или разведчик (корпус ×0.72).</summary>
+        TargetShip SpawnEnemy(string name, Vector3 at, float heading, ShipClass cls, ShipVariant crewFrom)
         {
-            ShipController s = ShipFactory.Build(name, at, heading, materials, targetShip);
+            ShipVariant v = ClassVariant(cls);
+            bool classed = v != targetShip;
+            bool scout = !classed && cls <= ShipClass.Corvette;
+            ShipController s = ShipFactory.Build(name, at, heading, materials, v);
             if (scout) s.transform.localScale = Vector3.one * 0.72f;
             TargetShip t = s.gameObject.AddComponent<TargetShip>();
             t.lampSlot = -1;
-            t.Setup(s, Ship.transform, materials.darkWood, targetShip.mesh, targetShip.lights);
+            t.Setup(s, Ship.transform, materials.darkWood, v.mesh, v.lights);
             EnemyGunner g = s.gameObject.AddComponent<EnemyGunner>();
             g.Setup(t, s);
             if (scout) { t.hitsToSink = 16; t.spawnRange = 1500f; s.maxSpeed = 27f; s.maxYawRate = 34f; g.gunsPerSide = 3; g.maxRange = 360f; g.cooldown = 5f; g.rangeError = 0.12f; g.sideError = 0.045f; t.retreatRange = 340f; }
             else { s.maxSpeed = 20f; s.maxYawRate = 24f; g.maxRange = 420f; g.rangeError = 0.11f; g.sideError = 0.04f; t.retreatRange = 380f; t.canBeHeavy = true; }
+            if (classed) t.SetClass(cls);
             if (crewFrom != null && crewFrom.crew != null && crewFrom.crew.IsValid) s.gameObject.AddComponent<EnemyCrew>().Setup(t, crewFrom.crew);
             return t;
         }

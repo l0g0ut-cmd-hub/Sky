@@ -65,10 +65,12 @@ namespace SkyTide
             // Тёплый свет из кормовых окон и фонарей, как на концепте
             Light lamp = new GameObject("Stern Glow").AddComponent<Light>();
             lamp.transform.SetParent(visual, false);
-            lamp.transform.localPosition = new Vector3(0f, 8f, -17f);
+            // У кормы по габариту модели (Корсар 38 м: (0, 8, −17)); у крупных классов фонарь дальше и светит шире.
+            Bounds mb = mesh.bounds; float k = Mathf.Max(0.5f, mb.size.z / 38f);
+            lamp.transform.localPosition = new Vector3(0f, mb.min.y + mb.size.y * 0.42f, mb.min.z + 2f * k);
             lamp.type = LightType.Point;
             lamp.color = new Color(1f, 0.68f, 0.32f);
-            lamp.range = 16f;
+            lamp.range = 16f * k;
             lamp.intensity = 1.4f;
             lamp.shadows = LightShadows.None;
             // По вершинам, в основном проходе: «важный» точечный свет заставлял рисовать весь корабль (438 тыс. треугольников

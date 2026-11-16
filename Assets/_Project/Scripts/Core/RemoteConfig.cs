@@ -109,8 +109,15 @@ namespace SkyTide
                 if (t == null) continue;
                 bool scout = t.transform.lossyScale.x < 0.9f;
                 EnemyGunner eg = t.GetComponent<EnemyGunner>();
-                if (eg != null) { eg.rangeError = c.enemyError; eg.sideError = c.enemySideError; eg.cooldown = c.enemyCooldown; eg.maxRange = scout ? c.scoutRange : c.enemyRange; }
-                t.Tune(scout ? c.scoutSpeed : c.enemySpeed, scout ? c.enemyYaw * 1.4f : c.enemyYaw, scout ? c.scoutHits : c.enemyHits, eg != null ? eg.maxRange : 420f, c.enemyCooldown);
+                if (eg != null) { eg.rangeError = c.enemyError; eg.sideError = c.enemySideError; }
+                if (t.Class != ShipClass.None)
+                    // Классы: числа конфига — множители к базе класса относительно брига (20 м/с, 24°/с, 30 попаданий, 420 м, 6 с).
+                    t.TuneClass(c.enemySpeed / 20f, c.enemyYaw / 24f, c.enemyHits / 30f, c.enemyRange / 420f, c.enemyCooldown / 6f);
+                else
+                {
+                    if (eg != null) { eg.cooldown = c.enemyCooldown; eg.maxRange = scout ? c.scoutRange : c.enemyRange; }
+                    t.Tune(scout ? c.scoutSpeed : c.enemySpeed, scout ? c.enemyYaw * 1.4f : c.enemyYaw, scout ? c.scoutHits : c.enemyHits, eg != null ? eg.maxRange : 420f, c.enemyCooldown);
+                }
                 t.aggroRange = c.aggroRange;
                 t.heavyChance = c.heavyChance;
                 enemies++;

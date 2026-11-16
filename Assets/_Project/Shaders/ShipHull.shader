@@ -17,10 +17,13 @@ Shader "SkyTide/ShipHull"
         [HDR] _EmissionColor ("Emission color", Color) = (0,0,0,1)
         _EmissionMap ("Emission", 2D) = "white" {}
         _RimStrength ("Rim strength", Range(0,3)) = 1
+        // Двусторонний корпус (флот Meshy): тонкие паруса, флаги, фальшборт и тросы — одним листом, изнанка не дыра.
+        [Enum(UnityEngine.Rendering.CullMode)] _Cull ("Cull", Float) = 2
     }
     SubShader
     {
         Tags { "RenderType"="Opaque" "Queue"="Geometry" }
+        Cull [_Cull]
         CGPROGRAM
         #pragma target 3.0
         #pragma surface surf Standard fullforwardshadows addshadow exclude_path:deferred

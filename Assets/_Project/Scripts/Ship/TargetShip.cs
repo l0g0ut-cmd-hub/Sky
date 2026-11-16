@@ -83,6 +83,27 @@ namespace SkyTide
         /// <summary>Тест: прочность в долях (0..1).</summary>
         public void SetHealth01(float f) { if (Alive) hits = Mathf.Clamp(Mathf.RoundToInt((1f - f) * hitsToSink), 0, hitsToSink - 1); }
         public bool Heavy { get; private set; }
+        /// <summary>Класс корабля (ShipClasses): своя модель, размер и огневая мощь. None — прежний Корсар (рядовой/разведчик).</summary>
+        public ShipClass Class { get; private set; } = ShipClass.None;
+        /// <summary>Длина корпуса, м (по модели): столкновения и дистанции масштабируются по ней.</summary>
+        public float Length { get { return Mathf.Max(10f, box.size.z * transform.lossyScale.z); } }
+        public void SetClass(ShipClass c)
+        {
+            Class = c; canBeHeavy = false;
+            ShipClassInfo k = ShipClasses.Get(c);
+            if (gunner == null) gunner = GetComponent<EnemyGunner>();
+            baseSaved = true; baseHits = k.hits; baseSpeed = k.speed; baseYaw = k.yaw; baseGuns = k.guns; baseRange = k.range; baseCooldown = k.cooldown;
+            ApplyClass();
+        }
+        /// <summary>Конфиг для классов: множители к базе класса (относительно брига: ход 20, поворот 24, 30 попаданий, 420 м, 6 с).</summary>
+        public void TuneClass(float speedMul, float yawMul, float hitsMul, float rangeMul, float cooldownMul)
+        {
+            if (Class == ShipClass.None) return;
+            ShipClassInfo k = ShipClasses.Get(Class);
+            baseSpeed = k.speed * speedMul; baseYaw = k.yaw * yawMul; baseHits = Mathf.Max(1, Mathf.RoundToInt(k.hits * hitsMul));
+            baseRange = k.range * rangeMul; baseCooldown = k.cooldown * cooldownMul; baseGuns = k.guns;
+            ApplyClass();
+        }
         bool baseSaved; int baseHits; float baseSpeed, baseYaw; int baseGuns; float baseRange, baseCooldown;
         /// <summary>Взят на абордаж (а не потоплен) — HUD пишет «ПРИЗ ВЗЯТ».</summary>
         public bool Captured { get; private set; }
@@ -105,6 +126,16 @@ namespace SkyTide
                 baseSaved = true; baseHits = hitsToSink; baseSpeed = ctrl.maxSpeed; baseYaw = ctrl.maxYawRate;
                 if (gunner != null) { baseGuns = gunner.gunsPerSide; baseRange = gunner.maxRange; baseCooldown = gunner.cooldown; }
             }
+            if (Class != ShipClass.None)
+            {
+                // Класс: числа — из таблицы классов, без случайного «тяжёлого» и без тёмного тона (у модели своя окраска).
+                Heavy = Class >= ShipClass.HeavyFrigate;
+                hitsToSink = baseHits; ctrl.maxSpeed = baseSpeed; ctrl.maxYawRate = baseYaw;
+                if (gunner != null) { gunner.gunsPerSide = baseGuns; gunner.maxRange = baseRange; gunner.cooldown = baseCooldown; }
+                if (Class >= ShipClass.ShipOfLine && player != null && captainRolled && (player.position - transform.position).sqrMagnitude < 2500f * 2500f)
+                    HudNotice.Show(ShipClasses.Get(Class).name + " КОРАБЛЬ ВРАГА", 1, 4f);
+                return;
+            }
             Heavy = canBeHeavy && captainRolled && Random.value < heavyChance;
             hitsToSink = Heavy ? baseHits * 2 : baseHits;
             ctrl.maxSpeed = Heavy ? baseSpeed * 0.75f : baseSpeed; ctrl.maxYawRate = Heavy ? baseYaw * 0.75f : baseYaw;
@@ -124,6 +155,7 @@ namespace SkyTide
             skill = r < 0.35f ? Skill.Novice : r < 0.8f ? Skill.Seasoned : Skill.Veteran;
             dazeScale = skill == Skill.Novice ? 0.6f : skill == Skill.Veteran ? 2.2f : 1f;
             fightRange = skill == Skill.Novice ? 300f : skill == Skill.Veteran ? 220f : 260f;   // в пределах своих 420 м
+            if (Class != ShipClass.None) { float kr = baseRange / 420f; fightRange *= kr; retreatRange = 380f * kr; }   // дистанция боя — по дальности класса
             if (gunner == null) gunner = GetComponent<EnemyGunner>();
             if (gunner != null)
             {
@@ -454,17 +486,19 @@ namespace SkyTide
             ShipController other = playerCtrl;
             if (other == null || hull == null || !hull.Alive) return;
             Vector3 a0 = transform.position, b0 = player.position;
-            if ((a0 - b0).sqrMagnitude > 60f * 60f) return;
+            // Корпус врага — по его длине (катер 20 м … адмиральский 135 м); флагман — 38 м. Корсар (38 м): шаг 8 м, зазор 13.
+            float half = Length * 0.5f, step = half * 0.42f;
+            if ((a0 - b0).sqrMagnitude > (41f + half) * (41f + half)) return;
             Vector3 af = transform.forward, bf = player.forward;
             float best = float.MaxValue; Vector3 pa = a0, pb = b0;
             for (int i = -2; i <= 2; i++)
                 for (int j = -2; j <= 2; j++)
                 {
-                    Vector3 x = a0 + af * (i * 8f), y = b0 + bf * (j * 8f);
+                    Vector3 x = a0 + af * (i * step), y = b0 + bf * (j * 8f);
                     float d = (x.x - y.x) * (x.x - y.x) + (x.z - y.z) * (x.z - y.z);
                     if (d < best) { best = d; pa = x; pb = y; }
                 }
-            const float gap = 13f;
+            float gap = 6.5f + half * 0.34f;
             if (best >= gap * gap) return;
             Vector3 n = pa - pb; n.y = 0f;
             if (n.sqrMagnitude < 1e-3f) n = transform.right;

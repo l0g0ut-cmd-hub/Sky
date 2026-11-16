@@ -34,12 +34,29 @@ namespace SkyTide
             group = new GameObject("Enemy deck crew").transform;
             group.SetParent(hull, false);
             group.localScale = Vector3.one / s;
-            captain = Add(model, CrewActor.Duty.Captain, new Vector3(-2.6f, Poop, -12.6f), 0f, s);
-            Add(model, CrewActor.Duty.Lookout, new Vector3(2.6f, Poop, -13.6f), 20f, s);
-            Add(model, CrewActor.Duty.Lookout, new Vector3(-3.0f, MainDeck, 4.0f), -90f, s);
-            Add(model, CrewActor.Duty.Lookout, new Vector3(3.0f, MainDeck, -2.0f), 90f, s);
-            Add(model, CrewActor.Duty.Lookout, new Vector3(-3.0f, MainDeck, -5.5f), -75f, s);
-            Add(model, CrewActor.Duty.Lookout, new Vector3(3.0f, MainDeck, 6.0f), 105f, s);
+            Vector3[] spots = { new Vector3(-2.6f, Poop, -12.6f), new Vector3(2.6f, Poop, -13.6f), new Vector3(-3.0f, MainDeck, 4.0f),
+                                new Vector3(3.0f, MainDeck, -2.0f), new Vector3(-3.0f, MainDeck, -5.5f), new Vector3(3.0f, MainDeck, 6.0f) };
+            float[] yaws = { 0f, 20f, -90f, 90f, -75f, 105f };
+            bool classed = target.Class != ShipClass.None;
+            MeshFilter mf = hull.GetComponent<MeshFilter>();
+            Bounds hb = mf != null && mf.sharedMesh != null ? mf.sharedMesh.bounds : new Bounds();
+            for (int i = 0; i < spots.Length; i++)
+            {
+                Vector3 p = spots[i];
+                if (classed)
+                {
+                    // Флот Meshy: места Корсара (38 м) растягиваются по длине корпуса, высота палубы — лучом сверху вниз по
+                    // поверхности попаданий (с высоты 45% габарита: ниже баллонов). Нет палубы под точкой — матроса нет.
+                    float k = hb.size.z / 38f;
+                    p = new Vector3(p.x * Mathf.Sqrt(k), 0f, hb.center.z + p.z * k);
+                    ShipHitSurface.Contact c;
+                    if (target.Surface == null || !target.Surface.Trace(new Vector3(p.x, hb.min.y + hb.size.y * 0.45f, p.z), new Vector3(p.x, hb.min.y, p.z), out c)) continue;
+                    p.y = c.point.y;
+                }
+                CrewActor a = Add(model, i == 0 ? CrewActor.Duty.Captain : CrewActor.Duty.Lookout, p, yaws[i], s);
+                if (i == 0) captain = a;
+            }
+            if (captain == null && actors.Count > 0) captain = actors[0];
             // Враги темнее своих: та же модель, приглушённый тон.
             MaterialPropertyBlock tint = new MaterialPropertyBlock();
             for (int i = 0; i < actors.Count; i++)

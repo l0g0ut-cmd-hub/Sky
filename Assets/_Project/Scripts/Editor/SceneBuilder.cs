@@ -80,6 +80,7 @@ namespace SkyTide.EditorTools
                 far = AssetDatabase.LoadAssetAtPath<TextAsset>(Models + "Corsair_far.bytes"),
                 farSrc = AssetDatabase.LoadAssetAtPath<TextAsset>(Models + "Corsair_far_src.bytes"), farDistance = 450f,
                 lights = AssetDatabase.LoadAssetAtPath<TextAsset>(Models + "Corsair_lights.json") } : null;
+            b.fleet = BuildFleet();
             b.postShader = AssetDatabase.LoadAssetAtPath<Shader>("Assets/_Project/Shaders/PostFX.shader");
             b.volumetricShader = AssetDatabase.LoadAssetAtPath<Shader>("Assets/_Project/Shaders/VolumetricClouds.shader");
             b.impostorShader = AssetDatabase.LoadAssetAtPath<Shader>("Assets/_Project/Shaders/CloudImpostor.shader");
@@ -252,6 +253,38 @@ namespace SkyTide.EditorTools
             TextAsset meshy = AssetDatabase.LoadAssetAtPath<TextAsset>(Models + "Corsair.bytes");
             // Модель Meshy — больше не в выборе: это корабль-мишень (SkyTideBootstrap.targetShip).
             return list.ToArray();
+        }
+
+        /// <summary>Флот по классам из Models/Fleet (tools/convert_fleet.py, модели Meshy): модель, ближняя (40%) и дальняя (12%)
+        /// копии, альбедо и карта нормалей 2048, двусторонний материал корпуса (тонкие паруса и флаги — одним листом).
+        /// Расстояния смены копий растут с длиной корпуса: адмиральский (135 м) остаётся полной моделью втрое дальше брига.</summary>
+        static ShipVariant[] BuildFleet()
+        {
+            const string F = Models + "Fleet/";
+            ShipVariant[] fleet = new ShipVariant[ShipClasses.Count];
+            int made = 0;
+            for (int i = 0; i < ShipClasses.Count; i++)
+            {
+                ShipClassInfo k = ShipClasses.Info[i];
+                string n = F + "Ship_" + k.id;
+                TextAsset mesh = AssetDatabase.LoadAssetAtPath<TextAsset>(n + ".bytes");
+                Texture2D albedo = Tex(n + "_Albedo.jpg", false, false, TextureWrapMode.Clamp, TextureWrapMode.Clamp, 2048, true);
+                if (mesh == null || albedo == null) { Debug.LogWarning("SkyTide: нет модели класса " + k.id + " — будет Корсар"); continue; }
+                Texture2D normal = Tex(n + "_Normal.png", true, false, TextureWrapMode.Clamp, TextureWrapMode.Clamp, 2048, true);
+                Material m = MaterialFactory.ShipBody(albedo, normal, null);
+                m.name = "Fleet_" + k.id;
+                m.SetFloat("_Cull", 0f);   // двусторонний
+                AssetDatabase.CreateAsset(m, MaterialFolder + "/Fleet_" + k.id + ".mat");
+                float scale = k.length / 38f;
+                fleet[i] = new ShipVariant { name = k.name, mesh = mesh, materials = new[] { m },
+                    lite = AssetDatabase.LoadAssetAtPath<TextAsset>(n + "_lod.bytes"), liteSrc = AssetDatabase.LoadAssetAtPath<TextAsset>(n + "_lod_src.bytes"),
+                    lodDistance = 90f * scale,
+                    far = AssetDatabase.LoadAssetAtPath<TextAsset>(n + "_far.bytes"), farSrc = AssetDatabase.LoadAssetAtPath<TextAsset>(n + "_far_src.bytes"),
+                    farDistance = 450f * scale };
+                made++;
+            }
+            Debug.Log("SkyTide: флот — моделей классов " + made + " из " + ShipClasses.Count);
+            return fleet;
         }
 
         static CrewModelData BuildCrewModel()
