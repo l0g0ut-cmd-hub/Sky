@@ -250,7 +250,8 @@ namespace SkyTide
         public int OffSide { get { return offSide; } }
         /// <summary>Цель, взятая игроком касанием по кораблю (владелец 15.11: «кого взял в таргет — по тому и целимся»).
         /// Без неё и без автобоя прицела нет: стрелка не рисуется, стволы стоят прямо.</summary>
-        public TargetShip Locked;
+        /// <summary>Взятая касанием цель — любой корабль: враг или свой (огонь по своим разрешён).</summary>
+        public IAimTarget Locked;
         /// <summary>Точка упреждения по взятой цели (где она будет, когда долетит ядро); есть, пока залп не ложится в корпус.</summary>
         [System.NonSerialized] public bool HasLead; [System.NonSerialized] public Vector3 LeadPoint;
         /// <summary>Автобой сам выбирает цель (как раньше — ближайшую к траверзу).</summary>
@@ -258,12 +259,13 @@ namespace SkyTide
         /// <summary>Игрок держит кнопку борта (прицел как в Black Flag): борт задан, стрелка видна только сейчас; отпустил — залп.</summary>
         [System.NonSerialized] public int HoldSide;
         /// <summary>Цель прицельного борта (радар выделяет её).</summary>
-        public TargetShip AimTargetShip { get { return aimTarget; } }
+        public TargetShip AimTargetShip { get { return aimTarget as TargetShip; } }
+        public IAimTarget AimTarget { get { return aimTarget; } }
         public bool OffOnTarget { get; private set; }
         // Сглаженная точка наводки: стволы доворачиваются, а не прыгают за каждым кадром решения (владелец 15.11: «прицел дёргается»).
-        Vector3 aimSmooth; TargetShip aimSmoothFor; float aimSmoothAt = -1f;
+        Vector3 aimSmooth; IAimTarget aimSmoothFor; float aimSmoothAt = -1f;
         // Цель прицела с удержанием: меняется, только если новая заметно лучше (раньше — ближайшая каждый кадр, дуга прыгала).
-        TargetShip aimTarget; float aimSide = 1f;
+        IAimTarget aimTarget; float aimSide = 1f;
         /// <summary>Дальность, на которую борт достаёт при предельном возвышении (для HUD).</summary>
         public float MaxRange { get { float g = FxSystem.Instance != null ? FxSystem.Instance.gravity : 9.81f; return ShotSpeed * ShotSpeed * Mathf.Sin(2f * maxElevationDeg * Mathf.Deg2Rad) / g; } }
         public bool HasSolution { get { return solved; } }
@@ -274,13 +276,13 @@ namespace SkyTide
             return Ballistics.ClampedLowAngle(x, y, ShotSpeed, g, minElevationDeg * Mathf.Deg2Rad, maxElevationDeg * Mathf.Deg2Rad);
         }
 
-        void Solve(TargetShip best, CannonMount mid, float side, float g)
+        void Solve(IAimTarget best, CannonMount mid, float side, float g)
         {
             solved = false;
             if (best == null || mid == null || model == null) return;
             Vector3 muzzle = model.TransformPoint(mid.Muzzle), own = velocity; own.y = 0f;
             Vector3 tpos = best.Center;
-            targetVel = best.Controller != null ? best.transform.forward * best.Controller.Speed : Vector3.zero;
+            targetVel = best.Velocity;
             Vector3 rel = targetVel - own;   // в системе своего корабля: его ход ядро уносит с собой
             Vector3 d0 = tpos - muzzle;
             float t = Ballistics.Lead(d0.x, d0.y, d0.z, rel.x, rel.y, rel.z, ShotSpeed, g, minElevationDeg * Mathf.Deg2Rad, maxElevationDeg * Mathf.Deg2Rad, out _, out _, out _);
@@ -336,7 +338,7 @@ namespace SkyTide
 
         /// <summary>Путь ядра пушки m до корпуса цели или до моря облаков. hull — попало в корпус.</summary>
         readonly List<Vector3> forePath = new List<Vector3>(130), aftPath = new List<Vector3>(130);
-        bool TracePath(CannonMount m, TargetShip best, FxSystem fx, out Vector3 end, out bool hull, List<Vector3> pts = null, bool off = false)
+        bool TracePath(CannonMount m, IAimTarget best, FxSystem fx, out Vector3 end, out bool hull, List<Vector3> pts = null, bool off = false)
         {
             hull = false;
             Vector3 p = model.TransformPoint(m.Muzzle);
@@ -462,8 +464,8 @@ namespace SkyTide
             // Удержание: прежняя цель остаётся, пока новая не лучше на 25%.
             float reach = MaxRange * 1.3f;
             HasLead = false;
-            if (Locked != null && (!Locked.Alive || !Locked.gameObject.activeInHierarchy)) Locked = null;
-            TargetShip best = null; float bestScore = float.MaxValue, curScore = float.MaxValue;
+            if (Locked != null && (Locked.gameObject == null || !Locked.Alive || !Locked.gameObject.activeInHierarchy)) Locked = null;
+            IAimTarget best = null; float bestScore = float.MaxValue, curScore = float.MaxValue;
             if (Locked != null) best = Locked;
             if (HoldSide != 0 && best != null && Mathf.Sign(transform.InverseTransformPoint(best.transform.position).x) != HoldSide) best = null;   // взятая цель с другого борта — не эта
             if (best == null && (AutoAim || HoldSide != 0))
@@ -476,7 +478,7 @@ namespace SkyTide
                     float d = lp.magnitude;
                     if (d > reach) continue;
                     float score = d * (1f + 0.8f * Mathf.Abs(lp.z) / Mathf.Max(1f, d));
-                    if (t == aimTarget) curScore = score;
+                    if ((IAimTarget)t == aimTarget) curScore = score;
                     if (score < bestScore) { bestScore = score; best = t; }
                 }
                 if (aimTarget != null && curScore < float.MaxValue && curScore < bestScore * 1.25f) best = aimTarget;

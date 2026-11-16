@@ -11,7 +11,7 @@ namespace SkyTide
     /// через respawnDelay появляется в другом месте.
     /// Попадание считается по отрезку пути ядра за кадр против габарита меша модели (в его локальных координатах).
     /// </summary>
-    public class TargetShip : MonoBehaviour
+    public class TargetShip : MonoBehaviour, IAimTarget
     {
         public static readonly List<TargetShip> All = new List<TargetShip>();
 
@@ -507,6 +507,7 @@ namespace SkyTide
         Transform model;
         Bounds box;
         /// <summary>Угол рамки корпуса в мире (i = 0..7) — для рамки цели на экране.</summary>
+        public Vector3 Velocity { get { return ctrl != null ? transform.forward * ctrl.Speed : Vector3.zero; } }
         public Vector3 BoxCorner(int i) { Vector3 e = box.extents; Vector3 l = box.center + new Vector3((i & 1) == 0 ? -e.x : e.x, (i & 2) == 0 ? -e.y : e.y, (i & 4) == 0 ? -e.z : e.z); return model != null ? model.TransformPoint(l) : transform.position; }
         Vector3 waypoint;
         float nextPick;

@@ -228,9 +228,9 @@ namespace SkyTide
                         if (gb == null) return "нет флагмана";
                         if (arg == "off") { gb.Locked = null; return "цель снята"; }
                         Transform t = Find(arg == "" ? "near" : arg, a.Length > 2 ? a[2] : null);
-                        TargetShip ts = t != null ? t.GetComponent<TargetShip>() : null;
+                        IAimTarget ts = t != null ? (IAimTarget)t.GetComponent<TargetShip>() ?? t.GetComponent<AllyShip>() : null;   // любой корабль, и свой
                         if (ts == null) return "нет цели";
-                        gb.Locked = ts; return "цель: " + ts.name;
+                        gb.Locked = ts; return "цель: " + t.name;
                     }
                 case "duel":
                     {

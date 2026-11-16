@@ -668,7 +668,7 @@ namespace SkyTide
         {
             Broadside gb = input.Guns(); Camera c = Camera.main;
             if (gb == null || c == null || !Application.isPlaying) return;
-            TargetShip t = gb.Locked;
+            IAimTarget t = gb.Locked;
             if (t == null)
             {
                 // Подсказка (до трёх раз за запуск): враг рядом, автобой выключен, цели нет.
@@ -679,7 +679,7 @@ namespace SkyTide
                 return;
             }
             Vector3 sp = c.WorldToScreenPoint(t.Center);
-            Color col = gb.AimOnTarget && gb.AimTargetShip == t ? new Color(1f, 0.45f, 0.3f, 0.95f) : new Color(1f, 0.82f, 0.45f, 0.95f);
+            Color col = gb.AimOnTarget && gb.AimTarget == t ? new Color(1f, 0.45f, 0.3f, 0.95f) : t is AllyShip ? new Color(0.5f, 1f, 0.55f, 0.95f) : new Color(1f, 0.82f, 0.45f, 0.95f);   // свой — зелёная рамка
             float dist = Vector3.Distance(t.transform.position, input.ship.transform.position);
             {
                 // Цель за краем экрана или за спиной — стрелка у края в её сторону с дальностью.

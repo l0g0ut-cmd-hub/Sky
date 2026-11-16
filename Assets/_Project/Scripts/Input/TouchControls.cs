@@ -488,26 +488,22 @@ namespace SkyTide
             AutoBattle = on;
             if (on) Haptics.Pulse(30);
         }
-        /// <summary>Взять в цель врага под пальцем (p — экранные координаты, y вниз): ближайший к точке касания на экране
-        /// в пределах 9% высоты экрана (и рамки его корпуса). По уже взятому — снять цель.</summary>
+        /// <summary>Взять в цель любой корабль под пальцем — врага или своего (p — экранные координаты, y вниз): ближайший к
+        /// точке касания на экране в пределах 9% высоты экрана или его экранного размера (гигант ловится по всему корпусу).
+        /// По уже взятому — снять цель; касание пустого места при взятой цели — тоже снять (владелец 16.11).</summary>
         public bool TryLock(Vector2 p)
         {
             Broadside gb = Guns(); Camera c = Camera.main;
             if (gb == null || c == null) return false;
-            TargetShip best = null; float bestD = Mathf.Min(ViewWidth, ViewHeight) * 0.09f;
-            foreach (TargetShip t in TargetShip.All)
+            IAimTarget best = null; float bestD = Mathf.Min(ViewWidth, ViewHeight) * 0.09f;
+            foreach (TargetShip t in TargetShip.All) if (t != null) Consider(t, c, p, ref best, ref bestD);
+            foreach (AllyShip a in AllyShip.All) if (a != null) Consider(a, c, p, ref best, ref bestD);
+            if (best == null)
             {
-                if (t == null || !t.Alive || !t.gameObject.activeInHierarchy) continue;
-                Vector3 sp = c.WorldToScreenPoint(t.Center);
-                if (sp.z <= 0f) continue;
-                Vector2 q = new Vector2(sp.x, ViewHeight - sp.y);
-                // Чем ближе корабль, тем крупнее он на экране — допуск растёт с его экранным размером.
-                Vector3 sp2 = c.WorldToScreenPoint(t.Center + c.transform.right * 25f * t.transform.lossyScale.x);
-                float r = Mathf.Max(bestD, Mathf.Abs(sp2.x - sp.x));
-                float d = (q - p).magnitude;
-                if (d < r && (best == null || d < bestD)) { best = t; bestD = d; }
+                if (gb.Locked == null) return false;
+                gb.Locked = null; HudNotice.Show("ЦЕЛЬ СНЯТА", 0, 1.2f);
+                return true;
             }
-            if (best == null) return false;
             if (gb.Locked == best) { gb.Locked = null; HudNotice.Show("ЦЕЛЬ СНЯТА", 0, 1.2f); }
             else { gb.Locked = best; HudNotice.Show("ЦЕЛЬ ВЗЯТА", 1, 1.2f); Haptics.Pulse(25); }
             return true;
@@ -546,6 +542,20 @@ namespace SkyTide
             while (Time.unscaledTime < until) { yield return null; Pointer(77, p, false, false); }
             Pointer(77, p, false, true);
         }
+        void Consider(IAimTarget t, Camera c, Vector2 p, ref IAimTarget best, ref float bestD)
+        {
+            if (!t.Alive || !t.gameObject.activeInHierarchy) return;
+            Vector3 sp = c.WorldToScreenPoint(t.Center);
+            if (sp.z <= 0f) return;
+            Vector2 q = new Vector2(sp.x, ViewHeight - sp.y);
+            // Допуск — экранный размер корабля: проекция полудлины (и полувысоты) корпуса; у гиганта — весь корпус.
+            Vector3 c0 = t.BoxCorner(0), c7 = t.BoxCorner(7);
+            float half = Vector3.Distance(c0, c7) * 0.5f;
+            Vector3 sp2 = c.WorldToScreenPoint(t.Center + c.transform.right * half);
+            float r = Mathf.Max(Mathf.Min(ViewWidth, ViewHeight) * 0.09f, Mathf.Abs(sp2.x - sp.x) * 0.8f);
+            float d = (q - p).magnitude;
+            if (d < r && (best == null || d < bestD)) { best = t; bestD = d; }
+        }
         /// <summary>Следующая цель по дальности (касание вкладки «ВРАГ»): без цели — ближайший, с целью — следующий за ней.</summary>
         void CycleLock()
         {
@@ -555,7 +565,7 @@ namespace SkyTide
             if (near.Count == 0) { HudNotice.Show("ВРАГОВ НЕ ВИДНО", 1, 1.5f); return; }
             Vector3 me = ship.transform.position;
             near.Sort((a, b) => Vector3.Distance(a.transform.position, me).CompareTo(Vector3.Distance(b.transform.position, me)));
-            int at = near.IndexOf(gb.Locked);
+            int at = near.IndexOf(gb.Locked as TargetShip);
             gb.Locked = near[(at + 1) % near.Count];
             HudNotice.Show(near.Count > 1 ? "ЦЕЛЬ " + ((at + 1) % near.Count + 1) + " ИЗ " + near.Count : "ЦЕЛЬ ВЗЯТА", 1, 1.2f); Haptics.Pulse(25);
         }

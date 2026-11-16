@@ -12,7 +12,7 @@ namespace SkyTide
     /// Все уязвимы: ядра врага бьют по ним (FxSystem), потоплен — через respawnDelay возвращается (боевые — от причала,
     /// торговец — издалека). Подбитый ниже 35% (боевые) уходит чиниться к причалу и возвращается целым.
     /// </summary>
-    public class AllyShip : MonoBehaviour
+    public class AllyShip : MonoBehaviour, IAimTarget
     {
         /// <summary>Guard — сторожевой (дозор вод гарнизона), Wingman — ведомый, Merchant — не создаётся (торговец вырезан),
         /// Customs — таможенный катер (выпроваживает чужих из вод гарнизона), Courier — курьер (ходит по делам гарнизона).</summary>
@@ -79,6 +79,7 @@ namespace SkyTide
         public float Health01 { get { return Mathf.Clamp01(1f - hits / (float)Mathf.Max(1, hitsToSink)); } }
         public Vector3 Center { get { return model != null ? model.TransformPoint(box.center) : transform.position; } }
         public Vector3 Velocity { get { return ctrl != null ? transform.forward * ctrl.Speed : Vector3.zero; } }
+        public Vector3 BoxCorner(int i) { Vector3 e = box.extents; Vector3 l = box.center + new Vector3((i & 1) == 0 ? -e.x : e.x, (i & 2) == 0 ? -e.y : e.y, (i & 4) == 0 ? -e.z : e.z); return model != null ? model.TransformPoint(l) : transform.position; }
         /// <summary>Под огнём: попадание за последние 15 с. Флагман на автобое и свои идут на помощь.</summary>
         public float LastHitTime { get; private set; } = -100f;
         public bool UnderAttack { get { return Alive && Time.time - LastHitTime < 15f; } }
