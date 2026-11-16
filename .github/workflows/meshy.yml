@@ -1,0 +1,30 @@
+name: Meshy models
+
+# Генерация моделей кораблей в Meshy по API (ключ — секрет MESHY_API_KEY). Запуск — push в ветку meshy
+# (список заданий tools/meshy/jobs.json). Готовые GLB, превью и отчёт — в ветку meshy-out (meshy/<класс>/...).
+on:
+  push:
+    branches: [meshy]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  generate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+      - name: Generate
+        env:
+          MESHY_API_KEY: ${{ secrets.MESHY_API_KEY }}
+        run: python3 tools/meshy/gen.py tools/meshy/jobs.json out
+      - name: Publish to meshy-out
+        if: always()
+        run: |
+          [ -d out ] || exit 0
+          git config user.name "meshy-bot"; git config user.email "meshy-bot@users.noreply.github.com"
+          git fetch origin meshy-out:meshy-out 2>/dev/null && git worktree add ../pub meshy-out || { git worktree add --detach ../pub; cd ../pub; git checkout --orphan meshy-out; git rm -rf -q . || true; cd -; }
+          mkdir -p ../pub/meshy && cp -r out/. ../pub/meshy/
+          cd ../pub && git add -A && git commit -q -m "Meshy: run ${{ github.run_number }}" && git push -q origin meshy-out || echo "nothing to publish"
