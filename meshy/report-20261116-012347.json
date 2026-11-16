@@ -1,0 +1,32 @@
+{
+ "cutter": {
+  "stage": "done",
+  "task": "01a1e1f3-32a3-7409-981a-401bccb368fb",
+  "preview": "01a1e1f3-32a3-7409-981a-401bccb368fb"
+ },
+ "brig": {
+  "stage": "done",
+  "task": "01a1e1f3-3efe-7062-b434-198f9f7e3392",
+  "preview": "01a1e1f3-3efe-7062-b434-198f9f7e3392"
+ },
+ "fireship": {
+  "stage": "done",
+  "task": "01a1e1f3-498f-7523-a10e-e8d3eb7fe98f",
+  "preview": "01a1e1f3-498f-7523-a10e-e8d3eb7fe98f"
+ },
+ "frigate": {
+  "stage": "done",
+  "task": "01a1e1f3-5405-7441-9a8a-e53435fbda34",
+  "preview": "01a1e1f3-5405-7441-9a8a-e53435fbda34"
+ },
+ "ship_of_line": {
+  "stage": "done",
+  "task": "01a1e1f3-5e5c-7550-859e-091c84bc9098",
+  "preview": "01a1e1f3-5e5c-7550-859e-091c84bc9098"
+ },
+ "admiral": {
+  "stage": "done",
+  "task": "01a1e1f3-6bef-71f0-a1cc-b9189ff676ea",
+  "preview": "01a1e1f3-6bef-71f0-a1cc-b9189ff676ea"
+ }
+}

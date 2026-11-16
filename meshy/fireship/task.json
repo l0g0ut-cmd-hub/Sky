@@ -1,10 +1,7 @@
 {
  "id": "fireship",
- "preview": "01a1e1ec-eee4-7027-b16d-ede6715b3f6b",
- "refine": "01a1e1ed-d0af-76c6-805f-a259a9e70147",
- "prompt": "Stylized dark-fantasy flying sky-ship, single isolated game asset, no water, no ground, no base, no characters. Wooden sailing-ship hull with brass trim and iron fittings, held aloft by spherical canvas gas balloons on a brass frame above the deck, propellers at the stern, rudder fin under the keel. Fire ship: small battered old hull with no cannons, deck packed with stacked gunpowder barrels and crates, one patched balloon, iron spikes on the bow for ramming, crude repairs.",
- "texture_prompt": "Weathered dark oak planks, polished brass and dark iron fittings, tan canvas balloons with leather straps, warm amber lanterns, muted crimson painted trim. Painterly game texture, clean readable materials.",
- "polycount": 15000,
- "credits": 30,
- "glb_bytes": 9072852
+ "preview": "01a1e1f3-498f-7523-a10e-e8d3eb7fe98f",
+ "prompt": "ONE single connected flying airship, isolated game asset, no water, no ground, no base, no characters, no wheels, no separate objects. Dark-fantasy sky-ship: wooden sailing-ship hull with brass trim and iron fittings. The ship floats beneath large round tan canvas gas balloons fixed directly above the deck with brass struts and ropes; the balloons are essential and clearly visible. Small propellers at the stern. Fire ship: small battered hull with NO cannons, the open deck is piled high with stacked gunpowder barrels, iron ram spikes on the bow, one patched round balloon.",
+ "credits": 5,
+ "shape_bytes": 1700140
 }

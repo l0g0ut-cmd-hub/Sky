@@ -1,10 +1,7 @@
 {
  "id": "cutter",
- "preview": "01a1e1ec-c9cf-71c1-a35e-7daea8deaf36",
- "refine": "01a1e1ed-79b8-700f-925b-0ea2b298ca83",
- "prompt": "Stylized dark-fantasy flying sky-ship, single isolated game asset, no water, no ground, no base, no characters. Wooden sailing-ship hull with brass trim and iron fittings, held aloft by spherical canvas gas balloons on a brass frame above the deck, propellers at the stern, rudder fin under the keel. Tiny customs patrol cutter: very small sleek narrow hull, one short mast, one small elongated balloon, a single cannon port on each side, bright lantern on the bow, light painted hull.",
- "texture_prompt": "Weathered dark oak planks, polished brass and dark iron fittings, tan canvas balloons with leather straps, warm amber lanterns, muted crimson painted trim. Painterly game texture, clean readable materials.",
- "polycount": 12000,
- "credits": 30,
- "glb_bytes": 8448016
+ "preview": "01a1e1f3-32a3-7409-981a-401bccb368fb",
+ "prompt": "ONE single connected flying airship, isolated game asset, no water, no ground, no base, no characters, no wheels, no separate objects. Dark-fantasy sky-ship: wooden sailing-ship hull with brass trim and iron fittings. The ship floats beneath large round tan canvas gas balloons fixed directly above the deck with brass struts and ropes; the balloons are essential and clearly visible. Small propellers at the stern. Tiny customs patrol cutter: very small sleek hull, one short mast, one round balloon above the deck, one cannon port per side, lantern on the bow.",
+ "credits": 5,
+ "shape_bytes": 1702736
 }
