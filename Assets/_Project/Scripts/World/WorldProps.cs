@@ -48,6 +48,12 @@ namespace SkyTide
 
         struct Lamp { public Vector3 pos; public float size; public Color color; public float speed; public bool beacon; }
         readonly List<Lamp> lampList = new List<Lamp>();
+        // Сторожевые башни стреляют (владелец 16.11: «башни стреляют в случае чего»): одна лёгкая пушка, калибр 1,
+        // ~6 с перезарядка, 500 м. Цели — как у крепости: нарушители и враждебные в водах гарнизона; флагман — только
+        // вне закона или когда на него зла крепость. Мирных, настороженных, сдавшихся и своих не трогают. Неразрушимы.
+        class Tower { public Transform t; public Vector3 muzzle; public float next; public string name; }
+        readonly List<Tower> towers = new List<Tower>();
+        public const float TowerRange = 500f, TowerReload = 6f, TowerMuzzle = 165f, TowerSpread = 1.8f;
         Light beaconLight;
 
         public static WorldProps Create(PropAsset[] assets, SkyFortress fort, Vector3 spawn)
@@ -118,6 +124,9 @@ namespace SkyTide
             g.SetLODs(lods.ToArray());
             g.RecalculateBounds();
 
+            if (id == "watchtower")
+                towers.Add(new Tower { t = go.transform, muzzle = go.transform.position + Vector3.up * 40f, next = UnityEngine.Random.Range(0f, 3f),
+                                       name = "БАШНЯ " + (towers.Count + 1) });
             foreach (Vector3 c in d.circles)
             {
                 Vector3 wc = go.transform.TransformPoint(new Vector3(c.x, 0f, c.y));
@@ -155,6 +164,68 @@ namespace SkyTide
             r.shadowCastingMode = shadows;
             r.receiveShadows = shadows != ShadowCastingMode.ShadowsOnly;
             return r;
+        }
+
+        void Update()
+        {
+            if (!Application.isPlaying || towers.Count == 0 || FxSystem.Instance == null) return;
+            SkyFortress fort = SkyFortress.Instance;
+            SkyTideBootstrap g = SkyTideBootstrap.Instance;
+            PlayerHull ph = PlayerHull.Instance;
+            bool playerFoe = ph != null && ph.Alive && g != null && g.Ship != null && (Relations.PlayerOutlaw || (fort != null && fort.Hostile));
+            for (int i = 0; i < towers.Count; i++)
+            {
+                Tower w = towers[i];
+                if (Time.time < w.next) continue;
+                w.next = Time.time + 0.5f;   // нет цели — смотрим снова через полсекунды
+                Vector3 m = w.muzzle;
+                TargetShip best = null; float bd = TowerRange * TowerRange;
+                foreach (TargetShip t in TargetShip.All)
+                {
+                    if (t == null || !t.Alive || t.Surrendered) continue;
+                    bool foe = t.Outlaw || (t.AtWar && (Relations.At(t.Center) == Waters.Garrison || Relations.At(t.Center) == Waters.Safe));
+                    if (!foe) continue;
+                    Vector3 d = t.Center - m; d.y = 0f;
+                    if (d.sqrMagnitude < bd) { bd = d.sqrMagnitude; best = t; }
+                }
+                Vector3 aim, lead; bool atPlayer = false;
+                if (best != null) { aim = best.Center; lead = best.Controller != null ? best.transform.forward * best.Controller.Speed : Vector3.zero; }
+                else if (playerFoe && (Flat(g.Ship.transform.position - m)).sqrMagnitude < TowerRange * TowerRange)
+                { aim = g.Ship.transform.position + Vector3.up * 4f; lead = g.Ship.transform.forward * g.Ship.Speed; atPlayer = true; }
+                else continue;
+                Vector3 dir;
+                if (!Solve(m, aim, lead, out dir)) continue;
+                dir = Quaternion.Euler(UnityEngine.Random.Range(-TowerSpread, TowerSpread), UnityEngine.Random.Range(-TowerSpread, TowerSpread), 0f) * dir;
+                FxSystem.Instance.Fire(m + dir * 4f, dir, Vector3.zero, TowerMuzzle, atPlayer, 8f, 1f);
+                w.next = Time.time + TowerReload + UnityEngine.Random.Range(0f, 1.5f);
+                DebugReport.Count("выстрелов сторожевых башен");
+                if (atPlayer)
+                    HudNotice.Post(w.name + " БЬЁТ ПО ТЕБЕ", (Relations.PlayerOutlaw ? "ТЫ ВНЕ ЗАКОНА · " : "КРЕПОСТЬ ПОДНЯЛА ТРЕВОГУ · ") + HudNotice.Where(w.t.position),
+                        0, 3f, HudNotice.Prio.Critical, "towerme", w.t, 10f);
+                else if (g != null && g.Ship != null && (best.Center - g.Ship.transform.position).sqrMagnitude < 1500f * 1500f)
+                    HudNotice.Post("БАШНЯ БЬЁТ: " + HudNotice.Who(best), (best.Outlaw ? "НАРУШИТЕЛЬ · " : "ВРАЖДЕБНЫЙ В ВОДАХ ГАРНИЗОНА · ") + HudNotice.Where(best.Center),
+                        0, 2.5f, HudNotice.Prio.Combat, "tower" + best.GetInstanceID(), best.transform, 12f);
+            }
+        }
+
+        static Vector3 Flat(Vector3 v) { v.y = 0f; return v; }
+
+        static bool Solve(Vector3 from, Vector3 to, Vector3 lead, out Vector3 dir)
+        {
+            dir = Vector3.forward;
+            Vector3 aim = to;
+            for (int it = 0; it < 3; it++)
+            {
+                Vector3 d = aim - from;
+                float x = new Vector2(d.x, d.z).magnitude;
+                float theta = Ballistics.LowAngle(x, d.y, TowerMuzzle, 9.81f);
+                if (float.IsNaN(theta)) return false;
+                float tFlight = x / (TowerMuzzle * Mathf.Cos(theta));
+                Vector3 h = new Vector3(d.x, 0f, d.z).normalized;
+                dir = h * Mathf.Cos(theta) + Vector3.up * Mathf.Sin(theta);
+                aim = to + lead * (tFlight * 0.9f);
+            }
+            return true;
         }
 
         // Огни строений: ореолы видны издалека (слоты FxSystem 30–39; 0–28 — крепость, 40–95 — её кольцо).
