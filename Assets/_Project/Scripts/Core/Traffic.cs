@@ -141,6 +141,7 @@ namespace SkyTide
                     a.c.Block(n * over * wa, a.player ? 0.6f : 0.85f);
                     b.c.Block(-n * over * wb, b.player ? 0.6f : 0.85f);
                     float closing = Mathf.Abs(a.c.Speed) + Mathf.Abs(b.c.Speed);
+                    WorldLog.Bump(a.player ? "ФЛАГМАН" : a.t.name, b.player ? "ФЛАГМАН" : b.t.name, (pa + pb) * 0.5f, closing);
                     if (closing > 8f && Time.time >= nextReport)
                     {
                         nextReport = Time.time + 1f;
@@ -169,6 +170,7 @@ namespace SkyTide
                 if (!Footprint.CircleOverlap(a.world, new Vector2(s.c.x, s.c.z), s.r, out n2, out over)) continue;
                 Vector3 n = new Vector3(n2.x, 0f, n2.y);
                 a.c.Block(n * (over + 0.05f), a.player ? 0.5f : 0.8f);
+                WorldLog.Bump(a.player ? "ФЛАГМАН" : a.t.name, "строение " + s.name, new Vector3(s.c.x, c.y, s.c.z), Mathf.Abs(a.c.Speed));
                 if (Mathf.Abs(a.c.Speed) > 6f && Time.time >= nextReport)
                 {
                     nextReport = Time.time + 1f;

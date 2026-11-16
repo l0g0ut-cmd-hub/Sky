@@ -118,7 +118,7 @@ namespace SkyTide
             if (Application.isPlaying) volumetricClouds = PlayerPrefs.GetInt(VolumetricKey, 0) == 1;
             QualitySettings.vSyncCount = 0;
             Screen.sleepTimeout = SleepTimeout.NeverSleep;
-            if (Application.isPlaying) { DebugReport.Hook(); if (GetComponent<DebugRecorder>() == null) gameObject.AddComponent<DebugRecorder>(); if (GetComponent<ReportUploader>() == null) gameObject.AddComponent<ReportUploader>(); if (GetComponent<RemoteConfig>() == null) gameObject.AddComponent<RemoteConfig>(); AddOnce<RemoteCommands>(); AddOnce<ControlBanner>(); AddOnce<CrashWatch>(); AddOnce<UpdateCheck>(); AddOnce<ReplayRecorder>(); if (CiBattle.Active) AddOnce<CiBattle>(); }
+            if (Application.isPlaying) { DebugReport.Hook(); if (GetComponent<DebugRecorder>() == null) gameObject.AddComponent<DebugRecorder>(); if (GetComponent<ReportUploader>() == null) gameObject.AddComponent<ReportUploader>(); if (GetComponent<RemoteConfig>() == null) gameObject.AddComponent<RemoteConfig>(); AddOnce<RemoteCommands>(); AddOnce<ControlBanner>(); AddOnce<CrashWatch>(); AddOnce<UpdateCheck>(); AddOnce<ReplayRecorder>(); WorldLog.Boot(); if (CiBattle.Active) AddOnce<CiBattle>(); }
             if (Application.isPlaying)
             {
                 // Физики в игре нет (столкновения и попадания считаются своим кодом) — её шаг каждый кадр не нужен.

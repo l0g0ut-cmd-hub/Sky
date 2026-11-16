@@ -135,7 +135,7 @@ namespace SkyTide
             Vector3 dir;
             if (!Solve(muzzle, aimAt, out dir)) return;
             dir = Quaternion.Euler(Random.Range(-spreadDeg, spreadDeg), Random.Range(-spreadDeg, spreadDeg), 0f) * dir;
-            fx.Fire(muzzle, dir, selfVel, muzzleSpeed, true, 7f, caliber);
+            FxSystem.NextShooter = WorldLog.Name(GetComponent<TargetShip>()); fx.Fire(muzzle, dir, selfVel, muzzleSpeed, true, 7f, caliber);
         }
 
         Vector3[] muzzles; bool[] muzzleFound;

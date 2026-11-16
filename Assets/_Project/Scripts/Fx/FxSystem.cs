@@ -40,6 +40,7 @@ namespace SkyTide
             public TargetShip assist;   // автобой: ядро, прошедшее у самого корпуса цели, засчитывается попаданием
             public float caliber;  // ядро: во сколько раз крупнее корабельного (0 и 1 — обычное); множитель урона
             public bool fromPlayer; // ядро флагмана — для счёта точности в отладочном отчёте
+            public string who;     // кто стрелял (журнал мира)
             public bool chain;     // книппель: два ядра на цепи — бьёт по баллонам и ходу, корпусу почти не вредит
             public float trail;    // горящий обломок: > 0 — оставляет дымный хвост (счётчик до следующего клуба)
         }
@@ -113,8 +114,12 @@ namespace SkyTide
             }
             return false;
         }
+        /// <summary>Кто стреляет следующим Fire (журнал мира): ставит стрелок перед вызовом.</summary>
+        public static string NextShooter;
         public void Fire(Vector3 muzzle, Vector3 dir, Vector3 shipVel, float muzzleSpeed, bool hostile = false, float shellLife = 7f, float caliber = 1f, bool chain = false, bool fromPlayer = false)
         {
+            string who = NextShooter ?? (fromPlayer ? "ФЛАГМАН" : hostile ? "враг?" : "свой?"); NextShooter = null;
+            if (Application.isPlaying) WorldLog.Shot(who, muzzle, dir.normalized * muzzleSpeed + shipVel, caliber, chain);
             TargetShip assist = fromPlayer ? AssistTarget : null; AssistTarget = null;
             if (fromPlayer) DebugReport.Count("ядер флагмана выпущено");
             if (Application.isPlaying) DebugReport.Shot(Shooter(hostile, caliber, fromPlayer));
@@ -125,7 +130,7 @@ namespace SkyTide
             // Ядро
             Add(new P
             {
-                kind = Kind.Ball, pos = muzzle, vel = dir * muzzleSpeed + shipVel, life = shellLife, hostile = hostile, caliber = caliber, chain = chain, fromPlayer = fromPlayer, assist = assist,
+                kind = Kind.Ball, who = who, pos = muzzle, vel = dir * muzzleSpeed + shipVel, life = shellLife, hostile = hostile, caliber = caliber, chain = chain, fromPlayer = fromPlayer, assist = assist,
                 size0 = chain ? 1.6f : 0.85f, size1 = chain ? 1.4f : 0.7f, color = chain ? new Color(0.12f, 0.1f, 0.09f) : new Color(0.2f, 0.15f, 0.12f), alpha = 1f, seed = s
             });
             Flash(muzzle, 2.5f * caliber, 32f * caliber);
@@ -638,12 +643,12 @@ namespace SkyTide
                         if (p.hostile)
                         {
                             Vector3 hp; PlayerHull ph = PlayerHull.Instance;
-                            if (ph != null && ph.TryHit(prev, end, out hp)) { end = hp; hit = true; DebugReport.Hit(Shooter(p.hostile, p.caliber, p.fromPlayer)); ph.OnHit(hp, Mathf.Max(1f, p.caliber)); }
+                            if (ph != null && ph.TryHit(prev, end, out hp)) { end = hp; hit = true; WorldLog.Hit(p.who, "ФЛАГМАН", hp, Mathf.Max(1f, p.caliber)); WorldLog.HullCause = "попадание: " + p.who; DebugReport.Hit(Shooter(p.hostile, p.caliber, p.fromPlayer)); ph.OnHit(hp, Mathf.Max(1f, p.caliber)); }
                             // Ядра врага бьют и по своим кораблям (сторожевой, ведомый, торговец).
                             else for (int j = 0; j < AllyShip.All.Count; j++)
                             {
                                 AllyShip al = AllyShip.All[j];
-                                if (al != null && p.age > 0.3f && (al.transform.position - p.pos).sqrMagnitude < 60f * 60f && al.TryHit(prev, end, out hp)) { end = hp; hit = true; DebugReport.Hit(Shooter(p.hostile, p.caliber, p.fromPlayer)); al.OnHit(hp, Mathf.Max(1f, p.caliber)); break; }
+                                if (al != null && p.age > 0.3f && (al.transform.position - p.pos).sqrMagnitude < 60f * 60f && al.TryHit(prev, end, out hp)) { end = hp; hit = true; WorldLog.Hit(p.who, WorldLog.Name(al), hp, Mathf.Max(1f, p.caliber)); DebugReport.Hit(Shooter(p.hostile, p.caliber, p.fromPlayer)); al.OnHit(hp, Mathf.Max(1f, p.caliber)); break; }
                             }
                         }
                         else for (int j = 0; j < TargetShip.All.Count; j++)
@@ -671,21 +676,21 @@ namespace SkyTide
                             Vector3 ap; if (AssistHit(p.assist, prev, end, out ap)) { target = p.assist; hitPoint = ap; DebugReport.Count("попаданий автобоя доводкой"); }
                         }
                         float dmg = p.fromPlayer ? p.caliber * PlayerDamageMul : p.caliber;
-                        if (friend != null) { end = hitPoint; hit = true; DebugReport.Count("попаданий флагмана по своим"); friend.OnHit(hitPoint, PlayerDamageMul, true); }
-                        if (target != null) { end = hitPoint; hit = true; if (p.fromPlayer) DebugReport.Count("попаданий флагмана"); DebugReport.Hit(Shooter(p.hostile, p.caliber, p.fromPlayer)); target.OnHit(hitPoint, p.chain, p.fromPlayer, dmg); }
+                        if (friend != null) { end = hitPoint; hit = true; WorldLog.Hit(p.who, WorldLog.Name(friend), hitPoint, PlayerDamageMul); DebugReport.Count("попаданий флагмана по своим"); friend.OnHit(hitPoint, PlayerDamageMul, true); }
+                        if (target != null) { end = hitPoint; hit = true; WorldLog.Hit(p.who, WorldLog.Name(target) + (p.chain ? " книппелем" : ""), hitPoint, dmg); if (p.fromPlayer) DebugReport.Count("попаданий флагмана"); DebugReport.Hit(Shooter(p.hostile, p.caliber, p.fromPlayer)); target.OnHit(hitPoint, p.chain, p.fromPlayer, dmg); }
                         // Крепость: ядро не пролетает сквозь стены. Своё ядро крепости первую секунду не проверяется (дуло на башне).
                         SkyFortress fort = SkyFortress.Instance;
                         Vector3 fp;
                         if (!hit && fort != null && ((!p.hostile && p.caliber < 1.5f) || p.age > 1f) && fort.TryHit(prev, end, out fp)   /* тяжёлое «своё» ядро — орудие крепости: секунду летит мимо своих стен */)
                         {
-                            end = fp; hit = true;
+                            end = fp; hit = true; WorldLog.Hit(p.who, "КРЕПОСТЬ", fp, 0f);
                             Vector3 outward = fp - fort.Center; outward.y = Mathf.Abs(outward.y) * 0.3f + 20f;
                             pendingStone.Add(new Vector4(fp.x, fp.y, fp.z, 0f)); pendingStoneOut.Add(outward.normalized);
                         }
                         // Строения (маяк, башни, логова…): ядро разбивается о стену.
                         if (!hit && p.age > 0.15f && WorldProps.Solids.Count > 0 && WorldProps.TryHit(prev, end, out fp))
                         {
-                            end = fp; hit = true;
+                            end = fp; hit = true; WorldLog.Hit(p.who, "СТРОЕНИЕ", fp, 0f);
                             Vector3 outward = fp - WorldProps.Nearest(fp); outward.y = 6f;
                             pendingStone.Add(new Vector4(fp.x, fp.y, fp.z, 0f)); pendingStoneOut.Add(outward.normalized);
                         }

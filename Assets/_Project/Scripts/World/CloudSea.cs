@@ -313,6 +313,19 @@ namespace SkyTide
 
         /// <summary>Отладочный отчёт: n ближайших видимых облаков-спрайтов одной строкой каждое
         /// (вид, x,y,z от камеры, ширина, дальность, экран). Плюс сколько всего и сколько в кадре.</summary>
+        /// <summary>Все облака-спрайты для журнала мира: вид, место, размер, включено.</summary>
+        public void DumpAll(System.Text.StringBuilder b)
+        {
+            b.Append("  ОБЛАКА-СПРАЙТЫ ").Append(clouds.Count).Append(" ветер ").Append(Mathf.RoundToInt(wind.x)).Append(',').Append(Mathf.RoundToInt(wind.z)).Append('\n');
+            foreach (Cloud c in clouds)
+            {
+                if (c.t == null) continue;
+                Vector3 p = c.t.position, s = c.t.localScale;
+                b.Append("   обл ").Append(c.kind).Append(' ').Append(Mathf.RoundToInt(p.x)).Append(',').Append(Mathf.RoundToInt(p.y)).Append(',').Append(Mathf.RoundToInt(p.z))
+                 .Append(" р ").Append(Mathf.RoundToInt(s.x)).Append('×').Append(Mathf.RoundToInt(s.y)).Append(c.t.gameObject.activeInHierarchy ? "" : " выкл").Append('\n');
+            }
+        }
+
         public void Dump(System.Text.StringBuilder b, Camera cam, int n)
         {
             if (cam == null) return;

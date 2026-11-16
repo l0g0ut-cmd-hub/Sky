@@ -116,7 +116,7 @@ namespace SkyTide
                     if (!Solve(muzzle, tp, tv, out dir)) continue;
                     dir = Quaternion.Euler(UnityEngine.Random.Range(-spreadDeg, spreadDeg) * 1.6f, UnityEngine.Random.Range(-spreadDeg, spreadDeg) * 1.6f, 0f) * dir;
                     // «Своё» ядро (не hostile): бьёт по кораблям врага, игрока не задевает.
-                    FxSystem.Instance.Fire(muzzle, dir, Vector3.zero, muzzleSpeed, false, shellLife, shellCaliber);
+                    FxSystem.NextShooter = "КРЕПОСТЬ"; FxSystem.Instance.Fire(muzzle, dir, Vector3.zero, muzzleSpeed, false, shellLife, shellCaliber);
                     gunCursor = g + 1;
                     nextEnemyShot = Time.time + 1.2f + UnityEngine.Random.Range(0f, 0.5f);
                     return;
@@ -362,7 +362,7 @@ namespace SkyTide
                 && InRepairZone(ship.transform.position) && Mathf.Abs(ship.Speed) < berthMaxSpeed;   // ремонт — внутри овала
             if (PlayerDocked)
             {
-                hull.Repair(repairPerSecond * dt);
+                WorldLog.HullCause = "ремонт у причала"; hull.Repair(repairPerSecond * dt);
                 hull.RepairFx(dt);   // ремонт виден: искры по обшивке, пока корпус не цел
                 // Автошвартовка: рукоять на «СТОП» — корабль сам подтягивается к месту у конца пирса (туда же он
                 // возвращается после гибели: причал + 30 м наружу) и встаёт носом от крепости. Дал ход — отпускает.
@@ -417,7 +417,7 @@ namespace SkyTide
             if (!Solve(muzzle, aimAt, out dir)) return;
             if (!warning) dir = Quaternion.Euler(UnityEngine.Random.Range(-spreadDeg, spreadDeg), UnityEngine.Random.Range(-spreadDeg, spreadDeg), 0f) * dir;
             if (FxSystem.Instance == null) return;
-            FxSystem.Instance.Fire(muzzle, dir, Vector3.zero, muzzleSpeed, true, shellLife, shellCaliber);
+            FxSystem.NextShooter = "КРЕПОСТЬ"; FxSystem.Instance.Fire(muzzle, dir, Vector3.zero, muzzleSpeed, true, shellLife, shellCaliber);
             if (warning) return;
             // Залп башней: вместе с выбранным орудием бьют до двух соседних (в 30 м модели), чьи стволы смотрят на цель;
             // пауза до следующего залпа длиннее во столько же раз — плотность огня прежняя.
@@ -430,7 +430,7 @@ namespace SkyTide
                 Vector3 d2;
                 if (!Solve(m2, pp, out d2)) continue;
                 d2 = Quaternion.Euler(UnityEngine.Random.Range(-spreadDeg, spreadDeg) * 1.5f, UnityEngine.Random.Range(-spreadDeg, spreadDeg) * 1.5f, 0f) * d2;
-                FxSystem.Instance.Fire(m2, d2, Vector3.zero, muzzleSpeed, true, shellLife, shellCaliber);
+                FxSystem.NextShooter = "КРЕПОСТЬ"; FxSystem.Instance.Fire(m2, d2, Vector3.zero, muzzleSpeed, true, shellLife, shellCaliber);
                 extra++;
             }
             if (extra > 0) nextShot = Time.time + (shotInterval + UnityEngine.Random.Range(0f, 0.4f)) * (1 + extra);

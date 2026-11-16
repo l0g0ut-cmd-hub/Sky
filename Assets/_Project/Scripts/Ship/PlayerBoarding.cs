@@ -75,7 +75,7 @@ namespace SkyTide
             {
                 TargetShip prize = boarding; boarding = null;
                 prize.Capture();
-                hull.Repair(hull.maxHealth * 0.25f);
+                WorldLog.HullCause = "абордаж: приз " + WorldLog.Name(prize) + " +25%"; hull.Repair(hull.maxHealth * 0.25f);
                 HudNotice.Post("ПРИЗ ВЗЯТ · РЕМОНТ +25%", "", 0, 3.5f, HudNotice.Prio.Combat, null, null);
                 Haptics.Pulse(80);
             }

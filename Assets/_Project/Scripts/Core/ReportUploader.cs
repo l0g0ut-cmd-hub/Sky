@@ -173,6 +173,7 @@ namespace SkyTide
         readonly System.Collections.Generic.Queue<string> photoIndex = new System.Collections.Generic.Queue<string>();
         public void Photo(string label, bool full)
         {
+            WorldLog.Mark("СНИМОК " + label);
             if (!Ready) return;
             StartCoroutine(PhotoRoutine(label, full));
         }

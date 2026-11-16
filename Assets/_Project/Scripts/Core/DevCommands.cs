@@ -125,12 +125,12 @@ namespace SkyTide
                         Vector3 at = f.BerthWorld + o * 30f; at.y = me.position.y; me.SetPositionAndRotation(at, Quaternion.LookRotation(o, Vector3.up));
                         return "у причала";
                     }
-                case "repair": if (ph == null) return "нет флагмана"; ph.Repair(ph.maxHealth); return "флагман 100%";
+                case "repair": if (ph == null) return "нет флагмана"; WorldLog.HullCause = "команда repair"; ph.Repair(ph.maxHealth); return "флагман 100%";
                 case "hurt":
                     {
                         if (ph == null) return "нет флагмана";
                         float p = 25f; float.TryParse(arg, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out p);
-                        ph.OnHitDamageOnly(ph.Health - ph.maxHealth * Mathf.Clamp01(p / 100f)); return "флагман " + Mathf.RoundToInt(ph.Health01 * 100f) + "%";
+                        WorldLog.HullCause = "команда hurt " + arg; ph.OnHitDamageOnly(ph.Health - ph.maxHealth * Mathf.Clamp01(p / 100f)); return "флагман " + Mathf.RoundToInt(ph.Health01 * 100f) + "%";
                     }
                 case "weather":
                     if (ws == null) return "нет погоды";

@@ -274,7 +274,7 @@ namespace SkyTide
             {
                 touchedOnce = true;
                 HudLayout hl = Layout(ViewWidth, ViewHeight);
-                if (Application.isPlaying) DebugReport.Touch(Mathf.RoundToInt(p.x) + "," + Mathf.RoundToInt(p.y) + " → " + TouchTarget(hl, p));
+                if (Application.isPlaying) { string tt = TouchTarget(hl, p); DebugReport.Touch(Mathf.RoundToInt(p.x) + "," + Mathf.RoundToInt(p.y) + " → " + tt); WorldLog.Touch(p, (id == 77 ? "[Claude] " : "") + tt); }
                 if (Paused)
                 {
                     owners[id] = Owner.Button; lastPos[id] = p;

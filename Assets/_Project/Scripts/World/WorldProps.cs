@@ -24,7 +24,7 @@ namespace SkyTide
     /// </summary>
     public class WorldProps : MonoBehaviour
     {
-        public struct Solid { public Vector3 c; public float r, y0, y1; }
+        public struct Solid { public Vector3 c; public float r, y0, y1; public string name; }
         public static readonly List<Solid> Solids = new List<Solid>();
         public static WorldProps Instance { get; private set; }
 
@@ -139,7 +139,7 @@ namespace SkyTide
             foreach (Vector3 c in d.circles)
             {
                 Vector3 wc = go.transform.TransformPoint(new Vector3(c.x, 0f, c.y));
-                Solids.Add(new Solid { c = new Vector3(wc.x, 0f, wc.z), r = c.z * scale, y0 = go.transform.position.y + bottom, y1 = go.transform.position.y + height });
+                Solids.Add(new Solid { name = id + " #" + transform.childCount, c = new Vector3(wc.x, 0f, wc.z), r = c.z * scale, y0 = go.transform.position.y + bottom, y1 = go.transform.position.y + height });
             }
             if (d.lantern > 0f)
             {
@@ -213,7 +213,7 @@ namespace SkyTide
                 Vector3 dir;
                 if (!Solve(m, aim, lead, out dir)) continue;
                 dir = Quaternion.Euler(UnityEngine.Random.Range(-TowerSpread, TowerSpread), UnityEngine.Random.Range(-TowerSpread, TowerSpread), 0f) * dir;
-                FxSystem.Instance.Fire(m + dir * 4f, dir, Vector3.zero, TowerMuzzle, atPlayer, 8f, 1f);
+                FxSystem.NextShooter = w.name; FxSystem.Instance.Fire(m + dir * 4f, dir, Vector3.zero, TowerMuzzle, atPlayer, 8f, 1f);
                 w.next = Time.time + TowerReload + UnityEngine.Random.Range(0f, 1.5f);
                 DebugReport.Count("выстрелов сторожевых башен");
                 if (atPlayer)

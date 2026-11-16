@@ -482,7 +482,7 @@ namespace SkyTide
                     leg = Leg.Docked; waitUntil = Time.time + 25f;
                     DebugReport.Count("торговцев дошло");
                     PlayerHull ph = PlayerHull.Instance;
-                    if (ph != null && ph.Alive) { ph.Repair(ph.maxHealth * 0.1f); DebugReport.Event("торговец дошёл"); }
+                    if (ph != null && ph.Alive) { WorldLog.HullCause = "торговец"; ph.Repair(ph.maxHealth * 0.1f); DebugReport.Event("торговец дошёл"); }
                 }
                 else SteerAround(f, spot, to.magnitude > 300f ? 0.9f : 0.35f);
                 return;
@@ -563,7 +563,7 @@ namespace SkyTide
                 Vector3 muzzle = model.TransformPoint(gunLocal);
                 Vector3 dir;
                 if (Solve(muzzle, tp + aimErr, tv, fx.gravity, out dir))
-                    fx.Fire(muzzle, Quaternion.Euler(Random.Range(-2f, 2f), Random.Range(-2f, 2f), 0f) * dir, selfVel, muzzleSpeed, atPlayer, 7f, caliber);   // по флагману — «враждебным» ядром
+                    { FxSystem.NextShooter = WorldLog.Name(this); fx.Fire(muzzle, Quaternion.Euler(Random.Range(-2f, 2f), Random.Range(-2f, 2f), 0f) * dir, selfVel, muzzleSpeed, atPlayer, 7f, caliber); }   // по флагману — «враждебным» ядром
                 pendingLeft--; pendingAt = Time.time + Random.Range(0.12f, 0.2f);
                 return;
             }

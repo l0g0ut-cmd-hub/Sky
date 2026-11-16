@@ -288,6 +288,7 @@ namespace SkyTide
         {
             deadUntil = -1f;
             respawnedAt = Time.time;
+            WorldLog.HullCause = "возрождение"; WorldLog.Mark("ФЛАГМАН ВОЗРОДИЛСЯ");
             Health = maxHealth;
             sinkAge = -1f;
             ventCount = ventCursor = 0;

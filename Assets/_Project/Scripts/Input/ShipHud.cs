@@ -224,6 +224,7 @@ namespace SkyTide
         /// <summary>Строка с заглавными высотой capH; x — левый край текста (или центр при centered).</summary>
         void CapText(float x, float cy, string t, float capH, Color color, bool centered)
         {
+            WorldLog.Label(t, x, cy, capH);
             float w = CapRatio(t) * capH, h = capH / 0.8f, side = Mathf.Max(6f, h * 0.3f);
             float left = centered ? x - w * 0.5f : x;
             Text(new Rect(left - side - 1f, cy - h * 0.5f, w + side * 2f + 2f, h), t, capH * 1.4f, color);
