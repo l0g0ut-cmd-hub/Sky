@@ -1,0 +1,5 @@
+== uname
+Linux ip-10-0-133-197 7.0.0-1016-aws #17-Ubuntu SMP PREEMPT Mon Oct 19 17:36:33 UTC 2026 x86_64 GNU/Linux
+== df
+Filesystem            Size  Used Avail Use% Mounted on
+/dev/mapper/cow-root  145G   55G   91G  38% /
