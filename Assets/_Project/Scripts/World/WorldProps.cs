@@ -30,17 +30,19 @@ namespace SkyTide
 
         // Габариты моделей (м, после convert_props.py; низ модели — y = 0):
         //   shipY — какая высота модели приходится на высоту кораблей; circles — (x, z, радиус) в плане модели.
-        struct Def { public float shipY; public Vector3[] circles; public float lantern; }
+        struct Def { public float shipY; public Vector3[] circles; public float lantern; public float sink, topAbove; }
+        // sink > 0 — основание уходит в море облаков на sink м (не висит в воздухе); topAbove — верх не ниже кораблей + topAbove
+        // (модель растягивается целиком). Владелец 16.11: «башни висят тупо в воздухе… основание закрыто облаками».
         static Def DefOf(string id)
         {
             switch (id)
             {
                 case "lighthouse": return new Def { shipY = 41f, lantern = 104f, circles = new[] { new Vector3(0f, 0f, 21f) } };
-                case "watchtower": return new Def { shipY = 12f, lantern = 46f, circles = new[] { new Vector3(6f, -1f, 13f), new Vector3(-14f, 0f, 5f) } };
+                case "watchtower": return new Def { sink = 14f, topAbove = 26f, shipY = 12f, lantern = 46f, circles = new[] { new Vector3(6f, -1f, 13f), new Vector3(-14f, 0f, 5f) } };
                 case "buoy": return new Def { shipY = 11f, lantern = 21f, circles = new[] { new Vector3(0f, 0f, 4f) } };
                 case "hideout": return new Def { shipY = 42f, lantern = 0f, circles = new[] { new Vector3(0f, 0f, 27f) } };
                 case "wreck": return new Def { shipY = 30f, lantern = 0f, circles = new[] { new Vector3(-26f, 0f, 13f), new Vector3(0f, 0f, 14f), new Vector3(26f, 0f, 13f) } };
-                case "depot": return new Def { shipY = 20f, lantern = 0f, circles = new[] { new Vector3(-20f, -12f, 21f), new Vector3(14f, -12f, 21f), new Vector3(-19f, 22f, 18f), new Vector3(42f, 22f, 9f) } };
+                case "depot": return new Def { sink = 8f, topAbove = 10f, shipY = 20f, lantern = 0f, circles = new[] { new Vector3(-20f, -12f, 21f), new Vector3(14f, -12f, 21f), new Vector3(-19f, 22f, 18f), new Vector3(42f, 22f, 9f) } };
                 case "mooringmast": return new Def { shipY = 95f, lantern = 108f, circles = new[] { new Vector3(-38f, 0f, 7f), new Vector3(18f, 0f, 8f), new Vector3(33f, 0f, 8f), new Vector3(47f, 0f, 6f) } };
             }
             return new Def { shipY = 0f, circles = new Vector3[0] };
@@ -103,15 +105,21 @@ namespace SkyTide
             if (!byId.TryGetValue(id, out a)) return;
             Def d = DefOf(id);
             face.y = 0f; if (face.sqrMagnitude < 1e-4f) face = Vector3.forward;
+            Mesh full = ShipMeshLoader.Load(a.mesh), lite = ShipMeshLoader.Load(a.lite), far = ShipMeshLoader.Load(a.far);
+            if (full == null) return;
+            float h0 = full.bounds.size.y, scale = 1f, baseY = shipLevel - d.shipY;
+            if (d.sink > 0f)
+            {
+                baseY = CloudTop() - d.sink;
+                scale = Mathf.Max(1f, (shipLevel + d.topAbove - baseY) / h0);
+            }
             GameObject go = new GameObject("Prop " + id);
             go.transform.SetParent(transform, false);
-            go.transform.position = new Vector3(at.x, shipLevel - d.shipY, at.z);
+            go.transform.position = new Vector3(at.x, baseY, at.z);
             go.transform.rotation = Quaternion.LookRotation(face.normalized, Vector3.up);
+            go.transform.localScale = Vector3.one * scale;
             go.isStatic = true;
-
-            Mesh full = ShipMeshLoader.Load(a.mesh), lite = ShipMeshLoader.Load(a.lite), far = ShipMeshLoader.Load(a.far);
-            if (full == null) { Destroy(go); return; }
-            float height = full.bounds.size.y;
+            float height = h0 * scale;
             Renderer r0 = Part(go.transform, "LOD0", full, a.material, ShadowCastingMode.Off);
             Renderer r0s = lite != null ? Part(go.transform, "LOD0 shadow", lite, a.material, ShadowCastingMode.ShadowsOnly) : null;
             Renderer r1 = lite != null ? Part(go.transform, "LOD1", lite, a.material, ShadowCastingMode.On) : null;
@@ -125,16 +133,16 @@ namespace SkyTide
             g.RecalculateBounds();
 
             if (id == "watchtower")
-                towers.Add(new Tower { t = go.transform, muzzle = go.transform.position + Vector3.up * 40f, next = UnityEngine.Random.Range(0f, 3f),
+                towers.Add(new Tower { t = go.transform, muzzle = go.transform.position + Vector3.up * 40f * scale, next = UnityEngine.Random.Range(0f, 3f),
                                        name = "БАШНЯ " + (towers.Count + 1) });
             foreach (Vector3 c in d.circles)
             {
                 Vector3 wc = go.transform.TransformPoint(new Vector3(c.x, 0f, c.y));
-                Solids.Add(new Solid { c = new Vector3(wc.x, 0f, wc.z), r = c.z, y0 = go.transform.position.y, y1 = go.transform.position.y + height });
+                Solids.Add(new Solid { c = new Vector3(wc.x, 0f, wc.z), r = c.z * scale, y0 = go.transform.position.y, y1 = go.transform.position.y + height });
             }
             if (d.lantern > 0f)
             {
-                Vector3 lp = go.transform.position + Vector3.up * d.lantern;
+                Vector3 lp = go.transform.position + Vector3.up * d.lantern * scale;
                 bool beacon = id == "lighthouse";
                 lampList.Add(new Lamp { pos = lp, beacon = beacon, size = beacon ? 9f : id == "buoy" ? 2.2f : 4f,
                     speed = beacon ? 1.1f : id == "buoy" ? 2.4f : 0.7f,
@@ -152,6 +160,14 @@ namespace SkyTide
                     beaconLight.renderMode = LightRenderMode.ForceVertex;
                 }
             }
+        }
+
+        /// <summary>Верх моря облаков (объёмные облака; без них — уровень FxSystem).</summary>
+        static float CloudTop()
+        {
+            VolumetricClouds vc = FindObjectOfType<VolumetricClouds>();
+            if (vc != null) return vc.deckTop;
+            return FxSystem.Instance != null ? FxSystem.Instance.deckTop : 20f;
         }
 
         static Renderer Part(Transform parent, string name, Mesh m, Material mat, ShadowCastingMode shadows)

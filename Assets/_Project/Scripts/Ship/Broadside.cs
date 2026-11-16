@@ -561,10 +561,8 @@ namespace SkyTide
             {
                 if (scopeCam == null && Camera.main != null) scopeCam = Camera.main.GetComponent<OrbitCamera>();
                 bool scoped = scopeCam != null && scopeCam.ScopeOn;   // в трубе лента шла у самой камеры жёлтой стеной (снимки 155)
-                // Стрелка — только пока игрок держит кнопку борта. Без цели — куда ляжет залп «прямо» (стволы на упоре).
-                bool holding = HoldSide != 0 && HoldSide == (int)side;
-                if (holding && (best == null || !solved || aimedK < 0.3f)) { aimPoint = transform.position + transform.right * side * MaxRange * 0.6f + Vector3.down * 15f; aimedK = 1f; }
-                if (!scoped && holding && aimedK > 0.02f && BuildArc(fore != null ? fore : mid, aft != null ? aft : mid, mid, side, g, fx))
+                // Стрелка-траектория — по цели, когда решение есть (как до прицела с удержанием).
+                if (!scoped && best != null && solved && aimedK > 0.02f && BuildArc(fore != null ? fore : mid, aft != null ? aft : mid, mid, side, g, fx))
                     arrow.Draw(arcA, arcB, hullAny ? 2 : ready ? 0 : 1, (ready ? 0.85f : 0.5f) * Mathf.SmoothStep(0f, 1f, aimedK));
                 else { arrow.Hide(); arcValid = false; }
             }

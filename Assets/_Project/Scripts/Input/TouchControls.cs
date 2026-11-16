@@ -293,9 +293,9 @@ namespace SkyTide
                 if (Application.isPlaying && cam != null && hl.spy.Contains(p)) { owners[id] = Owner.Button; lastPos[id] = p; cam.ToggleScope(); return; }
                 if (Application.isPlaying && hl.auto.Contains(p)) { owners[id] = Owner.Button; lastPos[id] = p; SetAutoBattle(!AutoBattle); return; }
                 if (bs != null && VolleyModeRect().Contains(p)) { owners[id] = Owner.Button; lastPos[id] = p; bs.ripple = !bs.ripple; return; }
-                // Прицел как в Black Flag: держишь кнопку борта — камера за борт, видна траектория залпа; отпустил — залп.
-                if (bs != null && VolleyRect(-1).Contains(p)) { owners[id] = Owner.VolleyL; lastPos[id] = p; BeginHold(bs, -1); return; }
-                if (bs != null && VolleyRect(1).Contains(p)) { owners[id] = Owner.VolleyR; lastPos[id] = p; BeginHold(bs, 1); return; }
+                // Залп — по касанию кнопки борта. Прицел «как в Black Flag» (удержание, камера за борт) убран 16.11 по просьбе владельца.
+                if (bs != null && VolleyRect(-1).Contains(p)) { owners[id] = Owner.Button; lastPos[id] = p; if (bs.Readiness(-1) >= 0.9999f) Haptics.Pulse(45); bs.Fire(-1); return; }
+                if (bs != null && VolleyRect(1).Contains(p)) { owners[id] = Owner.Button; lastPos[id] = p; if (bs.Readiness(1) >= 0.9999f) Haptics.Pulse(45); bs.Fire(1); return; }
                 if (p.x < ViewWidth * 0.5f && stickId == int.MinValue)
                 {
                     owners[id] = Owner.Stick;
