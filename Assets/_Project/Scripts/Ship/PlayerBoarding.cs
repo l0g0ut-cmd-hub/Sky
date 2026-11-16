@@ -43,14 +43,14 @@ namespace SkyTide
             if (candidate == null || boarding != null) return;
             boarding = candidate; candidate = null; progress = 0f;
             boarding.BeingBoarded = true;
-            HudNotice.Show("АБОРДАЖ!", 0, 2f);
+            HudNotice.Post("АБОРДАЖ!", "", 0, 2f, HudNotice.Prio.Combat, null, null);
             DebugReport.Count("абордажей начато");
             Haptics.Pulse(60);
         }
 
         void Abort()
         {
-            if (boarding != null) { boarding.BeingBoarded = false; HudNotice.Show("АБОРДАЖ СОРВАН", 1, 2.5f); DebugReport.Count("абордажей сорвано"); }
+            if (boarding != null) { boarding.BeingBoarded = false; HudNotice.Post("АБОРДАЖ СОРВАН", "", 1, 2.5f, HudNotice.Prio.Combat, null, null); DebugReport.Count("абордажей сорвано"); }
             boarding = null; progress = 0f;
         }
 
@@ -76,7 +76,7 @@ namespace SkyTide
                 TargetShip prize = boarding; boarding = null;
                 prize.Capture();
                 hull.Repair(hull.maxHealth * 0.25f);
-                HudNotice.Show("ПРИЗ ВЗЯТ · РЕМОНТ +25%", 0, 3.5f);
+                HudNotice.Post("ПРИЗ ВЗЯТ · РЕМОНТ +25%", "", 0, 3.5f, HudNotice.Prio.Combat, null, null);
                 Haptics.Pulse(80);
             }
         }

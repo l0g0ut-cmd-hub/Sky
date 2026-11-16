@@ -287,7 +287,7 @@ namespace SkyTide
                 }
                 // Кнопки «облака» на экране нет (просьба владельца): переключатель — в панели FPS.
                 Broadside bs = Guns();
-                if (Application.isPlaying && bs != null && hl.ammo.Contains(p)) { owners[id] = Owner.Button; lastPos[id] = p; bs.chainShot = !bs.chainShot; HudNotice.Show(bs.chainShot ? "ЗАРЯД · КНИППЕЛИ (БАЛЛОНЫ И ХОД)" : "ЗАРЯД · ЯДРА (КОРПУС)", 0, 2f); return; }
+                if (Application.isPlaying && bs != null && hl.ammo.Contains(p)) { owners[id] = Owner.Button; lastPos[id] = p; bs.chainShot = !bs.chainShot; HudNotice.Post(bs.chainShot ? "ЗАРЯД · КНИППЕЛИ (БАЛЛОНЫ И ХОД)" : "ЗАРЯД · ЯДРА (КОРПУС)", "", 0, 2f, HudNotice.Prio.Hint, null, null); return; }
                 PlayerBoarding pbd = Application.isPlaying ? Boarding() : null;
                 if (pbd != null && pbd.Candidate != null && hl.board.Contains(p)) { owners[id] = Owner.Button; lastPos[id] = p; pbd.Begin(); return; }
                 if (Application.isPlaying && cam != null && hl.spy.Contains(p)) { owners[id] = Owner.Button; lastPos[id] = p; cam.ToggleScope(); return; }
@@ -345,7 +345,7 @@ namespace SkyTide
                     // Отвёл палец далеко от кнопки и отпустил — залп отменён (как отмена прицела в Black Flag).
                     Rect vr = VolleyRect(hs); float mg = vr.height * 0.7f;
                     bool away = p.x < vr.x - mg || p.x > vr.xMax + mg || p.y < vr.y - mg || p.y > vr.yMax + mg;
-                    if (away) HudNotice.Show("ЗАЛП ОТМЕНЁН", 0, 1.2f);
+                    if (away) HudNotice.Post("ЗАЛП ОТМЕНЁН", "", 0, 1.2f, HudNotice.Prio.Hint, null, null);
                     else { if (hb.Readiness(hs) >= 0.9999f) Haptics.Pulse(45); hb.Fire(hs); }
                     hb.HoldSide = 0;
                 }
@@ -501,11 +501,17 @@ namespace SkyTide
             if (best == null)
             {
                 if (gb.Locked == null) return false;
-                gb.Locked = null; HudNotice.Show("ЦЕЛЬ СНЯТА", 0, 1.2f);
+                gb.Locked = null; HudNotice.Post("ЦЕЛЬ СНЯТА", "", 0, 1.2f, HudNotice.Prio.Hint, null, null);
                 return true;
             }
-            if (gb.Locked == best) { gb.Locked = null; HudNotice.Show("ЦЕЛЬ СНЯТА", 0, 1.2f); }
-            else { gb.Locked = best; HudNotice.Show("ЦЕЛЬ ВЗЯТА", 1, 1.2f); Haptics.Pulse(25); }
+            if (gb.Locked == best) { gb.Locked = null; HudNotice.Post("ЦЕЛЬ СНЯТА", "", 0, 1.2f, HudNotice.Prio.Hint, null, null); }
+            else
+            {
+                gb.Locked = best; Haptics.Pulse(25);
+                TargetShip te = best as TargetShip; AllyShip ta = best as AllyShip;
+                string who = te != null ? HudNotice.Who(te) + " · " + Relations.Name(te.Mood) : HudNotice.Who(ta) + " · СВОЙ";
+                HudNotice.Post("ЦЕЛЬ: " + who, HudNotice.Where(best.transform.position), 1, 1.8f, HudNotice.Prio.Hint, "lock", best.transform, 0f, ta != null ? new Color(0.5f, 1f, 0.55f, 1f) : new Color(1f, 0.82f, 0.45f, 1f));
+            }
             return true;
         }
 
@@ -562,7 +568,7 @@ namespace SkyTide
             Broadside gb = Guns(); if (gb == null || ship == null) return;
             List<TargetShip> near = new List<TargetShip>();
             foreach (TargetShip t in TargetShip.All) if (t != null && t.Alive && t.gameObject.activeInHierarchy && Vector3.Distance(t.transform.position, ship.transform.position) < 2500f) near.Add(t);
-            if (near.Count == 0) { HudNotice.Show("ВРАГОВ НЕ ВИДНО", 1, 1.5f); return; }
+            if (near.Count == 0) { HudNotice.Post("ВРАГОВ НЕ ВИДНО", "", 1, 1.5f, HudNotice.Prio.Hint, null, null); return; }
             Vector3 me = ship.transform.position;
             near.Sort((a, b) => Vector3.Distance(a.transform.position, me).CompareTo(Vector3.Distance(b.transform.position, me)));
             int at = near.IndexOf(gb.Locked as TargetShip);

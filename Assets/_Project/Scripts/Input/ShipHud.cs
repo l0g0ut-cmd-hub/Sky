@@ -667,6 +667,48 @@ namespace SkyTide
                 CapText(sp.x, sy, txt, capH, col, true);
             }
         }
+        static string LockName(IAimTarget t)
+        {
+            TargetShip e = t as TargetShip; if (e != null) return HudNotice.Who(e) + (e.Mood != Attitude.Calm ? " · " + Relations.Name(e.Mood) : "");
+            AllyShip a = t as AllyShip; if (a != null) return (a.Class != ShipClass.None ? ShipClasses.Get(a.Class).name : HudNotice.Who(a)) + " · СВОЙ";
+            return "";
+        }
+        /// <summary>Метка корабля из сообщения (HudNotice.Focus): в кадре — пульсирующее кольцо по его размеру, за кадром —
+        /// стрелка у края экрана в его сторону с дальностью. Видна, пока видно сообщение.</summary>
+        void NoticeMarker(TouchControls input, HudLayout l)
+        {
+            Camera c = Camera.main; Transform f = HudNotice.Focus;
+            if (c == null || f == null || !Application.isPlaying) return;
+            float a = HudNotice.Alpha; if (a <= 0.02f) return;
+            IAimTarget it = f.GetComponent<TargetShip>() as IAimTarget ?? f.GetComponent<AllyShip>();
+            if (it != null && (object)Broadside.PlayerLock == it) return;   // взятая цель уже в рамке
+            Vector3 centre = it != null ? it.Center : f.position;
+            Color col = HudNotice.FocusColor; col.a *= a * (0.75f + 0.25f * Mathf.Sin(Time.unscaledTime * 8f));
+            Vector3 sp = c.WorldToScreenPoint(centre);
+            Vector2 mid = new Vector2(Screen.width * 0.5f, Screen.height * 0.5f), q = new Vector2(sp.x, Screen.height - sp.y);
+            if (sp.z <= 0f) q = mid - (q - mid);
+            float dist = Vector3.Distance(input.ship.transform.position, f.position);
+            bool off = sp.z <= 0f || q.x < l.unit * 0.06f || q.x > Screen.width - l.unit * 0.06f || q.y < l.unit * 0.06f || q.y > Screen.height - l.unit * 0.06f;
+            if (!off)
+            {
+                float half = it != null ? Vector3.Distance(it.BoxCorner(0), it.BoxCorner(7)) * 0.35f : 20f;
+                Vector3 sp2 = c.WorldToScreenPoint(centre + c.transform.right * half);
+                float r = Mathf.Clamp(Mathf.Abs(sp2.x - sp.x), l.unit * 0.04f, l.unit * 0.35f);
+                Ring(q, r, Mathf.Max(2f, l.unit * 0.004f), col);
+                Ring(q, r * 1.12f, Mathf.Max(1f, l.unit * 0.002f), new Color(col.r, col.g, col.b, col.a * 0.5f));
+                return;
+            }
+            Vector2 dv = q - mid; if (dv.sqrMagnitude < 1f) dv = Vector2.up;
+            if (sp.z <= 0f) dv = dv.normalized * (Screen.width + Screen.height);
+            float ex = Screen.width * 0.5f - l.unit * 0.1f, ey = Screen.height * 0.5f - l.unit * 0.1f;
+            float kx = Mathf.Abs(dv.x) > 1e-3f ? ex / Mathf.Abs(dv.x) : float.MaxValue, ky = Mathf.Abs(dv.y) > 1e-3f ? ey / Mathf.Abs(dv.y) : float.MaxValue;
+            Vector2 at = mid + dv * Mathf.Min(kx, ky), n = dv.normalized, sd = new Vector2(-n.y, n.x);
+            float s = l.unit * 0.032f, w = Mathf.Max(2f, l.unit * 0.006f);
+            Line(at + n * s, at - n * s * 0.4f + sd * s * 0.8f, w, col);
+            Line(at + n * s, at - n * s * 0.4f - sd * s * 0.8f, w, col);
+            Vector2 tp = at - n * s * 1.6f;
+            CapText(tp.x, tp.y, HudNotice.Dist(dist), l.unit * 0.016f, col, true);
+        }
         void LockMarker(TouchControls input, HudLayout l)
         {
             Broadside gb = input.Guns(); Camera c = Camera.main;
@@ -678,7 +720,7 @@ namespace SkyTide
                 if (!input.AutoBattle && lockHints < 3 && Time.unscaledTime - lockHintAt > 25f)
                     foreach (TargetShip e in TargetShip.All)
                         if (e != null && e.Alive && Vector3.Distance(e.transform.position, input.ship.transform.position) < gb.MaxRange * 1.2f)
-                        { HudNotice.Show("КОСНИСЬ ВРАГА — ВЗЯТЬ В ЦЕЛЬ", 1, 3f); lockHints++; lockHintAt = Time.unscaledTime; break; }
+                        { HudNotice.Post("КОСНИСЬ ВРАГА — ВЗЯТЬ В ЦЕЛЬ", "", 1, 3f, HudNotice.Prio.Hint, null, null); lockHints++; lockHintAt = Time.unscaledTime; break; }
                 return;
             }
             Vector3 sp = c.WorldToScreenPoint(t.Center);
@@ -700,7 +742,7 @@ namespace SkyTide
                     Line(at + n * a, at - n * a * 0.6f + s * a * 0.8f, w0, col); Line(at + n * a, at - n * a * 0.6f - s * a * 0.8f, w0, col);
                     Line(at - n * a * 0.6f + s * a * 0.8f, at - n * a * 0.15f, w0, col); Line(at - n * a * 0.6f - s * a * 0.8f, at - n * a * 0.15f, w0, col);
                     Vector2 tp = at - n * l.unit * 0.06f;
-                    CapText(tp.x, tp.y, Cached(12, Mathf.RoundToInt(dist / 10f), v => v * 10 + " м"), l.unit * 0.018f, col, true);
+                    CapText(tp.x, tp.y, LockName(t) + " · " + Cached(12, Mathf.RoundToInt(dist / 10f), v => v * 10 + " м"), l.unit * 0.018f, col, true);
                     return;
                 }
             }
@@ -727,7 +769,7 @@ namespace SkyTide
                     Line(corner, corner - new Vector2(sx * arm, 0f), w, col);
                     Line(corner, corner - new Vector2(0f, sy * arm), w, col);
                 }
-                CapText(q.x, q.y + hh + l.unit * 0.024f, Cached(12, Mathf.RoundToInt(dist / 10f), v => v * 10 + " м"), l.unit * 0.018f, col, true);
+                CapText(q.x, q.y + hh + l.unit * 0.024f, LockName(t) + " · " + Cached(12, Mathf.RoundToInt(dist / 10f), v => v * 10 + " м"), l.unit * 0.018f, col, true);   // класс цели (владелец 16.11)
                 {   // прочность цели — полоса над рамкой (как в Black Flag): тёмная подложка, красная заливка
                     float bw = Mathf.Clamp(hw * 1.3f, l.unit * 0.14f, l.unit * 0.3f), bh = Mathf.Max(4f, l.unit * 0.009f), by = q.y - hh - l.unit * 0.022f - bh, e = Mathf.Max(1f, l.unit * 0.002f);
                     Solid(new Rect(q.x - bw * 0.5f - e, by - e, bw + e * 2f, bh + e * 2f), new Color(0.79f, 0.61f, 0.35f, 0.9f));
@@ -979,7 +1021,7 @@ namespace SkyTide
             if (Application.isPlaying) foreach (TargetShip t in TargetShip.All)
             {
                 if (t == null) continue;
-                if (!t.Alive && sunkSeen.Add(t)) { victoryAt = Time.time; victoryText = t.Captured ? "ПРИЗ ВЗЯТ" : "ЦЕЛЬ УНИЧТОЖЕНА"; }
+                if (!t.Alive && sunkSeen.Add(t) && (t.SunkByPlayer || t.Captured)) { victoryAt = Time.time; victoryText = t.Captured ? "ПРИЗ ВЗЯТ" : "ЦЕЛЬ УНИЧТОЖЕНА"; }   // только твоя победа (владелец 16.11)
                 else if (t.Alive) sunkSeen.Remove(t);
             }
             PlayerHull hull = PlayerHull.Instance;
@@ -1014,7 +1056,8 @@ namespace SkyTide
                 else Text(new Rect(l.safe.x, l.safe.center.y - l.unit * 0.06f, l.safe.width, l.unit * 0.12f), victoryText, l.unit * 0.06f, new Color(1f, 0.86f, 0.55f, vic));
             }
             // Плашка оповещения сверху по центру, ниже полосы корпуса: «враг даёт залп», а при гибели — отсчёт возврата.
-            float note = dead ? Mathf.Clamp01(deadFor / 0.35f) : capV ? 1f : Envelope(Time.time - EnemyGunner.LastVolleyTime, 2.4f, 0.15f, 0.5f);
+            HudNotice.Pump();
+            float note = dead ? Mathf.Clamp01(deadFor / 0.35f) : capV ? 1f : 0f;   // «ДАЁТ ЗАЛП» — через HudNotice (кто и где, метка на стрелявшем)
             string noteText = "ВРАГ ДАЁТ ЗАЛП"; int noteIcon = 1;
             // Малой плашкой в правом верхнем углу — «враг даёт залп» и постоянные подсказки (до причала, ремонт);
             // по центру — только тревога крепости, вход в зону и отсчёт возврата.
@@ -1081,6 +1124,14 @@ namespace SkyTide
                 Rect tr = new Rect(r.x + lw, r.y + ph * 0.2f, r.width - lw - rw, ph * 0.6f);
                 { float capH = Mathf.Min(l.unit * 0.03f * 0.7f, tr.height * 0.6f, tr.width * 0.92f / Mathf.Max(0.01f, CapRatio(noteText)));
                   CapText(tr.center.x, tr.center.y, noteText, corner ? capH : Mathf.Min(capH * 1.25f, tr.width * 0.92f / Mathf.Max(0.01f, CapRatio(noteText))), dead ? new Color(cream.r, cream.g, cream.b, note) : new Color(1f, 0.72f, 0.5f, note), true); }
+                // Вторая строка — почему и где (HudNotice.Sub): под плашкой, по её центру, мельче, с тенью.
+                if (corner && !dead && noteText == HudNotice.Text && !string.IsNullOrEmpty(HudNotice.Sub))
+                {
+                    float sh = l.unit * 0.0145f;
+                    float sw = CapRatio(HudNotice.Sub) * sh;
+                    float sx = Mathf.Min(r.center.x, Screen.width - l.unit * 0.02f - sw * 0.5f);
+                    CapText(sx, r.yMax + sh * 1.1f, HudNotice.Sub, sh, new Color(cream.r, cream.g, cream.b, note * 0.95f), true);
+                }
             }
         }
 
@@ -1183,7 +1234,7 @@ namespace SkyTide
                     Compass(input,l);
                     if(tModule==null){Panel(l.speed,l.unit);PlateText(l.speed,0f,1f,Cached(3,input.Gear*1000+Mathf.RoundToInt(Mathf.Abs(input.ship.Speed)),v=>TouchControls.GearNames[v/1000]+" · "+(v%1000)+" м/с"),l.unit*0.034f,cream);}   // ступень рукояти и скорость (с модулем радара — во вкладке хода)
                     Telegraph(input,l);
-                    LockMarker(input,l);MoodPlates(input,l);
+                    LockMarker(input,l);MoodPlates(input,l);NoticeMarker(input,l);
                     Radar(input,l);
                     Hull(l);
                     if(Application.isPlaying&&input.cam!=null)SpyButton(input,l);   // подзорная труба — квадратная кнопка под паузой

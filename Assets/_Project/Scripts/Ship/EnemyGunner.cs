@@ -99,7 +99,12 @@ namespace SkyTide
             volleyAtOnce = Random.value < 0.35f;   // иногда весь борт разом, чаще — волной
             pendingLeft = gunsPerSide;
             pendingAt = Time.time;
-            LastVolleyTime = Time.time;
+            // Залп по флагману — кто и откуда (метка на стрелявшем); по своим — молча (свой сам скажет «ПОД ОГНЁМ»).
+            if (victimAlly == null)
+            {
+                LastVolleyTime = Time.time;
+                HudNotice.Post(HudNotice.Who(target) + " ДАЁТ ЗАЛП", HudNotice.Where(transform.position), 1, 2.4f, HudNotice.Prio.Critical, "volley", transform);
+            }
             DebugReport.Count(victimAlly != null ? "залпов врага по своим" : "залпов врага по флагману");
             DebugReport.Volley(name.Replace(" Ship", "") + " → " + (victimAlly != null ? AllyShip.RoleNames[(int)victimAlly.role].ToLower() : "флагман") + " " + Mathf.RoundToInt(dist) + " м, борт " + (pendingSide > 0 ? "прав" : "лев") + ", ошибка ×" + (errScale * skillError).ToString("F2"));
             ready = Time.time + (cooldown + Random.Range(0f, 1.5f)) * skillCooldown * (hurt > 1.4f ? 1.3f : 1f);

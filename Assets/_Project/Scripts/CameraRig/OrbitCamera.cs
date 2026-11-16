@@ -225,7 +225,7 @@ namespace SkyTide
                     if (d < best) { best = d; scopeTarget = t; }
                 }
             ScopeOn = scopeTarget != null;
-            if (!ScopeOn) HudNotice.Show("ВРАГОВ НЕ ВИДНО", 1, 1.5f);
+            if (!ScopeOn) HudNotice.Post("ВРАГОВ НЕ ВИДНО", "", 1, 1.5f, HudNotice.Prio.Hint, null, null);
         }
     }
 }

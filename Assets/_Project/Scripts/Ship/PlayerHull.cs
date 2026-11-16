@@ -162,8 +162,8 @@ namespace SkyTide
             if (model != null && ctrl != null && Random.value < 0.5f)
             {
                 Vector3 lp = model.InverseTransformPoint(point);
-                if (lp.z < box.min.z + box.size.z * 0.18f && !ctrl.RudderHit) { ctrl.HitRudder(10f); HudNotice.Show("РУЛЬ ПОВРЕЖДЁН · 10 с", 1); }
-                else if (lp.y > box.min.y + box.size.y * 0.6f && !ctrl.BalloonHit) { ctrl.HitBalloon(10f); HudNotice.Show("БАЛЛОН ПРОБИТ · ХОД ПАДАЕТ", 1); }
+                if (lp.z < box.min.z + box.size.z * 0.18f && !ctrl.RudderHit) { ctrl.HitRudder(10f); HudNotice.Post("РУЛЬ ПОВРЕЖДЁН · 10 с", "", 1, 3f, HudNotice.Prio.Critical, null, null); }
+                else if (lp.y > box.min.y + box.size.y * 0.6f && !ctrl.BalloonHit) { ctrl.HitBalloon(10f); HudNotice.Post("БАЛЛОН ПРОБИТ · ХОД ПАДАЕТ", "", 1, 3f, HudNotice.Prio.Critical, null, null); }
             }
             FxSystem fx = FxSystem.Instance;
             SkySound.HullHit(point, Health <= damagePerHit * 2f);

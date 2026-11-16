@@ -83,7 +83,7 @@ namespace SkyTide
         {
             OutlawUntil = Time.time + OutlawSeconds;
             DebugReport.Count("флагман вне закона"); DebugReport.Event("флагман вне закона у гарнизона: " + why);
-            HudNotice.Show("ВЫ ВНЕ ЗАКОНА · ГАРНИЗОН ОТКРЫЛ ОХОТУ", 1, 5f);
+            HudNotice.Post("ТЫ ВНЕ ЗАКОНА", "ПОТОПИЛ СВОЕГО · ГАРНИЗОН И КРЕПОСТЬ БЬЮТ ПО ТЕБЕ " + Mathf.RoundToInt(OutlawSeconds / 60f) + " МИН", 1, 6f, HudNotice.Prio.Critical, "outlaw", null);
             SkyFortress.DeclareOutlaw(OutlawSeconds);
         }
         public static void Pardon() { OutlawUntil = -1f; }
@@ -119,7 +119,7 @@ namespace SkyTide
                 if ((t.transform.position - lead.transform.position).sqrMagnitude < 900f * 900f) { t.StartRaid(); n++; }
             }
             Vector3 dir = lead.transform.position - ph.transform.position; dir.y = 0f;
-            HudNotice.Show("КОРСАРЫ ИДУТ ЗА ТОБОЙ — " + Side(dir), 1, 5f);
+            HudNotice.Post("НАБЕГ: " + HudNotice.Who(lead) + (n > 1 ? " И ЕЩЁ " + (n - 1) : ""), "ЗЛОБА ЗА ПОТОПЛЕННЫХ · " + HudNotice.Where(lead.transform.position), 1, 6f, HudNotice.Prio.Critical, "raid", lead.transform);
             DebugReport.Count("набегов корсаров"); DebugReport.Event("набег: " + n + " корабля во главе с " + lead.name + " (" + ShipClasses.Get(lead.Class).name + "), злоба " + Grudge.ToString("F0"));
             Grudge *= 0.5f;
         }

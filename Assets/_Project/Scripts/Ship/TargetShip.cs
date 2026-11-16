@@ -90,10 +90,44 @@ namespace SkyTide
             if (a == Attitude.Calm) { Raiding = false; foeAlly = null; aimClock = 0f; }
             if (a == Attitude.Surrender) { surrenderAt = Time.time; ctrl.throttle = 0f; ctrl.turn = 0f; }
             MoodText = plate ?? Relations.Name(a); MoodTextUntil = Time.time + 4f;
+            if (Application.isPlaying) Announce(was, a, why);
             if (Application.isPlaying)
             {
                 DebugReport.Event(name + " (" + (Class != ShipClass.None ? ShipClasses.Get(Class).name : "корсар") + "): " + Relations.Name(was) + " → " + Relations.Name(a) + " (" + why + ")");
                 DebugReport.Count("корсар: " + Relations.Name(a).ToLower());
+            }
+        }
+        /// <summary>Сообщение игроку о смене отношения (HudNotice): только если его касается или рядом. Кто — класс, почему —
+        /// по-человечески, где — сторона от флагмана и дальность; метка на корабле.</summary>
+        void Announce(Attitude was, Attitude a, string why)
+        {
+            float d = HudNotice.DistToPlayer(transform.position);
+            string who = HudNotice.Who(this), where = HudNotice.Where(transform.position);
+            bool vsPlayer = FoeAlly == null;
+            string reason = HudNotice.Reason(why);
+            string sub = reason.Length > 0 ? reason + " · " + where : where;
+            string k = "mood" + GetInstanceID();
+            switch (a)
+            {
+                case Attitude.Hostile:
+                    if (vsPlayer && (d < 2500f || Raiding)) HudNotice.Post(who + " ВРАЖДЕБЕН", sub, 1, 4f, HudNotice.Prio.Critical, k, transform, 10f);
+                    else if (d < 1500f) HudNotice.Post(who + " АТАКУЕТ " + HudNotice.Who(FoeAlly), where, 1, 3.5f, HudNotice.Prio.Info, k, transform, 10f);
+                    break;
+                case Attitude.Wary:
+                    if (d < 1500f) HudNotice.Post(who + (why.StartsWith("прицел") ? ": ОТВЕДИ ПУШКИ" : ": УХОДИ ИЗ НАШИХ ВОД"),
+                        (why.StartsWith("прицел") ? "ТЫ ДЕРЖИШЬ ЕГО НА ПРИЦЕЛЕ" : "ВОДЫ КОРСАРОВ · " + Mathf.RoundToInt(Relations.WarnSeconds) + " С") + " · " + where,
+                        1, 4f, HudNotice.Prio.Critical, k, transform, 20f, new Color(1f, 0.85f, 0.35f, 1f));
+                    break;
+                case Attitude.Flee:
+                    if (d < 1200f && was == Attitude.Hostile) HudNotice.Post(who + " БЕЖИТ", where, 0, 3f, HudNotice.Prio.Combat, k, transform, 8f, new Color(1f, 0.6f, 0.3f, 1f));
+                    break;
+                case Attitude.Surrender:
+                    if (d < 1500f) HudNotice.Post(who + " СПУСТИЛ ФЛАГ", "НЕ СТРЕЛЯЙ · АБОРДАЖ — ПРИЗ · " + where, 0, 4.5f, HudNotice.Prio.Combat, k, transform, 0f, new Color(0.85f, 0.85f, 0.85f, 1f));
+                    break;
+                case Attitude.Calm:
+                    if (was == Attitude.Surrender && d < 1500f) HudNotice.Post(who + " ОТПУЩЕН", "УХОДИТ К СВОИМ · " + where, 0, 3f, HudNotice.Prio.Info, k, transform);
+                    else if (was == Attitude.Hostile && vsPlayer && d < 2500f && why != "противника нет") HudNotice.Post(who + " ПРЕКРАТИЛ БОЙ", where, 0, 3f, HudNotice.Prio.Info, k, transform, 10f, new Color(0.95f, 0.92f, 0.85f, 1f));
+                    break;
             }
         }
         /// <summary>Набег (Relations.Tick): враждебен к флагману без повода, идёт к нему через всю карту.</summary>
@@ -116,7 +150,7 @@ namespace SkyTide
             if (!Alive || Mood != Attitude.Calm) return;
             if (SkyFortress.InSafeZone(transform.position) && !Fool) { MoodText = "ОСТОРОЖНЕЕ!"; MoodTextUntil = Time.time + 3f; return; }   // у крепости не дерутся (кроме дурня)
             float chance = Fool ? 0.95f : temper == Temper.Bold ? 0.6f : temper == Temper.Cautious ? 0.3f : 0.1f;
-            if (Random.value < chance * Mathf.Clamp01(closing / 15f)) { foeAlly = with; Decide("столкновение со своим", false, false); HudNotice.Show("СТОЛКНОВЕНИЕ — КОРСАР ОТКРЫВАЕТ ОГОНЬ", 1, 3f); }
+            if (Random.value < chance * Mathf.Clamp01(closing / 15f)) { foeAlly = with; Decide("столкновение со своим", false, false); }   // сообщение — Announce («АТАКУЕТ …»)
             else { MoodText = "ОСТОРОЖНЕЕ!"; MoodTextUntil = Time.time + 3f; }
         }
 
@@ -137,7 +171,7 @@ namespace SkyTide
             if (defending) need *= 0.7f;
             if (Class == ShipClass.Cutter || Class == ShipClass.Sloop || Class == ShipClass.Fireship) need = 99f;   // мелочь не дерётся — бежит
             if (Class == ShipClass.Admiral) need = 0f;                                                              // адмиральский не бежит
-            if (allowSurrender && Health01 < 0.25f && Class != ShipClass.Admiral) { SetMood(Attitude.Surrender, why, "СПУСТИЛ ФЛАГ"); HudNotice.Show("ВРАГ СПУСТИЛ ФЛАГ", 0, 3f); DebugReport.Count("сдач"); return; }
+            if (allowSurrender && Health01 < 0.25f && Class != ShipClass.Admiral) { SetMood(Attitude.Surrender, why, "СПУСТИЛ ФЛАГ"); DebugReport.Count("сдач"); return; }
             if (ratio >= need) { SetMood(Attitude.Hostile, why + ", силы ×" + ratio.ToString("F1")); CallHelp(); }
             else SetMood(Attitude.Flee, why + ", силы ×" + ratio.ToString("F1"));
         }
@@ -176,7 +210,7 @@ namespace SkyTide
                     {
                         SetMood(Attitude.Wary, "флагман в водах корсаров", "УХОДИ ИЗ НАШИХ ВОД");
                         moodUntil = Time.time + Relations.WarnSeconds;
-                        if (Time.time - lastWatersNotice > 60f) { lastWatersNotice = Time.time; HudNotice.Show("КОРСАРЫ: УХОДИ ИЗ НАШИХ ВОД · " + Mathf.RoundToInt(Relations.WarnSeconds) + " С", 1, 4f); }
+                        lastWatersNotice = Time.time;   // сообщение — в Announce (кто, где, сколько секунд)
                     }
                     break;
                 case Attitude.Wary:
@@ -199,7 +233,7 @@ namespace SkyTide
                     if (Bold && (Health01 < boldHealth - 0.2f || Health01 < 0.35f || Time.time > boldUntil))
                     {
                         Bold = false; SetMood(Attitude.Flee, "дерзкий сваливает из порта", "СВАЛИВАЕТ");
-                        if (dist < 900f) HudNotice.Show("ДЕРЗКИЙ ВРАГ СВАЛИВАЕТ ИЗ ПОРТА", 9, 3f);
+
                         break;
                     }
                     // Остывает: противник далеко дольше CalmAfter (набег — не остывает, пока флагман жив).
@@ -217,7 +251,7 @@ namespace SkyTide
                         float threatSpeed = FoeAlly != null ? FoeAlly.Velocity.magnitude : (playerCtrl != null ? Mathf.Abs(playerCtrl.Speed) : 0f);
                         if (td < 250f && threatSpeed > Mathf.Abs(ctrl.Speed) + 2f && lastHitAt > Time.time - 20f)   // догнали и бьют — загнанный
                         {
-                            if (Health01 < 0.25f && Class != ShipClass.Admiral) { SetMood(Attitude.Surrender, "загнан", "СПУСТИЛ ФЛАГ"); HudNotice.Show("ВРАГ СПУСТИЛ ФЛАГ", 0, 3f); DebugReport.Count("сдач"); }
+                            if (Health01 < 0.25f && Class != ShipClass.Admiral) { SetMood(Attitude.Surrender, "загнан", "СПУСТИЛ ФЛАГ"); DebugReport.Count("сдач"); }
                             else SetMood(Attitude.Hostile, "загнан — дерётся", "ЗАГНАН — ДЕРЁТСЯ");
                         }
                         break;
@@ -366,9 +400,7 @@ namespace SkyTide
                 Heavy = Class >= ShipClass.HeavyFrigate;
                 hitsToSink = baseHits; ctrl.maxSpeed = baseSpeed; ctrl.maxYawRate = baseYaw;
                 if (gunner != null) { gunner.gunsPerSide = baseGuns; gunner.maxRange = baseRange; gunner.cooldown = baseCooldown; }
-                if (Class >= ShipClass.ShipOfLine && player != null && captainRolled && (player.position - transform.position).sqrMagnitude < 2500f * 2500f)
-                    HudNotice.Show(ShipClasses.Get(Class).name + " КОРАБЛЬ ВРАГА", 1, 4f);
-                return;
+                return;   // «линейный корабль врага» при появлении — шум: о гиганте скажет его враждебность (Announce)
             }
             Heavy = canBeHeavy && captainRolled && Random.value < heavyChance;
             hitsToSink = Heavy ? baseHits * 2 : baseHits;
@@ -378,7 +410,7 @@ namespace SkyTide
             MaterialPropertyBlock tint = new MaterialPropertyBlock();
             tint.SetColor("_Color", Heavy ? new Color(0.55f, 0.42f, 0.4f) : Color.white);
             foreach (MeshRenderer mr in ctrl.visual.GetComponentsInChildren<MeshRenderer>(true)) mr.SetPropertyBlock(tint);
-            if (Heavy && player != null && (player.position - transform.position).sqrMagnitude < 2500f * 2500f) HudNotice.Show("ТЯЖЁЛЫЙ КОРАБЛЬ ВРАГА", 1, 4f);
+
         }
 
         void RollCaptain()
@@ -442,7 +474,7 @@ namespace SkyTide
                 if (!pressed) { Ai("ДЕРЗИТ", "бой в порту"); return false; }
                 Bold = false; mode = Mode.Flee;
                 DebugReport.Event(name + ": дерзкий сваливает из порта (" + Mathf.RoundToInt(Health01 * 100f) + "%)");
-                if (player != null && (player.position - transform.position).sqrMagnitude < 900f * 900f) HudNotice.Show("ДЕРЗКИЙ ВРАГ СВАЛИВАЕТ ИЗ ПОРТА", 9, 3f);
+                if (player != null && (player.position - transform.position).sqrMagnitude < 900f * 900f) HudNotice.Post(HudNotice.Who(this) + " СВАЛИВАЕТ ИЗ ПОРТА", "ДЕРЗИЛ · " + HudNotice.Where(transform.position), 9, 3f, HudNotice.Prio.Info, "bold" + GetInstanceID(), transform);
             }
             else if (Time.time >= nextBoldThink && Alive && Health01 > 0.5f && (SkyFortress.InSafeZone(transform.position) || mode == Mode.ToPort))
             {
@@ -454,7 +486,7 @@ namespace SkyTide
                     Bold = true; boldHealth = Health01; boldUntil = Time.time + 45f; mode = Mode.Fight;
                     SetMood(Attitude.Hostile, "дурень дерзит в порту", "ДЕРЗИТ");
                     DebugReport.Count("дерзостей врага"); DebugReport.Event(name + ": дерзит — бой в порту");
-                    if (player != null && (player.position - transform.position).sqrMagnitude < 900f * 900f) HudNotice.Show("ВРАГ ДЕРЗИТ — БОЙ В ПОРТУ!", 9, 3.5f);
+                    if (player != null && (player.position - transform.position).sqrMagnitude < 900f * 900f) HudNotice.Post(HudNotice.Who(this) + " ДЕРЗИТ В ПОРТУ", "ДУРЕНЬ · КРЕПОСТЬ ЕГО НАКАЖЕТ · " + HudNotice.Where(transform.position), 9, 3.5f, HudNotice.Prio.Critical, "bold" + GetInstanceID(), transform);
                     return false;
                 }
             }
@@ -473,7 +505,7 @@ namespace SkyTide
                 // Глупость случается не с каждым: новичок срывается чаще, ветеран — почти никогда.
                 float dumb = skill == Skill.Novice ? 0.55f : skill == Skill.Veteran ? 0.08f : 0.3f;
                 dumbAt = Fool && Random.value < Mathf.Max(0.6f, dumb) ? Time.time + Random.Range(25f, 70f) : -1f;   // глупый залп в порту — только дурень
-                if (player != null && (player.position - transform.position).sqrMagnitude < 900f * 900f) HudNotice.Show("ВРАГ УХОДИТ В ПОРТ", 9, 3.5f);
+
             }
             Vector3 outDir = f.BerthWorld - f.Center; outDir.y = 0f;
             outDir = outDir.sqrMagnitude > 1f ? outDir.normalized : Vector3.forward;
@@ -861,10 +893,14 @@ namespace SkyTide
         }
 
         float chainAcc;
+        /// <summary>Потоплен флагманом (последнее попадание или пожар после его попадания) — только тогда «ЦЕЛЬ УНИЧТОЖЕНА» по центру.</summary>
+        public bool SunkByPlayer { get; private set; }
+        float lastPlayerHitAt = -100f, lastHitCaliber = 1f;
         public void OnHit(Vector3 point, bool chain = false, bool byPlayer = false, float caliber = 1f)
         {
             if (!Alive) return;
-            lastHitAt = Time.time;
+            lastHitAt = Time.time; lastHitCaliber = caliber;
+            if (byPlayer) lastPlayerHitAt = Time.time;
             if (Application.isPlaying)
             {
                 if (Mood == Attitude.Surrender && byPlayer) Relations.AddGrudge(8f, "огонь по сдавшемуся");
@@ -877,21 +913,21 @@ namespace SkyTide
             // Книппель режет баллоны и такелаж: ход падает надолго, а корпус получает треть удара.
             if (chain)
             {
-                if (!ctrl.BalloonHit || Random.value < 0.5f) { ctrl.HitBalloon(16f); HudNotice.Show("КНИППЕЛЬ · ВРАГ ТЕРЯЕТ ХОД", 0); }
+                if (!ctrl.BalloonHit || Random.value < 0.5f) { ctrl.HitBalloon(16f); if (byPlayer) HudNotice.Post("КНИППЕЛЬ: " + HudNotice.Who(this) + " ТЕРЯЕТ ХОД", HudNotice.Where(transform.position), 0, 2.5f, HudNotice.Prio.Combat, "dmg" + GetInstanceID(), transform, 0f, new Color(1f, 0.85f, 0.45f, 1f)); }
                 chainAcc += 0.34f;
                 if (chainAcc < 1f) { FxSystem cfx = FxSystem.Instance; if (cfx != null) cfx.Explosion(point, 0.5f); return; }
                 chainAcc -= 1f;
             }
             hits += Mathf.Max(1, Mathf.RoundToInt(caliber));   // тяжёлое ядро (класс, крепость) — больше урона
             angryUntil = Time.time + 40f;
-            if (Time.time - TallyAt > 2.5f) Tally = 0;
-            Tally++; TallyAt = Time.time;
+            if (byPlayer) { if (Time.time - TallyAt > 2.5f) Tally = 0; Tally++; TallyAt = Time.time; }   // «ПОПАДАНИЙ · N» — только твои
             // Попадание по месту: корма — руль, верх с баллонами — ход (на 12 с).
             if (Random.value < 0.4f && model != null)
             {
                 Vector3 lp = model.InverseTransformPoint(point);
-                if (lp.z < box.min.z + box.size.z * 0.18f && !ctrl.RudderHit) { ctrl.HitRudder(12f); HudNotice.Show("ВРАГУ СБИТ РУЛЬ", 0); }
-                else if (lp.y > box.min.y + box.size.y * 0.6f && !ctrl.BalloonHit) { ctrl.HitBalloon(12f); HudNotice.Show("ВРАГУ ПРОБИТ БАЛЛОН", 0); }
+                Color gold = new Color(1f, 0.85f, 0.45f, 1f);
+                if (lp.z < box.min.z + box.size.z * 0.18f && !ctrl.RudderHit) { ctrl.HitRudder(12f); if (byPlayer) HudNotice.Post(HudNotice.Who(this) + ": СБИТ РУЛЬ", HudNotice.Where(transform.position), 0, 2.5f, HudNotice.Prio.Combat, "dmg" + GetInstanceID(), transform, 0f, gold); }
+                else if (lp.y > box.min.y + box.size.y * 0.6f && !ctrl.BalloonHit) { ctrl.HitBalloon(12f); if (byPlayer) HudNotice.Post(HudNotice.Who(this) + ": ПРОБИТ БАЛЛОН", HudNotice.Where(transform.position), 0, 2.5f, HudNotice.Prio.Combat, "dmg" + GetInstanceID(), transform, 0f, gold); }
             }
             // Подстрелили в порту — мирной стоянке конец: враг возвращается в бой.
             if (InPort) { mode = Mode.Fight; nextPortThink = Time.time + Random.Range(30f, 50f); }
@@ -910,7 +946,8 @@ namespace SkyTide
             SkySound.HullHit(point, hits % 3 == 0);
             if (hits >= hitsToSink)
             {
-                if (Application.isPlaying) Relations.AddGrudge(Mood == Attitude.Surrender ? 30f : 12f, Mood == Attitude.Surrender ? "добит сдавшийся " + name : "потоплен " + name);
+                SunkByPlayer = byPlayer;
+                if (Application.isPlaying) Sunk(byPlayer, caliber);
                 DebugReport.Event(name + " потоплен");
                 DebugReport.Count("врагов потоплено");
                 SkySound.ShipDestroyed(point);
@@ -935,12 +972,26 @@ namespace SkyTide
             deadUntil = Time.time + respawnDelay;
             if (damageVisual != null) damageVisual.BeginSink(at, velocity);
             ctrl.throttle = 0f; ctrl.turn = 0f;
-            HudNotice.Show("ВРАГ СГОРЕЛ", 0);
+            SunkByPlayer = Time.time - lastPlayerHitAt < 30f;   // пожар от твоего попадания — твоя победа
+            if (Application.isPlaying) Sunk(SunkByPlayer, lastHitCaliber, true);
             DebugReport.Count("врагов сгорело");
         }
 
+        /// <summary>Потоплен: злоба корсаров — только если это сделал флагман (свои и крепость — их дело); сообщение о чужой
+        /// победе — малой плашкой и только рядом (ближе 1,5 км), своя — центральный баннер (ShipHud).</summary>
+        void Sunk(bool byPlayer, float caliber, bool burned = false)
+        {
+            if (byPlayer) Relations.AddGrudge(Mood == Attitude.Surrender ? 30f : 12f, Mood == Attitude.Surrender ? "добит сдавшийся " + name : "потоплен " + name);
+            else
+            {
+                float d = HudNotice.DistToPlayer(transform.position);
+                if (d < 1500f) HudNotice.Post(HudNotice.Who(this) + (burned ? " СГОРЕЛ" : " ПОТОПЛЕН"), (caliber >= 2.9f ? "КРЕПОСТЬЮ" : "СВОИМИ") + " · " + HudNotice.Where(transform.position),
+                    0, 3f, HudNotice.Prio.Info, "sunk" + GetInstanceID(), null);
+            }
+        }
         void Respawn()
         {
+            SunkByPlayer = false;
             deadUntil = -1f;
             hits = 0;
             RollCaptain();

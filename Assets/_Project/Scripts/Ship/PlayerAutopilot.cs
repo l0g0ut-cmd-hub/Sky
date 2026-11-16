@@ -186,7 +186,7 @@ namespace SkyTide
             if (Random.value > 0.3f) return false;
             bold = true; boldHull = hull.Health01; boldUntil = Time.time + 40f;
             DebugReport.Count("дерзостей автобоя"); DebugReport.Event("автобой: дерзим — бой в порту по " + foe.name);
-            HudNotice.Show("АВТОБОЙ · ДЕРЗИМ — БОЙ В ПОРТУ", 0, 3f);
+            DebugReport.Event("автобой: дерзость (отключена)");
             return true;
         }
 

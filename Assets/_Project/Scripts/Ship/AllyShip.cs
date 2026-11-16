@@ -160,7 +160,8 @@ namespace SkyTide
             if (byPlayer)
             {
                 // Первое попадание — «ПРЕКРАТИТЬ ОГОНЬ!» (случайность прощается через 20 с), второе подряд — отвечает или бежит.
-                if (Time.time - friendlyHitAt > 20f) { friendlyStrikes = 0; HudNotice.Show(RoleNames[(int)role] + ": ПРЕКРАТИТЬ ОГОНЬ!", 1, 3f); }
+                if (Time.time - friendlyHitAt > 20f) { friendlyStrikes = 0; HudNotice.Post(HudNotice.Who(this) + ": ПРЕКРАТИТЬ ОГОНЬ!", "ТЫ БЬЁШЬ ПО СВОЕМУ · " + HudNotice.Where(transform.position), 1, 3.5f, HudNotice.Prio.Critical, "ff" + GetInstanceID(), transform, 0f, new Color(0.5f, 1f, 0.55f, 1f)); }
+                else if (friendlyStrikes == 1) HudNotice.Post(HudNotice.Who(this) + (Health01 > 0.5f && role != Role.Customs ? " ОТВЕЧАЕТ ОГНЁМ" : " УХОДИТ К КРЕПОСТИ"), "ТЫ ПРОДОЛЖИЛ БИТЬ ПО СВОЕМУ · " + HudNotice.Where(transform.position), 1, 3.5f, HudNotice.Prio.Critical, "ff" + GetInstanceID(), transform, 0f, new Color(1f, 0.4f, 0.3f, 1f));
                 friendlyStrikes++; friendlyHitAt = Time.time;
                 if (friendlyStrikes >= 2)
                 {
@@ -172,9 +173,13 @@ namespace SkyTide
             // Первое попадание после затишья — сигнал бедствия: оповещение флагману с расстоянием.
             if (Time.time - LastHitTime > 20f)
             {
-                PlayerHull ph = PlayerHull.Instance;
-                float d = ph != null ? Vector3.Distance(ph.transform.position, transform.position) : 0f;
-                HudNotice.Show(RoleNames[(int)role] + " ПОД ОГНЁМ · " + (d >= 1000f ? (d / 1000f).ToString("F1") + " КМ" : Mathf.RoundToInt(d / 10f) * 10 + " М"), 1, 3f);
+                // Кто бьёт — ближайший враждебный корсар; сообщение — если свой ближе 3 км (дальше не поможешь).
+                if (!byPlayer && HudNotice.DistToPlayer(transform.position) < 3000f)
+                {
+                    TargetShip by = Attacker;
+                    HudNotice.Post(HudNotice.Who(this) + " ПОД ОГНЁМ", (by != null ? "БЬЁТ " + HudNotice.Who(by) + " · " : "") + HudNotice.Where(transform.position),
+                        1, 3f, HudNotice.Prio.Info, "underfire" + GetInstanceID(), transform, 20f, new Color(0.5f, 1f, 0.55f, 1f));
+                }
             }
             LastHitTime = Time.time;
             DebugReport.Count("попаданий врага по своим");
@@ -189,7 +194,7 @@ namespace SkyTide
                 deadUntil = Time.time + respawnDelay;
                 if (damage != null) damage.BeginSink(point, Velocity);
                 ctrl.throttle = 0f; ctrl.turn = 0f;
-                HudNotice.Show(RoleNames[(int)role] + " ПОТОПЛЕН", 1, 3.5f);
+                HudNotice.Post(HudNotice.Who(this) + " ПОТОПЛЕН", HudNotice.Where(transform.position), 1, 3.5f, HudNotice.DistToPlayer(transform.position) < 2500f || byPlayer ? HudNotice.Prio.Combat : HudNotice.Prio.Info, "sunk" + GetInstanceID(), null);
                 DebugReport.Count("своих потоплено");
                 if (byPlayer || Time.time - friendlyHitAt < 3f) Relations.DeclarePlayerOutlaw("потопил своего: " + RoleNames[(int)role].ToLower());
             }
@@ -287,9 +292,8 @@ namespace SkyTide
             if (!announced)
             {
                 announced = true;
-                PlayerHull ph = PlayerHull.Instance;
-                if (ph != null && (ph.transform.position - transform.position).sqrMagnitude < 1500f * 1500f)
-                    HudNotice.Show(role == Role.Wingman ? "ВЕДОМЫЙ АТАКУЕТ" : "СТОРОЖЕВОЙ ИДЁТ НА ВРАГА", 0, 3f);
+                if (HudNotice.DistToPlayer(transform.position) < 1500f)
+                    HudNotice.Post(HudNotice.Who(this) + " ИДЁТ НА " + HudNotice.Who(foe), HudNotice.Where(foe.transform.position), 0, 3f, HudNotice.Prio.Info, "allyfight" + GetInstanceID(), foe.transform, 15f);
             }
             Ai("БОЙ", foe.name.Replace(" Ship", "") + " " + Mathf.RoundToInt(Vector3.Distance(foe.transform.position, transform.position)) + " м");
             Engage(foe);
@@ -475,7 +479,7 @@ namespace SkyTide
                     leg = Leg.Docked; waitUntil = Time.time + 25f;
                     DebugReport.Count("торговцев дошло");
                     PlayerHull ph = PlayerHull.Instance;
-                    if (ph != null && ph.Alive) { ph.Repair(ph.maxHealth * 0.1f); HudNotice.Show("ТОРГОВЕЦ ДОШЁЛ · РЕМОНТ +10%", 0, 3.5f); }
+                    if (ph != null && ph.Alive) { ph.Repair(ph.maxHealth * 0.1f); DebugReport.Event("торговец дошёл"); }
                 }
                 else SteerAround(f, spot, to.magnitude > 300f ? 0.9f : 0.35f);
                 return;
