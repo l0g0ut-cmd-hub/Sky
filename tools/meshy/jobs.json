@@ -1,28 +1,76 @@
 {
  "jobs": [
   {
-   "id": "brig",
+   "id": "lighthouse",
    "concept": true,
    "account": 2,
    "refs": [
-    "refs/ship_of_line.png",
-    "refs/heavyfrigate.png",
-    "refs/ketch.png"
+    "refs/brig.png",
+    "refs/frigate.png",
+    "refs/ship_of_line.png"
    ],
-   "polycount": 32000,
-   "image_prompt": "Same art style, materials and colors as the reference airships: weathered reddish-brown wooden hull, brass fittings, round cream canvas gas balloons with dark brown stripes mounted above the deck on masts and struts. Single flying airship, three-quarter side view, whole ship visible, plain background, no water, no ground, no characters. A TWO-MASTED BRIG warship, medium size, smaller than the references: medium hull, three round balloons in a row above the deck, four cannon ports per side, stern cabin with windows."
+   "polycount": 40000,
+   "image_prompt": "Same art style, materials and colors as the reference airships: weathered reddish-brown wood, dark stone, brass fittings, cream canvas with dark brown stripes. Dark-fantasy sky world, everything floats above a sea of clouds. Single isolated object, three-quarter view, whole object visible, plain background, no water, no ground plane, no characters. A tall stone-and-brass SKY LIGHTHOUSE standing on a small floating rock island with dangling roots and chains below; big glazed lantern room with a large lens at the top, iron balcony around it, small door and windows."
   },
   {
-   "id": "frigate",
+   "id": "watchtower",
    "concept": true,
    "account": 2,
    "refs": [
-    "refs/ship_of_line.png",
-    "refs/heavyfrigate.png",
-    "refs/ketch.png"
+    "refs/brig.png",
+    "refs/frigate.png",
+    "refs/ship_of_line.png"
    ],
-   "polycount": 42000,
-   "image_prompt": "Same art style, materials and colors as the reference airships: weathered reddish-brown wooden hull, brass fittings, round cream canvas gas balloons with dark brown stripes mounted above the deck on masts and struts. Single flying airship, three-quarter side view, whole ship visible, plain background, no water, no ground, no characters. A THREE-MASTED FRIGATE, a bit smaller than the heavy frigate reference and without iron plates: long elegant wooden hull, six cannon ports per side, four round balloons in two pairs above the deck, ornate stern gallery, long pennant."
+   "polycount": 30000,
+   "image_prompt": "Same art style, materials and colors as the reference airships: weathered reddish-brown wood, dark stone, brass fittings, cream canvas with dark brown stripes. Dark-fantasy sky world, everything floats above a sea of clouds. Single isolated object, three-quarter view, whole object visible, plain background, no water, no ground plane, no characters. A garrison WATCHTOWER on a small floating rock: stone base, wooden lookout platform on top with a mounted cannon and a long red pennant, a ladder, one small striped balloon tethered to the platform."
+  },
+  {
+   "id": "buoy",
+   "concept": true,
+   "account": 2,
+   "refs": [
+    "refs/brig.png",
+    "refs/frigate.png",
+    "refs/ship_of_line.png"
+   ],
+   "polycount": 12000,
+   "image_prompt": "Same art style, materials and colors as the reference airships: weathered reddish-brown wood, dark stone, brass fittings, cream canvas with dark brown stripes. Dark-fantasy sky world, everything floats above a sea of clouds. Single isolated object, three-quarter view, whole object visible, plain background, no water, no ground plane, no characters. A floating SIGNAL BUOY marking a border in the sky: a brass lantern cage on top of one round cream balloon with dark brown stripes, heavy iron weights and a short chain hanging below, a small red flag."
+  },
+  {
+   "id": "hideout",
+   "concept": true,
+   "account": 2,
+   "refs": [
+    "refs/brig.png",
+    "refs/frigate.png",
+    "refs/ship_of_line.png"
+   ],
+   "polycount": 50000,
+   "image_prompt": "Same art style, materials and colors as the reference airships: weathered reddish-brown wood, dark stone, brass fittings, cream canvas with dark brown stripes. Dark-fantasy sky world, everything floats above a sea of clouds. Single isolated object, three-quarter view, whole object visible, plain background, no water, no ground plane, no characters. A ramshackle PIRATE HIDEOUT built on a floating rock island: crooked wooden shacks, patched tents, a small wooden dock sticking out with a crane, lanterns, rope bridges, a skull-less black flag."
+  },
+  {
+   "id": "wreck",
+   "concept": true,
+   "account": 2,
+   "refs": [
+    "refs/brig.png",
+    "refs/frigate.png",
+    "refs/ship_of_line.png"
+   ],
+   "polycount": 40000,
+   "image_prompt": "Same art style, materials and colors as the reference airships: weathered reddish-brown wood, dark stone, brass fittings, cream canvas with dark brown stripes. Dark-fantasy sky world, everything floats above a sea of clouds. Single isolated object, three-quarter view, whole object visible, plain background, no water, no ground plane, no characters. The WRECK of an old wooden airship crashed onto a small floating rock: hull broken in two halves, torn deflated striped balloons draped over it, snapped masts, scattered crates."
+  },
+  {
+   "id": "depot",
+   "concept": true,
+   "account": 2,
+   "refs": [
+    "refs/brig.png",
+    "refs/frigate.png",
+    "refs/ship_of_line.png"
+   ],
+   "polycount": 40000,
+   "image_prompt": "Same art style, materials and colors as the reference airships: weathered reddish-brown wood, dark stone, brass fittings, cream canvas with dark brown stripes. Dark-fantasy sky world, everything floats above a sea of clouds. Single isolated object, three-quarter view, whole object visible, plain background, no water, no ground plane, no characters. A garrison SUPPLY DEPOT on a floating rock: stone warehouse with a brass roof, two big round gas tanks for refilling airship balloons, pipes, a small mooring mast with a hanging lantern."
   }
  ]
 }
