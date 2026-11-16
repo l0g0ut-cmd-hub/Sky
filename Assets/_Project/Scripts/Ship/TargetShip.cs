@@ -304,6 +304,9 @@ namespace SkyTide
         public ShipClass Class { get; private set; } = ShipClass.None;
         /// <summary>Длина корпуса, м (по модели): столкновения и дистанции масштабируются по ней.</summary>
         public float Length { get { return Mathf.Max(10f, box.size.z * transform.lossyScale.z); } }
+        /// <summary>Корпус для столкновений (Traffic): полуширина и полудлина корпуса по модели (без бушприта и баллонов).</summary>
+        public float HullHalfWidth { get { return Mathf.Max(2f, box.extents.x * 0.9f * transform.lossyScale.x); } }
+        public float HullHalfLength { get { return Mathf.Max(6f, box.extents.z * 0.88f * transform.lossyScale.z); } }
         public void SetClass(ShipClass c)
         {
             Class = c; canBeHeavy = false;

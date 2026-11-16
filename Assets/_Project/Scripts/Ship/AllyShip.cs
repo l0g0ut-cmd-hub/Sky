@@ -65,6 +65,8 @@ namespace SkyTide
         public ShipController Controller { get { return ctrl; } }
         /// <summary>Длина корпуса, м (по модели) — для расхождения и столкновений.</summary>
         public float Length { get { return Mathf.Max(10f, box.size.z * transform.lossyScale.z); } }
+        public float HullHalfWidth { get { return Mathf.Max(2f, box.extents.x * 0.9f * transform.lossyScale.x); } }
+        public float HullHalfLength { get { return Mathf.Max(6f, box.extents.z * 0.88f * transform.lossyScale.z); } }
         public string AiState { get; private set; } = "";
         void Ai(string st, string why = "")
         {
