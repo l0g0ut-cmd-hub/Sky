@@ -106,6 +106,10 @@ namespace SkyTide
                     if (c.StartsWith("tap")) { yield return null; yield return null; }
                 }
                 Running = false; ReportUploader.SnapEvery = 0f; ControlBanner.AwaitUpload = true;
+                // Конец партии (и отмена владельцем) — тестовые режимы не остаются у игрока (16.11: партию отменили до
+                // «god off», флагман остался бессмертным): бессмертие и время; пилот и камера — ниже (кроме hold).
+                if (PlayerHull.God) { PlayerHull.God = false; ack.AppendLine("конец партии → бессмертие снято"); }
+                if (Mathf.Abs(DevCommands.TimeScaleSet - 1f) > 0.01f) { DevCommands.TimeScaleSet = 1f; if (Time.timeScale > 0.01f) Time.timeScale = 1f; }
                 // Конец партии — управление владельцу (кроме hold).
                 ControlBanner.BusyUntil = -1f;
                 if (!hold) { RemotePilot.Release(); RemoteCam.Off(); TouchControls.HideHud = false; }
