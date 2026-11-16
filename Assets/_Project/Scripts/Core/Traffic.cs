@@ -13,7 +13,10 @@ namespace SkyTide
     /// </summary>
     public static class Traffic
     {
-        struct Body { public Transform t; public ShipController c; public float half, hullHalf, hullW; public TargetShip enemy; public AllyShip ally; public bool player; }
+        class Body { public Transform t; public ShipController c; public float half, hullHalf, hullW, reach; public TargetShip enemy; public AllyShip ally; public bool player;
+            public Vector2[] local; public readonly List<Vector2> world = new List<Vector2>(32); }
+        static readonly List<Body> pool = new List<Body>();
+        static Body Next(int i) { while (pool.Count <= i) pool.Add(new Body()); return pool[i]; }
         static readonly List<Body> bodies = new List<Body>();
         static int frame = -1;
 
@@ -24,14 +27,32 @@ namespace SkyTide
             bodies.Clear();
             foreach (TargetShip t in TargetShip.All)
                 if (t != null && t.Alive && t.Controller != null && t.gameObject.activeInHierarchy)
-                    bodies.Add(new Body { t = t.transform, c = t.Controller, half = t.Length * 0.5f, hullHalf = t.HullHalfLength, hullW = t.HullHalfWidth, enemy = t });
+                    Add(t.transform, t.Controller, t.Length * 0.5f, t.HullHalfLength, t.HullHalfWidth, t, null, false);
             foreach (AllyShip a in AllyShip.All)
                 if (a != null && a.Alive && a.Controller != null && a.gameObject.activeInHierarchy)
-                    bodies.Add(new Body { t = a.transform, c = a.Controller, half = Mathf.Max(10f, a.Length * 0.5f), hullHalf = a.HullHalfLength, hullW = a.HullHalfWidth, ally = a });
+                    Add(a.transform, a.Controller, Mathf.Max(10f, a.Length * 0.5f), a.HullHalfLength, a.HullHalfWidth, null, a, false);
             SkyTideBootstrap g = SkyTideBootstrap.Instance;
             PlayerHull ph = PlayerHull.Instance;
-            // Флагман (38 м): корпус ±17 м, полуширина 7 м.
-            if (g != null && g.Ship != null && ph != null && ph.Alive) bodies.Add(new Body { t = g.Ship.transform, c = g.Ship, half = 19f, hullHalf = 17f, hullW = 7f, player = true });
+            // Флагман (38 м): запасной корпус ±17 м, полуширина 7 м — если контура модели нет.
+            if (g != null && g.Ship != null && ph != null && ph.Alive) Add(g.Ship.transform, g.Ship, 19f, 17f, 7f, null, null, true);
+        }
+
+        static void Add(Transform t, ShipController c, float half, float hullHalf, float hullW, TargetShip enemy, AllyShip ally, bool player)
+        {
+            Body b = Next(bodies.Count);
+            b.t = t; b.c = c; b.half = half; b.hullHalf = hullHalf; b.hullW = hullW; b.enemy = enemy; b.ally = ally; b.player = player;
+            float r;
+            b.local = Footprint.Of(t, out r);
+            if (b.local == null)
+            {
+                // Нет контура — прямоугольник с обрезанными углами по габаритам.
+                b.local = new[] { new Vector2(hullW, -hullHalf), new Vector2(hullW, hullHalf * 0.8f), new Vector2(0f, hullHalf + hullW),
+                                  new Vector2(-hullW, hullHalf * 0.8f), new Vector2(-hullW, -hullHalf) };
+                r = hullHalf + hullW;
+            }
+            b.reach = r;
+            Footprint.ToWorld(t, b.local, b.world);
+            bodies.Add(b);
         }
 
         /// <summary>Поправка руля и хода, выставленных ИИ, чтобы разойтись с соседями. ignore — своя цель в бою.</summary>
@@ -104,16 +125,15 @@ namespace SkyTide
                 {
                     Body b = bodies[j];
                     Vector3 d = b.t.position - a.t.position; d.y = 0f;
-                    float reach = a.hullHalf + b.hullHalf + a.hullW + b.hullW;
+                    float reach = a.reach + b.reach;
                     if (d.sqrMagnitude > reach * reach) continue;
-                    Vector3 pa, pb;
-                    Closest(a.t.position, Flat(a.t.forward) * a.hullHalf, b.t.position, Flat(b.t.forward) * b.hullHalf, out pa, out pb);
-                    Vector3 n = pa - pb; n.y = 0f;
-                    float gap = a.hullW + b.hullW, dist = n.magnitude;
-                    if (dist >= gap) continue;
-                    if (dist < 1e-3f) { n = a.t.position - b.t.position; n.y = 0f; if (n.sqrMagnitude < 1e-4f) n = a.t.right; dist = 0f; }
-                    n.Normalize();
-                    float over = gap - dist;
+                    // Точные контуры моделей в плане (выпуклые оболочки): борт к борту — впритык, внутрь — нельзя.
+                    Vector2 n2; float over;
+                    if (!Footprint.Overlap(a.world, b.world, out n2, out over)) continue;
+                    Vector3 n = new Vector3(n2.x, 0f, n2.y);
+                    over += 0.05f;
+                    Vector2 mid = (Footprint.Centroid(a.world) + Footprint.Centroid(b.world)) * 0.5f;
+                    Vector3 pa = new Vector3(mid.x, a.t.position.y, mid.y), pb = pa;
                     // Доли сдвига по размеру: адмиральский от брига почти не сдвигается, стоящий у причала — тоже тяжёлый.
                     float ma = a.hullHalf * (a.ally != null && a.ally.role == AllyShip.Role.Harbor ? 3f : 1f);
                     float mb = b.hullHalf * (b.ally != null && b.ally.role == AllyShip.Role.Harbor ? 3f : 1f);
@@ -137,23 +157,18 @@ namespace SkyTide
         /// <summary>Корпус против строения: капсула корпуса не входит в круг строения (раздвигается целиком корабль).</summary>
         static void Statics(Body a)
         {
-            Vector3 h = Flat(a.t.forward) * a.hullHalf, c = a.t.position, a0 = c - h, d = h * 2f;
+            Vector3 c = a.t.position;
             for (int k = 0; k < WorldProps.Solids.Count; k++)
             {
                 WorldProps.Solid s = WorldProps.Solids[k];
                 if (c.y < s.y0 || c.y > s.y1) continue;
-                float reach = a.hullHalf + a.hullW + s.r;
+                float reach = a.reach + s.r;
                 float dx = c.x - s.c.x, dz = c.z - s.c.z;
                 if (dx * dx + dz * dz > reach * reach) continue;
-                Vector3 r = s.c - a0; r.y = 0f; d.y = 0f;
-                float tt = d.sqrMagnitude > 1e-4f ? Mathf.Clamp01(Vector3.Dot(r, d) / d.sqrMagnitude) : 0.5f;
-                Vector3 q = a0 + d * tt; q.y = 0f;
-                Vector3 n = q - s.c; n.y = 0f;
-                float dist = n.magnitude, gap = a.hullW + s.r;
-                if (dist >= gap) continue;
-                if (dist < 1e-3f) { n = -a.t.forward; n.y = 0f; dist = 0f; }
-                n.Normalize();
-                a.c.Block(n * (gap - dist), a.player ? 0.5f : 0.8f);
+                Vector2 n2; float over;
+                if (!Footprint.CircleOverlap(a.world, new Vector2(s.c.x, s.c.z), s.r, out n2, out over)) continue;
+                Vector3 n = new Vector3(n2.x, 0f, n2.y);
+                a.c.Block(n * (over + 0.05f), a.player ? 0.5f : 0.8f);
                 if (Mathf.Abs(a.c.Speed) > 6f && Time.time >= nextReport)
                 {
                     nextReport = Time.time + 1f;

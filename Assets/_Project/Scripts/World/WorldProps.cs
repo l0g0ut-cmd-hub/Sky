@@ -38,7 +38,7 @@ namespace SkyTide
             switch (id)
             {
                 case "lighthouse": return new Def { shipY = 41f, lantern = 104f, circles = new[] { new Vector3(0f, 0f, 21f) } };
-                case "watchtower": return new Def { sink = 14f, topAbove = 26f, shipY = 12f, lantern = 46f, circles = new[] { new Vector3(6f, -1f, 13f), new Vector3(-14f, 0f, 5f) } };
+                case "watchtower": return new Def { shipY = 14f, lantern = 46f, circles = new[] { new Vector3(6.9f, 5.2f, 12.5f), new Vector3(-10f, 2f, 4.5f) } };
                 case "buoy": return new Def { shipY = 11f, lantern = 21f, circles = new[] { new Vector3(0f, 0f, 4f) } };
                 case "hideout": return new Def { shipY = 42f, lantern = 0f, circles = new[] { new Vector3(0f, 0f, 27f) } };
                 case "wreck": return new Def { shipY = 30f, lantern = 0f, circles = new[] { new Vector3(-26f, 0f, 13f), new Vector3(0f, 0f, 14f), new Vector3(26f, 0f, 13f) } };
@@ -107,7 +107,8 @@ namespace SkyTide
             face.y = 0f; if (face.sqrMagnitude < 1e-4f) face = Vector3.forward;
             Mesh full = ShipMeshLoader.Load(a.mesh), lite = ShipMeshLoader.Load(a.lite), far = ShipMeshLoader.Load(a.far);
             if (full == null) return;
-            float h0 = full.bounds.size.y, scale = 1f, baseY = shipLevel - d.shipY;
+            // Низ модели — y = 0 (у башни ниже нуля — ствол, уходящий в облака на 200 м: tools/convert_props.py PILLAR).
+            float h0 = full.bounds.max.y, scale = 1f, baseY = shipLevel - d.shipY;
             if (d.sink > 0f)
             {
                 baseY = CloudTop() - d.sink;
@@ -119,7 +120,7 @@ namespace SkyTide
             go.transform.rotation = Quaternion.LookRotation(face.normalized, Vector3.up);
             go.transform.localScale = Vector3.one * scale;
             go.isStatic = true;
-            float height = h0 * scale;
+            float height = h0 * scale, bottom = Mathf.Min(0f, full.bounds.min.y) * scale;
             Renderer r0 = Part(go.transform, "LOD0", full, a.material, ShadowCastingMode.Off);
             Renderer r0s = lite != null ? Part(go.transform, "LOD0 shadow", lite, a.material, ShadowCastingMode.ShadowsOnly) : null;
             Renderer r1 = lite != null ? Part(go.transform, "LOD1", lite, a.material, ShadowCastingMode.On) : null;
@@ -133,16 +134,16 @@ namespace SkyTide
             g.RecalculateBounds();
 
             if (id == "watchtower")
-                towers.Add(new Tower { t = go.transform, muzzle = go.transform.position + Vector3.up * 40f * scale, next = UnityEngine.Random.Range(0f, 3f),
+                towers.Add(new Tower { t = go.transform, muzzle = go.transform.TransformPoint(new Vector3(6.9f, 40f, 5.2f)),   // верхняя площадка, над стволом next = UnityEngine.Random.Range(0f, 3f),
                                        name = "БАШНЯ " + (towers.Count + 1) });
             foreach (Vector3 c in d.circles)
             {
                 Vector3 wc = go.transform.TransformPoint(new Vector3(c.x, 0f, c.y));
-                Solids.Add(new Solid { c = new Vector3(wc.x, 0f, wc.z), r = c.z * scale, y0 = go.transform.position.y, y1 = go.transform.position.y + height });
+                Solids.Add(new Solid { c = new Vector3(wc.x, 0f, wc.z), r = c.z * scale, y0 = go.transform.position.y + bottom, y1 = go.transform.position.y + height });
             }
             if (d.lantern > 0f)
             {
-                Vector3 lp = go.transform.position + Vector3.up * d.lantern * scale;
+                Vector3 lp = id == "watchtower" ? go.transform.TransformPoint(new Vector3(6.9f, d.lantern, 5.2f)) : go.transform.position + Vector3.up * d.lantern * scale;
                 bool beacon = id == "lighthouse";
                 lampList.Add(new Lamp { pos = lp, beacon = beacon, size = beacon ? 9f : id == "buoy" ? 2.2f : 4f,
                     speed = beacon ? 1.1f : id == "buoy" ? 2.4f : 0.7f,

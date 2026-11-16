@@ -8,6 +8,40 @@ import numpy as np
 from PIL import Image
 sys.path.insert(0, os.path.dirname(__file__))
 from convert_glb import read_glb, write_bytes, dilate
+from decimate_ship import load as load_stm
+
+# Ствол вниз (владелец 16.11: «башня висит в воздухе… основание скрыть облаками»): цоколь убирается, вместо него —
+# копии кирпичного пояса (доля высоты band) уходят вниз на PILLAR м; первые две — полные, дальше — облегчённые (25%).
+PILLAR = {'watchtower': ((0.10, 0.25), 200.0)}
+
+
+def compact(P, N, U, T):
+    used = np.unique(T); remap = -np.ones(len(P), int); remap[used] = np.arange(len(used))
+    return P[used], N[used], U[used], remap[T]
+
+
+def pillar(name, P, N, U, T, dec):
+    (f0, f1), depth = PILLAR[name]
+    H = P[:, 1].max(); yb, yt = H * f0, H * f1; period = yt - yb
+    ty = P[T][:, :, 1]
+    top = compact(P, N, U, T[ty.max(1) > yb])
+    band = compact(P, N, U, T[(ty.min(1) < yt) & (ty.max(1) > yb)])
+    tmp = '/tmp/_band.bytes'; tmpl = '/tmp/_band_lite.bytes'
+    write_bytes(tmp, *band)
+    subprocess.run([sys.executable, os.path.join(os.path.dirname(__file__), 'decimate_ship.py'), dec, tmp, tmpl,
+                    str(max(400, len(band[3]) // 4))], check=True)
+    bl = load_stm(tmpl); lite = (np.array(bl[0], float), np.array(bl[1], float), np.array(bl[2], float), np.array(bl[3]))
+    parts = [top]
+    k = 1
+    while k * period < depth:
+        src = band if k <= 2 else lite
+        q = src[0].copy(); q[:, 1] -= k * period
+        parts.append((q, src[1], src[2], src[3])); k += 1
+    Ps, Ns, Us, Ts, off = [], [], [], [], 0
+    for (a, b, c, t) in parts:
+        Ps.append(a); Ns.append(b); Us.append(c); Ts.append(t + off); off += len(a)
+    print(name, 'ствол', k - 1, 'копий по', round(period, 1), 'м')
+    return np.concatenate(Ps), np.concatenate(Ns), np.concatenate(Us), np.concatenate(Ts)
 
 # имя: (ось размера 'y' — высота / 'x' — длина, метры)
 PROPS = {
@@ -35,6 +69,7 @@ def main():
         P = (P - np.array([c[0], lo[1], c[2]])) * s
         U = np.stack([m['uv'][:, 0], 1 - m['uv'][:, 1]], 1)
         base = os.path.join(OUT, 'Prop_' + name)
+        if name in PILLAR: P, N, U, T = pillar(name, P, N, U, T, dec)
         write_bytes(base + '.bytes', P, N, U, T)
         dilate(albedo.resize((2048, 2048), Image.LANCZOS), m['uv'], m['idx']).save(base + '_Albedo.jpg', quality=90)
         if normal is not None:

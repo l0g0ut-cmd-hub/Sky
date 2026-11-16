@@ -35,7 +35,7 @@ namespace SkyTide
         /// <summary>Класс корабля гарнизона: модель задана при постройке, здесь — ход, поворот, пушки, прочность, калибр.</summary>
         public void SetClass(ShipClass c)
         {
-            Class = c; ShipClassInfo k = ShipClasses.Get(c);
+            Class = c; ShipClassInfo k = ShipClasses.Get(c); Footprint.Forget(transform);   // контур — по новой модели
             ctrl.maxSpeed = k.speed * (role == Role.Wingman ? 1.5f : 1.1f); ctrl.maxYawRate = k.yaw * 1.1f;   // ведомый держится за флагманом
             gunsPerSide = k.guns; hitsToSink = k.hits + (role == Role.Wingman ? 10 : 0); caliber = k.caliber;
             fightRange = Mathf.Clamp(k.range * 0.7f, 200f, 420f);

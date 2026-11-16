@@ -88,6 +88,7 @@ namespace SkyTide
             // Цвета вершин (ветер/откат) нужны лёгкой модели LOD, а после UploadMeshData(true) сетка не читается —
             // раньше ShipLod читал их у нечитаемой сетки: 46 ошибок «Not allowed to access colors» и лёгкая модель без весов.
             ShipLod.SourceColors[mesh] = mesh.colors32;
+            Footprint.Register(mesh, v);   // контур в плане для столкновений (Traffic)
             if (!keepReadable) mesh.UploadMeshData(true);
             return mesh;
         }

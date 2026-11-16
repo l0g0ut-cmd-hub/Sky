@@ -370,7 +370,7 @@ namespace SkyTide
         public float HullHalfLength { get { return Mathf.Max(6f, box.extents.z * 0.88f * transform.lossyScale.z); } }
         public void SetClass(ShipClass c)
         {
-            Class = c; canBeHeavy = false;
+            Class = c; canBeHeavy = false; Footprint.Forget(transform);   // контур — по новой модели
             ShipClassInfo k = ShipClasses.Get(c);
             if (gunner == null) gunner = GetComponent<EnemyGunner>();
             baseSaved = true; baseHits = k.hits; baseSpeed = k.speed; baseYaw = k.yaw; baseGuns = k.guns; baseRange = k.range; baseCooldown = k.cooldown;
