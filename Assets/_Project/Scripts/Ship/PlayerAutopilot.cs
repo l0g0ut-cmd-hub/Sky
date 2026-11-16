@@ -64,11 +64,11 @@ namespace SkyTide
             // Гистерезис (16.11: «УХОДИМ ОТ СВОЕГО» ↔ «ПРЕСЛЕДОВАНИЕ» каждые 3 с полторы минуты): начали уходить — уходим
             // не меньше 20 с и до 1,2 км, преследование не тянет обратно к обиженному своему.
             if (fleeFrom != null && (!fleeFrom.Alive || !fleeFrom.HostileToPlayer || Relations.PlayerOutlaw
-                || (Time.time > fleeUntil && (fleeFrom.transform.position - transform.position).sqrMagnitude > 1200f * 1200f))) fleeFrom = null;
+                || (Time.time > fleeAllyUntil && (fleeFrom.transform.position - transform.position).sqrMagnitude > 1200f * 1200f))) fleeFrom = null;
             if (fleeFrom == null)
                 foreach (AllyShip al in AllyShip.All)
                     if (al != null && al.Alive && al.HostileToPlayer && !Relations.PlayerOutlaw && (al.transform.position - transform.position).sqrMagnitude < 700f * 700f)
-                    { fleeFrom = al; fleeUntil = Time.time + 20f; break; }
+                    { fleeFrom = al; fleeAllyUntil = Time.time + 20f; break; }
             if (fleeFrom != null)
             { state = "АВТОБОЙ · УХОДИМ ОТ СВОЕГО"; Vector3 away = transform.position - fleeFrom.transform.position; away.y = 0f; Steer(away, 1f); return; }
             if (repairing && fort != null && !unwelcome) { foe = null; Repair(fort); return; }
@@ -316,7 +316,7 @@ namespace SkyTide
             if (guns.OffOnTarget && guns.Readiness(guns.OffSide) >= 0.999f && !guns.FriendInLine(guns.OffSide)) { guns.Fire(guns.OffSide); DebugReport.Count("залпов вторым бортом"); }
         }
 
-        AllyShip fleeFrom; float fleeUntil;
+        AllyShip fleeFrom; float fleeAllyUntil;
 
         bool Blocked(SkyFortress fort, Vector3 dir)
         {
