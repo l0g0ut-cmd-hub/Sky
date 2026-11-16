@@ -367,7 +367,9 @@ namespace SkyTide.EditorTools
         {
             TextureImporter ti = AssetImporter.GetAtPath(path) as TextureImporter;
             if (ti == null) return null;
-            bool model = path.StartsWith(Models, System.StringComparison.Ordinal);
+            // Флот (Models/Fleet, 20 текстур 2048) — обычное сжатие: ASTC «лучшее качество 100» кодировалось ~3 мин на текстуру,
+            // сборка 177 стояла больше часа на импорте. Высокое качество — только у Корсара и крепости.
+            bool model = path.StartsWith(Models, System.StringComparison.Ordinal) && !path.Contains("/Fleet/");
             TextureImporterType type = normalMap ? TextureImporterType.NormalMap : TextureImporterType.Default;
             TextureImporterCompression compression = uncompressed ? TextureImporterCompression.Uncompressed
                 : model ? TextureImporterCompression.CompressedHQ : TextureImporterCompression.Compressed;

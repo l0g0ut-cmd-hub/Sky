@@ -2156,3 +2156,5 @@ tools/meshy/gen.py; секреты MESHY_API_KEY и MESHY_KEY2 — второй 
 - Команды: class <класс>, fleet, mood …, rel, raid, grudge N; where — класс, отношение, дело, дурень; цели по классу.
 - Конфиг: garrisonRadius, corsairRadius, warnSeconds, aimSeconds, aimRange, calmAfter, raidGrudge, raidEveryMin,
   grudgeCoolPerMin, outlawMin; enemyCount 26, allyCount 11.
+- Сборка 177 (только флот) стояла >50 мин на импорте: текстуры Models/Fleet шли как «модель» — CompressedHQ, качество 100
+  (ASTC лучшего качества, ~3 мин на текстуру, 20 штук, с повторными импортами). Отменена; флот теперь со стандартным сжатием.
