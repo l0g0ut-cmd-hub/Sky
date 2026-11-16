@@ -17,7 +17,7 @@ namespace SkyTide
             "shot [почему] — метка со снимком · report — отчёт сейчас · bench — автозамер · " +
             "snap N — снимок каждые N с · burst кадров шаг [подпись] — серия · " +
             "view угол наклон дист [сек] · spin градусов сек — обычная камера · " +
-            "play — «В БОЙ» из меню · lock near|enemy N|off — взять цель · tap pause|row N|radar|ammo|board|spy|auto|ripple|left|right|fps|gear N|xy 0.5,0.5 — нажатие как пальцем · " +
+            "play — «В БОЙ» из меню · hold left|right сек — держать кнопку борта (прицел), потом залп · font 0…3 — шрифт HUD · lock near|enemy N|off — взять цель · tap pause|row N|radar|ammo|board|spy|auto|ripple|left|right|fps|gear N|xy 0.5,0.5 — нажатие как пальцем · " +
             "where — координаты всех · pilot goto x z [ход]|heading град|speed|stop|release · go цель [N] [ход] · tp x z [курс] · " +
             "cam orbit цель [N] угол наклон дист|at x y z курс наклон|look x y z цель [N]|fov N|height N|off · hud 0|1 · photo [full] подпись · " +
             "цели: me fortress berth near enemy N ally N merchant · set clouds|fps60|post|crew|sharpen|fortress|fortshadow|lod|fx 0|1 · set shadows 0|1|2 · fps N — замер N с (в отчёт) · say текст — надпись на экране";
@@ -188,6 +188,13 @@ namespace SkyTide
                         bool full = arg == "full";
                         string label = line.Length > 5 ? line.Substring(5).Trim() : "снимок";
                         ReportUploader.Instance.Photo(label, full); return "снимок";
+                    }
+                case "font": { int fi; return int.TryParse(arg, out fi) ? TouchControls.SetFont(fi) : "font 0…3: " + string.Join(", ", TouchControls.FontNames); }
+                case "hold":
+                    {
+                        TouchControls tc = g != null ? g.GetComponent<TouchControls>() : null;
+                        if (tc == null) return "нет управления";
+                        return tc.RemoteHold(arg, Num(a, 2, 2f));
                     }
                 case "tap":
                     {

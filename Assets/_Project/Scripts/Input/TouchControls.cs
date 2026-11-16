@@ -265,7 +265,8 @@ namespace SkyTide
                     return;
                 }
                 if (Application.isPlaying && hl.pause.Contains(p)) { owners[id] = Owner.Button; lastPos[id] = p; SetPaused(true); return; }
-                if (hl.radar.Contains(p)) { owners[id] = Owner.Button; lastPos[id] = p; radarNear = !radarNear; return; }
+                if (hl.radar.Contains(p) || hl.tabRadar.Contains(p)) { owners[id] = Owner.Button; lastPos[id] = p; radarNear = !radarNear; return; }
+                if (Application.isPlaying && hl.tabEnemy.Contains(p)) { owners[id] = Owner.Button; lastPos[id] = p; CycleLock(); return; }   // вкладка «ВРАГ» — следующая цель
                 // Телеграф: палец по циферблату — сектор под пальцем (ведётся и протяжкой).
                 Rect lever = hl.telegraph;
                 if (lever.Contains(p)) { owners[id] = Owner.Telegraph; lastPos[id] = p; GearFromTouch(hl, p); return; }   // автобой снимается только своей кнопкой (владелец 15.11)
@@ -339,7 +340,15 @@ namespace SkyTide
             if (ended && (o == Owner.VolleyL || o == Owner.VolleyR))
             {
                 Broadside hb = Guns(); int hs = o == Owner.VolleyL ? -1 : 1;
-                if (hb != null && hb.HoldSide == hs) { if (hb.Readiness(hs) >= 0.9999f) Haptics.Pulse(45); hb.Fire(hs); hb.HoldSide = 0; }
+                if (hb != null && hb.HoldSide == hs)
+                {
+                    // Отвёл палец далеко от кнопки и отпустил — залп отменён (как отмена прицела в Black Flag).
+                    Rect vr = VolleyRect(hs); float mg = vr.height * 0.7f;
+                    bool away = p.x < vr.x - mg || p.x > vr.xMax + mg || p.y < vr.y - mg || p.y > vr.yMax + mg;
+                    if (away) HudNotice.Show("ЗАЛП ОТМЕНЁН", 0, 1.2f);
+                    else { if (hb.Readiness(hs) >= 0.9999f) Haptics.Pulse(45); hb.Fire(hs); }
+                    hb.HoldSide = 0;
+                }
                 if (cam != null && cam.SideAim == hs) cam.SideAim = 0;
             }
             if (ended)
@@ -504,6 +513,53 @@ namespace SkyTide
             return true;
         }
 
+        // Шрифт HUD: 0 — Arial (встроенный), 1 — Old Standard, 2 — PT Serif, 3 — Philosopher. Меняется командой font N без пересборки.
+        public static readonly string[] FontNames = { "Arial", "Old Standard", "PT Serif", "Philosopher" };
+        static readonly string[] FontFiles = { null, "Fonts/OldStandard-Bold", "Fonts/PT_Serif-Web-Bold", "Fonts/Philosopher-Bold" };
+        public static int FontIndex = -1;
+        readonly Font[] fonts = new Font[4];
+        Font ActiveFont()
+        {
+            if (FontIndex < 0) FontIndex = Mathf.Clamp(PlayerPrefs.GetInt("SkyTide.Font", 1), 0, FontFiles.Length - 1);
+            int i = FontIndex;
+            if (i == 0) return hudFont;
+            if (fonts[i] == null) { fonts[i] = Resources.Load<Font>(FontFiles[i]); if (fonts[i] == null) { FontIndex = 0; return hudFont; } }
+            return fonts[i];
+        }
+        public static string SetFont(int i)
+        {
+            FontIndex = Mathf.Clamp(i, 0, FontFiles.Length - 1); PlayerPrefs.SetInt("SkyTide.Font", FontIndex); PlayerPrefs.Save();
+            return "шрифт " + FontIndex + " · " + FontNames[FontIndex];
+        }
+        /// <summary>Удалённое удержание кнопки борта (DevCommands hold left|right сек): прицел как пальцем, в конце — залп.</summary>
+        public string RemoteHold(string what, float seconds)
+        {
+            HudLayout hl = Layout(ViewWidth, ViewHeight);
+            if (what != "left" && what != "right") return "hold left|right сек";
+            StartCoroutine(HoldRoutine((what == "left" ? hl.port : hl.starboard).center, Mathf.Clamp(seconds, 0.2f, 20f)));
+            return "держу " + what + " " + seconds + " с";
+        }
+        System.Collections.IEnumerator HoldRoutine(Vector2 p, float seconds)
+        {
+            Pointer(77, p, true, false);
+            float until = Time.unscaledTime + seconds;
+            while (Time.unscaledTime < until) { yield return null; Pointer(77, p, false, false); }
+            Pointer(77, p, false, true);
+        }
+        /// <summary>Следующая цель по дальности (касание вкладки «ВРАГ»): без цели — ближайший, с целью — следующий за ней.</summary>
+        void CycleLock()
+        {
+            Broadside gb = Guns(); if (gb == null || ship == null) return;
+            List<TargetShip> near = new List<TargetShip>();
+            foreach (TargetShip t in TargetShip.All) if (t != null && t.Alive && t.gameObject.activeInHierarchy && Vector3.Distance(t.transform.position, ship.transform.position) < 2500f) near.Add(t);
+            if (near.Count == 0) { HudNotice.Show("ВРАГОВ НЕ ВИДНО", 1, 1.5f); return; }
+            Vector3 me = ship.transform.position;
+            near.Sort((a, b) => Vector3.Distance(a.transform.position, me).CompareTo(Vector3.Distance(b.transform.position, me)));
+            int at = near.IndexOf(gb.Locked);
+            gb.Locked = near[(at + 1) % near.Count];
+            HudNotice.Show(near.Count > 1 ? "ЦЕЛЬ " + ((at + 1) % near.Count + 1) + " ИЗ " + near.Count : "ЦЕЛЬ ВЗЯТА", 1, 1.2f); Haptics.Pulse(25);
+        }
+
         void BeginHold(Broadside bs, int side)
         {
             bs.HoldSide = side;
@@ -581,7 +637,7 @@ namespace SkyTide
         string TouchTarget(HudLayout l, Vector2 p)
         {
             if (Paused) return "меню паузы";
-            if (l.pause.Contains(p)) return "пауза"; if (l.radar.Contains(p)) return "радар"; if (l.spy.Contains(p)) return "труба";
+            if (l.pause.Contains(p)) return "пауза"; if (l.radar.Contains(p) || l.tabRadar.Contains(p)) return "радар"; if (l.tabEnemy.Contains(p)) return "вкладка враг"; if (l.spy.Contains(p)) return "труба";
             if (FpsButtonRect().Contains(p)) return "FPS"; if (PerfPanel.Open && PerfPanel.Area.Contains(p)) return "панель FPS";
             if (l.port.Contains(p)) return "левый борт"; if (l.starboard.Contains(p)) return "правый борт"; if (l.mode.Contains(p)) return "режим залпа";
             if (l.ammo.Contains(p)) return "заряд"; if (l.auto.Contains(p)) return "автобой"; if (l.board.Contains(p)) return "абордаж (кнопка " + (Boarding() != null && Boarding().Candidate != null ? "есть" : "скрыта") + ")";
@@ -606,7 +662,7 @@ namespace SkyTide
 #if UNITY_EDITOR
             if(!Application.isPlaying&&!captureVisible)return;
 #endif
-            hud.Draw(this,destination,width,height,hudShader,hudFont);
+            hud.Draw(this,destination,width,height,hudShader,ActiveFont());
         }
         public void ResetInteraction()
         {

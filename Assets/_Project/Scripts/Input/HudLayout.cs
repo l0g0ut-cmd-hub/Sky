@@ -34,9 +34,9 @@ namespace SkyTide
             // Левая колонка — одна ширина и один левый край для всего: FPS+ТРУБА, радар, плашка радара, плашка хода;
             // штурвал — по её середине; зазоры между блоками равные (владелец 15.11: «выровняй нормально»).
             float colW = u * 0.34f, colX = safeArea.x + m;
-            float topH = u * 0.065f, fpsW = u * 0.14f;
+            float topH = u * 0.065f, fpsW = u * 0.2f;   // шире: в новых кнопках с завитками текст не лезет на орнамент
             l.fps = new Rect(colX, safeArea.y + m, fpsW, topH);
-            l.spy = new Rect(colX + fpsW + gap, l.fps.y, colW - fpsW - gap, topH);   // «ТРУБА» шире: в половине колонки надпись ужималась в мелочь
+            l.spy = new Rect(colX + fpsW + gap, l.fps.y, u * 0.26f, topH);   // «ТРУБА» шире: в половине колонки надпись ужималась в мелочь
             // Радар со вкладками — одна картинка (ui_radar_module.png 1536×1024): круг радара слева (центр 357,357, r 247),
             // вкладки ВРАГ / ПРИЧАЛ / РАДАР справа, ниже — вкладка хода. Высота — сколько влезает до штурвала.
             l.radius = u * stickRadius;
@@ -92,15 +92,19 @@ namespace SkyTide
         {
             get
             {
-                float w = Mathf.Min(safe.width * 0.42f, unit * 0.86f), h = unit * 0.88f;
+                // Панель — картинка ui_pause.png (999×1265): шапка с табличкой, поле строк, нижняя плашка.
+                float h = Mathf.Min(unit * 0.96f, safe.height * 0.96f), w = h * 999f / 1265f;
                 return new Rect(safe.center.x - w * 0.5f, safe.center.y - h * 0.5f, w, h);
             }
         }
         public Rect PauseRow(int i)
         {
             Rect p = PausePanel;
-            float rh = unit * 0.086f, gap = unit * 0.014f;
-            return new Rect(p.x + unit * 0.05f, p.y + unit * 0.13f + i * (rh + gap), p.width - unit * 0.1f, rh);
+            // Поле строк на картинке: x 41…958 из 999, y 286…1140 из 1265; строки делят его поровну с равными зазорами.
+            float fy0 = p.y + p.height * 286f / 1265f, fy1 = p.y + p.height * 1140f / 1265f, pad = p.height * 0.0096f;
+            float rh = p.height * 0.0812f, gap = (fy1 - fy0 - pad * 2f - rh * PauseRows) / (PauseRows - 1);
+            float x0 = p.x + p.width * 41f / 999f + p.height * 0.029f, x1 = p.x + p.width * 958f / 999f - p.height * 0.029f;
+            return new Rect(x0, fy0 + pad + i * (rh + gap), x1 - x0, rh);
         }
 
         public Vector2 ClampWheel(Vector2 origin)

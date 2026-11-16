@@ -209,6 +209,13 @@ namespace SkyTide
         float CapRatio(string t)   // ширина строки на 1 px высоты заглавной
         {
             if (font == null || string.IsNullOrEmpty(t)) return 0f;
+            float known; if (ratioCache.TryGetValue(t, out known)) return known;   // замер строки — один раз, а не каждый кадр
+            if (ratioCache.Count > 600) ratioCache.Clear();
+            float measured = MeasureRatio(t); ratioCache[t] = measured; return measured;
+        }
+        readonly Dictionary<string, float> ratioCache = new Dictionary<string, float>();
+        float MeasureRatio(string t)
+        {
             const int sz = 48; font.RequestCharactersInTexture(t, sz, FontStyle.Normal); font.RequestCharactersInTexture("Н", sz, FontStyle.Normal);
             CharacterInfo c, cap; if (!font.GetCharacterInfo('Н', out cap, sz, FontStyle.Normal) || cap.maxY <= cap.minY) return 0.6f * t.Length;
             float w = 0f; for (int i = 0; i < t.Length; i++) if (font.GetCharacterInfo(t[i], out c, sz, FontStyle.Normal)) w += c.advance;
@@ -347,6 +354,7 @@ namespace SkyTide
 
         void Panel(Rect r, float u, bool lit = false, bool pressed = false)
         {
+            LoadBanners(); if (tThin != null) { ThinPanel(r, lit, pressed); return; }
             if (HasKit) { KitPanel(r, lit, pressed); return; }
             Box(new Rect(r.x + 1f, r.y + 2f, r.width, r.height), new Color(0f,0f,0f,0.25f));
             Box(r, lit ? new Color(0.16f,0.1f,0.055f,0.9f) : new Color(0.055f,0.062f,0.073f,0.86f));
@@ -409,7 +417,7 @@ namespace SkyTide
             float fx0=r.x+110f*k, fx1=r.xMax-110f*k, fy0=r.y+40f*k, fy1=r.yMax-(256f-188f)*k;
             float fh=fy1-fy0, fw=fx1-fx0;
             string tl=side<0?"ЛЕВЫЙ БОРТ":"ПРАВЫЙ БОРТ";
-            string st=ready?(aimed?"В ПРИЦЕЛЕ":idle):((1f-readiness)*cooldown).ToString("F1")+" с";
+            string st=ready?(aimed?"В ПРИЦЕЛЕ":idle):Cached(side<0?10:11,Mathf.RoundToInt((1f-readiness)*cooldown*10f),v=>(v/10)+","+(v%10)+" с");
             Color sc=ready?(aimed?new Color(1f,0.93f,0.7f):gold):new Color(0.86f,0.82f,0.76f);
             // Один размер для обеих строк: заглавные — 26% высоты поля, но обе строки (вторая — с пушкой) влезают в поле
             // с запасом 6%; выравнивание — по центру поля, без ужатия отдельных строк (владелец 16.11).
@@ -417,16 +425,16 @@ namespace SkyTide
             // Раскладка зеркальная и неизменная: пушка — у края поля со стороны борта (левая — слева, правая — справа),
             // состояние — по центру оставшегося места. Размер шрифта — один на обе кнопки и все состояния, по самым
             // длинным строкам (владелец 16.11: разный размер, пушки на разном расстоянии, текст на рамке).
-            float ar=src.width/src.height;
+            float ar=src.width/src.height; bool cannon=false;   // пушки в строке состояния нет: с ней текст выходил мельче общего кегля (16.11)
             float wTitle=CapRatio("ПРАВЫЙ БОРТ"), wMax=Mathf.Max(CapRatio("ЖДЁМ ЦЕЛЬ"),Mathf.Max(CapRatio("В ПРИЦЕЛЕ"),CapRatio("ДАЛЕКО")));
             float capH=Mathf.Min(fh*0.27f,l.unit*0.03f*0.7f);   // не крупнее общего кегля плашек
             capH=Mathf.Min(capH,fw*0.92f/Mathf.Max(0.01f,wTitle));
-            capH=Mathf.Min(capH,fw*0.92f/Mathf.Max(0.01f,wMax+(HasKit?1.8f*ar+0.5f:0f)));
-            float iconH=capH*1.8f, iconW=HasKit?iconH*ar:0f, gap=HasKit?capH*0.5f:0f;
+            capH=Mathf.Min(capH,fw*0.92f/Mathf.Max(0.01f,wMax+(cannon?1.8f*ar+0.5f:0f)));
+            float iconH=capH*1.8f, iconW=cannon?iconH*ar:0f, gap=cannon?capH*0.5f:0f;
             float y1=fy0+fh*0.27f, y2=fy0+fh*0.74f, cx=(fx0+fx1)*0.5f;
             CapText(cx,y1,tl,capH,ready?cream:new Color(0.78f,0.74f,0.68f,1f),true);
             float rx0=fx0+fw*0.04f, rx1=fx1-fw*0.04f;   // строка состояния — с тем же запасом 4% с краёв
-            if(HasKit)
+            if(cannon)
             {
                 Rect ir=side<0?new Rect(rx0,y2-iconH*0.55f,iconW,iconH):new Rect(rx1-iconW,y2-iconH*0.55f,iconW,iconH);
                 Sprite(ir,src,new Color(1f,1f,1f,ready?1f:0.55f));
@@ -586,9 +594,10 @@ namespace SkyTide
         void PauseMenu(TouchControls input, HudLayout l, int width, int height)
         {
             Solid(new Rect(0f, 0f, width, height), new Color(0.02f, 0.03f, 0.05f, 0.6f));
-            Rect p = l.PausePanel;
-            Solid(p, new Color(0.05f, 0.06f, 0.08f, 0.88f));
-            CapText(p.center.x, p.y + l.unit * 0.075f, "ПАУЗА", l.unit * 0.034f, cream, true);
+            Rect p = l.PausePanel; LoadBanners();
+            if (tPause != null) ImageRect(tPause, p, Whole, Color.white); else Solid(p, new Color(0.05f, 0.06f, 0.08f, 0.88f));
+            CapText(p.center.x, p.y + p.height * 199f / 1265f, "ПАУЗА", l.unit * 0.034f, cream, true);   // по центру таблички шапки
+            CapText(p.center.x, p.y + p.height * 1175.5f / 1265f, input.BuildText, l.unit * 0.014f, new Color(cream.r, cream.g, cream.b, 0.6f), true);   // номер сборки — в нижней плашке
             for (int i = 0; i < HudLayout.PauseRows; i++)
             {
                 Rect r = l.PauseRow(i);
@@ -640,6 +649,26 @@ namespace SkyTide
             Vector3 sp = c.WorldToScreenPoint(t.Center);
             Color col = gb.AimOnTarget && gb.AimTargetShip == t ? new Color(1f, 0.45f, 0.3f, 0.95f) : new Color(1f, 0.82f, 0.45f, 0.95f);
             float dist = Vector3.Distance(t.transform.position, input.ship.transform.position);
+            {
+                // Цель за краем экрана или за спиной — стрелка у края в её сторону с дальностью.
+                Vector2 mid = new Vector2(Screen.width * 0.5f, Screen.height * 0.5f), sq = new Vector2(sp.x, Screen.height - sp.y);
+                if (sp.z <= 0f) sq = mid - (sq - mid);   // за камерой проекция зеркальная
+                float ex = Screen.width * 0.5f - l.unit * 0.09f, ey = Screen.height * 0.5f - l.unit * 0.09f;
+                Vector2 dv0 = sq - mid;
+                if (sp.z <= 0f || Mathf.Abs(dv0.x) > Screen.width * 0.5f || Mathf.Abs(dv0.y) > Screen.height * 0.5f)
+                {
+                    if (dv0.sqrMagnitude < 1f) dv0 = Vector2.up;
+                    if (sp.z <= 0f) dv0 = dv0.normalized * (Screen.width + Screen.height);
+                    float kx = Mathf.Abs(dv0.x) > 1e-3f ? ex / Mathf.Abs(dv0.x) : float.MaxValue, ky = Mathf.Abs(dv0.y) > 1e-3f ? ey / Mathf.Abs(dv0.y) : float.MaxValue;
+                    Vector2 at = mid + dv0 * Mathf.Min(kx, ky), n = dv0.normalized, s = new Vector2(-n.y, n.x);
+                    float a = l.unit * 0.028f, w0 = Mathf.Max(2f, l.unit * 0.005f);
+                    Line(at + n * a, at - n * a * 0.6f + s * a * 0.8f, w0, col); Line(at + n * a, at - n * a * 0.6f - s * a * 0.8f, w0, col);
+                    Line(at - n * a * 0.6f + s * a * 0.8f, at - n * a * 0.15f, w0, col); Line(at - n * a * 0.6f - s * a * 0.8f, at - n * a * 0.15f, w0, col);
+                    Vector2 tp = at - n * l.unit * 0.06f;
+                    CapText(tp.x, tp.y, Cached(12, Mathf.RoundToInt(dist / 10f), v => v * 10 + " м"), l.unit * 0.018f, col, true);
+                    return;
+                }
+            }
             if (sp.z > 0f)
             {
                 // Рамка — по проекции корпуса (8 углов его коробки), а не кругом от центра: на снимках 155 уголки
@@ -663,7 +692,14 @@ namespace SkyTide
                     Line(corner, corner - new Vector2(sx * arm, 0f), w, col);
                     Line(corner, corner - new Vector2(0f, sy * arm), w, col);
                 }
-                Text(new Rect(q.x - l.unit * 0.1f, q.y + hh + l.unit * 0.005f, l.unit * 0.2f, l.unit * 0.035f), Mathf.RoundToInt(dist / 10f) * 10 + " м", l.unit * 0.026f, col);
+                CapText(q.x, q.y + hh + l.unit * 0.024f, Cached(12, Mathf.RoundToInt(dist / 10f), v => v * 10 + " м"), l.unit * 0.018f, col, true);
+                {   // прочность цели — полоса над рамкой (как в Black Flag): тёмная подложка, красная заливка
+                    float bw = Mathf.Clamp(hw * 1.3f, l.unit * 0.14f, l.unit * 0.3f), bh = Mathf.Max(4f, l.unit * 0.009f), by = q.y - hh - l.unit * 0.022f - bh, e = Mathf.Max(1f, l.unit * 0.002f);
+                    Solid(new Rect(q.x - bw * 0.5f - e, by - e, bw + e * 2f, bh + e * 2f), new Color(0.79f, 0.61f, 0.35f, 0.9f));
+                    Solid(new Rect(q.x - bw * 0.5f, by, bw, bh), new Color(0.05f, 0.04f, 0.04f, 0.95f));
+                    float hp = Mathf.Clamp01(t.Health01);
+                    if (hp > 0.001f) Solid(new Rect(q.x - bw * 0.5f, by, bw * hp, bh), hp < 0.3f ? new Color(1f, 0.3f, 0.2f, 1f) : new Color(0.92f, 0.5f, 0.2f, 1f));
+                }
                 // Упреждение: куда цель уйдёт за время полёта ядра. Пунктир от рамки к кольцу и подпись — чтобы было
                 // понятно, что это и зачем (владелец 15.11: «что значит этот значок»).
                 if (gb.HasLead)
@@ -683,7 +719,7 @@ namespace SkyTide
                             float seg = l.unit * 0.012f, len = (b - a).magnitude;
                             for (float t0 = 0f; t0 < len; t0 += seg * 2f) Line(a + dn * t0, a + dn * Mathf.Min(len, t0 + seg), lw2, new Color(lc.r, lc.g, lc.b, 0.7f));
                         }
-                        Text(new Rect(lq.x - l.unit * 0.12f, lq.y - rr - l.unit * 0.034f, l.unit * 0.24f, l.unit * 0.03f), "УПРЕЖДЕНИЕ", l.unit * 0.022f, lc);
+                        CapText(lq.x, lq.y - rr - l.unit * 0.018f, "УПРЕЖДЕНИЕ", l.unit * 0.016f, lc, true);
                     }
                 }
             }
@@ -747,7 +783,7 @@ namespace SkyTide
 
         // ---------- баннеры, оповещения, виньетка (Resources/UI: banner_victory/defeat 2048×512, plate_notice 1024×192,
         // vignette_damage 2:1, icons 4×4). Текст всегда в пределах внутреннего поля плашки (пиксели картинки ниже). ----------
-        Texture2D bVictory, bDefeat, bPlate, bVignette, bIcons, bIcons2, tInfo, tFill, tCompass, tDial, tLever, tModule, tConsole, tWheel, tSide, tSideAim, tSideReload, tSideGlow; bool bannersTried;
+        Texture2D bVictory, bDefeat, bPlate, bVignette, bIcons, bIcons2, tInfo, tFill, tCompass, tDial, tLever, tModule, tConsole, tWheel, tSide, tSideAim, tSideReload, tSideGlow, tThin, tThinLit, tPause; bool bannersTried;
         string victoryText = "ЦЕЛЬ УНИЧТОЖЕНА";
         readonly HashSet<TargetShip> sunkSeen = new HashSet<TargetShip>();
         float victoryAt = -100f;
@@ -765,6 +801,21 @@ namespace SkyTide
             tModule = Resources.Load<Texture2D>("UI/ui_radar_module");
             tConsole = Resources.Load<Texture2D>("UI/ui_console"); tWheel = Resources.Load<Texture2D>("UI/ui_wheel");
             tSide = Resources.Load<Texture2D>("UI/btn_side"); tSideAim = Resources.Load<Texture2D>("UI/btn_side_aim"); tSideReload = Resources.Load<Texture2D>("UI/btn_side_reload"); tSideGlow = Resources.Load<Texture2D>("UI/btn_side_glow");
+            tThin = Resources.Load<Texture2D>("UI/btn_thin"); tThinLit = Resources.Load<Texture2D>("UI/btn_thin_lit"); tPause = Resources.Load<Texture2D>("UI/ui_pause");
+        }
+        /// <summary>Тонкая кнопка из картинок владельца (btn_thin.png 1074×181; раскалённая btn_thin_lit.png 1160×307 — та же рамка
+        /// со свечением: поля 43 по бокам, 64 сверху). Режется на три части: концы с завитками не тянутся; у короткой кнопки
+        /// (квадратная «пауза») концы сходятся вплотную.</summary>
+        void ThinPanel(Rect r, bool lit, bool pressed, float alpha = 1f)
+        {
+            bool glow = lit && tThinLit != null; Texture2D tex = glow ? tThinLit : tThin;
+            float k = r.height / 181f, ox = glow ? 43f : 0f, oy = glow ? 64f : 0f, W = tex.width;
+            float cap = Mathf.Min(100f, r.width / k * 0.5f), sc = ox + cap;
+            Color tint = pressed ? new Color(0.8f, 0.8f, 0.8f, alpha) : new Color(1f, 1f, 1f, alpha);
+            Rect d = new Rect(r.x - ox * k, r.y - oy * k, r.width + ox * k * 2f, r.height * tex.height / 181f);
+            ImageRect(tex, new Rect(d.x, d.y, sc * k, d.height), new Rect(0f, 0f, sc / W, 1f), tint);
+            if (d.width - sc * k * 2f > 0.5f) ImageRect(tex, new Rect(d.x + sc * k, d.y, d.width - sc * k * 2f, d.height), new Rect(sc / W, 0f, 1f - sc * 2f / W, 1f), tint);
+            ImageRect(tex, new Rect(d.xMax - sc * k, d.y, sc * k, d.height), new Rect(1f - sc / W, 0f, sc / W, 1f), tint);
         }
         /// <summary>Картинка в прямоугольник; uv — доли картинки от верхнего левого угла.</summary>
         void ImageRect(Texture2D tex, Rect dst, Rect uv, Color col)
@@ -1051,6 +1102,7 @@ namespace SkyTide
         {
             if(shader==null||!shader.isSupported||typeface==null) throw new System.InvalidOperationException("HUD shader/font is missing");
             if(material==null) {material=new Material(shader);material.hideFlags=HideFlags.HideAndDontSave;}
+            if(font!=typeface)ratioCache.Clear();   // сменили шрифт — ширины строк другие
             font=typeface;
             HudLayout l=input.Layout(width,height);
             labels.Clear(); MissingGlyphs=GlyphsDrawn=MissingCharacter=TextIssues=0; FirstTextIssue=null;
@@ -1067,7 +1119,8 @@ namespace SkyTide
                 GL.Begin(GL.TRIANGLES);
                 try
                 {
-                    if(input.Paused){PauseMenu(input,l,width,height);Rect pp=l.PausePanel;CapText(pp.center.x,pp.yMax-l.unit*0.03f,input.BuildText,l.unit*0.014f,new Color(cream.r,cream.g,cream.b,0.55f),true);}   // номер сборки — внизу панели паузы   // «СБОРКА N» — только в меню паузы (владелец 16.11)
+                    LoadBanners();
+                    if(input.Paused){PauseMenu(input,l,width,height);}   // номер сборки — внизу панели паузы   // «СБОРКА N» — только в меню паузы (владелец 16.11)
                     else
                     {
                     if(Application.isPlaying||CaptureBanner!=0)DamageVignette(width,height);   // под всеми плашками
@@ -1089,6 +1142,7 @@ namespace SkyTide
                     {
                         Volley(input,l,l.port,-1,guns.Readiness(-1),guns.cooldown,guns.AimOnTarget&&guns.AimSide<0);
                         Volley(input,l,l.starboard,1,guns.Readiness(1),guns.cooldown,guns.AimOnTarget&&guns.AimSide>0);
+                        if(Application.isPlaying){string autoText=input.AutoBattle?(string.IsNullOrEmpty(input.AutoState)?"АВТОБОЙ · ВКЛ":input.AutoState):"АВТОБОЙ";Panel(l.auto,l.unit,input.AutoBattle,input.Pressed(l.auto));PlateText(l.auto,0f,1f,autoText,l.unit*0.03f,input.AutoBattle?new Color(1f,0.88f,0.55f):cream);}   // раньше соседей: свечение включённой кнопки ложится под них
                         Panel(l.mode,l.unit,false,input.Pressed(l.mode));
                         IconText(l.mode,3,guns.ripple?"ВОЛНОЙ":"ВЕСЬ БОРТ",l.unit*0.03f,cream);
                         Panel(l.ammo,l.unit,guns.chainShot,input.Pressed(l.ammo));
@@ -1100,9 +1154,8 @@ namespace SkyTide
                             float pulse=pb.Active?1f:0.75f+0.25f*Mathf.Sin(Time.unscaledTime*7f);
                             Panel(l.board,l.unit,true,input.Pressed(l.board));
                             if(pb.Active)Solid(new Rect(l.board.x+l.board.height*0.12f,l.board.yMax-l.board.height*0.22f,(l.board.width-l.board.height*0.24f)*pb.Progress01,l.board.height*0.1f),gold);
-                            PlateText(l.board,0f,1f,pb.Active?Cached(4,Mathf.RoundToInt(pb.Progress01*100f),v=>"АБОРДАЖ · "+v+"%"):"НА АБОРДАЖ",l.unit*0.036f,new Color(1f,0.88f,0.55f,pulse));
+                            PlateText(l.board,0f,1f,pb.Active?Cached(4,Mathf.RoundToInt(pb.Progress01*100f),v=>"АБОРДАЖ · "+v+"%"):"НА АБОРДАЖ",l.unit*0.03f,new Color(1f,0.88f,0.55f,pulse));
                         }
-                        if(Application.isPlaying){string autoText=input.AutoBattle?(string.IsNullOrEmpty(input.AutoState)?"АВТОБОЙ · ВКЛ":input.AutoState):"АВТОБОЙ";Panel(l.auto,l.unit,input.AutoBattle,input.Pressed(l.auto));PlateText(l.auto,0f,1f,autoText,l.unit*0.028f,input.AutoBattle?new Color(1f,0.88f,0.55f):cream);}
                     }
                     Vector2 home=tConsole!=null?l.wheel:(input.StickActive?l.ClampWheel(input.StickOrigin):l.wheel);   // с пультом штурвал стоит в своём гнезде
                     if(leverDeferred){leverDeferred=false;ImagePivot(tLever,leverHub,new Vector2(94f,674f),leverScale,leverAngle-74.8f,Color.white);}
@@ -1142,12 +1195,13 @@ namespace SkyTide
                         // Подсказки первого запуска — по шагам, на плашке (на светлых облаках голый текст не читается).
                         float ha=input.HintAlpha, pw=Mathf.Min(l.hint.width,l.unit*0.5f), ph=l.unit*0.095f;
                         Rect plate=new Rect(l.hint.center.x-pw*0.5f,l.hint.yMax-ph,pw,ph);
-                        if(HasKit) {float hs=ph/PanelN[0].height; Slice9(plate,PanelN[0],30f,30f*hs,new Color(1f,1f,1f,ha));}
+                        if(tThin!=null) ThinPanel(plate,false,false,ha);
+                        else if(HasKit) {float hs=ph/PanelN[0].height; Slice9(plate,PanelN[0],30f,30f*hs,new Color(1f,1f,1f,ha));}
                         else Box(plate,new Color(0.055f,0.062f,0.073f,0.86f*ha));
                         Color hint=new Color(cream.r,cream.g,cream.b,ha), act=new Color(1f,0.84f,0.5f,ha);
                         string h1,h2;
                         if(input.HintStage==0){h1="ДЖОЙСТИК ВВЕРХ";h2="ДАТЬ ХОД";}
-                        else if(input.HintStage==1){h1="КНОПКА БОРТА";h2="ДАТЬ ЗАЛП";}
+                        else if(input.HintStage==1){h1="ДЕРЖИ КНОПКУ БОРТА";h2="ОТПУСТИ — ЗАЛП";}
                         else if(input.HintStage==2){h1="ДВА КАСАНИЯ СПРАВА";h2="КАМЕРА ЗА КОРМУ";}
                         else{h1="СПРАВА — ОБЗОР";h2="2 ПАЛЬЦА — МАСШТАБ";}
                         PlateText(plate,0f,0.5f,h1,l.unit*0.026f,hint);
