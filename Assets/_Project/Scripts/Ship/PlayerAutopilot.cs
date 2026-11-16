@@ -22,7 +22,7 @@ namespace SkyTide
     public class PlayerAutopilot : MonoBehaviour
     {
         public static float RepairBelowDefault = 0.35f;
-        public float repairBelow = 0.35f, repairUntil = 0.98f;
+        public float repairBelow = 0.35f, repairUntil = 0.999f;   // до конца: следы стираются только с последним процентом
         ShipController ship; PlayerHull hull; Broadside guns; PlayerBoarding boarding;
         bool repairing; int wantSide; string state = "";
         float dodgeUntil, dodgeThrottle, lastVolleySeen = -100f, nextTargetPick;

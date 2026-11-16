@@ -90,6 +90,8 @@ namespace SkyTide
             mesh.SetTriangles(all,0);mesh.RecalculateBounds();
         }
         public void Clear(){marks.Clear();mesh.Clear();}
+        /// <summary>Ремонт заделывает пробоины по одной, старые первыми (17.11: после ремонта следы оставались).</summary>
+        public void TrimTo(int n){n=Mathf.Max(0,n);if(marks.Count<=n)return;while(marks.Count>n)marks.RemoveAt(0);if(marks.Count==0)mesh.Clear();else Rebuild();}
         public void Dispose(){SkyTideBootstrap.SafeDestroy(mesh);SkyTideBootstrap.SafeDestroy(material);}
     }
 }

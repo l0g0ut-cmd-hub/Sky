@@ -97,7 +97,18 @@ namespace SkyTide
         }
 
         /// <summary>Ремонт у причала.</summary>
-        public void Repair(float amount) { if (Alive) Health = Mathf.Min(maxHealth, Health + amount); }
+        public void Repair(float amount)
+        {
+            if (!Alive) return;
+            Health = Mathf.Min(maxHealth, Health + amount);
+            if (Health >= maxHealth * 0.995f) Health = maxHealth;
+            // Следы уходят вместе с повреждением: пробоин не больше, чем «осталось урона» (16 — при нуле прочности),
+            // очаги дыма — так же (3 при нуле). Раньше всё стиралось только ровно на 100%, а ремонт кончался на 98–99%.
+            float dmg = 1f - Health01;
+            if (marks != null) marks.TrimTo(Mathf.CeilToInt(dmg * 16f));
+            ventCount = Mathf.Min(ventCount, Mathf.CeilToInt(dmg * 3f));
+            if (Health >= maxHealth) { ventCount = ventCursor = 0; if (marks != null) { marks.Clear(); markSerial = 0; } }
+        }
         /// <summary>Новая прочность (конфиг): текущая — в той же доле.</summary>
         public void SetMaxHealth(float max) { float k = Health01; maxHealth = Mathf.Max(1f, max); Health = maxHealth * k; }
         /// <summary>Тест: бессмертие (попадания видны, урона нет).</summary>

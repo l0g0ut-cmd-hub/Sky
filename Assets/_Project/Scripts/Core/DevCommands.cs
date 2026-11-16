@@ -303,6 +303,9 @@ namespace SkyTide
                     if (ReportUploader.Instance == null) return "нет отправки";
                     ReportUploader.Instance.Burst((int)Num(a, 1, 10f), Num(a, 2, 0.15f), a.Length > 3 ? string.Join(" ", a, 3, a.Length - 3) : "серия");
                     return "серия " + Num(a, 1, 10f) + " кадров";
+                case "menu":   // menu — открыть главное меню; menu 0/1/2 — В БОЙ / НАСТРОЙКИ / АНГАР
+                    if (arg == "") { MainMenu.Open(); return "главное меню"; }
+                    return MainMenu.RemotePress((int)Num(a, 1, 0f)) ? "меню → кнопка " + arg : "меню не открыто";
                 case "play": return MainMenu.RemotePlay() ? "меню → В БОЙ" : (MainMenu.Active ? "меню не готово" : "уже в бою");
                 case "say": HudNotice.Show(line.Substring(3).Trim(), 0, 6f); return "показано";
                 case "set": return Set(arg, a.Length > 2 ? a[2] : "1", g);

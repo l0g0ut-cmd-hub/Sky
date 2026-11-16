@@ -65,7 +65,7 @@ namespace SkyTide
                 if (b.id <= last || b.cmds.Length == 0) { Status = "команды: последняя #" + Mathf.Max(last, b.id); if (b.id > last) { PlayerPrefs.SetInt(LastKey, b.id); PlayerPrefs.Save(); } yield break; }
                 // В главном меню партия не стартует (иначе табличка «УПРАВЛЯЕТ CLAUDE» висела над меню, а команды шли вхолостую):
                 // ждём боя; партия, начинающаяся с play, сама жмёт «В БОЙ».
-                if (MainMenu.Active && b.cmds[0] != "play") MainMenu.RemotePlay();   // из меню — сразу «В БОЙ»
+                if (MainMenu.Active && b.cmds[0] != "play" && !b.cmds[0].StartsWith("menu") && !b.cmds[0].StartsWith("photo")) MainMenu.RemotePlay();   // из меню — сразу «В БОЙ»
                 // Пауза снимается сама: после разворота игра всегда стоит на паузе (владелец 16.11 — «учитывай паузу»).
                 { TouchControls tc = Object.FindFirstObjectByType<TouchControls>(); if (tc != null && tc.Paused) tc.SetPaused(false); }
                 PlayerPrefs.SetInt(LastKey, b.id); PlayerPrefs.Save();
@@ -86,14 +86,16 @@ namespace SkyTide
                 ControlBanner.BusyUntil = Time.realtimeSinceStartup + est; ControlBanner.Cancelled = false;
                 Running = true;
                 StringBuilder ack = new StringBuilder("команды #" + b.id + " · " + System.DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss") + " · сборка " + DebugReport.BuildNo + "\n");
+                bool menuWanted = MainMenu.Active && (b.cmds[0].StartsWith("menu") || b.cmds[0].StartsWith("photo"));   // меню проверяют — не уводить в бой
                 foreach (string c in b.cmds)
                 {
+                    if (c == "play" || c == "menu 0") menuWanted = false; else if (c.StartsWith("menu")) menuWanted = true;
                     if (string.IsNullOrEmpty(c)) continue;
                     if (ControlBanner.Cancelled) { ack.AppendLine("ОТМЕНЕНО владельцем на: " + c); break; }
                     if (c == "hold") { ack.AppendLine("hold → управление остаётся"); continue; }
                     // Игра посреди партии оказалась в главном меню (17.11: партия ушла в меню и 12 минут шла вхолостую) —
                     // обратно «В БОЙ» перед следующей командой боя.
-                    if (MainMenu.Active && !c.StartsWith("wait") && !c.StartsWith("photo") && !c.StartsWith("say") && c != "play")
+                    if (!menuWanted && MainMenu.Active && !c.StartsWith("wait") && !c.StartsWith("photo") && !c.StartsWith("say") && c != "play" && !c.StartsWith("tap row"))
                     { MainMenu.RemotePlay(); ack.AppendLine("в меню → снова В БОЙ"); yield return new WaitForSecondsRealtime(3f); }
                     if (c.StartsWith("wait"))
                     {

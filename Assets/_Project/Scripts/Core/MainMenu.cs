@@ -97,6 +97,8 @@ namespace SkyTide
         static MainMenu instance;
         /// <summary>«В БОЙ» удалённой командой (play): проверка Claude не должна ждать, пока владелец нажмёт сам.</summary>
         public static bool RemotePlay() { if (!Active || instance == null) return false; instance.Press(0); return true; }
+        /// <summary>Кнопка меню удалённой командой (menu N): 0 — В БОЙ, 1 — НАСТРОЙКИ, 2 — АНГАР. «ВЫХОД» не нажимается.</summary>
+        public static bool RemotePress(int i) { if (!Active || instance == null || i < 0 || i > 2) return false; instance.Press(i); return true; }
         void Press(int i)
         {
             switch (i)
