@@ -30,8 +30,11 @@ namespace SkyTide
         /// <summary>Надпись в плашке: строка (доли внутреннего поля по высоте) — всегда внутри поля.</summary>
         void PlateText(Rect plate, float top, float height, string text, float size, Color color)
         {
-            Rect c = Content(plate);
-            Text(new Rect(c.x, c.y + c.height * top, c.width, c.height * height), text, size, color);
+            // Единая шкала: size — кегль, заглавные = 0,7 кегля; ужимается только если не влезает в поле (по высоте 62% строки,
+            // по ширине — поле между орнаментами с запасом 8%). Одинаковый size → одинаковый текст на всех плашках.
+            Rect c = Content(plate); float rowH = c.height * height, cy = c.y + c.height * top + rowH * 0.5f;
+            float capH = Mathf.Min(size * 0.7f, rowH * 0.62f, c.width * 0.92f / Mathf.Max(0.01f, CapRatio(text)));
+            CapText(c.center.x, cy, text, capH, color, true);
         }
 
         /// <summary>Надпись со значком (icons2) слева в поле плашки; текст — по центру оставшегося места.</summary>
@@ -41,7 +44,7 @@ namespace SkyTide
             // с проверкой ширины (CapText — без ужатия).
             Rect c = Content(plate); float h = plate.height;
             float x0 = c.x + h * 0.12f, x1 = c.xMax - h * 0.12f, fw = x1 - x0;
-            float capH = c.height * 0.42f, ratio = CapRatio(text);
+            float capH = Mathf.Min(size * 0.7f, c.height * 0.5f), ratio = CapRatio(text);
             capH = Mathf.Min(capH, fw * 0.92f / Mathf.Max(0.01f, ratio + 2.1f));
             float ic = capH * 1.75f, g = capH * 0.35f, tw = ratio * capH, total = ic + g + tw, gx = plate.center.x - total * 0.5f;
             Icon2(icon, new Rect(gx, plate.center.y - ic * 0.5f, ic, ic), Color.white);
@@ -170,21 +173,28 @@ namespace SkyTide
                 Vector3 d = t.transform.position - input.ship.transform.position; d.y = 0f;
                 if (d.magnitude < best) { best = d.magnitude; bestHealth = t.Health01; }
             }
-            float fs = l.tabEnemy.height * 0.5f;
+            float fs = l.unit * 0.03f;   // кегль вкладок = кегль остальных плашек
             Color amber = new Color(1f, 0.74f, 0.55f, 1f), grey = new Color(0.78f, 0.79f, 0.82f, 1f);
             if (best < float.MaxValue)
             {
                 string a = "ВРАГ " + Range(best);
                 Color ac = best <= GunRange(input) ? amber : grey;   // серым — дальше, чем достают свои пушки
-                if (bestHealth < 0.995f) TextPair(l.tabEnemy, a + " · ", ac, Mathf.RoundToInt(bestHealth * 100f) + "%", new Color(1f, 0.35f, 0.28f, 1f), fs);
-                else Text(l.tabEnemy, a, fs, ac);
+                if (bestHealth < 0.995f) TabPair(l.tabEnemy, a + " · ", ac, Mathf.RoundToInt(bestHealth * 100f) + "%", new Color(1f, 0.35f, 0.28f, 1f), fs);
+                else TabText(l.tabEnemy, a, fs, ac);
             }
-            else Text(l.tabEnemy, "ВРАГ —", fs, grey);
+            else TabText(l.tabEnemy, "ВРАГ —", fs, grey);
             SkyFortress fort = SkyFortress.Instance;
-            if (fort != null) { Vector3 d = fort.BerthWorld - input.ship.transform.position; d.y = 0f; Text(l.tabBerth, "ПРИЧАЛ " + Range(d.magnitude), fs, fort.Hostile ? new Color(1f, 0.55f, 0.45f, 1f) : cream); }
-            else Text(l.tabBerth, "ПРИЧАЛ —", fs, grey);
-            Text(l.tabRadar, "РАДАР " + Range(input.RadarRange), fs, cream);
-            Text(l.speed, Cached(3, input.Gear * 1000 + Mathf.RoundToInt(Mathf.Abs(input.ship.Speed)), v => TouchControls.GearNames[v / 1000] + " · " + (v % 1000) + " м/с"), l.speed.height * 0.46f, cream);
+            if (fort != null) { Vector3 d = fort.BerthWorld - input.ship.transform.position; d.y = 0f; TabText(l.tabBerth, "ПРИЧАЛ " + Range(d.magnitude), fs, fort.Hostile ? new Color(1f, 0.55f, 0.45f, 1f) : cream); }
+            else TabText(l.tabBerth, "ПРИЧАЛ —", fs, grey);
+            TabText(l.tabRadar, "РАДАР " + Range(input.RadarRange), fs, cream);
+            TabText(l.speed, Cached(3, input.Gear * 1000 + Mathf.RoundToInt(Mathf.Abs(input.ship.Speed)), v => TouchControls.GearNames[v / 1000] + " · " + (v % 1000) + " м/с"), fs, cream);
+        }
+        void TabText(Rect r, string t, float size, Color c) { float capH = Mathf.Min(size * 0.7f, r.height * 0.5f, r.width * 0.9f / Mathf.Max(0.01f, CapRatio(t))); CapText(r.center.x, r.center.y, t, capH, c, true); }
+        void TabPair(Rect r, string a, Color ca, string b, Color cb, float size)
+        {
+            float ra = CapRatio(a), rb = CapRatio(b), capH = Mathf.Min(size * 0.7f, r.height * 0.5f, r.width * 0.9f / Mathf.Max(0.01f, ra + rb));
+            float x = r.center.x - (ra + rb) * capH * 0.5f;
+            CapText(x, r.center.y, a, capH, ca, false); CapText(x + ra * capH, r.center.y, b, capH, cb, false);
         }
         /// <summary>Две части строки разным цветом, вместе — по центру прямоугольника.</summary>
         void TextPair(Rect r, string a, Color ca, string b, Color cb, float size)
@@ -409,7 +419,7 @@ namespace SkyTide
             // длинным строкам (владелец 16.11: разный размер, пушки на разном расстоянии, текст на рамке).
             float ar=src.width/src.height;
             float wTitle=CapRatio("ПРАВЫЙ БОРТ"), wMax=Mathf.Max(CapRatio("ЖДЁМ ЦЕЛЬ"),Mathf.Max(CapRatio("В ПРИЦЕЛЕ"),CapRatio("ДАЛЕКО")));
-            float capH=fh*0.27f;
+            float capH=Mathf.Min(fh*0.27f,l.unit*0.03f*0.7f);   // не крупнее общего кегля плашек
             capH=Mathf.Min(capH,fw*0.92f/Mathf.Max(0.01f,wTitle));
             capH=Mathf.Min(capH,fw*0.92f/Mathf.Max(0.01f,wMax+(HasKit?1.8f*ar+0.5f:0f)));
             float iconH=capH*1.8f, iconW=HasKit?iconH*ar:0f, gap=HasKit?capH*0.5f:0f;
@@ -578,7 +588,7 @@ namespace SkyTide
             Solid(new Rect(0f, 0f, width, height), new Color(0.02f, 0.03f, 0.05f, 0.6f));
             Rect p = l.PausePanel;
             Solid(p, new Color(0.05f, 0.06f, 0.08f, 0.88f));
-            Text(new Rect(p.x, p.y + l.unit * 0.03f, p.width, l.unit * 0.09f), "ПАУЗА", l.unit * 0.055f, cream);
+            CapText(p.center.x, p.y + l.unit * 0.075f, "ПАУЗА", l.unit * 0.034f, cream, true);
             for (int i = 0; i < HudLayout.PauseRows; i++)
             {
                 Rect r = l.PauseRow(i);
@@ -954,7 +964,7 @@ namespace SkyTide
                 {
                     ph = Mathf.Min(l.safe.width * 0.2f, l.safe.height * 0.8f) * 1.15f * PH / PW; fsz = ph * 0.3f;
                     need = noteText.Length * fsz * 0.64f + ph * (LCAP + RCAP) / PH + ph * 0.25f;
-                    pw = Mathf.Min(Mathf.Max(ph * PW / PH * 0.8f, need), l.pause.x - l.safe.x - l.unit * 0.6f);
+                    pw = Mathf.Min(Mathf.Max(ph * PW / PH * 0.8f, need), l.pause.x - l.course.xMax - l.unit * 0.04f);   // не заезжает на компас
                 }
                 else pw = Mathf.Min(Mathf.Max(pw, need), l.safe.width * 0.6f);
                 Rect r = corner ? new Rect(l.pause.x - pw - l.unit * 0.015f, cornerTop, pw, ph)   // левее кнопки паузы
@@ -967,7 +977,8 @@ namespace SkyTide
                 float ic = ph * 0.6f, icx = r.x + ph * RING / PH;
                 Icon(noteIcon, new Rect(icx - ic * 0.5f, r.center.y - ic * 0.5f, ic, ic), pc);
                 Rect tr = new Rect(r.x + lw, r.y + ph * 0.2f, r.width - lw - rw, ph * 0.6f);
-                Text(tr, noteText, fsz, dead ? new Color(cream.r, cream.g, cream.b, note) : new Color(1f, 0.72f, 0.5f, note));
+                { float capH = Mathf.Min(l.unit * 0.03f * 0.7f, tr.height * 0.6f, tr.width * 0.92f / Mathf.Max(0.01f, CapRatio(noteText)));
+                  CapText(tr.center.x, tr.center.y, noteText, corner ? capH : Mathf.Min(capH * 1.25f, tr.width * 0.92f / Mathf.Max(0.01f, CapRatio(noteText))), dead ? new Color(cream.r, cream.g, cream.b, note) : new Color(1f, 0.72f, 0.5f, note), true); }
             }
         }
 
@@ -992,7 +1003,14 @@ namespace SkyTide
             if (HasKit)
             {
                 Sprite(bar, KGroove, Color.white);
-                if (f > 0.001f) Sprite(new Rect(bar.x, bar.y, bar.width * f, bar.height), new Rect(KFill.x, KFill.y, KFill.width * f, KFill.height), fill);
+                LoadBanners();
+                if (f > 0.001f)
+                {
+                    // Заливка — внутри канавки (без белого торца, что торчал при малом корпусе)
+                    Rect gr = new Rect(bar.x + bar.height * 0.55f, bar.y + bar.height * 0.3f, (bar.width - bar.height * 1.1f) * f, bar.height * 0.4f);
+                    if (tFill != null) ImageRect(tFill, gr, new Rect(0f, 0f, Mathf.Max(f, 0.02f), 1f), new Color(Mathf.Lerp(1f, fill.r, 0.5f), Mathf.Lerp(1f, fill.g, 0.5f), Mathf.Lerp(1f, fill.b, 0.5f), fill.a));
+                    else Sprite(new Rect(bar.x, bar.y, bar.width * f, bar.height), new Rect(KFill.x, KFill.y, KFill.width * f, KFill.height), fill);
+                }
             }
             else
             {
@@ -1049,7 +1067,7 @@ namespace SkyTide
                 GL.Begin(GL.TRIANGLES);
                 try
                 {
-                    if(input.Paused){PauseMenu(input,l,width,height);Text(l.version,input.BuildText,l.unit*0.023f,cream);}   // «СБОРКА N» — только в меню паузы (владелец 16.11)
+                    if(input.Paused){PauseMenu(input,l,width,height);Rect pp=l.PausePanel;CapText(pp.center.x,pp.yMax-l.unit*0.03f,input.BuildText,l.unit*0.014f,new Color(cream.r,cream.g,cream.b,0.55f),true);}   // номер сборки — внизу панели паузы   // «СБОРКА N» — только в меню паузы (владелец 16.11)
                     else
                     {
                     if(Application.isPlaying||CaptureBanner!=0)DamageVignette(width,height);   // под всеми плашками
