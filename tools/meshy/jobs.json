@@ -1,76 +1,40 @@
 {
  "jobs": [
   {
-   "id": "lighthouse",
+   "id": "clipper",
    "concept": true,
    "account": 2,
    "refs": [
     "refs/brig.png",
     "refs/frigate.png",
-    "refs/ship_of_line.png"
+    "refs/player_cigar.png"
    ],
-   "polycount": 40000,
-   "image_prompt": "Same art style, materials and colors as the reference airships: weathered reddish-brown wood, dark stone, brass fittings, cream canvas with dark brown stripes. Dark-fantasy sky world, everything floats above a sea of clouds. Single isolated object, three-quarter view, whole object visible, plain background, no water, no ground plane, no characters. A tall stone-and-brass SKY LIGHTHOUSE standing on a small floating rock island with dangling roots and chains below; big glazed lantern room with a large lens at the top, iron balcony around it, small door and windows."
+   "polycount": 26000,
+   "image_prompt": "Same art style, materials and colors as the reference airships: weathered reddish-brown wood, brass fittings. IMPORTANT: the gas envelopes are LONG CIGAR-SHAPED ZEPPELIN BALLOONS (elongated, pointed ends, tan canvas with a fine rope net), exactly like the ship in the last reference image — NOT round balloons. Single isolated object, three-quarter side view, whole object visible, plain background, no water, no ground, no characters. A FAST SKY CLIPPER: long narrow sleek wooden hull with a sharp bow, one very long cigar-shaped zeppelin balloon above the whole deck, two triangular sails, three cannon ports per side, built for speed."
   },
   {
-   "id": "watchtower",
+   "id": "gunboat",
    "concept": true,
    "account": 2,
    "refs": [
     "refs/brig.png",
     "refs/frigate.png",
-    "refs/ship_of_line.png"
+    "refs/player_cigar.png"
    ],
-   "polycount": 30000,
-   "image_prompt": "Same art style, materials and colors as the reference airships: weathered reddish-brown wood, dark stone, brass fittings, cream canvas with dark brown stripes. Dark-fantasy sky world, everything floats above a sea of clouds. Single isolated object, three-quarter view, whole object visible, plain background, no water, no ground plane, no characters. A garrison WATCHTOWER on a small floating rock: stone base, wooden lookout platform on top with a mounted cannon and a long red pennant, a ladder, one small striped balloon tethered to the platform."
+   "polycount": 45000,
+   "image_prompt": "Same art style, materials and colors as the reference airships: weathered reddish-brown wood, brass fittings. IMPORTANT: the gas envelopes are LONG CIGAR-SHAPED ZEPPELIN BALLOONS (elongated, pointed ends, tan canvas with a fine rope net), exactly like the ship in the last reference image — NOT round balloons. Single isolated object, three-quarter side view, whole object visible, plain background, no water, no ground, no characters. A HEAVY ZEPPELIN GUNBOAT: two long cigar-shaped zeppelin balloons side by side above, a heavy armored wooden-and-iron gondola hull hanging below them with eight cannon ports per side, propellers at the stern."
   },
   {
-   "id": "buoy",
+   "id": "mooringmast",
    "concept": true,
    "account": 2,
    "refs": [
     "refs/brig.png",
     "refs/frigate.png",
-    "refs/ship_of_line.png"
+    "refs/player_cigar.png"
    ],
-   "polycount": 12000,
-   "image_prompt": "Same art style, materials and colors as the reference airships: weathered reddish-brown wood, dark stone, brass fittings, cream canvas with dark brown stripes. Dark-fantasy sky world, everything floats above a sea of clouds. Single isolated object, three-quarter view, whole object visible, plain background, no water, no ground plane, no characters. A floating SIGNAL BUOY marking a border in the sky: a brass lantern cage on top of one round cream balloon with dark brown stripes, heavy iron weights and a short chain hanging below, a small red flag."
-  },
-  {
-   "id": "hideout",
-   "concept": true,
-   "account": 2,
-   "refs": [
-    "refs/brig.png",
-    "refs/frigate.png",
-    "refs/ship_of_line.png"
-   ],
-   "polycount": 50000,
-   "image_prompt": "Same art style, materials and colors as the reference airships: weathered reddish-brown wood, dark stone, brass fittings, cream canvas with dark brown stripes. Dark-fantasy sky world, everything floats above a sea of clouds. Single isolated object, three-quarter view, whole object visible, plain background, no water, no ground plane, no characters. A ramshackle PIRATE HIDEOUT built on a floating rock island: crooked wooden shacks, patched tents, a small wooden dock sticking out with a crane, lanterns, rope bridges, a skull-less black flag."
-  },
-  {
-   "id": "wreck",
-   "concept": true,
-   "account": 2,
-   "refs": [
-    "refs/brig.png",
-    "refs/frigate.png",
-    "refs/ship_of_line.png"
-   ],
-   "polycount": 40000,
-   "image_prompt": "Same art style, materials and colors as the reference airships: weathered reddish-brown wood, dark stone, brass fittings, cream canvas with dark brown stripes. Dark-fantasy sky world, everything floats above a sea of clouds. Single isolated object, three-quarter view, whole object visible, plain background, no water, no ground plane, no characters. The WRECK of an old wooden airship crashed onto a small floating rock: hull broken in two halves, torn deflated striped balloons draped over it, snapped masts, scattered crates."
-  },
-  {
-   "id": "depot",
-   "concept": true,
-   "account": 2,
-   "refs": [
-    "refs/brig.png",
-    "refs/frigate.png",
-    "refs/ship_of_line.png"
-   ],
-   "polycount": 40000,
-   "image_prompt": "Same art style, materials and colors as the reference airships: weathered reddish-brown wood, dark stone, brass fittings, cream canvas with dark brown stripes. Dark-fantasy sky world, everything floats above a sea of clouds. Single isolated object, three-quarter view, whole object visible, plain background, no water, no ground plane, no characters. A garrison SUPPLY DEPOT on a floating rock: stone warehouse with a brass roof, two big round gas tanks for refilling airship balloons, pipes, a small mooring mast with a hanging lantern."
+   "polycount": 35000,
+   "image_prompt": "Same art style, materials and colors as the reference airships: weathered reddish-brown wood, brass fittings. IMPORTANT: the gas envelopes are LONG CIGAR-SHAPED ZEPPELIN BALLOONS (elongated, pointed ends, tan canvas with a fine rope net), exactly like the ship in the last reference image — NOT round balloons. Single isolated object, three-quarter side view, whole object visible, plain background, no water, no ground, no characters. A garrison MOORING MAST on a small floating rock: a tall iron-and-wood lattice tower with a brass docking cap at the top, and a long cigar-shaped zeppelin airship moored to it by the nose."
   }
  ]
 }
