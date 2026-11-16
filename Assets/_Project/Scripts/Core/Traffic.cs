@@ -35,13 +35,16 @@ namespace SkyTide
         }
 
         /// <summary>Поправка руля и хода, выставленных ИИ, чтобы разойтись с соседями. ignore — своя цель в бою.</summary>
-        public static void Avoid(ShipController self, float half, Transform ignore)
+        public static void Avoid(ShipController self, float half, Transform ignore) { Avoid(self, half, ignore, false); }
+        /// <summary>Только строения — для автобоя флагмана (с кораблями он разбирается сам, в бою).</summary>
+        public static void AvoidProps(ShipController self, float half) { Avoid(self, half, null, true); }
+        static void Avoid(ShipController self, float half, Transform ignore, bool propsOnly)
         {
             if (self == null) return;
             Collect();
             Vector3 p = self.transform.position, v = self.transform.forward * Mathf.Max(2f, self.Speed);
             float bestT = 14f; Vector3 bestRel = Vector3.zero; bool found = false; float bestMiss = 0f, bestR = 0f;
-            for (int i = 0; i < bodies.Count; i++)
+            for (int i = 0; i < (propsOnly ? 0 : bodies.Count); i++)
             {
                 Body b = bodies[i];
                 if (b.c == self || b.t == ignore) continue;
@@ -55,6 +58,21 @@ namespace SkyTide
                 if (tc > bestT) continue;
                 Vector3 closest = rel + vr * tc;
                 float miss = closest.magnitude;
+                if (miss > R) continue;
+                bestT = tc; bestRel = rel; found = true; bestMiss = miss; bestR = R;
+            }
+            // Строения (WorldProps): стоят на месте — считаем как неподвижного соседа.
+            for (int i = 0; i < WorldProps.Solids.Count; i++)
+            {
+                WorldProps.Solid s = WorldProps.Solids[i];
+                Vector3 rel = s.c - p; rel.y = 0f;
+                float R = half + s.r + 30f;
+                if (rel.sqrMagnitude > (R + 600f) * (R + 600f)) continue;
+                Vector3 vr = -v; vr.y = 0f;
+                float vv = vr.sqrMagnitude;
+                float tc = vv > 1e-3f ? Mathf.Max(0f, -Vector3.Dot(rel, vr) / vv) : 0f;
+                if (tc > bestT) continue;
+                float miss = (rel + vr * tc).magnitude;
                 if (miss > R) continue;
                 bestT = tc; bestRel = rel; found = true; bestMiss = miss; bestR = R;
             }
@@ -81,6 +99,7 @@ namespace SkyTide
             for (int i = 0; i < bodies.Count; i++)
             {
                 Body a = bodies[i];
+                if (WorldProps.Solids.Count > 0) Statics(a);
                 for (int j = i + 1; j < bodies.Count; j++)
                 {
                     Body b = bodies[j];
@@ -115,6 +134,36 @@ namespace SkyTide
                 }
             }
         }
+        /// <summary>Корпус против строения: капсула корпуса не входит в круг строения (раздвигается целиком корабль).</summary>
+        static void Statics(Body a)
+        {
+            Vector3 h = Flat(a.t.forward) * a.hullHalf, c = a.t.position, a0 = c - h, d = h * 2f;
+            for (int k = 0; k < WorldProps.Solids.Count; k++)
+            {
+                WorldProps.Solid s = WorldProps.Solids[k];
+                if (c.y < s.y0 || c.y > s.y1) continue;
+                float reach = a.hullHalf + a.hullW + s.r;
+                float dx = c.x - s.c.x, dz = c.z - s.c.z;
+                if (dx * dx + dz * dz > reach * reach) continue;
+                Vector3 r = s.c - a0; r.y = 0f; d.y = 0f;
+                float tt = d.sqrMagnitude > 1e-4f ? Mathf.Clamp01(Vector3.Dot(r, d) / d.sqrMagnitude) : 0.5f;
+                Vector3 q = a0 + d * tt; q.y = 0f;
+                Vector3 n = q - s.c; n.y = 0f;
+                float dist = n.magnitude, gap = a.hullW + s.r;
+                if (dist >= gap) continue;
+                if (dist < 1e-3f) { n = -a.t.forward; n.y = 0f; dist = 0f; }
+                n.Normalize();
+                a.c.Block(n * (gap - dist), a.player ? 0.5f : 0.8f);
+                if (Mathf.Abs(a.c.Speed) > 6f && Time.time >= nextReport)
+                {
+                    nextReport = Time.time + 1f;
+                    DebugReport.Count(a.player ? "столкновений флагмана со строениями" : "столкновений кораблей со строениями");
+                    FxSystem fx = FxSystem.Instance;
+                    if (fx != null) fx.Scrape(s.c + n * s.r + Vector3.up * c.y, n);
+                }
+            }
+        }
+
         static Vector3 Flat(Vector3 v) { v.y = 0f; return v.sqrMagnitude > 1e-6f ? v.normalized : Vector3.forward; }
 
         /// <summary>Ближайшие точки двух отрезков c1±h1 и c2±h2 (точно, в плоскости XZ).</summary>

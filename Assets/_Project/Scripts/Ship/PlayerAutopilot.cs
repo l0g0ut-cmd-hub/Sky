@@ -370,6 +370,8 @@ namespace SkyTide
             float ang = Vector3.SignedAngle(transform.forward, heading.normalized, Vector3.up);
             ship.turn = Mathf.Clamp(ang / 20f, -1f, 1f);
             Throttle = throttle; ship.throttle = throttle;
+            Traffic.AvoidProps(ship, 19f);   // маяк, башни, логова — обходит
+            Throttle = ship.throttle;
         }
     }
 }

@@ -17,6 +17,8 @@ namespace SkyTide
         public ShipVariant targetShip;   // корабль-мишень (модель Meshy)
         /// <summary>Флот по классам (ShipClass: катер … адмиральский) — модели Meshy Models/Fleet/Ship_&lt;id&gt;. Нет модели — Корсар.</summary>
         public ShipVariant[] fleet;
+        [Header("Строения на карте (Models/Props, tools/convert_props.py)")]
+        public PropAsset[] props;
         public bool HasFleet { get { return fleet != null && fleet.Length == ShipClasses.Count && fleet[(int)ShipClass.Brig] != null && fleet[(int)ShipClass.Brig].IsValid; } }
         /// <summary>Модель класса или Корсар, если модели класса нет.</summary>
         public ShipVariant ClassVariant(ShipClass c)
@@ -206,6 +208,8 @@ namespace SkyTide
                     Fortress = new GameObject("Sky Fortress").AddComponent<SkyFortress>();
                     Fortress.Setup(fm, fortressMaterials, fortressData, spawnPosition + fortressOffset, spawnPosition, fortressYaw, spawnPosition.y + 1.5f, fortressScale);
                 }
+                // Маяк, башни, склад, мачта, обломки, буи, логова — по крепости и границам вод.
+                if (Fortress != null && props != null && props.Length > 0) WorldProps.Create(props, Fortress, spawnPosition);
             }
 
             // Второй враг — разведчик (только в игре): тот же корпус в 0.72 размера, быстрее и слабее рядового, держится

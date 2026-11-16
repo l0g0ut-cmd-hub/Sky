@@ -1,4 +1,5 @@
 #if UNITY_EDITOR
+using System.Collections.Generic;
 using System.Reflection;
 using UnityEditor;
 using UnityEditor.SceneManagement;
@@ -81,6 +82,7 @@ namespace SkyTide.EditorTools
                 farSrc = AssetDatabase.LoadAssetAtPath<TextAsset>(Models + "Corsair_far_src.bytes"), farDistance = 450f,
                 lights = AssetDatabase.LoadAssetAtPath<TextAsset>(Models + "Corsair_lights.json") } : null;
             b.fleet = BuildFleet();
+            b.props = BuildProps();
             b.postShader = AssetDatabase.LoadAssetAtPath<Shader>("Assets/_Project/Shaders/PostFX.shader");
             b.volumetricShader = AssetDatabase.LoadAssetAtPath<Shader>("Assets/_Project/Shaders/VolumetricClouds.shader");
             b.impostorShader = AssetDatabase.LoadAssetAtPath<Shader>("Assets/_Project/Shaders/CloudImpostor.shader");
@@ -287,6 +289,29 @@ namespace SkyTide.EditorTools
             return fleet;
         }
 
+        /// <summary>Строения из Models/Props (tools/convert_props.py, модели Meshy): три копии и двусторонний материал.</summary>
+        static PropAsset[] BuildProps()
+        {
+            const string F = Models + "Props/";
+            List<PropAsset> list = new List<PropAsset>();
+            foreach (string id in new[] { "lighthouse", "watchtower", "buoy", "hideout", "wreck", "depot", "mooringmast" })
+            {
+                string n = F + "Prop_" + id;
+                TextAsset mesh = AssetDatabase.LoadAssetAtPath<TextAsset>(n + ".bytes");
+                Texture2D albedo = Tex(n + "_Albedo.jpg", false, false, TextureWrapMode.Clamp, TextureWrapMode.Clamp, 2048, true);
+                if (mesh == null || albedo == null) { Debug.LogWarning("SkyTide: нет строения " + id); continue; }
+                Texture2D normal = Tex(n + "_Normal.png", true, false, TextureWrapMode.Clamp, TextureWrapMode.Clamp, 1024, true);
+                Material m = MaterialFactory.ShipBody(albedo, normal, null);
+                m.name = "Prop_" + id;
+                m.SetFloat("_Cull", 0f);
+                AssetDatabase.CreateAsset(m, MaterialFolder + "/Prop_" + id + ".mat");
+                list.Add(new PropAsset { id = id, mesh = mesh, material = m,
+                    lite = AssetDatabase.LoadAssetAtPath<TextAsset>(n + "_lod.bytes"), far = AssetDatabase.LoadAssetAtPath<TextAsset>(n + "_far.bytes") });
+            }
+            Debug.Log("SkyTide: строений " + list.Count);
+            return list.ToArray();
+        }
+
         static CrewModelData BuildCrewModel()
         {
             const string folder=Models+"Crew/";
@@ -369,7 +394,7 @@ namespace SkyTide.EditorTools
             if (ti == null) return null;
             // Флот (Models/Fleet, 20 текстур 2048) — обычное сжатие: ASTC «лучшее качество 100» кодировалось ~3 мин на текстуру,
             // сборка 177 стояла больше часа на импорте. Высокое качество — только у Корсара и крепости.
-            bool model = path.StartsWith(Models, System.StringComparison.Ordinal) && !path.Contains("/Fleet/");
+            bool model = path.StartsWith(Models, System.StringComparison.Ordinal) && !path.Contains("/Fleet/") && !path.Contains("/Props/");
             TextureImporterType type = normalMap ? TextureImporterType.NormalMap : TextureImporterType.Default;
             TextureImporterCompression compression = uncompressed ? TextureImporterCompression.Uncompressed
                 : model ? TextureImporterCompression.CompressedHQ : TextureImporterCompression.Compressed;

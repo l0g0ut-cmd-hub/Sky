@@ -682,6 +682,13 @@ namespace SkyTide
                             Vector3 outward = fp - fort.Center; outward.y = Mathf.Abs(outward.y) * 0.3f + 20f;
                             pendingStone.Add(new Vector4(fp.x, fp.y, fp.z, 0f)); pendingStoneOut.Add(outward.normalized);
                         }
+                        // Строения (маяк, башни, логова…): ядро разбивается о стену.
+                        if (!hit && p.age > 0.15f && WorldProps.Solids.Count > 0 && WorldProps.TryHit(prev, end, out fp))
+                        {
+                            end = fp; hit = true;
+                            Vector3 outward = fp - WorldProps.Nearest(fp); outward.y = 6f;
+                            pendingStone.Add(new Vector4(fp.x, fp.y, fp.z, 0f)); pendingStoneOut.Add(outward.normalized);
+                        }
                     }
                     p.pos = end;
                     if (entered || hit)

@@ -244,6 +244,24 @@ namespace SkyTide
                         Vector3 p = new Vector3(Num(a, 1, 0f), me.position.y, Num(a, 2, 0f));
                         me.SetPositionAndRotation(p, Quaternion.Euler(0f, Num(a, 3, me.eulerAngles.y), 0f)); return "флагман в " + p.x + "," + p.z;
                     }
+                case "props":
+                    {
+                        // props — список строений; props N — флагман в 220 м от строения N, носом к нему.
+                        WorldProps wp = WorldProps.Instance;
+                        if (wp == null) return "строений нет";
+                        int k; Transform pt;
+                        if (!int.TryParse(arg, out k))
+                        {
+                            System.Text.StringBuilder sb = new System.Text.StringBuilder();
+                            for (int i = 0; i < wp.transform.childCount; i++) { pt = wp.transform.GetChild(i); sb.Append(i).Append(' ').Append(pt.name.Replace("Prop ", "")).Append(' ').Append(Mathf.RoundToInt(pt.position.x)).Append(',').Append(Mathf.RoundToInt(pt.position.z)).Append("; "); }
+                            return sb.ToString();
+                        }
+                        if (me == null || k < 0 || k >= wp.transform.childCount) return "props N";
+                        pt = wp.transform.GetChild(k);
+                        Vector3 back = me.position - pt.position; back.y = 0f; back = back.sqrMagnitude > 1f ? back.normalized : Vector3.back;
+                        Vector3 at = pt.position + back * 220f; at.y = me.position.y;
+                        me.SetPositionAndRotation(at, Quaternion.LookRotation(-back, Vector3.up)); return "флагман у " + pt.name;
+                    }
                 case "cam": return Cam(arg, a);
                 case "hud": TouchControls.HideHud = arg == "0" || arg == "off"; return "HUD " + (TouchControls.HideHud ? "скрыт" : "виден");
                 case "photo":
