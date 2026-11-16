@@ -37,13 +37,15 @@ namespace SkyTide
         /// <summary>Надпись со значком (icons2) слева в поле плашки; текст — по центру оставшегося места.</summary>
         void IconText(Rect plate, int icon, string text, float size, Color color)
         {
-            // Значок и текст — строго в поле между угловыми орнаментами; размер текста — от высоты плашки (снимок 167:
-            // значок лежал на орнаменте, «ВОЛНОЙ»/«ЯДРА» упирались в правый угол).
-            Rect c = Content(plate); float h = plate.height, ic = c.height * 0.9f;
-            float x0 = c.x + h * 0.12f, x1 = c.xMax - h * 0.12f;
-            Icon2(icon, new Rect(x0, plate.center.y - ic * 0.5f, ic, ic), Color.white);
-            Rect tr = new Rect(x0 + ic * 1.1f, c.y, x1 - x0 - ic * 1.1f, c.height);
-            Text(tr, text, Mathf.Min(size, c.height * 0.62f), color);
+            // Значок + текст одной группой по центру поля между угловыми орнаментами; размер — по высоте плашки,
+            // с проверкой ширины (CapText — без ужатия).
+            Rect c = Content(plate); float h = plate.height;
+            float x0 = c.x + h * 0.12f, x1 = c.xMax - h * 0.12f, fw = x1 - x0;
+            float capH = c.height * 0.42f, ratio = CapRatio(text);
+            capH = Mathf.Min(capH, fw * 0.92f / Mathf.Max(0.01f, ratio + 2.1f));
+            float ic = capH * 1.75f, g = capH * 0.35f, tw = ratio * capH, total = ic + g + tw, gx = plate.center.x - total * 0.5f;
+            Icon2(icon, new Rect(gx, plate.center.y - ic * 0.5f, ic, ic), Color.white);
+            CapText(gx + ic + g, plate.center.y, text, capH, color, false);
         }
         void Tint(Color c) { GL.Color(QualitySettings.activeColorSpace == ColorSpace.Linear ? c.linear : c); }
         static void Vertex(Vector2 p, Vector2 uv) { GL.TexCoord2(uv.x, uv.y); GL.Vertex3(p.x, p.y, 0f); }
@@ -191,6 +193,23 @@ namespace SkyTide
             // Поля DrawLabel (0,3 высоты с боков) — снаружи: прямоугольник шире слова, центр — по середине слова.
             Text(new Rect(x - pad, r.y, wa + pad * 2f, r.height), a, size, ca);
             Text(new Rect(x + wa - pad, r.y, wb + pad * 2f, r.height), b, size, cb);
+        }
+        // Точная вёрстка: DrawLabel подгоняет текст под 80% высоты прямоугольника и ширину без полей. Здесь размер задаётся
+        // высотой заглавной буквы (capH) — прямоугольник строится под неё, ширина считается заранее, ничего не ужимается.
+        float CapRatio(string t)   // ширина строки на 1 px высоты заглавной
+        {
+            if (font == null || string.IsNullOrEmpty(t)) return 0f;
+            const int sz = 48; font.RequestCharactersInTexture(t, sz, FontStyle.Normal); font.RequestCharactersInTexture("Н", sz, FontStyle.Normal);
+            CharacterInfo c, cap; if (!font.GetCharacterInfo('Н', out cap, sz, FontStyle.Normal) || cap.maxY <= cap.minY) return 0.6f * t.Length;
+            float w = 0f; for (int i = 0; i < t.Length; i++) if (font.GetCharacterInfo(t[i], out c, sz, FontStyle.Normal)) w += c.advance;
+            return w / (cap.maxY - cap.minY);
+        }
+        /// <summary>Строка с заглавными высотой capH; x — левый край текста (или центр при centered).</summary>
+        void CapText(float x, float cy, string t, float capH, Color color, bool centered)
+        {
+            float w = CapRatio(t) * capH, h = capH / 0.8f, side = Mathf.Max(6f, h * 0.3f);
+            float left = centered ? x - w * 0.5f : x;
+            Text(new Rect(left - side - 1f, cy - h * 0.5f, w + side * 2f + 2f, h), t, capH * 1.4f, color);
         }
         float TextWidth(string t, float size)
         {
@@ -377,24 +396,33 @@ namespace SkyTide
             for(int j=0;j<3;j++)for(int i=0;i<5;i++)
                 ImageRect(tex,new Rect(dx[i],dy[j],dx[i+1]-dx[i],dy[j+1]-dy[j]),new Rect(sx[i]/TW,sy[j]/256f,(sx[i+1]-sx[i])/TW,(sy[j+1]-sy[j])/256f),tint);
             // Поле под текст: между угловыми орнаментами, от верхней кромки до канавки.
-            float fx0=r.x+125f*k, fx1=r.xMax-125f*k, fy0=r.y+40f*k, fy1=r.yMax-(256f-188f)*k;
-            float fh=fy1-fy0;
-            Rect title=new Rect(fx0,fy0,fx1-fx0,fh*0.48f), row=new Rect(fx0,fy0+fh*0.5f,fx1-fx0,fh*0.5f);
-            float ts=Mathf.Min(fh*0.35f,l.unit*0.028f);
-            Text(title,side<0?"ЛЕВЫЙ БОРТ":"ПРАВЫЙ БОРТ",ts,ready?cream:new Color(0.78f,0.74f,0.68f,1f));
+            float fx0=r.x+110f*k, fx1=r.xMax-110f*k, fy0=r.y+40f*k, fy1=r.yMax-(256f-188f)*k;
+            float fh=fy1-fy0, fw=fx1-fx0;
+            string tl=side<0?"ЛЕВЫЙ БОРТ":"ПРАВЫЙ БОРТ";
             string st=ready?(aimed?"В ПРИЦЕЛЕ":idle):((1f-readiness)*cooldown).ToString("F1")+" с";
             Color sc=ready?(aimed?new Color(1f,0.93f,0.7f):gold):new Color(0.86f,0.82f,0.76f);
+            // Один размер для обеих строк: заглавные — 26% высоты поля, но обе строки (вторая — с пушкой) влезают в поле
+            // с запасом 6%; выравнивание — по центру поля, без ужатия отдельных строк (владелец 16.11).
+            Rect src=side<0?KCannonL:KCannonR;
+            // Раскладка зеркальная и неизменная: пушка — у края поля со стороны борта (левая — слева, правая — справа),
+            // состояние — по центру оставшегося места. Размер шрифта — один на обе кнопки и все состояния, по самым
+            // длинным строкам (владелец 16.11: разный размер, пушки на разном расстоянии, текст на рамке).
+            float ar=src.width/src.height;
+            float wTitle=CapRatio("ПРАВЫЙ БОРТ"), wMax=Mathf.Max(CapRatio("ЖДЁМ ЦЕЛЬ"),Mathf.Max(CapRatio("В ПРИЦЕЛЕ"),CapRatio("ДАЛЕКО")));
+            float capH=fh*0.27f;
+            capH=Mathf.Min(capH,fw*0.92f/Mathf.Max(0.01f,wTitle));
+            capH=Mathf.Min(capH,fw*0.92f/Mathf.Max(0.01f,wMax+(HasKit?1.8f*ar+0.5f:0f)));
+            float iconH=capH*1.8f, iconW=HasKit?iconH*ar:0f, gap=HasKit?capH*0.5f:0f;
+            float y1=fy0+fh*0.27f, y2=fy0+fh*0.74f, cx=(fx0+fx1)*0.5f;
+            CapText(cx,y1,tl,capH,ready?cream:new Color(0.78f,0.74f,0.68f,1f),true);
+            float rx0=fx0+fw*0.04f, rx1=fx1-fw*0.04f;   // строка состояния — с тем же запасом 4% с краёв
             if(HasKit)
             {
-                // Пушка и подпись — одной группой по центру строки.
-                Rect src=side<0?KCannonL:KCannonR; float ih=row.height*1.3f, iw=ih*src.width/src.height, g=ih*0.18f;
-                float tw=TextWidth(st,Mathf.Max(9f,ts)), total=iw+g+tw, gx=row.center.x-total*0.5f;
-                Rect ir=side<0?new Rect(gx,row.center.y-ih*0.5f,iw,ih):new Rect(gx+tw+g,row.center.y-ih*0.5f,iw,ih);
+                Rect ir=side<0?new Rect(rx0,y2-iconH*0.55f,iconW,iconH):new Rect(rx1-iconW,y2-iconH*0.55f,iconW,iconH);
                 Sprite(ir,src,new Color(1f,1f,1f,ready?1f:0.55f));
-                float txs=side<0?gx+iw+g:gx, pad=row.height*0.3f+4f;
-                Text(new Rect(txs-pad,row.y,tw+pad*2f,row.height),st,ts,sc);
+                if(side<0) rx0+=iconW+gap; else rx1-=iconW+gap;
             }
-            else Text(row,st,ts,sc);
+            CapText((rx0+rx1)*0.5f,y2,st,capH,sc,true);
             // Заряд — в канавке картинки (x 114…909, y 180…205); у раскалённой кнопки канавки нет — борт готов.
             if(tFill!=null)   // заряд в канавке; готов — полная
             {
