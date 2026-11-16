@@ -29,6 +29,7 @@ namespace SkyTide
             public int allyCount = 11;
             // отношения (Core/Relations): пояса вод от центра крепости, предупреждение, прицел, остывание, злоба и набеги
             public float garrisonRadius = 2300f, corsairRadius = 3300f, warnSeconds = 30f, aimSeconds = 6f, aimRange = 400f, calmAfter = 45f;
+            public float playerDamage = 2f, autoAssist = 7f;   // урон ядра флагмана (×), доводка автобоя (м от борта)
             public float raidGrudge = 40f, raidEveryMin = 10f, grudgeCoolPerMin = 3f, outlawMin = 5f;
             public int guardHits = 40, wingmanHits = 34, merchantHits = 20;
             public float allyEngage = 750f;
@@ -137,6 +138,7 @@ namespace SkyTide
             if (ph != null) ph.damagePerHit = c.enemyDamage;
             Relations.GarrisonRadius = c.garrisonRadius; Relations.CorsairRadius = Mathf.Max(c.garrisonRadius + 300f, c.corsairRadius);
             Relations.WarnSeconds = c.warnSeconds; Relations.AimSeconds = c.aimSeconds; Relations.AimRange = c.aimRange; Relations.CalmAfter = c.calmAfter;
+            FxSystem.PlayerDamageMul = c.playerDamage; FxSystem.AssistMargin = c.autoAssist;
             Relations.RaidGrudge = c.raidGrudge; Relations.RaidEvery = c.raidEveryMin * 60f; Relations.GrudgeCoolPerMin = c.grudgeCoolPerMin; Relations.OutlawSeconds = c.outlawMin * 60f;
             WeatherSystem w = WeatherSystem.Instance;
             if (w != null) { w.enabled = c.weather; w.clearMin = c.clearMinutesMin * 60f; w.clearMax = c.clearMinutesMax * 60f; }

@@ -37,6 +37,7 @@ namespace SkyTide
             public Vector3 axis;
             public float aspect, surfaceY;
             public bool hostile;   // ядро врага: бьёт по кораблю игрока, а не по мишеням
+            public TargetShip assist;   // автобой: ядро, прошедшее у самого корпуса цели, засчитывается попаданием
             public float caliber;  // ядро: во сколько раз крупнее корабельного (0 и 1 — обычное); множитель урона
             public bool fromPlayer; // ядро флагмана — для счёта точности в отладочном отчёте
             public bool chain;     // книппель: два ядра на цепи — бьёт по баллонам и ходу, корпусу почти не вредит
@@ -83,8 +84,38 @@ namespace SkyTide
         /// и во столько же раз сильнее попадание (орудия крепости — 3).</summary>
         /// <summary>Чьё ядро — для счёта точности по сторонам: Ф флагман, В враг, С свои, К крепость.</summary>
         static int Shooter(bool hostile, float caliber, bool fromPlayer) { return fromPlayer ? 0 : caliber > 1.5f ? 3 : hostile ? 1 : 2; }
+        /// <summary>Урон ядра флагмана — вдвое против обычного (владелец 16.11: «повысить огневую мощь корабля игрока раза в два»).</summary>
+        public static float PlayerDamageMul = 2f;
+        /// <summary>Автобой: цель для «доводки» следующего выпущенного ядра (Broadside.Shoot ставит перед Fire).</summary>
+        public static TargetShip AssistTarget;
+        /// <summary>Доводка автобоя: ядро засчитывается, если прошло ближе этого запаса (м) от борта цели. Точность автобоя ≈ ×2.</summary>
+        public static float AssistMargin = 7f;
+        static bool AssistHit(TargetShip t, Vector3 a, Vector3 b, out Vector3 point)
+        {
+            point = b;
+            Vector3 c = t.Center, f = t.transform.forward; f.y = 0f; f = f.sqrMagnitude > 1e-6f ? f.normalized : Vector3.forward;
+            float hl = t.HullHalfLength, hw = t.HullHalfWidth;
+            // Точки отрезка полёта ядра (5 шт.) против оси корпуса: расстояние до оси ≤ полуширина + запас, высота — в корпусе.
+            float top = t.BoxCorner(7).y, bottom = t.BoxCorner(0).y;
+            for (int i = 0; i <= 4; i++)
+            {
+                Vector3 q = Vector3.Lerp(a, b, i / 4f);
+                if (q.y < Mathf.Min(top, bottom) - 2f || q.y > Mathf.Lerp(Mathf.Min(top, bottom), Mathf.Max(top, bottom), 0.45f)) continue;   // выше палубы (баллоны) — не корпус
+                Vector3 r = q - c; r.y = 0f;
+                float along = Mathf.Clamp(Vector3.Dot(r, f), -hl, hl);
+                Vector3 axis = c + f * along; axis.y = q.y;
+                Vector3 side = q - axis; side.y = 0f;
+                if (side.magnitude <= hw + AssistMargin)
+                {
+                    point = axis + (side.sqrMagnitude > 1e-4f ? side.normalized : t.transform.right) * hw;
+                    return true;
+                }
+            }
+            return false;
+        }
         public void Fire(Vector3 muzzle, Vector3 dir, Vector3 shipVel, float muzzleSpeed, bool hostile = false, float shellLife = 7f, float caliber = 1f, bool chain = false, bool fromPlayer = false)
         {
+            TargetShip assist = fromPlayer ? AssistTarget : null; AssistTarget = null;
             if (fromPlayer) DebugReport.Count("ядер флагмана выпущено");
             if (Application.isPlaying) DebugReport.Shot(Shooter(hostile, caliber, fromPlayer));
             dir.Normalize();
@@ -94,7 +125,7 @@ namespace SkyTide
             // Ядро
             Add(new P
             {
-                kind = Kind.Ball, pos = muzzle, vel = dir * muzzleSpeed + shipVel, life = shellLife, hostile = hostile, caliber = caliber, chain = chain, fromPlayer = fromPlayer,
+                kind = Kind.Ball, pos = muzzle, vel = dir * muzzleSpeed + shipVel, life = shellLife, hostile = hostile, caliber = caliber, chain = chain, fromPlayer = fromPlayer, assist = assist,
                 size0 = chain ? 1.6f : 0.85f, size1 = chain ? 1.4f : 0.7f, color = chain ? new Color(0.12f, 0.1f, 0.09f) : new Color(0.2f, 0.15f, 0.12f), alpha = 1f, seed = s
             });
             Flash(muzzle, 2.5f * caliber, 32f * caliber);
@@ -634,8 +665,14 @@ namespace SkyTide
                                 if (al != null && (al.transform.position - p.pos).sqrMagnitude < 80f * 80f && al.TryHit(prev, end, out hp) && (hp - prev).sqrMagnitude < nearest)
                                 { nearest = (hp - prev).sqrMagnitude; hitPoint = hp; friend = al; target = null; }
                             }
-                        if (friend != null) { end = hitPoint; hit = true; DebugReport.Count("попаданий флагмана по своим"); friend.OnHit(hitPoint, 1f, true); }
-                        if (target != null) { end = hitPoint; hit = true; if (p.fromPlayer) DebugReport.Count("попаданий флагмана"); DebugReport.Hit(Shooter(p.hostile, p.caliber, p.fromPlayer)); target.OnHit(hitPoint, p.chain, p.fromPlayer, p.caliber); }
+                        // Доводка автобоя: прошло мимо, но у самого борта цели (капсула корпуса + запас) — попадание в ближайшую точку борта.
+                        if (target == null && friend == null && p.assist != null && p.assist.Alive)
+                        {
+                            Vector3 ap; if (AssistHit(p.assist, prev, end, out ap)) { target = p.assist; hitPoint = ap; DebugReport.Count("попаданий автобоя доводкой"); }
+                        }
+                        float dmg = p.fromPlayer ? p.caliber * PlayerDamageMul : p.caliber;
+                        if (friend != null) { end = hitPoint; hit = true; DebugReport.Count("попаданий флагмана по своим"); friend.OnHit(hitPoint, PlayerDamageMul, true); }
+                        if (target != null) { end = hitPoint; hit = true; if (p.fromPlayer) DebugReport.Count("попаданий флагмана"); DebugReport.Hit(Shooter(p.hostile, p.caliber, p.fromPlayer)); target.OnHit(hitPoint, p.chain, p.fromPlayer, dmg); }
                         // Крепость: ядро не пролетает сквозь стены. Своё ядро крепости первую секунду не проверяется (дуло на башне).
                         SkyFortress fort = SkyFortress.Instance;
                         Vector3 fp;

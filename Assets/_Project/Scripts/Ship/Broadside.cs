@@ -589,6 +589,7 @@ namespace SkyTide
             Vector3 muzzle = model.TransformPoint(m.Muzzle);
             // Наводка — только в игре: проверки CI сверяют выстрел с осью ствола модели.
             Vector3 dir = Application.isPlaying ? GunDir(m, FxSystem.Instance.gravity) : model.TransformDirection(m.Dir).normalized;
+            if (AutoAim && Application.isPlaying) FxSystem.AssistTarget = aimTarget as TargetShip;   // автобой: доводка ядра к цели (точность ×2)
             FxSystem.Instance.Fire(muzzle, dir, velocity, ShotSpeed, false, 7f, 1f, Application.isPlaying && chainShot, Application.isPlaying && GetComponent<PlayerHull>() != null);
             if(crew!=null)crew.NotifyShot(m,now);
             if (recoilEnabled)

@@ -69,7 +69,7 @@ namespace SkyTide
         {
             PlayerHull ph = PlayerHull.Instance;
             if (ph == null || !ph.Alive) return 0f;
-            return 90f * ph.Health01 * 8f * 1.5f;   // флагман: ~90 попаданий, 8 пушек на борт, калибр ×1,5
+            return 90f * ph.Health01 * 8f * 2f * FxSystem.PlayerDamageMul * 0.5f;   // флагман: ~90 попаданий, 8 пушек на борт, урон ядра ×2
         }
 
         /// <summary>Злоба: потоплен корсар (+12), добит сдавшийся (+30), вторжение, отказ уйти (+4); отпущен сдавшийся (−6).</summary>
