@@ -61,9 +61,16 @@ namespace SkyTide
                 Vector3 away = transform.position - fort.Center; away.y = 0f; Steer(away, 1f); return;
             }
             // Свой корабль бьёт по нам (мы стреляли по своим) — не отвечаем, уходим.
-            foreach (AllyShip al in AllyShip.All)
-                if (al != null && al.Alive && al.HostileToPlayer && !Relations.PlayerOutlaw && (al.transform.position - transform.position).sqrMagnitude < 700f * 700f)
-                { state = "АВТОБОЙ · УХОДИМ ОТ СВОЕГО"; Vector3 away = transform.position - al.transform.position; away.y = 0f; Steer(away, 1f); return; }
+            // Гистерезис (16.11: «УХОДИМ ОТ СВОЕГО» ↔ «ПРЕСЛЕДОВАНИЕ» каждые 3 с полторы минуты): начали уходить — уходим
+            // не меньше 20 с и до 1,2 км, преследование не тянет обратно к обиженному своему.
+            if (fleeFrom != null && (!fleeFrom.Alive || !fleeFrom.HostileToPlayer || Relations.PlayerOutlaw
+                || (Time.time > fleeUntil && (fleeFrom.transform.position - transform.position).sqrMagnitude > 1200f * 1200f))) fleeFrom = null;
+            if (fleeFrom == null)
+                foreach (AllyShip al in AllyShip.All)
+                    if (al != null && al.Alive && al.HostileToPlayer && !Relations.PlayerOutlaw && (al.transform.position - transform.position).sqrMagnitude < 700f * 700f)
+                    { fleeFrom = al; fleeUntil = Time.time + 20f; break; }
+            if (fleeFrom != null)
+            { state = "АВТОБОЙ · УХОДИМ ОТ СВОЕГО"; Vector3 away = transform.position - fleeFrom.transform.position; away.y = 0f; Steer(away, 1f); return; }
             if (repairing && fort != null && !unwelcome) { foe = null; Repair(fort); return; }
             if (foe == null || !foe.Alive || (foe.InPort && !foe.Outlaw) || Time.time >= nextTargetPick)
             {
@@ -304,9 +311,20 @@ namespace SkyTide
             if ((zone || SkyFortress.InSafeZone(foe.transform.position)) && !foe.Outlaw && !bold) return;   // в зоне крепости (и в неё) — только крепость
             // Расчёт борта наводится на ближайшего врага — стреляем, когда это и есть цель (или любой враг в прицеле: не жалеем ядер).
             TargetShip aimed = guns.AimTargetShip;
-            if (guns.AimOnTarget && aimed != null && aimed.AtWar && guns.Readiness(guns.AimSide) >= 0.999f) guns.Fire(guns.AimSide);   // только по враждебному
+            if (guns.AimOnTarget && aimed != null && aimed.AtWar && guns.Readiness(guns.AimSide) >= 0.999f) { if (guns.FriendInLine(guns.AimSide)) DebugReport.Count("автобой: залп придержан — свой на линии"); else guns.Fire(guns.AimSide); }   // только по враждебному, не через своих
             // Окружили — второй борт бьёт свою цель, если его залп ложится в корпус.
-            if (guns.OffOnTarget && guns.Readiness(guns.OffSide) >= 0.999f) { guns.Fire(guns.OffSide); DebugReport.Count("залпов вторым бортом"); }
+            if (guns.OffOnTarget && guns.Readiness(guns.OffSide) >= 0.999f && !guns.FriendInLine(guns.OffSide)) { guns.Fire(guns.OffSide); DebugReport.Count("залпов вторым бортом"); }
+        }
+
+        AllyShip fleeFrom; float fleeUntil;
+
+        bool Blocked(SkyFortress fort, Vector3 dir)
+        {
+            dir.y = 0f; dir.Normalize();
+            float y = transform.position.y - 4f;
+            foreach (float d in new[] { 30f, 60f, 100f, 150f })
+                if (fort.TopAt(transform.position + dir * d) > y) return true;
+            return false;
         }
 
         void Repair(SkyFortress fort)
@@ -325,7 +343,7 @@ namespace SkyTide
             state = "АВТОБОЙ · К ПРИЧАЛУ";
             // По пути отстреливаемся: враг в прицеле и борт заряжен — залп (вне зоны крепости).
             TargetShip shot = guns != null ? guns.AimTargetShip : null;   // foe здесь сброшен (ремонт) — цель борта
-            if (shot != null && shot.AtWar && !SkyFortress.InSafeZone(transform.position) && (!SkyFortress.InSafeZone(shot.transform.position) || shot.Outlaw) && guns.AimOnTarget && guns.Readiness(guns.AimSide) >= 0.999f) guns.Fire(guns.AimSide);   // только по враждебному, не в зону крепости
+            if (shot != null && shot.AtWar && !SkyFortress.InSafeZone(transform.position) && (!SkyFortress.InSafeZone(shot.transform.position) || shot.Outlaw) && guns.AimOnTarget && guns.Readiness(guns.AimSide) >= 0.999f && !guns.FriendInLine(guns.AimSide)) guns.Fire(guns.AimSide);   // только по враждебному, не в зону крепости, не через своих
             Vector3 heading = to / Mathf.Max(dist, 1f);
             if (dist > 220f)
             {
@@ -367,6 +385,19 @@ namespace SkyTide
         {
             heading.y = 0f;
             if (heading.sqrMagnitude < 1e-4f) heading = transform.forward;
+            // Крепость: путь вперёд по карте высот — если впереди стены/причал выше корпуса, ищем свободный курс
+            // (16.11: автобой в «ПРЕСЛЕДОВАНИИ» упёрся в причал на «ПОЛНОМ · 1 м/с»).
+            SkyFortress fort = SkyFortress.Instance;
+            if (fort != null && Vector3.Distance(transform.position, fort.Center) < fort.BoundRadius + 250f && Blocked(fort, heading))
+            {
+                bool found = false;
+                foreach (float a in new[] { 25f, -25f, 50f, -50f, 80f, -80f, 115f, -115f, 160f })
+                {
+                    Vector3 h = Quaternion.Euler(0f, a, 0f) * heading;
+                    if (!Blocked(fort, h)) { heading = h; found = true; break; }
+                }
+                if (!found) { heading = transform.position - fort.Center; throttle = Mathf.Min(throttle, 0.5f); }
+            }
             float ang = Vector3.SignedAngle(transform.forward, heading.normalized, Vector3.up);
             ship.turn = Mathf.Clamp(ang / 20f, -1f, 1f);
             Throttle = throttle; ship.throttle = throttle;

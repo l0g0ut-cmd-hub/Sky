@@ -44,8 +44,15 @@ namespace SkyTide
             if (type == LogType.Log) return;
             if (type == LogType.Warning) { warningCount++; if (warningCount > 40) return; }
             else errorCount++;
-            string first = string.IsNullOrEmpty(stack) ? "" : stack.Split('\n')[0];
-            Push(errors, 25, Stamp() + " " + type + ": " + Trim(message, 220) + (first.Length > 0 ? " @ " + Trim(first, 140) : ""));
+            string first = "";
+            if (!string.IsNullOrEmpty(stack))
+            {
+                // Три верхних кадра стека: первый часто системный (String.get_Chars) и не говорит, где ошибка.
+                string[] fr = stack.Split('\n'); System.Text.StringBuilder sb = new System.Text.StringBuilder();
+                for (int i = 0; i < fr.Length && i < 3; i++) { string f = fr[i].Trim(); int at = f.IndexOf(" (at "); if (at > 0) f = f.Substring(0, at); if (f.Length > 0) sb.Append(i > 0 ? " ← " : "").Append(f); }
+                first = sb.ToString();
+            }
+            Push(errors, 25, Stamp() + " " + type + ": " + Trim(message, 220) + (first.Length > 0 ? " @ " + Trim(first, 260) : ""));
             // Ошибка — отчёт сразу в файл (если игра вылетит, на следующем запуске будет «прошлая сессия»), не чаще раза в 20 с.
             if (type != LogType.Warning && Time.realtimeSinceStartup - lastErrorSave > 20f && DebugRecorder.Instance != null) { lastErrorSave = Time.realtimeSinceStartup; DebugRecorder.Instance.Save(); }
         }

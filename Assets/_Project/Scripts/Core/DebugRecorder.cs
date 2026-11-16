@@ -142,7 +142,7 @@ namespace SkyTide
             {
                 ai++;
                 if (a == null || !a.gameObject.activeInHierarchy) continue;
-                b.Append(" | A").Append("GWM"[(int)a.role]).Append(ai).Append(' ');   // номер: два стража раньше сливались в одну линию на карте
+                b.Append(" | A").Append("GWMCKH"[Mathf.Clamp((int)a.role, 0, 5)]).Append(ai).Append(' ');   // номер: два стража раньше сливались в одну линию на карте
                 if (a.Alive) b.Append(P(a.transform.position)).Append(',').Append(Mathf.RoundToInt(a.Health01 * 100f)); else b.Append('x');
             }
             Push(track, 300, b.ToString());
@@ -151,7 +151,7 @@ namespace SkyTide
 
         public void AppendTrack(StringBuilder b)
         {
-            b.AppendLine("КАРТА БОЯ (каждые 2 с; x,z — десятки м; F флагман курс/10 %, E враг [T тяжёлый], A свой G/W/M; x — потоплен):");
+            b.AppendLine("КАРТА БОЯ (каждые 2 с; x,z — десятки м; F флагман курс/10 %, E враг [T тяжёлый], A свой G/W/M/C таможня/K курьер/H стоянка; x — потоплен):");
             SkyFortress f = SkyFortress.Instance;
             if (f != null) b.AppendLine(" крепость " + P(f.Center));
             foreach (string s in track) b.AppendLine(" " + s);

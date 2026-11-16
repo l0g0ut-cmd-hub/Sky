@@ -187,7 +187,7 @@ namespace SkyTide
             if (fort != null) { Vector3 d = fort.BerthWorld - input.ship.transform.position; d.y = 0f; TabText(l.tabBerth, "ПРИЧАЛ " + Range(d.magnitude), fs, fort.Hostile ? new Color(1f, 0.55f, 0.45f, 1f) : cream); }
             else TabText(l.tabBerth, "ПРИЧАЛ —", fs, grey);
             TabText(l.tabRadar, "РАДАР " + Range(input.RadarRange), fs, cream);
-            TabText(l.speed, Cached(3, input.Gear * 1000 + Mathf.RoundToInt(Mathf.Abs(input.ship.Speed)), v => TouchControls.GearNames[v / 1000] + " · " + (v % 1000) + " м/с"), fs, cream);
+            TabText(l.speed, Cached(3, input.DisplayGear * 1000 + Mathf.RoundToInt(Mathf.Abs(input.ship.Speed)), v => TouchControls.GearNames[v / 1000] + " · " + (v % 1000) + " м/с"), fs, cream);
         }
         void TabText(Rect r, string t, float size, Color c) { float capH = Mathf.Min(size * 0.7f, r.height * 0.5f, r.width * 0.9f / Mathf.Max(0.01f, CapRatio(t))); CapText(r.center.x, r.center.y, t, capH, c, true); }
         void TabPair(Rect r, string a, Color ca, string b, Color cb, float size)
@@ -769,7 +769,15 @@ namespace SkyTide
                     Line(corner, corner - new Vector2(sx * arm, 0f), w, col);
                     Line(corner, corner - new Vector2(0f, sy * arm), w, col);
                 }
-                CapText(q.x, q.y + hh + l.unit * 0.024f, LockName(t) + " · " + Cached(12, Mathf.RoundToInt(dist / 10f), v => v * 10 + " м"), l.unit * 0.018f, col, true);   // класс цели (владелец 16.11)
+                {   // класс цели (владелец 16.11); подпись не ложится на кнопки — тогда над полосой прочности (снимок 16.11: на «АВТОБОЙ»)
+                    string lt = LockName(t) + " · " + Cached(12, Mathf.RoundToInt(dist / 10f), v => v * 10 + " м");
+                    float capH = l.unit * 0.018f, lw = CapRatio(lt) * capH + capH, ly = q.y + hh + l.unit * 0.024f;
+                    Rect lr = new Rect(q.x - lw * 0.5f, ly - capH, lw, capH * 2f);
+                    if (lr.Overlaps(l.auto) || lr.Overlaps(l.port) || lr.Overlaps(l.starboard) || lr.Overlaps(l.mode) || lr.Overlaps(l.ammo)
+                        || lr.Overlaps(l.console) || lr.Overlaps(l.telegraph) || ly + capH > Screen.height)
+                        ly = q.y - hh - l.unit * 0.06f;
+                    CapText(q.x, ly, lt, capH, col, true);
+                }
                 {   // прочность цели — полоса над рамкой (как в Black Flag): тёмная подложка, красная заливка
                     float bw = Mathf.Clamp(hw * 1.3f, l.unit * 0.14f, l.unit * 0.3f), bh = Mathf.Max(4f, l.unit * 0.009f), by = q.y - hh - l.unit * 0.022f - bh, e = Mathf.Max(1f, l.unit * 0.002f);
                     Solid(new Rect(q.x - bw * 0.5f - e, by - e, bw + e * 2f, bh + e * 2f), new Color(0.79f, 0.61f, 0.35f, 0.9f));
@@ -1232,7 +1240,7 @@ namespace SkyTide
                     if(input.game.ships!=null&&input.game.ships.Length>1) {Panel(l.ship,l.unit);PlateText(l.ship,0f,1f,input.game.CurrentShipName,l.unit*0.03f,cream);}
                     cornerTop=l.safe.y+l.unit*0.02f;
                     Compass(input,l);
-                    if(tModule==null){Panel(l.speed,l.unit);PlateText(l.speed,0f,1f,Cached(3,input.Gear*1000+Mathf.RoundToInt(Mathf.Abs(input.ship.Speed)),v=>TouchControls.GearNames[v/1000]+" · "+(v%1000)+" м/с"),l.unit*0.034f,cream);}   // ступень рукояти и скорость (с модулем радара — во вкладке хода)
+                    if(tModule==null){Panel(l.speed,l.unit);PlateText(l.speed,0f,1f,Cached(3,input.DisplayGear*1000+Mathf.RoundToInt(Mathf.Abs(input.ship.Speed)),v=>TouchControls.GearNames[v/1000]+" · "+(v%1000)+" м/с"),l.unit*0.034f,cream);}   // ступень рукояти и скорость (с модулем радара — во вкладке хода)
                     Telegraph(input,l);
                     LockMarker(input,l);MoodPlates(input,l);NoticeMarker(input,l);
                     Radar(input,l);

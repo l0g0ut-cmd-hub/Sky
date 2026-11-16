@@ -36,6 +36,17 @@ namespace SkyTide
         public static readonly string[] GearNames = { "НАЗАД", "СТОП", "МАЛЫЙ", "СРЕДНИЙ", "ПОЛНЫЙ" };
         int gear = 1; bool gearArmed = true; float gearRepeatAt;
         public int Gear { get { return gear; } }
+        /// <summary>Ступень для таблички хода: при автобое и удалённом пилоте рукоять не двигают — по фактическому ходу
+        /// (16.11: «СТОП · 36 м/с» на ходу под автопилотом).</summary>
+        public int DisplayGear
+        {
+            get
+            {
+                if (ship == null || (!AutoBattle && !RemotePilot.Active)) return gear;
+                float t = ship.throttle;
+                return t < -0.05f ? 0 : t < 0.05f ? 1 : t < 0.45f ? 2 : t < 0.8f ? 3 : 4;
+            }
+        }
         public void SetGear(int g) { gear = Mathf.Clamp(g, 0, GearThrottle.Length - 1); gearArmed = true; }
         float lastCamTap = -10f; Vector2 lastCamTapPos;
         readonly Dictionary<int, float> camDownAt = new Dictionary<int, float>(); readonly Dictionary<int, Vector2> camDownPos = new Dictionary<int, Vector2>();

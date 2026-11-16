@@ -265,6 +265,30 @@ namespace SkyTide
         public TargetShip AimTargetShip { get { return aimTarget as TargetShip; } }
         public IAimTarget AimTarget { get { return aimTarget; } }
         public bool OffOnTarget { get; private set; }
+        /// <summary>Свой корабль на линии залпа борта (до цели и 300 м за ней — промахи летят дальше). Автобой не стреляет:
+        /// 16.11 за 9 минут 524 попадания флагмана по своим (стоянка и курьеры рядом с целью), флагман 5 раз вне закона.</summary>
+        public bool FriendInLine(int side)
+        {
+            Vector3 a = transform.position, aim;
+            if (solved && solvedSide == side) aim = aimPoint;
+            else if (offSolved && offSide == side) aim = offAim;
+            else aim = a + transform.right * side * MaxRange * 0.7f;
+            Vector3 d = aim - a; d.y = 0f;
+            float len = d.magnitude; if (len < 1f) return false;
+            d /= len; len += 300f;
+            for (int i = 0; i < AllyShip.All.Count; i++)
+            {
+                AllyShip al = AllyShip.All[i];
+                if (al == null || !al.Alive) continue;
+                Vector3 r = al.transform.position - a; r.y = 0f;
+                float t = Vector3.Dot(r, d);
+                if (t < 0f || t > len) continue;
+                float rad; Footprint.Of(al.transform, out rad);
+                if (rad <= 0f) rad = al.Length * 0.5f;
+                if ((r - d * t).magnitude < rad + 6f + t * 0.03f) return true;   // запас на разброс: 3% дальности
+            }
+            return false;
+        }
         // Сглаженная точка наводки: стволы доворачиваются, а не прыгают за каждым кадром решения (владелец 15.11: «прицел дёргается»).
         Vector3 aimSmooth; IAimTarget aimSmoothFor; float aimSmoothAt = -1f;
         // Цель прицела с удержанием: меняется, только если новая заметно лучше (раньше — ближайшая каждый кадр, дуга прыгала).

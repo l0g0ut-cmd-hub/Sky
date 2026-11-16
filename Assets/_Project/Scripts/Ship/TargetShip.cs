@@ -181,14 +181,28 @@ namespace SkyTide
             else SetMood(Attitude.Flee, why + ", силы ×" + ratio.ToString("F1"));
         }
         /// <summary>Зов о помощи: свои ближе 1,5 км приходят по нраву (лихой 75%, осторожный 45%, трус 15%) — не вся карта.</summary>
+        float callAt = -999f, helperUntil = -999f;
+        /// <summary>Зов о помощи. 16.11 (прокат): цепная реакция — каждый пришедший звал следующих, «зов о помощи» — главный
+        /// повод вражды (≈60 из 89). Теперь: не чаще раза в 90 с, ближе 800 м, не больше двух, только вне вод гарнизона
+        /// (кроме набега), пришедший сам минуту никого не зовёт; шансы ниже (лихой 35%, осторожный 15%, трус 3%).</summary>
         void CallHelp()
         {
+            if (Time.time < helperUntil || Time.time - callAt < 90f) return;
+            callAt = Time.time;
+            int came = 0;
             foreach (TargetShip t in All)
             {
-                if (t == null || t == this || !t.Alive || (t.Mood != Attitude.Calm && t.Mood != Attitude.Wary)) continue;
-                if ((t.transform.position - transform.position).sqrMagnitude > 1500f * 1500f) continue;
-                float chance = t.temper == Temper.Bold ? 0.75f : t.temper == Temper.Cautious ? 0.45f : 0.15f;
-                if (Random.value < chance) { t.foeAlly = foeAlly; t.SetMood(Attitude.Hostile, "зов о помощи от " + name, "ИДЁТ НА ПОМОЩЬ"); }
+                if (came >= 2) break;
+                if (t == null || t == this || !t.Alive || t.InPort || (t.Mood != Attitude.Calm && t.Mood != Attitude.Wary)) continue;
+                if ((t.transform.position - transform.position).sqrMagnitude > 800f * 800f) continue;
+                Waters w = Relations.At(t.transform.position);
+                if ((w == Waters.Garrison || w == Waters.Safe) && !t.Raiding) continue;
+                float chance = t.temper == Temper.Bold ? 0.35f : t.temper == Temper.Cautious ? 0.15f : 0.03f;
+                if (Random.value < chance)
+                {
+                    t.foeAlly = foeAlly; t.helperUntil = Time.time + 60f;
+                    t.SetMood(Attitude.Hostile, "зов о помощи от " + name, "ИДЁТ НА ПОМОЩЬ"); came++;
+                }
             }
         }
 
