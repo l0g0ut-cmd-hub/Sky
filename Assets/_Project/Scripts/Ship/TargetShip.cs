@@ -70,6 +70,9 @@ namespace SkyTide
         public Attitude Mood { get; private set; } = Attitude.Calm;
         /// <summary>В бою с гарнизоном (флагман и свои): только тогда пушки стреляют.</summary>
         public bool AtWar { get { return Alive && Mood == Attitude.Hostile; } }
+        /// <summary>Враждебен именно флагману: бой не со своим кораблём (столкновение, таможня), либо флагман сам ввязался
+        /// (попал в него за последние 30 с), либо набег. Иначе корсар бьётся только со своим противником, флагман не трогает.</summary>
+        public bool HostileToPlayer { get { return AtWar && (FoeAlly == null || Raiding || Time.time - lastPlayerHitAt < 30f); } }
         public bool Fleeing { get { return Mood == Attitude.Flee; } }
         public bool Surrendered { get { return Mood == Attitude.Surrender; } }
         /// <summary>Короткая плашка намерения над кораблём (HUD рисует ближе 600 м).</summary>
@@ -132,7 +135,8 @@ namespace SkyTide
             }
         }
         /// <summary>Набег (Relations.Tick): враждебен к флагману без повода, идёт к нему через всю карту.</summary>
-        public void StartRaid() { if (mode != Mode.Fight) mode = Mode.Fight; SetMood(Attitude.Hostile, "набег"); Raiding = true; }
+        public void StartRaid() { if (mode != Mode.Fight) mode = Mode.Fight; SetMood(Attitude.Hostile, "набег"); Raiding = true; raidAt = Time.time; }
+        float raidAt = -1000f;
         /// <summary>Отладка (команда mood): поставить отношение вручную.</summary>
         public void ForceMood(Attitude a) { SetMood(a, "команда"); if (a == Attitude.Wary) moodUntil = Time.time + Relations.WarnSeconds; }
         /// <summary>Таможня/сторожевой гарнизона подошёл к чужому в своих водах: уходи. Лихой изредка отвечает огнём.</summary>
@@ -247,7 +251,7 @@ namespace SkyTide
                     }
                     // Остывает: противник далеко дольше CalmAfter (набег — не остывает, пока флагман жив).
                     bool near = (playerOk && dist < Mathf.Max(1800f, aggroRange)) || (FoeAlly != null && (FoeAlly.transform.position - transform.position).sqrMagnitude < 1800f * 1800f);
-                    calmClock = near || Raiding ? 0f : calmClock + 0.25f;
+                    calmClock = near || (Raiding && Time.time - raidAt < 300f) ? 0f : calmClock + 0.25f;   // набег остывает через 5 мин без боя
                     if (calmClock > Relations.CalmAfter) { SetMood(Attitude.Calm, "противник ушёл"); break; }
                     // Мораль: потерял 40% прочности с начала боя — решает заново (бежать или сдаться).
                     if (Time.time >= nextMorale) { nextMorale = Time.time + 4f; if (Health01 < fightStartHealth - 0.4f) { fightStartHealth = Health01; Decide("мораль", false, true); } }
@@ -308,6 +312,7 @@ namespace SkyTide
                         Vector3 tp = player != null ? player.position - transform.position : Vector3.zero; tp.y = 0f;
                         bool playerTarget = ph != null && ph.Alive && player != null && (!SkyFortress.InSafeZone(player.position) || Bold);
                         if (fa != null && !Bold && SkyFortress.InSafeZone(fa.transform.position)) fa = null;   // свой под пушками крепости — не лезем
+                        if (!HostileToPlayer) playerTarget = false;   // бой со своим кораблём — флагман не цель, пока сам не ввяжется
                         if (fa != null && (!playerTarget || (fa.transform.position - transform.position).sqrMagnitude < tp.sqrMagnitude * 0.8f))
                         {
                             Vector3 ta = fa.transform.position - transform.position; ta.y = 0f;
@@ -445,7 +450,7 @@ namespace SkyTide
             Fool = !ShipClasses.IsHeavy(Class) && Random.value < 0.07f;
             float dr = Random.value;
             duty = dr < 0.45f ? Duty.Travel : dr < 0.8f ? Duty.Patrol : Duty.Port;
-            Mood = Attitude.Calm; moodWhy = ""; Raiding = false; foeAlly = null; aimClock = 0f;
+            Mood = Attitude.Calm; moodWhy = ""; Raiding = false; foeAlly = null; aimClock = 0f; zoneClock = 0f; lastPlayerHitAt = -100f;
             nextPortThink = Time.time + Random.Range(25f, 45f);
             if (ctrl != null) ctrl.ClearCrits();
         }
@@ -913,7 +918,7 @@ namespace SkyTide
             if (byPlayer) lastPlayerHitAt = Time.time;
             if (Application.isPlaying)
             {
-                if (Mood == Attitude.Surrender && byPlayer) Relations.AddGrudge(8f, "огонь по сдавшемуся");
+                if (Mood == Attitude.Surrender) { if (byPlayer) Relations.AddGrudge(8f, "огонь по сдавшемуся"); }   // сдавшийся остаётся сдавшимся
                 else if (Mood != Attitude.Hostile)
                 {
                     if (!byPlayer) { AllyShip near = null; float nd = 1200f * 1200f; foreach (AllyShip al in AllyShip.All) { if (al == null || !al.Alive) continue; float d2 = (al.transform.position - transform.position).sqrMagnitude; if (d2 < nd) { nd = d2; near = al; } } if (near != null) foeAlly = near; }

@@ -53,7 +53,18 @@ namespace SkyTide
             repairBelow = RepairBelowDefault;
             if (hull.Health01 < repairBelow) repairing = true;
             else if (hull.Health01 >= repairUntil) repairing = false;
-            if (repairing && fort != null) { foe = null; Repair(fort); return; }
+            // Вне закона или крепость бьёт по нам — к причалу нельзя: уходим из зоны крепости и от своих.
+            bool unwelcome = Relations.PlayerOutlaw || (fort != null && fort.Hostile);
+            if (unwelcome && fort != null && Vector3.Distance(transform.position, fort.Center) < fort.safeRadius + 400f)
+            {
+                state = "АВТОБОЙ · ПРОЧЬ ОТ КРЕПОСТИ (ВНЕ ЗАКОНА)";
+                Vector3 away = transform.position - fort.Center; away.y = 0f; Steer(away, 1f); return;
+            }
+            // Свой корабль бьёт по нам (мы стреляли по своим) — не отвечаем, уходим.
+            foreach (AllyShip al in AllyShip.All)
+                if (al != null && al.Alive && al.HostileToPlayer && !Relations.PlayerOutlaw && (al.transform.position - transform.position).sqrMagnitude < 700f * 700f)
+                { state = "АВТОБОЙ · УХОДИМ ОТ СВОЕГО"; Vector3 away = transform.position - al.transform.position; away.y = 0f; Steer(away, 1f); return; }
+            if (repairing && fort != null && !unwelcome) { foe = null; Repair(fort); return; }
             if (foe == null || !foe.Alive || (foe.InPort && !foe.Outlaw) || Time.time >= nextTargetPick)
             {
                 nextTargetPick = Time.time + 3f;
@@ -63,7 +74,7 @@ namespace SkyTide
                 if (rescue != null && !(rescue.InPort && !rescue.Outlaw)) { foe = rescue; helping = mate; }
                 else { foe = PickFoe(); helping = null; }
             }
-            if (foe != null && (!foe.Alive || !foe.AtWar)) foe = null;   // политика: в бой — только с теми, кто в бою с нами
+            if (foe != null && (!foe.Alive || !foe.AtWar || (DeepCorsair(foe.transform.position) && DeepCorsair(transform.position + (foe.transform.position - transform.position) * 0.3f)))) foe = null;   // политика: в бой — только с теми, кто в бою с нами; в глубь вод корсаров не гонимся
             if (foe == null) { if (!Hunt()) Patrol(fort); return; }
             if (TryBoard()) return;
             // Линейный и адмиральский в одиночку не по зубам: без своих рядом и при неполном корпусе — отходим к крепости.
@@ -77,6 +88,12 @@ namespace SkyTide
             Fight(foe, fort);
         }
 
+        /// <summary>Глубоко в водах корсаров (на 300 м за границей) — автобой туда не ходит: это вторжение и повод для всех вокруг.</summary>
+        static bool DeepCorsair(Vector3 p)
+        {
+            SkyFortress f = SkyFortress.Instance; if (f == null) return false;
+            Vector3 d = p - f.Center; d.y = 0f; return d.magnitude > Relations.CorsairRadius + 300f;
+        }
         bool StrongEnough(TargetShip t)
         {
             int mates = 0;
@@ -96,6 +113,7 @@ namespace SkyTide
             {
                 if (t == null || !t.Alive) continue;
                 if (!t.AtWar) continue;                // политика: мирных, бегущих и сдавшихся не трогаем — бой только с враждебными
+                if (DeepCorsair(t.transform.position) && !t.HostileToPlayer) continue;   // чужой бой в водах корсаров — не наш
                 if (t.InPort && !t.Outlaw) continue;   // гость порта — не цель
                 float d = Vector3.Distance(t.transform.position, transform.position);
                 // Видим только то, что на радаре (1.5 км) или что заметили свои корабли (у них свои глаза — 1 км).
@@ -119,8 +137,9 @@ namespace SkyTide
         bool Hunt()
         {
             bool any = false;
-            foreach (TargetShip t in TargetShip.All) if (t != null && t.Alive && t.AtWar && !(t.InPort && !t.Outlaw)) { any = true; break; }
+            foreach (TargetShip t in TargetShip.All) if (t != null && t.Alive && t.HostileToPlayer && !DeepCorsair(t.transform.position) && !(t.InPort && !t.Outlaw)) { any = true; break; }
             if (!any) return false;
+            if (DeepCorsair(lastSeen)) lastSeenAt = -100f;   // за ним в воды корсаров — это вторжение, не идём
             Vector3 goal;
             if (Time.time - lastSeenAt < 90f && (lastSeen - transform.position).sqrMagnitude > 150f * 150f) { goal = lastSeen; state = "АВТОБОЙ · ПРЕСЛЕДОВАНИЕ"; }
             else
@@ -284,7 +303,8 @@ namespace SkyTide
             bool zone = SkyFortress.InSafeZone(transform.position);
             if ((zone || SkyFortress.InSafeZone(foe.transform.position)) && !foe.Outlaw && !bold) return;   // в зоне крепости (и в неё) — только крепость
             // Расчёт борта наводится на ближайшего врага — стреляем, когда это и есть цель (или любой враг в прицеле: не жалеем ядер).
-            if (guns.AimOnTarget && guns.Readiness(guns.AimSide) >= 0.999f) guns.Fire(guns.AimSide);
+            TargetShip aimed = guns.AimTargetShip;
+            if (guns.AimOnTarget && aimed != null && aimed.AtWar && guns.Readiness(guns.AimSide) >= 0.999f) guns.Fire(guns.AimSide);   // только по враждебному
             // Окружили — второй борт бьёт свою цель, если его залп ложится в корпус.
             if (guns.OffOnTarget && guns.Readiness(guns.OffSide) >= 0.999f) { guns.Fire(guns.OffSide); DebugReport.Count("залпов вторым бортом"); }
         }
@@ -304,7 +324,8 @@ namespace SkyTide
             }
             state = "АВТОБОЙ · К ПРИЧАЛУ";
             // По пути отстреливаемся: враг в прицеле и борт заряжен — залп (вне зоны крепости).
-            if (guns != null && !SkyFortress.InSafeZone(transform.position) && (!SkyFortress.InSafeZone(foe.transform.position) || foe.Outlaw) && guns.AimOnTarget && guns.Readiness(guns.AimSide) >= 0.999f) guns.Fire(guns.AimSide);   // в зону крепости не стреляем
+            TargetShip shot = guns != null ? guns.AimTargetShip : null;   // foe здесь сброшен (ремонт) — цель борта
+            if (shot != null && shot.AtWar && !SkyFortress.InSafeZone(transform.position) && (!SkyFortress.InSafeZone(shot.transform.position) || shot.Outlaw) && guns.AimOnTarget && guns.Readiness(guns.AimSide) >= 0.999f) guns.Fire(guns.AimSide);   // только по враждебному, не в зону крепости
             Vector3 heading = to / Mathf.Max(dist, 1f);
             if (dist > 220f)
             {

@@ -86,7 +86,7 @@ namespace SkyTide
             HudNotice.Post("ТЫ ВНЕ ЗАКОНА", "ПОТОПИЛ СВОЕГО · ГАРНИЗОН И КРЕПОСТЬ БЬЮТ ПО ТЕБЕ " + Mathf.RoundToInt(OutlawSeconds / 60f) + " МИН", 1, 6f, HudNotice.Prio.Critical, "outlaw", null);
             SkyFortress.DeclareOutlaw(OutlawSeconds);
         }
-        public static void Pardon() { OutlawUntil = -1f; }
+        public static void Pardon() { OutlawUntil = -1f; foreach (AllyShip a in AllyShip.All) if (a != null) a.ForgivePlayer(); }
 
         static float nextThink;
         /// <summary>Раз в секунду (из SkyTideBootstrap.Update): злоба остывает, набег — когда злоба высока и давно не было.</summary>

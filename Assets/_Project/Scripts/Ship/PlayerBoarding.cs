@@ -31,7 +31,7 @@ namespace SkyTide
             if (!Allowed) return;
             foreach (TargetShip t in TargetShip.All)
             {
-                if (t == null || !t.Alive || t.Health01 > 0.2f || t.Controller == null) continue;
+                if (t == null || !t.Alive || (t.Health01 > 0.2f && !t.Surrendered) || t.Controller == null) continue;   // сдавшийся — приз при любой прочности
                 float d = Vector3.Distance(t.transform.position, transform.position) - Mathf.Max(0f, t.Length * 0.5f - 19f);   // крупные классы: от борта, а не от центра
                 float dv = (t.transform.forward * t.Controller.Speed - transform.forward * ship.Speed).magnitude;
                 if (d < best && dv < 14f) { best = d; candidate = t; }

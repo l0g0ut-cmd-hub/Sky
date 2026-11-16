@@ -79,7 +79,7 @@ namespace SkyTide
             // Политика отношений: стреляет только в бою с гарнизоном (повод был) — по флагману и своим вне зоны крепости.
             if (Application.isPlaying && !target.AtWar) { engaged = false; return; }
             victimAlly = null; float dist = float.MaxValue; Vector3 rel = Vector3.zero, local = Vector3.zero;
-            if (player.Alive && (bold || !SkyFortress.InSafeZone(pp))) TryVictim(pp, null, ref dist, ref rel, ref local);
+            if (player.Alive && (!Application.isPlaying || target.HostileToPlayer || bold) && (bold || !SkyFortress.InSafeZone(pp))) TryVictim(pp, null, ref dist, ref rel, ref local);
             foreach (AllyShip al in AllyShip.All)
                 if (al != null && al.Alive && (bold || !SkyFortress.InSafeZone(al.transform.position))) TryVictim(al.Center, al, ref dist, ref rel, ref local);
             if (dist == float.MaxValue) return;

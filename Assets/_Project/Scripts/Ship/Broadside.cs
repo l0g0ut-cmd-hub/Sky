@@ -377,7 +377,8 @@ namespace SkyTide
             TargetShip best = null; float bestScore = float.MaxValue, cur = float.MaxValue;
             foreach (TargetShip t in TargetShip.All)
             {
-                if (t == null || !t.Alive || !t.gameObject.activeInHierarchy || t == aimTarget) continue;
+                if (t == null || !t.Alive || !t.gameObject.activeInHierarchy || (object)t == aimTarget) continue;
+                if (Application.isPlaying && !t.AtWar) continue;   // второй борт (автобой) — только по враждебным
                 Vector3 lp = transform.InverseTransformPoint(t.transform.position);
                 if (lp.x * side < 12f) continue;   // только с этой стороны
                 float d = lp.magnitude; if (d > reach) continue;
@@ -477,6 +478,7 @@ namespace SkyTide
                 foreach (TargetShip t in TargetShip.All)
                 {
                     if (t == null || !t.Alive || !t.gameObject.activeInHierarchy) continue;
+                    if (AutoAim && HoldSide == 0 && Application.isPlaying && !t.AtWar) continue;   // автобой не наводится на мирных (это повод)
                     Vector3 lp = transform.InverseTransformPoint(t.transform.position);
                     if (HoldSide != 0 && Mathf.Sign(lp.x) != HoldSide) continue;   // прицел бортом — только враги с этого борта
                     float d = lp.magnitude;

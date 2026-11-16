@@ -47,6 +47,8 @@ namespace SkyTide
         /// <summary>Флагман бил по нему (или флагман вне закона): отбивается или бежит к крепости.</summary>
         public bool HostileToPlayer { get { return Alive && (Time.time < hostileUntil || Relations.PlayerOutlaw); } }
         public TargetShip Foe { get { return foe; } }
+        /// <summary>Флагман вернулся после гибели (или помилован) — обида на него забыта.</summary>
+        public void ForgivePlayer() { hostileUntil = -1f; friendlyStrikes = 0; }
 
         ShipController ctrl;
         Transform model;
