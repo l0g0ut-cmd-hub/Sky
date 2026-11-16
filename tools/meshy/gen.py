@@ -6,12 +6,19 @@
 import json, os, sys, time, urllib.request, urllib.error
 
 API = "https://api.meshy.ai/openapi/v2/text-to-3d"
-KEY = os.environ.get("MESHY_API_KEY", "")
+I2I = "https://api.meshy.ai/openapi/v1/image-to-image"
+I23 = "https://api.meshy.ai/openapi/v1/image-to-3d"
+KEYS = {1: os.environ.get("MESHY_API_KEY", ""), 2: os.environ.get("MESHY_KEY2", "")}
+KEY = KEYS[1]
+import base64
 
-def call(method, url, body=None):
+def data_uri(path):
+    return "data:image/png;base64," + base64.b64encode(open(path, "rb").read()).decode()
+
+def call(method, url, body=None, key=None):
     data = json.dumps(body).encode() if body is not None else None
     req = urllib.request.Request(url, data=data, method=method, headers={
-        "Authorization": "Bearer " + KEY, "Content-Type": "application/json"})
+        "Authorization": "Bearer " + (key or KEY), "Content-Type": "application/json"})
     for attempt in range(6):
         try:
             with urllib.request.urlopen(req, timeout=60) as r:
@@ -37,13 +44,15 @@ def fetch(url, path):
 def main():
     jobs_path, out = sys.argv[1], sys.argv[2]
     os.makedirs(out, exist_ok=True)
-    if not KEY:
-        print("::error::нет секрета MESHY_API_KEY"); sys.exit(1)
-    try:
-        bal = call("GET", "https://api.meshy.ai/openapi/v1/balance"); print("баланс:", bal)
-    except Exception as e:
-        print("баланс не получен:", e)
+    for n, k in KEYS.items():
+        if not k: print("аккаунт", n, ": ключа нет"); continue
+        try: print("аккаунт", n, "баланс:", call("GET", "https://api.meshy.ai/openapi/v1/balance", key=k))
+        except Exception as e: print("аккаунт", n, "баланс не получен:", e)
     jobs = [j for j in json.load(open(jobs_path, encoding="utf-8"))["jobs"] if not j.get("skip")]
+    concept = [j for j in jobs if j.get("concept")]
+    jobs = [j for j in jobs if not j.get("concept")]
+    if concept: run_concept(concept, out, os.path.dirname(jobs_path))
+    if not jobs: return
     state = {}
     for j in jobs:
         if j.get("refine_of"):
@@ -107,6 +116,51 @@ def main():
               ensure_ascii=False, indent=1)
     bad = [jid for jid, s in state.items() if s["stage"] != "done"]
     print("итог: готово", len(state) - len(bad), "из", len(state), "; не готово:", bad)
+
+def poll(url, key, what, timeout=40 * 60):
+    end = time.time() + timeout
+    while time.time() < end:
+        time.sleep(12)
+        try: t = call("GET", url, key=key)
+        except Exception as e: print(what, "опрос:", e); continue
+        if t.get("status") == "SUCCEEDED": return t
+        if t.get("status") in ("FAILED", "CANCELED"): raise RuntimeError(what + " " + json.dumps(t.get("task_error")))
+    raise RuntimeError(what + " не успел")
+
+def run_concept(jobs, out, base):
+    """Концепт по образцу (Image to Image: картинки удачных моделей + описание класса) → Image to 3D с текстурой.
+    Задание: {"id", "concept": true, "account": 2, "refs": ["refs/brig.png"], "image_prompt": "...", "polycount": 40000,
+    "image_model": "nano-banana"}. Задания идут по очереди в своих потоках."""
+    import threading
+    def one(j):
+        jid = j["id"]; key = KEYS.get(int(j.get("account", 1))) or KEY; d = os.path.join(out, jid); os.makedirs(d, exist_ok=True)
+        info = {"id": jid, "account": j.get("account", 1), "image_prompt": j["image_prompt"]}
+        try:
+            refs = [data_uri(os.path.join(base, r)) for r in j.get("refs", [])]
+            tid = call("POST", I2I, {"ai_model": j.get("image_model", "nano-banana"), "prompt": j["image_prompt"][:2000],
+                                     "reference_image_urls": refs, "aspect_ratio": "4:3", "remove_background": True}, key=key)["result"]
+            print(jid, "концепт", tid)
+            t = poll(I2I + "/" + tid, key, jid + " концепт")
+            fetch(t["image_urls"][0], os.path.join(d, "concept.png")); info["concept"] = tid; info["concept_credits"] = t.get("consumed_credits")
+            print(jid, "КОНЦЕПТ ГОТОВ", t.get("consumed_credits"))
+            if j.get("concept_only"):
+                info["stage"] = "concept"; return
+            body = {"input_task_id": tid, "ai_model": j.get("ai_model", "latest"), "should_texture": True, "enable_pbr": True,
+                    "should_remesh": True, "topology": "triangle", "target_polycount": int(j.get("polycount", 40000)),
+                    "target_formats": ["glb"]}
+            mid = call("POST", I23, body, key=key)["result"]; print(jid, "3D", mid)
+            t = poll(I23 + "/" + mid, key, jid + " 3D")
+            size = fetch(t["model_urls"]["glb"], os.path.join(d, "model.glb"))
+            if t.get("thumbnail_url"): fetch(t["thumbnail_url"], os.path.join(d, "thumb.png"))
+            info.update({"model": mid, "model_credits": t.get("consumed_credits"), "glb_bytes": size, "stage": "done"})
+            print(jid, "ГОТОВО", size, "байт, кредиты", t.get("consumed_credits"))
+        except Exception as e:
+            info["stage"] = "error"; info["error"] = str(e); print(jid, "ОШИБКА", e)
+        finally:
+            json.dump(info, open(os.path.join(d, "task.json"), "w", encoding="utf-8"), ensure_ascii=False, indent=1)
+    ths = [threading.Thread(target=one, args=(j,)) for j in jobs]
+    for t in ths: t.start()
+    for t in ths: t.join()
 
 if __name__ == "__main__":
     main()

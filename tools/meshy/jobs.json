@@ -1,16 +1,48 @@
 {
  "jobs": [
   {
-   "id": "brig",
-   "refine_of": "01a1e1f3-3efe-7062-b434-198f9f7e3392",
-   "texture_prompt": "Weathered dark oak planks, polished brass and dark iron fittings, tan canvas balloons with leather straps, warm amber lanterns, muted crimson painted trim. Painterly game texture, clean readable materials.",
-   "prompt": "(текстура к форме 2-го захода)"
+   "id": "cutter",
+   "concept": true,
+   "account": 2,
+   "refs": [
+    "refs/brig.png",
+    "refs/frigate.png"
+   ],
+   "polycount": 15000,
+   "image_prompt": "Same art style, materials and colors as the reference airships: weathered reddish-brown wooden hull, brass fittings, round tan canvas gas balloons with dark stripes mounted above the deck on masts and struts. Single flying airship, three-quarter side view, whole ship visible, plain background, no water, no ground, no characters. A TINY customs patrol cutter, much smaller than the references: short narrow hull, one short mast, one round balloon, one cannon port per side, lantern on the bow."
   },
   {
-   "id": "frigate",
-   "refine_of": "01a1e1f3-5405-7441-9a8a-e53435fbda34",
-   "texture_prompt": "Weathered dark oak planks, polished brass and dark iron fittings, tan canvas balloons with leather straps, warm amber lanterns, muted crimson painted trim. Painterly game texture, clean readable materials.",
-   "prompt": "(текстура к форме 2-го захода)"
+   "id": "fireship",
+   "concept": true,
+   "account": 2,
+   "refs": [
+    "refs/brig.png",
+    "refs/frigate.png"
+   ],
+   "polycount": 18000,
+   "image_prompt": "Same art style, materials and colors as the reference airships: weathered reddish-brown wooden hull, brass fittings, round tan canvas gas balloons with dark stripes mounted above the deck on masts and struts. Single flying airship, three-quarter side view, whole ship visible, plain background, no water, no ground, no characters. A small battered FIRE SHIP: old patched hull with no cannons, the open deck piled high with stacked gunpowder barrels and fuses, iron ram spikes on the bow, one patched round balloon."
+  },
+  {
+   "id": "ship_of_line",
+   "concept": true,
+   "account": 2,
+   "refs": [
+    "refs/brig.png",
+    "refs/frigate.png"
+   ],
+   "polycount": 60000,
+   "image_prompt": "Same art style, materials and colors as the reference airships: weathered reddish-brown wooden hull, brass fittings, round tan canvas gas balloons with dark stripes mounted above the deck on masts and struts. Single flying airship, three-quarter side view, whole ship visible, plain background, no water, no ground, no characters. A HUGE SHIP OF THE LINE, much bigger and taller than the references: tall hull with two stacked rows of cannon ports, six big round balloons in two rows above the deck, high stern castle with rows of windows."
+  },
+  {
+   "id": "admiral",
+   "concept": true,
+   "account": 2,
+   "refs": [
+    "refs/brig.png",
+    "refs/frigate.png"
+   ],
+   "polycount": 70000,
+   "image_prompt": "Same art style, materials and colors as the reference airships: weathered reddish-brown wooden hull, brass fittings, round tan canvas gas balloons with dark stripes mounted above the deck on masts and struts. Single flying airship, three-quarter side view, whole ship visible, plain background, no water, no ground, no characters. A COLOSSAL ADMIRAL FLAGSHIP, the largest airship: enormous tall hull with three stacked rows of cannon ports, eight large round balloons on a heavy brass frame above the whole deck, gilded stern castle, carved figurehead, long red banners."
   }
  ]
 }

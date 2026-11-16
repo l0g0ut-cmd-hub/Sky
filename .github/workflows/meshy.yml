@@ -19,6 +19,7 @@ jobs:
       - name: Generate
         env:
           MESHY_API_KEY: ${{ secrets.MESHY_API_KEY }}
+          MESHY_KEY2: ${{ secrets.MESHY_KEY2 }}
         run: python3 tools/meshy/gen.py tools/meshy/jobs.json out
       - name: Publish to meshy-out
         if: always()
