@@ -110,7 +110,7 @@ namespace SkyTide
                 {
                     int g = (gunCursor + k) % guns.Length;
                     Vector3 muzzle = model.TransformPoint(guns[g]);
-                    if ((tp - muzzle).sqrMagnitude > gunRange * gunRange) continue;
+                    if (!InSafeZone(tp)) continue;   // бьёт только в границах безопасной зоны (владелец 17.11)
                     if (gunDirs != null && Vector3.Dot(model.TransformDirection(gunDirs[g]), (tp - muzzle).normalized) <= 0.25f) continue;
                     Vector3 dir;
                     if (!Solve(muzzle, tp, tv, out dir)) continue;
@@ -412,7 +412,7 @@ namespace SkyTide
                 aimAt = ship.transform.position + ship.transform.forward * 80f;
                 aimAt.y = FxSystem.Instance != null ? FxSystem.Instance.deckTop : pp.y - 25f;
             }
-            if ((pp - muzzle).sqrMagnitude > gunRange * gunRange) return;
+            if (!InSafeZone(pp)) return;
             Vector3 dir;
             if (!Solve(muzzle, aimAt, out dir)) return;
             if (!warning) dir = Quaternion.Euler(UnityEngine.Random.Range(-spreadDeg, spreadDeg), UnityEngine.Random.Range(-spreadDeg, spreadDeg), 0f) * dir;

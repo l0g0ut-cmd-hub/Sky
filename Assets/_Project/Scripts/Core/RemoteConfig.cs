@@ -29,7 +29,7 @@ namespace SkyTide
             public int allyCount = 11;
             // отношения (Core/Relations): пояса вод от центра крепости, предупреждение, прицел, остывание, злоба и набеги
             public float garrisonRadius = 2300f, corsairRadius = 3300f, warnSeconds = 30f, aimSeconds = 6f, aimRange = 400f, calmAfter = 45f;
-            public float playerDamage = 2f, autoAssist = 7f;   // урон ядра флагмана (×), доводка автобоя (м от борта)
+            public float playerDamage = 4f, autoAssist = 7f;   // урон ядра флагмана (×), доводка автобоя (м от борта)
             public float raidGrudge = 40f, raidEveryMin = 10f, grudgeCoolPerMin = 3f, outlawMin = 5f;
             public int guardHits = 40, wingmanHits = 34, merchantHits = 20;
             public float allyEngage = 750f;

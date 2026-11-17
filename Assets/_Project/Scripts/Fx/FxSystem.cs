@@ -88,7 +88,7 @@ namespace SkyTide
         /// <summary>Чьё ядро — для счёта точности по сторонам: Ф флагман, В враг, С свои, К крепость.</summary>
         static int Shooter(bool hostile, float caliber, bool fromPlayer) { return fromPlayer ? 0 : caliber > 1.5f ? 3 : hostile ? 1 : 2; }
         /// <summary>Урон ядра флагмана — вдвое против обычного (владелец 16.11: «повысить огневую мощь корабля игрока раза в два»).</summary>
-        public static float PlayerDamageMul = 2f;
+        public static float PlayerDamageMul = 4f;   // владелец 17.11 — ещё вдвое
         /// <summary>Автобой: цель для «доводки» следующего выпущенного ядра (Broadside.Shoot ставит перед Fire).</summary>
         public static TargetShip AssistTarget;
         /// <summary>Доводка автобоя: ядро засчитывается, если прошло ближе этого запаса (м) от борта цели. Точность автобоя ≈ ×2.</summary>
