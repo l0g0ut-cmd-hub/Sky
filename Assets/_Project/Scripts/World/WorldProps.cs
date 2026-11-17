@@ -148,6 +148,7 @@ namespace SkyTide
                 lampList.Add(new Lamp { pos = lp, beacon = beacon, size = beacon ? 9f : id == "buoy" ? 2.2f : 4f,
                     speed = beacon ? 1.1f : id == "buoy" ? 2.4f : 0.7f,
                     color = id == "buoy" ? new Color(1f, 0.32f, 0.18f) : new Color(1f, 0.78f, 0.42f) });
+                if (beacon) beam = Beam(go.transform, lp);
                 if (beacon)
                 {
                     beaconLight = new GameObject("Lighthouse Light").AddComponent<Light>();
@@ -169,6 +170,60 @@ namespace SkyTide
             VolumetricClouds vc = FindObjectOfType<VolumetricClouds>();
             if (vc != null) return vc.deckTop;
             return FxSystem.Instance != null ? FxSystem.Instance.deckTop : 20f;
+        }
+
+        // Луч маяка (владелец 17.11, вариант 3): два встречных световых конуса по 420 м, оборот за 8 с, чуть вниз.
+        Transform beam;
+        public const float BeamLength = 420f, BeamRadius = 46f, BeamTurnSeconds = 8f;
+        Transform Beam(Transform parent, Vector3 at)
+        {
+            Shader sh = Shader.Find("SkyTide/LighthouseBeam");
+            if (sh == null) { Debug.LogWarning("SkyTide: нет шейдера луча маяка"); return null; }
+            Transform root = new GameObject("Lighthouse Beam").transform;
+            root.SetParent(transform, false);
+            root.position = at;
+            Mesh cone = Cone(BeamLength, 1.5f, BeamRadius, 24, 12);
+            Material m = new Material(sh);
+            foreach (float yaw in new[] { 0f, 180f })
+            {
+                GameObject g = new GameObject("Cone");
+                g.transform.SetParent(root, false);
+                g.transform.localRotation = Quaternion.Euler(4f, yaw, 0f);   // на 4° вниз — по облакам и кораблям
+                g.AddComponent<MeshFilter>().sharedMesh = cone;
+                MeshRenderer r = g.AddComponent<MeshRenderer>();
+                r.sharedMaterial = m; r.shadowCastingMode = ShadowCastingMode.Off; r.receiveShadows = false;
+            }
+            return root;
+        }
+        static Mesh Cone(float len, float r0, float r1, int seg, int rings)
+        {
+            List<Vector3> v = new List<Vector3>(); List<Vector3> n = new List<Vector3>(); List<Vector2> uv = new List<Vector2>(); List<int> t = new List<int>();
+            for (int j = 0; j <= rings; j++)
+            {
+                float k = j / (float)rings, r = Mathf.Lerp(r0, r1, k), z = len * k;
+                for (int i = 0; i <= seg; i++)
+                {
+                    float a = i / (float)seg * Mathf.PI * 2f;
+                    Vector3 d = new Vector3(Mathf.Cos(a), Mathf.Sin(a), 0f);
+                    v.Add(d * r + Vector3.forward * z); n.Add(d); uv.Add(new Vector2(i / (float)seg, k));
+                }
+            }
+            int w = seg + 1;
+            for (int j = 0; j < rings; j++) for (int i = 0; i < seg; i++)
+            {
+                int a0 = j * w + i, b0 = a0 + 1, c0 = a0 + w, d0 = c0 + 1;
+                t.Add(a0); t.Add(c0); t.Add(b0); t.Add(b0); t.Add(c0); t.Add(d0);
+            }
+            Mesh m = new Mesh { name = "LighthouseBeam" };
+            m.SetVertices(v); m.SetNormals(n); m.SetUVs(0, uv); m.SetTriangles(t, 0);
+            m.bounds = new Bounds(Vector3.forward * len * 0.5f, new Vector3(r1 * 2f, r1 * 2f, len));
+            return m;
+        }
+
+        void LateUpdateBeam()
+        {
+            if (beam == null) return;
+            beam.rotation = Quaternion.Euler(0f, Time.time * 360f / BeamTurnSeconds, 0f);
         }
 
         static Renderer Part(Transform parent, string name, Mesh m, Material mat, ShadowCastingMode shadows)
@@ -248,6 +303,7 @@ namespace SkyTide
         // Огни строений: ореолы видны издалека (слоты FxSystem 30–39; 0–28 — крепость, 40–95 — её кольцо).
         void LateUpdate()
         {
+            LateUpdateBeam();
             FxSystem fx = FxSystem.Instance;
             Camera cam = Camera.main;
             if (fx == null || cam == null) return;
