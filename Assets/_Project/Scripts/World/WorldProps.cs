@@ -38,7 +38,7 @@ namespace SkyTide
             switch (id)
             {
                 case "lighthouse": return new Def { shipY = 41f, lantern = 104f, circles = new[] { new Vector3(0f, 0f, 21f) } };
-                case "watchtower": return new Def { shipY = 14f, lantern = 46f, circles = new[] { new Vector3(6.9f, 5.2f, 12.5f), new Vector3(-10f, 2f, 4.5f) } };
+                case "watchtower": return new Def { shipY = 14f, lantern = 46f, circles = new[] { new Vector3(2f, 1.5f, 16.5f), new Vector3(6.9f, 5.2f, 12.5f) } };   // 17.11: баллоны флагмана входили в верх башни (она шире ствола) — круг по верхней площадке
                 case "buoy": return new Def { shipY = 11f, lantern = 21f, circles = new[] { new Vector3(0f, 0f, 4f) } };
                 case "hideout": return new Def { shipY = 42f, lantern = 0f, circles = new[] { new Vector3(0f, 0f, 27f) } };
                 case "wreck": return new Def { shipY = 30f, lantern = 0f, circles = new[] { new Vector3(-26f, 0f, 13f), new Vector3(0f, 0f, 14f), new Vector3(26f, 0f, 13f) } };

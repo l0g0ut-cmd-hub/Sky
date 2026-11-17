@@ -283,7 +283,8 @@ namespace SkyTide
             if (foe == null)
             {
                 announced = false; pendingLeft = 0;
-                Ai(role == Role.Wingman ? "СТРОЙ" : role == Role.Customs ? "ТАМОЖНЯ" : role == Role.Courier ? "ПО ДЕЛАМ" : "ДОЗОР");
+                // Таможня и стоянка ставят состояние сами (17.11: общее «ДОЗОР»/«ТАМОЖНЯ» и своё чередовались каждый кадр — 15 тыс. строк в минуту).
+                if (role != Role.Customs && role != Role.Harbor) Ai(role == Role.Wingman ? "СТРОЙ" : role == Role.Courier ? "ПО ДЕЛАМ" : "ДОЗОР");
                 if (role == Role.Wingman) Follow();
                 else if (role == Role.Customs) CustomsPatrol(f);
                 else if (role == Role.Courier) Errand(f);
@@ -328,6 +329,7 @@ namespace SkyTide
                 else SteerAround(f, escorting.transform.position, 1f);
                 return;
             }
+            Ai("ТАМОЖНЯ");
             if (Time.time >= nextRoam || (roamPoint - transform.position).sqrMagnitude < 150f * 150f)
             {
                 nextRoam = Time.time + 60f;

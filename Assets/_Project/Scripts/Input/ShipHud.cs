@@ -759,6 +759,11 @@ namespace SkyTide
                     float ec = l.unit * 0.018f;
                     // Не на панелях HUD: дальше от края, а если и там панель — только дальность.
                     if (OverHud(l, tp.x, tp.y, et, ec)) { Vector2 t2 = at - n * l.unit * 0.17f; if (!OverHud(l, t2.x, t2.y, et, ec)) tp = t2; else et = Cached(12, Mathf.RoundToInt(dist / 10f), v => v * 10 + " м"); }
+                    {   // текст целиком на экране (17.11: «ФРЕГАТ · ВРАЖДЕБЕН · 260» резался правым краем и стрелкой)
+                        float hw = (CapRatio(et) * ec + ec) * 0.5f, m = l.unit * 0.02f;
+                        tp.x = Mathf.Clamp(tp.x, hw + m, Screen.width - hw - m); tp.y = Mathf.Clamp(tp.y, ec * 2f, Screen.height - ec * 2f);
+                        if ((tp - at).magnitude < l.unit * 0.045f) tp -= n * l.unit * 0.05f;   // не на стрелке
+                    }
                     if (!OverHud(l, tp.x, tp.y, et, ec)) CapText(tp.x, tp.y, et, ec, col, true);
                     return;
                 }

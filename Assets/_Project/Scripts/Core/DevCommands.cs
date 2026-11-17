@@ -130,7 +130,9 @@ namespace SkyTide
                     {
                         if (ph == null) return "нет флагмана";
                         float p = 25f; float.TryParse(arg, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out p);
-                        WorldLog.HullCause = "команда hurt " + arg; ph.OnHitDamageOnly(ph.Health - ph.maxHealth * Mathf.Clamp01(p / 100f)); return "флагман " + Mathf.RoundToInt(ph.Health01 * 100f) + "%";
+                        WorldLog.HullCause = "команда hurt " + arg;
+                        if (p <= 0f) { int guard = 0; while (ph.Alive && guard++ < 400) ph.OnHit(ph.Center, 50f); return ph.Alive ? "не потопить" : "флагман потоплен"; }
+                        ph.OnHitDamageOnly(ph.Health - ph.maxHealth * Mathf.Clamp01(p / 100f)); return "флагман " + Mathf.RoundToInt(ph.Health01 * 100f) + "%";
                     }
                 case "weather":
                     if (ws == null) return "нет погоды";

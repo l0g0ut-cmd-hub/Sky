@@ -100,12 +100,13 @@ namespace SkyTide
             if (ph != null)
             {
                 float h = ph.Health;
-                if (lastHull >= 0f && Mathf.Abs(h - lastHull) >= ph.maxHealth * 0.005f)
+                // От последнего записанного значения: медленный ремонт (0,1% за кадр) тоже попадает — шагами по 1%.
+                if (lastHull < 0f) lastHull = h;
+                else if (Mathf.Abs(h - lastHull) >= ph.maxHealth * 0.01f || (h >= ph.maxHealth && lastHull < ph.maxHealth))
                 {
                     Line("КОРПУС " + Mathf.RoundToInt(lastHull / ph.maxHealth * 100f) + "% → " + Mathf.RoundToInt(h / ph.maxHealth * 100f) + "% · " + (HullCause ?? (h > lastHull ? "ремонт?" : "урон?")));
-                    HullCause = null;
+                    HullCause = null; lastHull = h;
                 }
-                lastHull = h;
             }
             if (Time.unscaledTime >= nextWatch) { nextWatch = Time.unscaledTime + 0.5f; Watch(); }
             if (Time.unscaledTime >= nextFrame) { nextFrame = Time.unscaledTime + 1f; Frame(); }

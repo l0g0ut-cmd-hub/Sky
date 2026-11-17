@@ -228,8 +228,8 @@ namespace SkyTide
                 // Пожар (ниже 30%) жжёт корпус, пока идёт бой: 0.4% в секунду, но не ниже 10% — добить должен враг, а не огонь.
                 // 25 с без попаданий — команда тушит и чинится сама: до 50% прочности, 1% в секунду. Полный ремонт — у причала.
                 bool calm = Time.time - LastHitTime > 25f;
-                if (!calm && Health01 < 0.3f && Health01 > 0.1f) Health = Mathf.Max(maxHealth * 0.1f, Health - maxHealth * 0.004f * dt);
-                else if (calm && Health01 < 0.5f) Health = Mathf.Min(maxHealth * 0.5f, Health + maxHealth * 0.01f * dt);
+                if (!calm && Health01 < 0.3f && Health01 > 0.1f) { WorldLog.HullCause = "пожар"; } if (!calm && Health01 < 0.3f && Health01 > 0.1f) Health = Mathf.Max(maxHealth * 0.1f, Health - maxHealth * 0.004f * dt);
+                else if (calm && Health01 < 0.5f) { WorldLog.HullCause = "команда чинится сама (25 с без попаданий, до 50%)"; Health = Mathf.Min(maxHealth * 0.5f, Health + maxHealth * 0.01f * dt); }
             }
             if (!Alive)
             {
