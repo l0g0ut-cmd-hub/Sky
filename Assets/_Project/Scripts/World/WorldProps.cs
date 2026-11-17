@@ -37,7 +37,7 @@ namespace SkyTide
         {
             switch (id)
             {
-                case "lighthouse": return new Def { shipY = 41f, lantern = 96f,   /* центр линзы: стекло 90–102 м, 104 — уже карниз крыши (снимок 17.11: луч шёл из крыши) */ circles = new[] { new Vector3(0f, 0f, 21f) } };
+                case "lighthouse": return new Def { shipY = 41f, lantern = 94.5f,   /* центр линз Френеля — замерено по модели (кольца линз 90,5–98,8 м); 104 — карниз крыши */ circles = new[] { new Vector3(0f, 0f, 21f) } };
                 case "watchtower": return new Def { shipY = 14f, lantern = 46f, circles = new[] { new Vector3(2f, 1.5f, 16.5f), new Vector3(6.9f, 5.2f, 12.5f) } };   // 17.11: баллоны флагмана входили в верх башни (она шире ствола) — круг по верхней площадке
                 case "buoy": return new Def { shipY = 11f, lantern = 21f, circles = new[] { new Vector3(0f, 0f, 4f) } };
                 case "hideout": return new Def { shipY = 42f, lantern = 0f, circles = new[] { new Vector3(0f, 0f, 27f) } };
@@ -143,7 +143,9 @@ namespace SkyTide
             }
             if (d.lantern > 0f)
             {
-                Vector3 lp = id == "watchtower" ? go.transform.TransformPoint(new Vector3(6.9f, d.lantern, 5.2f)) : go.transform.position + Vector3.up * d.lantern * scale;
+                Vector3 lp = id == "watchtower" ? go.transform.TransformPoint(new Vector3(6.9f, d.lantern, 5.2f))
+                           : id == "lighthouse" ? go.transform.TransformPoint(new Vector3(-0.24f, d.lantern, -0.73f))   // ось стекла (центр окружности по модели), не ось основания
+                           : go.transform.position + Vector3.up * d.lantern * scale;
                 bool beacon = id == "lighthouse";
                 lampList.Add(new Lamp { name = id + " #" + transform.childCount, pos = lp, beacon = beacon, size = beacon ? 9f : id == "buoy" ? 2.2f : 4f,
                     speed = beacon ? 1.1f : id == "buoy" ? 2.4f : 0.7f,
