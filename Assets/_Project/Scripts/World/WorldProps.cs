@@ -37,7 +37,7 @@ namespace SkyTide
         {
             switch (id)
             {
-                case "lighthouse": return new Def { shipY = 41f, lantern = 94.5f,   /* центр линз Френеля — замерено по модели (кольца линз 90,5–98,8 м); 104 — карниз крыши */ circles = new[] { new Vector3(0f, 0f, 21f) } };
+                case "lighthouse": return new Def { shipY = 41f, lantern = 96f,   /* высота центров линз — по развёртке стекла: внешние кольца 90–102 м, внутренние 92–100 м; 104 — карниз крыши */ circles = new[] { new Vector3(0f, 0f, 21f) } };
                 case "watchtower": return new Def { shipY = 14f, lantern = 46f, circles = new[] { new Vector3(2f, 1.5f, 16.5f), new Vector3(6.9f, 5.2f, 12.5f) } };   // 17.11: баллоны флагмана входили в верх башни (она шире ствола) — круг по верхней площадке
                 case "buoy": return new Def { shipY = 11f, lantern = 21f, circles = new[] { new Vector3(0f, 0f, 4f) } };
                 case "hideout": return new Def { shipY = 42f, lantern = 0f, circles = new[] { new Vector3(0f, 0f, 27f) } };
