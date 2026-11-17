@@ -52,6 +52,9 @@ namespace SkyTide
             SkyFortress fort = SkyFortress.Instance;
             repairBelow = RepairBelowDefault;
             if (hull.Health01 < repairBelow) repairing = true;
+            // Уже у причала, в овале ремонта и корпус не полный — дочиниться до конца, а не уходить (17.11: включили автобой
+            // у причала на 43% — ушёл в бой, ремонт остановился).
+            else if (!repairing && fort != null && hull.Health01 < repairUntil && fort.InRepairZone(transform.position)) repairing = true;
             else if (hull.Health01 >= repairUntil) repairing = false;
             // Вне закона или крепость бьёт по нам — к причалу нельзя: уходим из зоны крепости и от своих.
             bool unwelcome = Relations.PlayerOutlaw || (fort != null && fort.Hostile);

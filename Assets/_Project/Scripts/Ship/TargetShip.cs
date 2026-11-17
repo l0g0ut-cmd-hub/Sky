@@ -626,7 +626,22 @@ namespace SkyTide
             Vector3 along = f.BerthWorld - o * (12f + halfL + (i / 2) * 85f);   // нос — не дальше кромки причала (там овал ремонта)
             float edge = 12f;
             for (float w = 8f; w < 260f; w += 4f) { if (f.TopAt(along + across * w) < f.BerthWorld.y - 40f) { edge = w; break; } }
-            return along + across * (edge + halfW + 10f);
+            Vector3 spot = along + across * (edge + halfW + 10f);
+            // Место не на стоянке (17.11: корсар-гость 5 с толкался в адмиральский стоянки) — отодвинуть наружу,
+            // пока до каждого корабля стоянки не останется полкорпуса гостя + полкорпуса стоянки + 25 м.
+            for (int k = 0; k < 12; k++)
+            {
+                bool clash = false;
+                foreach (AllyShip h in AllyShip.All)
+                {
+                    if (h == null || !h.Alive || h.role != AllyShip.Role.Harbor) continue;
+                    Vector3 d = h.transform.position - spot; d.y = 0f;
+                    if (d.magnitude < halfL + h.Length * 0.5f + 25f) { clash = true; break; }
+                }
+                if (!clash) break;
+                spot += across * 45f;
+            }
+            return spot;
         }
         public float respawnDelay = 6f;
 

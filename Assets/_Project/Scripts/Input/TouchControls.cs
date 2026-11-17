@@ -42,6 +42,7 @@ namespace SkyTide
         {
             get
             {
+                if (PlayerHull.Instance != null && !PlayerHull.Instance.Alive) return 1;   // тонет — «СТОП», не «СРЕДНИЙ · 0 м/с» (17.11)
                 if (ship == null || (!AutoBattle && !RemotePilot.Active)) return gear;
                 float t = ship.throttle;
                 return t < -0.05f ? 0 : t < 0.05f ? 1 : t < 0.45f ? 2 : t < 0.8f ? 3 : 4;

@@ -197,8 +197,11 @@ namespace SkyTide
                     float dist = Mathf.Max(1f, Vector3.Distance(deck, look));
                     TargetShip st = scopeTarget as TargetShip; AllyShip sa = scopeTarget as AllyShip;
                     float len = st != null ? st.Length : sa != null ? sa.Length : 38f;   // по длине класса: адмиральский 260 м целиком в кадре
-                    float wantFov = 2f * Mathf.Atan(Mathf.Max(30f, len * 1.2f) / dist) * Mathf.Rad2Deg;
-                    scopeZoom = Mathf.Lerp(scopeZoom, Mathf.Clamp(wantFov / baseFov, 0.2f, 1f), 1f - Mathf.Exp(-6f * dt));
+                    // Корабль — около 60% ширины экрана (17.11: обзор 55→47°, «труба» почти не приближала).
+                    Camera cc = GetComponent<Camera>(); float aspect = cc != null ? Mathf.Max(1f, cc.aspect) : 2f;
+                    float halfW = Mathf.Max(20f, len * 0.85f);
+                    float wantFov = 2f * Mathf.Atan(halfW / dist / aspect) * Mathf.Rad2Deg;
+                    scopeZoom = Mathf.Lerp(scopeZoom, Mathf.Clamp(wantFov / baseFov, 0.08f, 1f), 1f - Mathf.Exp(-6f * dt));
                 }
                 deck = AvoidShips(deck);   // точка трубы тоже не входит в чужие корабли
                 Quaternion scopeRot = Quaternion.LookRotation(look - deck, Vector3.up);
