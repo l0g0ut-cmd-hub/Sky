@@ -118,7 +118,13 @@ namespace SkyTide
                 if (Mathf.Abs(DevCommands.TimeScaleSet - 1f) > 0.01f) { DevCommands.TimeScaleSet = 1f; if (Time.timeScale > 0.01f) Time.timeScale = 1f; }
                 // Конец партии — управление владельцу (кроме hold).
                 ControlBanner.BusyUntil = -1f;
-                if (!hold) { RemotePilot.Release(); RemoteCam.Off(); TouchControls.HideHud = false; }
+                if (!hold)
+                {
+                    RemotePilot.Release(); RemoteCam.Off(); TouchControls.HideHud = false;
+                    // Ход — на стоп, автобой — выкл (17.11: после проверки флагман сам шёл на среднем и упёрся в склад).
+                    TouchControls tcs = Object.FindFirstObjectByType<TouchControls>();
+                    if (tcs != null) { tcs.SetAutoBattle(false); tcs.SetGear(1); }
+                }
                 Status = "команды: выполнена #" + b.id;
                 LiveUntil = Time.realtimeSinceStartup + 600f;
                 ReportUploader u = ReportUploader.Instance;

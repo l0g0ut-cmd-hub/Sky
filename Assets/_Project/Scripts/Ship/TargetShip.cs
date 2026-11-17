@@ -498,6 +498,7 @@ namespace SkyTide
                     if (inward < 0.25f) heading = (heading - outward * inward + outward * 0.45f).normalized;
                 }
             }
+            if (dist > 150f + Length * 0.5f) heading = Traffic.FortressDetour(transform, heading, Length * 0.5f).normalized;
             float ang = Vector3.SignedAngle(transform.forward, heading, Vector3.up);
             ctrl.turn = Mathf.Clamp(ang / 35f, -1f, 1f);
             ctrl.throttle = Mathf.Abs(ang) > 100f ? Mathf.Min(throttle, 0.3f) : throttle;
@@ -574,7 +575,19 @@ namespace SkyTide
             {
                 Ai("В ПОРТ", Mathf.RoundToInt(Health01 * 100f) + "%");
                 if (d < 45f) { mode = Mode.InPort; portUntil = Time.time + Random.Range(18f, 35f); }
-                else SteerTo(spot, d > 320f ? 0.75f : d > 120f ? 0.4f : 0.2f);
+                else
+                {
+                    // Подход к месту — снаружи, с его стороны от причала (17.11: гости шли к месту сквозь пирс и толпу у
+                    // зоны ремонта, толкались по трое в 30 м). Сначала точка в 220 м от места наружу, потом — к месту.
+                    Vector3 axis = f.BerthWorld - f.Center; axis.y = 0f; axis = axis.sqrMagnitude > 1f ? axis.normalized : Vector3.forward;
+                    Vector3 rel = spot - f.Center; rel.y = 0f;
+                    Vector3 side = rel - axis * Vector3.Dot(rel, axis); side = side.sqrMagnitude > 1f ? side.normalized : Vector3.Cross(Vector3.up, axis);
+                    Vector3 gate = spot + side * 220f;
+                    Vector3 me = transform.position - f.Center; me.y = 0f;
+                    bool onSide = Vector3.Dot(me, side) > Vector3.Dot(rel, side) + 60f;   // уже снаружи, со своей стороны
+                    if (!onSide && d > 140f) SteerTo(gate, 0.7f);
+                    else SteerTo(spot, d > 320f ? 0.75f : d > 120f ? 0.4f : 0.2f);
+                }
                 return true;
             }
             Ai("ПОРТ");
@@ -764,7 +777,7 @@ namespace SkyTide
             CollideWithPlayer();
             ctrl.SetDamage(Health01);
             // Пожар добивает: ниже 30% прочности корабль теряет «попадание» каждые 7 с, пока не починится в порту.
-            if (Health01 < 0.3f && mode != Mode.InPort)
+            if (Health01 < 0.3f && mode != Mode.InPort && !Surrendered)   // спустил флаг — команда тушит пожар
             {
                 burnClock += Time.deltaTime;
                 if (burnClock >= 7f) { burnClock = 0f; Burn(); if (!Alive) return; }
@@ -959,6 +972,8 @@ namespace SkyTide
                 chainAcc -= 1f;
             }
             hits += Mathf.Max(1, Mathf.RoundToInt(caliber));   // тяжёлое ядро (класс, крепость) — больше урона
+            // Сдавшегося свои и крепость не добивают: ядра, выпущенные до сдачи, долетают — но не топят (17.11: «СГОРЕЛ — СВОИМИ»).
+            if (Surrendered && !byPlayer && hits >= hitsToSink) hits = hitsToSink - 1;
             angryUntil = Time.time + 40f;
             if (byPlayer) { if (Time.time - TallyAt > 2.5f) Tally = 0; Tally++; TallyAt = Time.time; }   // «ПОПАДАНИЙ · N» — только твои
             // Попадание по месту: корма — руль, верх с баллонами — ход (на 12 с).

@@ -155,6 +155,33 @@ namespace SkyTide
                 }
             }
         }
+        /// <summary>Обход стен и причала крепости по её карте высот (17.11: адмиральский стоянки упирался в стену по пути
+        /// в дозор, гости шли к месту сквозь причал). Впереди на 30…150 м + полкорпуса стены выше корабля — курс
+        /// поворачивается на ближайший свободный (±25…±160°); если свободного нет — от центра крепости.</summary>
+        public static Vector3 FortressDetour(Transform t, Vector3 heading, float halfLen)
+        {
+            SkyFortress f = SkyFortress.Instance;
+            heading.y = 0f;
+            if (f == null || heading.sqrMagnitude < 1e-4f) return heading;
+            Vector3 p = t.position;
+            if (new Vector2(p.x - f.Center.x, p.z - f.Center.z).magnitude > f.BoundRadius + halfLen + 200f) return heading;
+            heading.Normalize();
+            if (!WallAhead(f, p, heading, halfLen)) return heading;
+            foreach (float a in new[] { 25f, -25f, 50f, -50f, 80f, -80f, 115f, -115f, 160f, -160f })
+            {
+                Vector3 h = Quaternion.Euler(0f, a, 0f) * heading;
+                if (!WallAhead(f, p, h, halfLen)) return h;
+            }
+            Vector3 o = p - f.Center; o.y = 0f; return o.sqrMagnitude > 1f ? o.normalized : -heading;
+        }
+        static bool WallAhead(SkyFortress f, Vector3 p, Vector3 dir, float halfLen)
+        {
+            float y = p.y - 4f;
+            foreach (float d in new[] { 30f, 60f, 100f, 150f })
+                if (f.TopAt(p + dir * (d + halfLen)) > y) return true;
+            return false;
+        }
+
         /// <summary>Корпус против строения: капсула корпуса не входит в круг строения (раздвигается целиком корабль).</summary>
         static void Statics(Body a)
         {

@@ -540,6 +540,8 @@ namespace SkyTide
         {
             heading.y = 0f;
             if (heading.sqrMagnitude < 1e-4f) heading = transform.forward;
+            Vector3 gd = Goal - transform.position; gd.y = 0f;   // у самой цели (место стоянки у пирса) — без обхода, иначе не встать
+            if (gd.magnitude > 150f + Length * 0.5f) heading = Traffic.FortressDetour(transform, heading, Length * 0.5f);
             float ang = Vector3.SignedAngle(transform.forward, heading.normalized, Vector3.up);
             ctrl.turn = Mathf.Clamp(ang / 35f, -1f, 1f);
             ctrl.throttle = Mathf.Abs(ang) > 100f ? Mathf.Min(0.3f, throttle) : throttle;

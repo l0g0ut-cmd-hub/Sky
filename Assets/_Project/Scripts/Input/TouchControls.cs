@@ -78,7 +78,7 @@ namespace SkyTide
                 hintShownFor += dt;
                 Broadside guns = Guns();
                 if (hintStage == 0) hintDone = gear > 1 || (ship != null && ship.Speed > 6f);
-                else if (hintStage == 1) hintDone = guns == null || guns.Readiness(-1) < 0.99f || guns.Readiness(1) < 0.99f;
+                else if (hintStage == 1) hintDone = guns == null || guns.Readiness(-1) < 0.99f || guns.Readiness(1) < 0.99f || hintShownFor > 20f;   // не висит минутами
                 else if (hintStage == 2) hintDone = recentered || hintShownFor > 20f;
                 else hintDone = hintShownFor > 6f;
             }
