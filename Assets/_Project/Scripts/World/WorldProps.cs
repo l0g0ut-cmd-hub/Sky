@@ -10,7 +10,7 @@ namespace SkyTide
     public class PropAsset
     {
         public string id;
-        public TextAsset mesh, lite, far;
+        public TextAsset mesh, lite, far, gun;   // gun — поворотная пушка (сторожевая башня, tools/split_tower_gun.py)
         public Material material;
     }
 
@@ -38,7 +38,7 @@ namespace SkyTide
             switch (id)
             {
                 case "lighthouse": return new Def { shipY = 41f, lantern = 96f,   /* высота центров линз — по развёртке стекла: внешние кольца 90–102 м, внутренние 92–100 м; 104 — карниз крыши */ circles = new[] { new Vector3(0f, 0f, 21f) } };
-                case "watchtower": return new Def { shipY = 14f, lantern = 46f, circles = new[] { new Vector3(2f, 1.5f, 16.5f), new Vector3(6.9f, 5.2f, 12.5f) } };   // 17.11: баллоны флагмана входили в верх башни (она шире ствола) — круг по верхней площадке
+                case "watchtower": return new Def { shipY = 14f, lantern = 54.2f, circles = new[] { new Vector3(2f, 1.5f, 16.5f), new Vector3(6.9f, 5.2f, 12.5f) } };   // 17.11: баллоны флагмана входили в верх башни (она шире ствола) — круг по верхней площадке
                 case "buoy": return new Def { shipY = 11f, lantern = 21f, circles = new[] { new Vector3(0f, 0f, 4f) } };
                 case "hideout": return new Def { shipY = 42f, lantern = 0f, circles = new[] { new Vector3(0f, 0f, 27f) } };
                 case "wreck": return new Def { shipY = 30f, lantern = 0f, circles = new[] { new Vector3(-26f, 0f, 13f), new Vector3(0f, 0f, 14f), new Vector3(26f, 0f, 13f) } };
@@ -53,7 +53,11 @@ namespace SkyTide
         // Сторожевые башни стреляют (владелец 16.11: «башни стреляют в случае чего»): одна лёгкая пушка, калибр 1,
         // ~6 с перезарядка, 500 м. Цели — как у крепости: нарушители и враждебные в водах гарнизона; флагман — только
         // вне закона или когда на него зла крепость. Мирных, настороженных, сдавшихся и своих не трогают. Неразрушимы.
-        class Tower { public Transform t; public Vector3 muzzle; public float next; public string name; }
+        // Пушка башни (владелец 18.11: «ядра летят не из пушки; пушка должна поворачиваться без всей башни»): отдельная
+        // сетка на поворотном круге; ось — GunPivot в осях модели, срез ствола — GunMuzzle от оси (обмер сетки 18.11).
+        class Tower { public Transform t, gun; public float next, pick, yaw; public string name; public TargetShip foe; public bool atPlayer; }
+        static readonly Vector3 GunPivot = new Vector3(6.94f, 32.32f, 7.25f), GunMuzzle = new Vector3(0.05f, 5.45f, 4.2f);
+        public const float GunTurnDegPerSec = 40f, GunAimTolerance = 3f;
         readonly List<Tower> towers = new List<Tower>();
         public const float TowerRange = 500f, TowerReload = 6f, TowerMuzzle = 165f, TowerSpread = 1.8f;
         Light beaconLight;
@@ -125,16 +129,25 @@ namespace SkyTide
             Renderer r0s = lite != null ? Part(go.transform, "LOD0 shadow", lite, a.material, ShadowCastingMode.ShadowsOnly) : null;
             Renderer r1 = lite != null ? Part(go.transform, "LOD1", lite, a.material, ShadowCastingMode.On) : null;
             Renderer r2 = far != null ? Part(go.transform, "LOD2", far, a.material, ShadowCastingMode.Off) : null;
+            Mesh gunMesh = a.gun != null ? ShipMeshLoader.Load(a.gun) : null;
+            Renderer rg = null;
+            if (gunMesh != null)
+            {
+                rg = Part(go.transform, "Gun", gunMesh, a.material, ShadowCastingMode.On);
+                rg.transform.localPosition = GunPivot;
+                rg.gameObject.isStatic = false;
+            }
             LODGroup g = go.AddComponent<LODGroup>();
             List<LOD> lods = new List<LOD>();
-            lods.Add(new LOD(0.30f, r0s != null ? new[] { r0, r0s } : new[] { r0 }));
-            if (r1 != null) lods.Add(new LOD(0.08f, new[] { r1 }));
+            List<Renderer> l0 = new List<Renderer> { r0 }; if (r0s != null) l0.Add(r0s); if (rg != null) l0.Add(rg);
+            lods.Add(new LOD(0.30f, l0.ToArray()));
+            if (r1 != null) lods.Add(new LOD(0.08f, rg != null ? new[] { r1, rg } : new[] { r1 }));
             if (r2 != null) lods.Add(new LOD(0.006f, new[] { r2 }));
             g.SetLODs(lods.ToArray());
             g.RecalculateBounds();
 
             if (id == "watchtower")
-                towers.Add(new Tower { t = go.transform, muzzle = go.transform.TransformPoint(new Vector3(-7.6f, 36.2f, 7.8f)) /* срез пушки на верхней площадке */, next = UnityEngine.Random.Range(0f, 3f),
+                towers.Add(new Tower { t = go.transform, gun = rg != null ? rg.transform : null, next = UnityEngine.Random.Range(0f, 3f),
                                        name = "БАШНЯ " + (towers.Count + 1) });
             foreach (Vector3 c in d.circles)
             {
@@ -143,7 +156,7 @@ namespace SkyTide
             }
             if (d.lantern > 0f)
             {
-                Vector3 lp = id == "watchtower" ? go.transform.TransformPoint(new Vector3(6.9f, d.lantern, 5.2f))
+                Vector3 lp = id == "watchtower" ? go.transform.TransformPoint(new Vector3(3.7f, d.lantern, -7.53f))   // шар на верхушке флагштока (18.11: висел в воздухе над пушкой)
                            : id == "lighthouse" ? go.transform.TransformPoint(new Vector3(-0.24f, d.lantern, -0.73f))   // ось стекла (центр окружности по модели), не ось основания
                            : go.transform.position + Vector3.up * d.lantern * scale;
                 bool beacon = id == "lighthouse";
@@ -250,36 +263,68 @@ namespace SkyTide
             for (int i = 0; i < towers.Count; i++)
             {
                 Tower w = towers[i];
-                if (Time.time < w.next) continue;
-                w.next = Time.time + 0.5f;   // нет цели — смотрим снова через полсекунды
-                Vector3 m = w.muzzle;
-                TargetShip best = null; float bd = TowerRange * TowerRange;
-                foreach (TargetShip t in TargetShip.All)
+                Vector3 m = Muzzle(w);
+                // Цель выбирается раз в полсекунды; пушка всё время доворачивается на неё.
+                if (Time.time >= w.pick)
                 {
-                    if (t == null || !t.Alive || t.Surrendered) continue;
-                    bool foe = t.Outlaw || (t.AtWar && (Relations.At(t.Center) == Waters.Garrison || Relations.At(t.Center) == Waters.Safe));
-                    if (!foe) continue;
-                    Vector3 d = t.Center - m; d.y = 0f;
-                    if (d.sqrMagnitude < bd) { bd = d.sqrMagnitude; best = t; }
+                    w.pick = Time.time + 0.5f;
+                    TargetShip best = null; float bd = TowerRange * TowerRange;
+                    foreach (TargetShip t in TargetShip.All)
+                    {
+                        if (t == null || !t.Alive || t.Surrendered) continue;
+                        bool foe = t.Outlaw || (t.AtWar && (Relations.At(t.Center) == Waters.Garrison || Relations.At(t.Center) == Waters.Safe));
+                        if (!foe) continue;
+                        Vector3 d = t.Center - m; d.y = 0f;
+                        if (d.sqrMagnitude < bd) { bd = d.sqrMagnitude; best = t; }
+                    }
+                    w.foe = best;
+                    w.atPlayer = best == null && playerFoe && (Flat(g.Ship.transform.position - m)).sqrMagnitude < TowerRange * TowerRange;
                 }
-                Vector3 aim, lead; bool atPlayer = false;
-                if (best != null) { aim = best.Center; lead = best.Controller != null ? best.transform.forward * best.Controller.Speed : Vector3.zero; }
-                else if (playerFoe && (Flat(g.Ship.transform.position - m)).sqrMagnitude < TowerRange * TowerRange)
-                { aim = g.Ship.transform.position + Vector3.up * 4f; lead = g.Ship.transform.forward * g.Ship.Speed; atPlayer = true; }
+                if (w.foe != null && !w.foe.Alive) w.foe = null;
+                Vector3 aim, lead;
+                if (w.foe != null) { aim = w.foe.Center; lead = w.foe.Controller != null ? w.foe.transform.forward * w.foe.Controller.Speed : Vector3.zero; }
+                else if (w.atPlayer && playerFoe) { aim = g.Ship.transform.position + Vector3.up * 4f; lead = g.Ship.transform.forward * g.Ship.Speed; }
                 else continue;
                 Vector3 dir;
                 if (!Solve(m, aim, lead, out dir)) continue;
+                // Поворот пушки (только вокруг вертикали, в осях башни).
+                float want = w.yaw, err = 0f;
+                if (w.gun != null)
+                {
+                    Vector3 ld = w.t.InverseTransformDirection(dir); ld.y = 0f;
+                    if (ld.sqrMagnitude > 1e-4f) want = Mathf.Atan2(ld.x, ld.z) * Mathf.Rad2Deg;
+                    w.yaw = Mathf.MoveTowardsAngle(w.yaw, want, GunTurnDegPerSec * Time.deltaTime);
+                    w.gun.localRotation = Quaternion.Euler(0f, w.yaw, 0f);
+                    err = Mathf.Abs(Mathf.DeltaAngle(w.yaw, want));
+                }
+                if (Time.time < w.next || err > GunAimTolerance) continue;
+                m = Muzzle(w);
+                if (!Solve(m, aim, lead, out dir)) continue;
+                bool atPlayer = w.foe == null;
                 dir = Quaternion.Euler(UnityEngine.Random.Range(-TowerSpread, TowerSpread), UnityEngine.Random.Range(-TowerSpread, TowerSpread), 0f) * dir;
-                FxSystem.NextShooter = w.name; FxSystem.NextTarget = atPlayer ? g.Ship.transform : best.transform; FxSystem.Instance.Fire(m + dir * 4f, dir, Vector3.zero, TowerMuzzle, atPlayer, 8f, 1f);
+                FxSystem.NextShooter = w.name; FxSystem.NextTarget = atPlayer ? g.Ship.transform : w.foe.transform; FxSystem.Instance.Fire(m + dir * 0.5f, dir, Vector3.zero, TowerMuzzle, atPlayer, 8f, 1f);
                 w.next = Time.time + TowerReload + UnityEngine.Random.Range(0f, 1.5f);
                 DebugReport.Count("выстрелов сторожевых башен");
                 if (atPlayer)
-                    HudNotice.Post(w.name + " БЬЁТ ПО ТЕБЕ", (Relations.PlayerOutlaw ? "ТЫ ВНЕ ЗАКОНА · " : "КРЕПОСТЬ ПОДНЯЛА ТРЕВОГУ · ") + HudNotice.Where(w.t.position),
+                {
+                    TowerAtPlayerAt = Time.time; TowerAtPlayerName = w.name;
+                    HudNotice.Post(w.name + " БЬЁТ ПО ТЕБЕ", (Relations.PlayerOutlaw ? "ТЫ ВНЕ ЗАКОНА · " : "ТРЕВОГА ГАРНИЗОНА · ") + HudNotice.Where(w.t.position),
                         0, 3f, HudNotice.Prio.Critical, "towerme", w.t, 10f);
-                else if (g != null && g.Ship != null && (best.Center - g.Ship.transform.position).sqrMagnitude < 1500f * 1500f)
-                    HudNotice.Post("БАШНЯ БЬЁТ: " + HudNotice.Who(best), (best.Outlaw ? "НАРУШИТЕЛЬ · " : "ВРАЖДЕБНЫЙ В ВОДАХ ГАРНИЗОНА · ") + HudNotice.Where(best.Center),
-                        0, 2.5f, HudNotice.Prio.Combat, "tower" + best.GetInstanceID(), best.transform, 12f);
+                }
+                else if (g != null && g.Ship != null && (w.foe.Center - g.Ship.transform.position).sqrMagnitude < 1500f * 1500f)
+                    HudNotice.Post("БАШНЯ БЬЁТ: " + HudNotice.Who(w.foe), (w.foe.Outlaw ? "НАРУШИТЕЛЬ · " : "ВРАЖДЕБНЫЙ В ВОДАХ ГАРНИЗОНА · ") + HudNotice.Where(w.foe.Center),
+                        0, 2.5f, HudNotice.Prio.Combat, "tower" + w.foe.GetInstanceID(), w.foe.transform, 12f);
             }
+        }
+
+        /// <summary>Башня стреляла по флагману (HUD: не путать с крепостью).</summary>
+        public static float TowerAtPlayerAt = -100f; public static string TowerAtPlayerName = "";
+
+        /// <summary>Срез ствола в мире: от поворотной пушки; без неё — над осью поворота.</summary>
+        static Vector3 Muzzle(Tower w)
+        {
+            if (w.gun != null) return w.gun.TransformPoint(GunMuzzle);
+            return w.t.TransformPoint(GunPivot + GunMuzzle);
         }
 
         static Vector3 Flat(Vector3 v) { v.y = 0f; return v; }

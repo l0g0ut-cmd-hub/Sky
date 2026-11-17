@@ -306,7 +306,8 @@ namespace SkyTide.EditorTools
                 m.SetFloat("_Cull", 0f);
                 AssetDatabase.CreateAsset(m, MaterialFolder + "/Prop_" + id + ".mat");
                 list.Add(new PropAsset { id = id, mesh = mesh, material = m,
-                    lite = AssetDatabase.LoadAssetAtPath<TextAsset>(n + "_lod.bytes"), far = AssetDatabase.LoadAssetAtPath<TextAsset>(n + "_far.bytes") });
+                    lite = AssetDatabase.LoadAssetAtPath<TextAsset>(n + "_lod.bytes"), far = AssetDatabase.LoadAssetAtPath<TextAsset>(n + "_far.bytes"),
+                    gun = AssetDatabase.LoadAssetAtPath<TextAsset>(n + "_gun.bytes") });
             }
             Debug.Log("SkyTide: строений " + list.Count);
             return list.ToArray();

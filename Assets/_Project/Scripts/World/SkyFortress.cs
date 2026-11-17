@@ -83,9 +83,8 @@ namespace SkyTide
             // те же 2.5 с от залпа игрока до первого ядра в корабль.
             if (!f.Hostile) { f.nextShot = Time.time + 0.7f; f.warned = false; }
             f.hostileUntil = Time.time + f.hostileTime;
-            FortressAlarmAt = Time.time;
         }
-        public static float FortressAlarmAt = -100f;
+        public static float FortressAlarmAt = -100f;   // момент выстрела крепости по флагману
         /// <summary>Враг дал залп в зоне крепости: орудия разворачиваются на него (HUD показывает оповещение).</summary>
         public static float EnemyAlarmAt = -100f;
         float nextEnemyShot;
@@ -248,7 +247,6 @@ namespace SkyTide
             SkyFortress f = Instance; if (f == null) return;
             if (!f.Hostile) { f.nextShot = Time.time + 0.7f; f.warned = false; }
             f.hostileUntil = Mathf.Max(f.hostileUntil, Time.time + seconds);
-            FortressAlarmAt = Time.time;
         }
 
         /// <summary>Клуб дыма из очередной трубы. Публичный — для кадров CI.</summary>
@@ -418,6 +416,7 @@ namespace SkyTide
             if (!warning) dir = Quaternion.Euler(UnityEngine.Random.Range(-spreadDeg, spreadDeg), UnityEngine.Random.Range(-spreadDeg, spreadDeg), 0f) * dir;
             if (FxSystem.Instance == null) return;
             FxSystem.NextShooter = "КРЕПОСТЬ"; FxSystem.NextTarget = PlayerHull.Instance != null ? PlayerHull.Instance.transform : null; FxSystem.Instance.Fire(muzzle, dir, Vector3.zero, muzzleSpeed, true, shellLife, shellCaliber);
+            FortressAlarmAt = Time.time;   // «КРЕПОСТЬ ОТКРЫЛА ОГОНЬ» — только когда стреляет сама крепость (18.11: писало при выстреле башни)
             if (warning) return;
             // Залп башней: вместе с выбранным орудием бьют до двух соседних (в 30 м модели), чьи стволы смотрят на цель;
             // пауза до следующего залпа длиннее во столько же раз — плотность огня прежняя.

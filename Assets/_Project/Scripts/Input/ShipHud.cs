@@ -1111,7 +1111,9 @@ namespace SkyTide
                     float alarm = Envelope(Time.time - SkyFortress.FortressAlarmAt, 3.5f, 0.15f, 0.5f);
                     float zone = Envelope(Time.time - fort.EnteredAt, 3f, 0.2f, 0.6f);
                     float foeAlarm = Envelope(Time.time - SkyFortress.EnemyAlarmAt, 3.5f, 0.15f, 0.5f);
-                    if (alarm > 0f) { noteText = "КРЕПОСТЬ ОТКРЫЛА ОГОНЬ"; noteIcon = 1; note = alarm; corner = false; }
+                    float tower = Envelope(Time.time - WorldProps.TowerAtPlayerAt, 3.5f, 0.15f, 0.5f);
+                    if (tower > 0f && tower >= alarm) { noteText = WorldProps.TowerAtPlayerName + " БЬЁТ ПО ТЕБЕ"; noteIcon = 1; note = tower; corner = false; }
+                    else if (alarm > 0f) { noteText = "КРЕПОСТЬ ОТКРЫЛА ОГОНЬ"; noteIcon = 1; note = alarm; corner = false; }
                     else if (foeAlarm > 0f) { noteText = "КРЕПОСТЬ БЬЁТ ПО ВРАГУ"; noteIcon = 0; note = foeAlarm; corner = true; }   // в угол: по центру висела десятки секунд поверх корабля
                     else if (fort.Hostile) { noteText = "ТРЕВОГА · " + Mathf.CeilToInt(fort.HostileLeft) + " с"; noteIcon = 1; note = 1f; corner = true; }
                     else if (fort.PlayerDocked && hull != null) { noteText = "РЕМОНТ · " + Mathf.RoundToInt(hull.Health01 * 100f) + "%"; noteIcon = 0; note = 1f; corner = true; }
