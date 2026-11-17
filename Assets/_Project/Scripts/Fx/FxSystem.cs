@@ -420,7 +420,7 @@ namespace SkyTide
 
         // Постоянные огни (маяк причала, ореолы фонарей крепости и врага): свечения в закреплённых гнёздах,
         // владелец обновляет своё гнездо каждый кадр; не симулируются. Гнёзда: 0 — маяк, 1–28 — крепость, 30–39 — враг.
-        public const int MaxLamps = 96;   // 40–95 — кольцо сигнальных огней безопасной зоны
+        public const int MaxLamps = 128;   // 40–95 — кольцо зоны (погашено), 96–127 — огни строений (WorldProps)
         readonly P[] lamps = new P[MaxLamps];
         readonly bool[] lampOn = new bool[MaxLamps];
         public int ParticleCount { get { return ps.Count; } }

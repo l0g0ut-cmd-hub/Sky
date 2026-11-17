@@ -48,7 +48,7 @@ namespace SkyTide
             return new Def { shipY = 0f, circles = new Vector3[0] };
         }
 
-        struct Lamp { public Vector3 pos; public float size; public Color color; public float speed; public bool beacon; }
+        struct Lamp { public Vector3 pos; public float size; public Color color; public float speed; public bool beacon; public string name; }
         readonly List<Lamp> lampList = new List<Lamp>();
         // Сторожевые башни стреляют (владелец 16.11: «башни стреляют в случае чего»): одна лёгкая пушка, калибр 1,
         // ~6 с перезарядка, 500 м. Цели — как у крепости: нарушители и враждебные в водах гарнизона; флагман — только
@@ -145,7 +145,7 @@ namespace SkyTide
             {
                 Vector3 lp = id == "watchtower" ? go.transform.TransformPoint(new Vector3(6.9f, d.lantern, 5.2f)) : go.transform.position + Vector3.up * d.lantern * scale;
                 bool beacon = id == "lighthouse";
-                lampList.Add(new Lamp { pos = lp, beacon = beacon, size = beacon ? 9f : id == "buoy" ? 2.2f : 4f,
+                lampList.Add(new Lamp { name = id + " #" + transform.childCount, pos = lp, beacon = beacon, size = beacon ? 9f : id == "buoy" ? 2.2f : 4f,
                     speed = beacon ? 1.1f : id == "buoy" ? 2.4f : 0.7f,
                     color = id == "buoy" ? new Color(1f, 0.32f, 0.18f) : new Color(1f, 0.78f, 0.42f) });
                 if (beacon) beam = Beam(go.transform, lp);
@@ -300,7 +300,12 @@ namespace SkyTide
             return true;
         }
 
-        // Огни строений: ореолы видны издалека (слоты FxSystem 30–39; 0–28 — крепость, 40–95 — её кольцо).
+        // Огни строений: свои слоты FxSystem 96–127, по одному на огонь (17.11: в слотах 30–39 их затирал кормовой фонарь
+        // корсара, а огней 13 на 10 слотов — маяк, башни и буи не светили). Ореол вынесен к камере за стекло фонаря.
+        public const int LampSlot0 = 96;
+        readonly System.Text.StringBuilder lampLog = new System.Text.StringBuilder(512);
+        /// <summary>Огни строений одной строкой (журнал мира): имя, место, яркость, виден ли.</summary>
+        public string LampReport { get; private set; } = "";
         void LateUpdate()
         {
             LateUpdateBeam();
@@ -309,19 +314,24 @@ namespace SkyTide
             if (fx == null || cam == null) return;
             Vector3 eye = cam.transform.position;
             float t = Time.time;
-            int slot = 30;
-            for (int i = 0; i < lampList.Count && slot < 40; i++)
+            lampLog.Length = 0;
+            for (int i = 0; i < lampList.Count && i < FxSystem.MaxLamps - LampSlot0; i++)
             {
                 Lamp l = lampList[i];
                 float d = Vector3.Distance(eye, l.pos);
-                if (!l.beacon && d > 1800f) continue;
+                bool show = l.beacon ? d < 6000f : d < 2500f;
                 // Маяк — медленная вспышка раз в ~5,7 с; башни и буи — ровное мерцание.
-                float pulse = l.beacon ? 0.35f + 0.65f * Mathf.Pow(Mathf.Max(0f, Mathf.Sin(t * l.speed)), 6f)
+                float pulse = l.beacon ? 0.45f + 0.55f * Mathf.Pow(Mathf.Max(0f, Mathf.Sin(t * l.speed)), 6f)
                                        : 0.75f + 0.25f * Mathf.Sin(t * l.speed + i * 1.3f);
-                Color c = l.color; c.a = (l.beacon ? 0.16f : 0.09f) * pulse * Mathf.Clamp01((d - 60f) / 300f);
-                fx.SetLamp(slot++, l.pos, Mathf.Clamp(d * (l.beacon ? 0.022f : 0.012f), l.size, l.beacon ? 70f : 26f), c);
+                Color c = l.color; c.a = show ? (l.beacon ? 0.38f : 0.16f) * pulse * Mathf.Clamp01((d - 40f) / 200f) : 0f;
+                Vector3 p = l.pos + (eye - l.pos).normalized * Mathf.Min(d * 0.5f, l.beacon ? 9f : 2.5f);   // перед стеклом фонаря
+                fx.SetLamp(LampSlot0 + i, p, Mathf.Clamp(d * (l.beacon ? 0.03f : 0.014f), l.size, l.beacon ? 110f : 30f), c);
                 if (l.beacon && beaconLight != null) beaconLight.intensity = 0.6f + 2.2f * pulse;
+                lampLog.Append(l.name).Append(' ').Append(Mathf.RoundToInt(l.pos.x)).Append(',').Append(Mathf.RoundToInt(l.pos.y)).Append(',').Append(Mathf.RoundToInt(l.pos.z))
+                       .Append(" д").Append(Mathf.RoundToInt(d)).Append(" ярк").Append(c.a.ToString("F2", System.Globalization.CultureInfo.InvariantCulture)).Append(show ? "" : " выкл").Append("; ");
             }
+            if (beam != null) lampLog.Append("луч маяка курс ").Append(Mathf.RoundToInt(Mathf.Repeat(beam.eulerAngles.y, 360f)));
+            LampReport = lampLog.ToString();
         }
 
         /// <summary>Ядро на отрезке a→b входит в строение? Точка входа — первое пересечение с цилиндрами.</summary>

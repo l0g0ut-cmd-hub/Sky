@@ -207,6 +207,7 @@ namespace SkyTide
             h.Append(" кадр ").Append(F1(Time.unscaledDeltaTime * 1000f)).Append("мс gc0:").Append(System.GC.CollectionCount(0));
             if (RemoteCommands.Running) h.Append(" | КОМАНДЫ CLAUDE идут");
             chunk.Append(h).Append('\n');
+            if (WorldProps.Instance != null && WorldProps.Instance.LampReport.Length > 0) chunk.Append("  ОГНИ ").Append(WorldProps.Instance.LampReport).Append('\n');
             // Свет.
             Light sun = RenderSettings.sun;
             chunk.Append("  СВЕТ солнце ").Append(sun != null ? Yaw(sun.transform) + "/" + Mathf.RoundToInt(sun.transform.eulerAngles.x) + " ярк " + F1(sun.intensity) : "-")
