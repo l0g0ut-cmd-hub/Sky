@@ -30,6 +30,8 @@ namespace SkyTide
         public Transform visual;
 
         public float Speed { get; private set; }
+        /// Мгновенная остановка (перенос флагмана командой проверки — не упираться в строение).
+        public void HaltNow() { Speed = 0f; throttle = 0f; }
         /// <summary>Все корабли в мире (свой, враги, союзники, торговец) — для расталкивания и выбора целей.</summary>
         public static readonly System.Collections.Generic.List<ShipController> All = new System.Collections.Generic.List<ShipController>();
         void OnEnable() { if (!All.Contains(this)) All.Add(this); }

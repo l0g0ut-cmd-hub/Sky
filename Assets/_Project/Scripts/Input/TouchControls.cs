@@ -72,7 +72,7 @@ namespace SkyTide
             if (hintStage >= 4) { hintAlpha = 0f; return; }
             float dt = Time.unscaledDeltaTime;
             // Под автобоем и удалённым пилотом подсказки прячутся (17.11: «ДЖОЙСТИК ВВЕРХ» висела на «ПОЛНОМ · 37 м/с»).
-            if (AutoBattle || RemotePilot.Active) { hintAlpha = Mathf.MoveTowards(hintAlpha, 0f, dt * 3f); return; }
+            if (AutoBattle || RemotePilot.Active || RemoteCommands.Running) { hintAlpha = Mathf.MoveTowards(hintAlpha, 0f, dt * 3f); return; }
             if (!hintDone)
             {
                 hintAlpha = Mathf.MoveTowards(hintAlpha, 1f, dt * 2f);

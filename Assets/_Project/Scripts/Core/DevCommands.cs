@@ -94,6 +94,16 @@ namespace SkyTide
             return near;
         }
 
+        /// После переноса флагман стоит: ход «СТОП», скорость 0 (раньше упирался в строение на среднем ходу).
+        static void Halt(SkyTideBootstrap g)
+        {
+            if (g == null) return;
+            TouchControls tc = g.GetComponent<TouchControls>();
+            if (tc != null && !tc.AutoBattle) tc.SetGear(1);
+            ShipController sc = g.Ship != null ? g.Ship.GetComponent<ShipController>() : null;
+            if (sc != null) sc.HaltNow();
+        }
+
         static string Exec(string cmd, string arg, string[] a, string line)
         {
             SkyTideBootstrap g = SkyTideBootstrap.Instance;
@@ -244,7 +254,7 @@ namespace SkyTide
                     {
                         if (me == null || a.Length < 3) return "tp x z [курс]";
                         Vector3 p = new Vector3(Num(a, 1, 0f), me.position.y, Num(a, 2, 0f));
-                        me.SetPositionAndRotation(p, Quaternion.Euler(0f, Num(a, 3, me.eulerAngles.y), 0f)); return "флагман в " + p.x + "," + p.z;
+                        me.SetPositionAndRotation(p, Quaternion.Euler(0f, Num(a, 3, me.eulerAngles.y), 0f)); Halt(g); return "флагман в " + p.x + "," + p.z;
                     }
                 case "props":
                     {
@@ -262,7 +272,7 @@ namespace SkyTide
                         pt = wp.transform.GetChild(k);
                         Vector3 back = me.position - pt.position; back.y = 0f; back = back.sqrMagnitude > 1f ? back.normalized : Vector3.back;
                         Vector3 at = pt.position + back * 220f; at.y = me.position.y;
-                        me.SetPositionAndRotation(at, Quaternion.LookRotation(-back, Vector3.up)); return "флагман у " + pt.name;
+                        me.SetPositionAndRotation(at, Quaternion.LookRotation(-back, Vector3.up)); Halt(g); return "флагман у " + pt.name;
                     }
                 case "cam": return Cam(arg, a);
                 case "hud": TouchControls.HideHud = arg == "0" || arg == "off"; return "HUD " + (TouchControls.HideHud ? "скрыт" : "виден");
