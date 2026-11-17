@@ -503,6 +503,10 @@ namespace SkyTide
         {
             if (AutoBattle == on) return;
             AutoBattle = on;
+            // Усиление автобоя (владелец 17.11): урон ×2, точность ×2, ход и манёвр ×1,5, дальность ×1,5.
+            FxSystem.AutoBoost = on;
+            if (ship != null) ship.boost = on ? 1.5f : 1f;
+            Broadside gbb = Guns(); if (gbb != null) gbb.rangeBoost = on ? 1.5f : 1f;
             if (on) Haptics.Pulse(30);
         }
         /// <summary>Взять в цель любой корабль под пальцем — врага или своего (p — экранные координаты, y вниз): ближайший к

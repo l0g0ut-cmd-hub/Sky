@@ -75,11 +75,13 @@ namespace SkyTide
             if (foe == null || !foe.Alive || (foe.InPort && !foe.Outlaw) || Time.time >= nextTargetPick)
             {
                 nextTargetPick = Time.time + 3f;
-                // Свой под огнём (до 3.5 км) — помощь важнее всего: цель — тот, кто его бьёт.
-                AllyShip mate = AllyShip.Distressed(transform.position, 3500f);
+                // Помощь своим — реже (владелец 17.11): сначала свой бой; на помощь — только если своего врага нет ближе 900 м
+                // и свой под огнём не дальше 1,5 км (было 3,5 км и всегда в первую очередь).
+                foe = PickFoe(); helping = null;
+                bool busy = foe != null && (foe.transform.position - transform.position).sqrMagnitude < 900f * 900f;
+                AllyShip mate = busy ? null : AllyShip.Distressed(transform.position, 1500f);
                 TargetShip rescue = mate != null ? mate.Attacker : null;
                 if (rescue != null && !(rescue.InPort && !rescue.Outlaw)) { foe = rescue; helping = mate; }
-                else { foe = PickFoe(); helping = null; }
             }
             if (foe != null && (!foe.Alive || !foe.AtWar || (DeepCorsair(foe.transform.position) && DeepCorsair(transform.position + (foe.transform.position - transform.position) * 0.3f)))) foe = null;   // политика: в бой — только с теми, кто в бою с нами; в глубь вод корсаров не гонимся
             if (foe == null) { if (!Hunt()) Patrol(fort); return; }

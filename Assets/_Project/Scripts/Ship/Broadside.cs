@@ -35,7 +35,9 @@ namespace SkyTide
         public bool ripple = true;
         /// <summary>Заряд: false — ядра (корпус), true — книппели (баллоны и ход; летят медленнее и ближе).</summary>
         [NonSerialized] public bool chainShot;
-        float ShotSpeed { get { return chainShot ? muzzleSpeed * 0.8f : muzzleSpeed; } }
+        /// <summary>Автобой: дальность ×1,5 (владелец 17.11) — скорость ядра ×√1,5.</summary>
+        [System.NonSerialized] public float rangeBoost = 1f;
+        float ShotSpeed { get { return (chainShot ? muzzleSpeed * 0.8f : muzzleSpeed) * Mathf.Sqrt(rangeBoost); } }
         [NonSerialized] public ShipCrew crew;
 
         ShipController ship;

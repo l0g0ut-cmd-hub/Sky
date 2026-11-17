@@ -93,6 +93,8 @@ namespace SkyTide
         public static TargetShip AssistTarget;
         /// <summary>Доводка автобоя: ядро засчитывается, если прошло ближе этого запаса (м) от борта цели. Точность автобоя ≈ ×2.</summary>
         public static float AssistMargin = 7f;
+        /// <summary>Автобой флагмана включён: урон ×2 и доводка ×2 (владелец 17.11).</summary>
+        public static bool AutoBoost;
         static bool AssistHit(TargetShip t, Vector3 a, Vector3 b, out Vector3 point)
         {
             point = b;
@@ -108,7 +110,7 @@ namespace SkyTide
                 float along = Mathf.Clamp(Vector3.Dot(r, f), -hl, hl);
                 Vector3 axis = c + f * along; axis.y = q.y;
                 Vector3 side = q - axis; side.y = 0f;
-                if (side.magnitude <= hw + AssistMargin)
+                if (side.magnitude <= hw + AssistMargin * (AutoBoost ? 2f : 1f))
                 {
                     point = axis + (side.sqrMagnitude > 1e-4f ? side.normalized : t.transform.right) * hw;
                     return true;
@@ -679,7 +681,7 @@ namespace SkyTide
                         {
                             Vector3 ap; if (AssistHit(p.assist, prev, end, out ap)) { target = p.assist; hitPoint = ap; DebugReport.Count("попаданий автобоя доводкой"); }
                         }
-                        float dmg = p.fromPlayer ? p.caliber * PlayerDamageMul : p.caliber;
+                        float dmg = p.fromPlayer ? p.caliber * PlayerDamageMul * (AutoBoost ? 2f : 1f) : p.caliber;
                         if (friend != null) { end = hitPoint; hit = true; WorldLog.Hit(p.who, WorldLog.Name(friend), hitPoint, PlayerDamageMul); DebugReport.Count("попаданий флагмана по своим"); friend.OnHit(hitPoint, PlayerDamageMul, true); }
                         if (target != null) { end = hitPoint; hit = true; WorldLog.Hit(p.who, WorldLog.Name(target) + (p.chain ? " книппелем" : ""), hitPoint, dmg); if (p.fromPlayer) DebugReport.Count("попаданий флагмана"); DebugReport.Hit(Shooter(p.hostile, p.caliber, p.fromPlayer)); target.OnHit(hitPoint, p.chain, p.fromPlayer, dmg); }
                         // Крепость: ядро не пролетает сквозь стены. Своё ядро крепости первую секунду не проверяется (дуло на башне).

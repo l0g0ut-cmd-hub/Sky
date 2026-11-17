@@ -16,6 +16,8 @@ namespace SkyTide
 
         [Header("Поворот")]
         public float maxYawRate = 42f;
+        /// <summary>Множитель хода, разгона и поворота (автобой флагмана — 1,5; владелец 17.11).</summary>
+        [System.NonSerialized] public float boost = 1f;
         public float turnResponse = 4.5f;
 
         [Header("Граница мира")]
@@ -89,8 +91,8 @@ namespace SkyTide
 
             float thr = Mathf.Clamp(throttle, -1f, 1f);
             float wind = Application.isPlaying ? WindField.SpeedFactor(transform.forward) : 1f;
-            float targetSpeed = thr >= 0f ? thr * maxSpeed * damageSpeed * CritSpeed * wind : thr * maxReverseSpeed;
-            float rate = Mathf.Abs(targetSpeed) > Mathf.Abs(Speed) ? acceleration : deceleration;
+            float targetSpeed = thr >= 0f ? thr * maxSpeed * boost * damageSpeed * CritSpeed * wind : thr * maxReverseSpeed;
+            float rate = (Mathf.Abs(targetSpeed) > Mathf.Abs(Speed) ? acceleration : deceleration) * boost;
             Speed = Mathf.MoveTowards(Speed, targetSpeed, rate * dt);
 
             // Край района: вместо невидимой стены руль мягко отводит корабль обратно, если он идёт наружу.
@@ -106,8 +108,8 @@ namespace SkyTide
             }
             smoothTurn = Mathf.MoveTowards(smoothTurn, Mathf.Clamp(turn + steerIn, -1f, 1f), turnResponse * dt);
             // Корабль поворачивает и на месте (рулевые винты), но на ходу — заметно быстрее.
-            float steer = 0.35f + 0.65f * Mathf.Clamp01(Mathf.Abs(Speed) / maxSpeed);
-            transform.Rotate(0f, smoothTurn * maxYawRate * steer * damageTurn * CritTurn * dt, 0f, Space.World);
+            float steer = 0.35f + 0.65f * Mathf.Clamp01(Mathf.Abs(Speed) / (maxSpeed * boost));
+            transform.Rotate(0f, smoothTurn * maxYawRate * boost * steer * damageTurn * CritTurn * dt, 0f, Space.World);
 
             Vector3 pos = transform.position + transform.forward * Speed * dt;
             Vector2 flat = new Vector2(pos.x, pos.z);
