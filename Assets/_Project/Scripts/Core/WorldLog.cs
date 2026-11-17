@@ -331,7 +331,7 @@ namespace SkyTide
                 foreach (Transform p in WorldProps.Instance.transform)
                 {
                     Bounds bb = new Bounds(p.position, Vector3.zero); bool any = false;
-                    foreach (Renderer r in p.GetComponentsInChildren<Renderer>()) { if (!any) { bb = r.bounds; any = true; } else bb.Encapsulate(r.bounds); }
+                    foreach (Renderer r in p.GetComponentsInChildren<Renderer>()) { if (r.name == "Cone") continue; if (!any) { bb = r.bounds; any = true; } else bb.Encapsulate(r.bounds); }
                     b.Append("  СТРОЕНИЕ ").Append(p.name.Replace("Prop ", "")).Append(" основание ").Append(V(p.position)).Append(" курс ").Append(Yaw(p))
                      .Append(" габарит ").Append(V(bb.min)).Append("…").Append(V(bb.max)).Append('\n');
                 }

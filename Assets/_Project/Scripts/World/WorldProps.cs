@@ -182,7 +182,7 @@ namespace SkyTide
             Shader sh = Shader.Find("SkyTide/LighthouseBeam");
             if (sh == null) { Debug.LogWarning("SkyTide: нет шейдера луча маяка"); return null; }
             Transform root = new GameObject("Lighthouse Beam").transform;
-            root.SetParent(transform, false);
+            root.SetParent(parent, false);   // внутри маяка (17.11: лежал рядом со строениями — сдвигал номера в props, в журнале как «строение»)
             root.position = at;
             Mesh cone = Cone(BeamLength, 3f, BeamRadius, 24, 12);
             Material m = new Material(sh);

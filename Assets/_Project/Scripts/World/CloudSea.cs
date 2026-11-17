@@ -274,6 +274,7 @@ namespace SkyTide
             }
 
             float r2 = fieldRadius * fieldRadius;
+            Shader.SetGlobalFloat("_CloudFieldR", fieldRadius);   // плавное таяние у края поля (CloudSprite)
             for (int i = 0; i < clouds.Count; i++)
             {
                 Cloud c = clouds[i];

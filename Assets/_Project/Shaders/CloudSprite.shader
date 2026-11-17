@@ -44,6 +44,7 @@ Shader "SkyTide/CloudSprite"
             float4 _NearFade;
             float _CloudPhase;
             float4 _EdgeOn;
+            float _CloudFieldR;   // радиус бесконечного поля облаков (CloudSea.fieldRadius), глобально
 
             struct appdata
             {
@@ -85,6 +86,12 @@ Shader "SkyTide/CloudSprite"
                 o.uvMid = v.uvMid;
                 o.uvShadow = v.uvShadow;
                 o.color = v.color;
+                // Край поля облаков: облако, ушедшее за радиус, переносится на другую сторону — раньше оно там резко
+                // исчезало и резко появлялось (владелец 17.11). Теперь у края поля облако плавно тает целиком
+                // (по расстоянию центра до камеры по горизонтали), а перенесённое — плавно проявляется, подплывая.
+                float fr = _CloudFieldR > 1.0 ? _CloudFieldR : 2100.0;
+                float hd = length(center.xz - _WorldSpaceCameraPos.xz);
+                o.color.a *= 1.0 - smoothstep(fr * 0.72, fr * 0.92, hd);
                 o.worldPos = wpos;
                 o.bottomV = v.quadUV.y;
 

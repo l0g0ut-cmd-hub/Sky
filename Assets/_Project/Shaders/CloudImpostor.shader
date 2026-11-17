@@ -35,6 +35,7 @@ Shader "Hidden/SkyTide/CloudImpostor"
             float4 _Towers[MAX_TOWERS];
             float4 _TowerRot[MAX_TOWERS];
             float _TowerCount;
+            float _ImpFieldR;
             float _ImpDeckTop;
             float _ImpUseMask;    // 1 — проверять только башни из маски облака, 0 — все (диагностика CI)
 
@@ -92,7 +93,10 @@ Shader "Hidden/SkyTide/CloudImpostor"
                 float steep = 1.0 - smoothstep(0.72, 0.93, abs(f3.y));
                 // Близко к камере облако гаснет целиком (по центру, а не по пикселям — иначе в нём «дыра»).
                 float near = smoothstep(_ImpParams.z + 0.4 * R, _ImpParams.z + 1.6 * R, length(cc - _ImpCam.xyz));
-                o.slices.w = fadeIn * steep * near;
+                // Край поля: облако за радиусом переносится на другую сторону — у края плавно тает и плавно проявляется
+                // (владелец 17.11: «дальние облака резко появляются и пропадают»).
+                float edge = 1.0 - smoothstep(_ImpFieldR * 0.75, _ImpFieldR * 0.97, lf);
+                o.slices.w = fadeIn * steep * near * edge;
                 o.aerial.rgb = SkyTideAerialColor(normalize(wpos - _ImpCam.xyz));
                 o.aerial.a = v.data.w;   // какие героические башни могут оказаться перед этим облаком (биты, считает CPU)
                 return o;

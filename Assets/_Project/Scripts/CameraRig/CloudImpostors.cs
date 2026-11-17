@@ -284,7 +284,7 @@ namespace SkyTide
                 if (d.magnitude > lim)
                 {
                     // Ушло далеко — переносим на противоположную сторону, у горизонта.
-                    Vector3 back = -d.normalized * (fieldRadius * U(wrapRnd, 0.9f, 1f));
+                    Vector3 back = -d.normalized * (fieldRadius * U(wrapRnd, 0.99f, 1.03f));   // за краем таяния — проявится плавно
                     p.x = cam.x + back.x;
                     p.z = cam.z + back.z;
                 }
@@ -316,6 +316,7 @@ namespace SkyTide
             mat.SetVector("_ImpCam", cp);
             mat.SetVector("_ImpParams", new Vector4(aerial, nearClear.x, nearClear.y, Pad));
             mat.SetFloat("_ImpDeckTop", deckTop);
+            mat.SetFloat("_ImpFieldR", fieldRadius);
             mat.SetFloat("_ImpUseMask", useTowerMask ? 1f : 0f);
             mat.SetTexture("_ImpTex", Current);
             mat.SetTexture("_CloudTex", heroClouds);
