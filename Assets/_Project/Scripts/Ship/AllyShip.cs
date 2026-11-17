@@ -384,7 +384,7 @@ namespace SkyTide
                     {
                         float a = Random.Range(0f, Mathf.PI * 2f);
                         Vector3 w = f.Center + new Vector3(Mathf.Cos(a), 0f, Mathf.Sin(a)) * Random.Range(Relations.GarrisonRadius + 150f, Relations.CorsairRadius - 150f);
-                        if (new Vector2(w.x, w.z).magnitude < 3300f) { roamPoint = w; break; }
+                        if (new Vector2(w.x, w.z).magnitude < Relations.FieldRadius) { roamPoint = w; break; }
                     }
                 }
                 else { Vector3 o = f.BerthWorld - f.Center; o.y = 0f; roamPoint = f.BerthWorld + o.normalized * 140f; }
@@ -429,7 +429,7 @@ namespace SkyTide
                 {
                     roamPoint = transform.position + new Vector3(Mathf.Cos(a), 0f, Mathf.Sin(a)) * Random.Range(900f, 2000f);
                     Vector2 flat = new Vector2(roamPoint.x, roamPoint.z);
-                    if (flat.magnitude > 3000f) { flat = flat.normalized * 2600f; roamPoint.x = flat.x; roamPoint.z = flat.y; }
+                    if (flat.magnitude > Relations.FieldRadius - 300f) { flat = flat.normalized * (Relations.FieldRadius - 700f); roamPoint.x = flat.x; roamPoint.z = flat.y; }
                 }
                 roamPoint.y = transform.position.y;
             }

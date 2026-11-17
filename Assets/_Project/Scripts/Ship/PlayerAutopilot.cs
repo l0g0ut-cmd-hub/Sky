@@ -162,7 +162,7 @@ namespace SkyTide
                     float a = Random.Range(0f, Mathf.PI * 2f);
                     searchPoint = transform.position + new Vector3(Mathf.Cos(a), 0f, Mathf.Sin(a)) * Random.Range(1500f, 2500f);
                     Vector2 flat = new Vector2(searchPoint.x, searchPoint.z);
-                    if (flat.magnitude > 3000f) { flat = flat.normalized * 2600f; searchPoint.x = flat.x; searchPoint.z = flat.y; }
+                    if (flat.magnitude > Relations.FieldRadius - 300f) { flat = flat.normalized * (Relations.FieldRadius - 700f); searchPoint.x = flat.x; searchPoint.z = flat.y; }
                     SkyFortress f = SkyFortress.Instance;
                     if (f != null)
                     {

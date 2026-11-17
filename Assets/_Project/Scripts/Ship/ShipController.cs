@@ -21,7 +21,7 @@ namespace SkyTide
         public float turnResponse = 4.5f;
 
         [Header("Граница мира")]
-        public float arenaRadius = 3600f;   // крепость (центр в 2 км, радиус до ~1 км) можно обойти кругом
+        public float arenaRadius = 7200f;   // карта вдвое (владелец 17.11); крепость в 2 км от центра
 
         [Header("Ввод (-1..1)")]
         public float throttle;

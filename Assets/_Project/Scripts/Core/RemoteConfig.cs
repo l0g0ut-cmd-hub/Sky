@@ -20,13 +20,13 @@ namespace SkyTide
             // свой корабль
             public float playerSpeed = 40f, playerYaw = 50f, playerHealth = 540f, playerShellSpeed = 125f, playerElevation = 14f, playerCooldown = 2.2f;
             // враги
-            public int enemyCount = 26;
+            public int enemyCount = 32;
             public float cullDistance = 2200f;
             public float enemySpeed = 20f, enemyYaw = 24f, enemyRange = 420f, enemyError = 0.11f, enemySideError = 0.04f, enemyCooldown = 6f;
             public int enemyHits = 30, scoutHits = 16;
             public float scoutSpeed = 27f, scoutRange = 360f, heavyChance = 0.22f, aggroRange = 1300f, enemyDamage = 6f;
             // свои
-            public int allyCount = 11;
+            public int allyCount = 13;
             // отношения (Core/Relations): пояса вод от центра крепости, предупреждение, прицел, остывание, злоба и набеги
             public float garrisonRadius = 2300f, corsairRadius = 3300f, warnSeconds = 30f, aimSeconds = 6f, aimRange = 400f, calmAfter = 45f;
             public float playerDamage = 4f, autoAssist = 7f;   // урон ядра флагмана (×), доводка автобоя (м от борта)

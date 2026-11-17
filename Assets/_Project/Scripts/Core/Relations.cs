@@ -19,8 +19,10 @@ namespace SkyTide
     /// </summary>
     public static class Relations
     {
-        // Пояса от центра крепости (безопасная зона — её safeRadius, 1,4 км). Карта — круг 3,6 км, крепость в 2 км от центра.
+        // Пояса от центра крепости (безопасная зона — её safeRadius, 1,4 км). Карта — круг 7,2 км (владелец 17.11: «вдвое»),
+        // крепость в 2 км от центра; корабли держатся в FieldRadius.
         public static float GarrisonRadius = 2300f, CorsairRadius = 3300f;
+        public const float FieldRadius = 6900f;
         public static float WarnSeconds = 30f, AimSeconds = 6f, AimRange = 400f, CalmAfter = 45f;
         // Злоба корсаров за потопленных и за вторжения; остывает. Высокая — набег (не чаще RaidEvery).
         public static float Grudge, RaidGrudge = 40f, RaidEvery = 600f, GrudgeCoolPerMin = 3f;
@@ -41,7 +43,7 @@ namespace SkyTide
         public static string Name(Waters w) { return w == Waters.Safe ? "безопасная зона" : w == Waters.Garrison ? "воды гарнизона" : w == Waters.Corsair ? "воды корсаров" : "нейтральные воды"; }
         public static string Name(Attitude a) { return a == Attitude.Calm ? "СПОКОЕН" : a == Attitude.Wary ? "НАСТОРОЖЕ" : a == Attitude.Hostile ? "ВРАЖДЕБЕН" : a == Attitude.Flee ? "БЕЖИТ" : "СДАЛСЯ"; }
 
-        /// <summary>Точка в водах корсаров (для дозора, возрождения и бегства): дальняя от крепости сторона карты.</summary>
+        /// <summary>Точка в водах корсаров (для дозора, возрождения и бегства): кольцом вокруг крепости со всех сторон.</summary>
         public static Vector3 CorsairPoint(float y)
         {
             SkyFortress f = SkyFortress.Instance;
@@ -49,10 +51,10 @@ namespace SkyTide
             Vector3 away = -c; away.y = 0f; if (away.sqrMagnitude < 1f) away = Vector3.forward; away.Normalize();
             for (int i = 0; i < 16; i++)
             {
-                float a = Mathf.Atan2(away.z, away.x) + Random.Range(-1.1f, 1.1f);
-                float r = Random.Range(CorsairRadius + 150f, CorsairRadius + 1600f);
+                float a = Random.Range(0f, Mathf.PI * 2f);
+                float r = Random.Range(CorsairRadius + 150f, CorsairRadius + 3200f);
                 Vector3 p = c + new Vector3(Mathf.Cos(a), 0f, Mathf.Sin(a)) * r;
-                if (new Vector2(p.x, p.z).magnitude < 3300f) { p.y = y; return p; }
+                if (new Vector2(p.x, p.z).magnitude < FieldRadius) { p.y = y; return p; }
             }
             Vector3 q = away * 3000f; q.y = y; return q;
         }

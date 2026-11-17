@@ -715,7 +715,7 @@ namespace SkyTide
             Vector3 c = roam ? transform.position : (player != null ? player.position : Vector3.zero);
             float a = Random.Range(0f, Mathf.PI * 2f);
             float d = roam ? Random.Range(500f, 1400f) : Random.Range(minRange, maxRange);
-            if (roam && new Vector2(c.x + Mathf.Cos(a) * d, c.z + Mathf.Sin(a) * d).magnitude > 3000f)
+            if (roam && new Vector2(c.x + Mathf.Cos(a) * d, c.z + Mathf.Sin(a) * d).magnitude > Relations.FieldRadius - 300f)
                 a = Mathf.Atan2(-c.z, -c.x) + Random.Range(-0.8f, 0.8f);   // не уходить за край района — разворот к центру
             waypoint = new Vector3(c.x + Mathf.Cos(a) * d, transform.position.y, c.z + Mathf.Sin(a) * d);
             SkyFortress ff = SkyFortress.Instance;
@@ -728,7 +728,7 @@ namespace SkyTide
                     Vector3 off = transform.position - fc; off.y = 0f;
                     float ang = Mathf.Atan2(off.z, off.x) + Random.Range(0.25f, 0.6f) * (GetInstanceID() % 2 == 0 ? 1f : -1f);
                     waypoint = fc + new Vector3(Mathf.Cos(ang), 0f, Mathf.Sin(ang)) * (Relations.CorsairRadius + Random.Range(150f, 500f));
-                    if (new Vector2(waypoint.x, waypoint.z).magnitude > 3300f) waypoint = Relations.CorsairPoint(transform.position.y);
+                    if (new Vector2(waypoint.x, waypoint.z).magnitude > Relations.FieldRadius) waypoint = Relations.CorsairPoint(transform.position.y);
                 }
                 else
                 {
@@ -736,7 +736,7 @@ namespace SkyTide
                     {
                         float aa = Random.Range(0f, Mathf.PI * 2f), dd = Random.Range(1200f, 3200f);
                         Vector3 w = transform.position + new Vector3(Mathf.Cos(aa), 0f, Mathf.Sin(aa)) * dd;
-                        if (new Vector2(w.x, w.z).magnitude > 3300f) continue;
+                        if (new Vector2(w.x, w.z).magnitude > Relations.FieldRadius) continue;
                         Waters wt = Relations.At(w);
                         if (wt == Waters.Garrison || wt == Waters.Safe) continue;
                         waypoint = w; break;

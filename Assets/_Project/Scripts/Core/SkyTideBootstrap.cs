@@ -247,7 +247,7 @@ namespace SkyTide
                 Vector3[] extra = { new Vector3(-2200f, 0f, -1600f), new Vector3(2400f, 0f, 1500f), new Vector3(-600f, 0f, -2600f) };
                 ShipClass[] extraClass = { ShipClass.Brig, ShipClass.Frigate, ShipClass.Sloop };
                 for (int k = 0; k < extra.Length; k++) SpawnEnemy("Enemy " + (k + 4), spawnPosition + extra[k], Random.Range(0f, 360f), extraClass[k], crewFrom2);
-                EnsureEnemies(RemoteConfig.Current != null ? RemoteConfig.Current.enemyCount : 26);
+                EnsureEnemies(RemoteConfig.Current != null ? RemoteConfig.Current.enemyCount : 32);
                 ShipVariant crewFrom = CurrentShip;
                 if (crewFrom != null && crewFrom.crew != null && crewFrom.crew.IsValid) s.gameObject.AddComponent<EnemyCrew>().Setup(Scout, crewFrom.crew);
             }
@@ -276,14 +276,16 @@ namespace SkyTide
                 if (wv != targetShip) wa.SetClass(ShipClass.Frigate);
                 // Торговца нет (владелец 16.11: «торговца вырезать вообще»). Жизнь гарнизона: два таможенных катера у края вод
                 // гарнизона (выпроваживают чужих) и два курьера по делам (бриг и фрегат) — всего свои 7 с ведомым.
-                AllyShip.Role[] roles = { AllyShip.Role.Customs, AllyShip.Role.Customs, AllyShip.Role.Courier, AllyShip.Role.Courier };
-                ShipClass[] rc = { ShipClass.Cutter, ShipClass.Cutter, ShipClass.Clipper, ShipClass.Brig };
+                // Владелец 17.11: «немного больше кораблей» — по третьему таможеннику и курьеру (свои 13).
+                AllyShip.Role[] roles = { AllyShip.Role.Customs, AllyShip.Role.Customs, AllyShip.Role.Customs, AllyShip.Role.Courier, AllyShip.Role.Courier, AllyShip.Role.Courier };
+                ShipClass[] rc = { ShipClass.Cutter, ShipClass.Cutter, ShipClass.Cutter, ShipClass.Clipper, ShipClass.Brig, ShipClass.Corvette };
                 for (int r = 0; r < roles.Length; r++)
                 {
-                    float ang = (r * 90f + 45f) * Mathf.Deg2Rad;
-                    Vector3 at = Fortress.Center + new Vector3(Mathf.Cos(ang), 0f, Mathf.Sin(ang)) * (r < 2 ? Relations.GarrisonRadius - 250f : Fortress.safeRadius + 300f); at.y = spawnPosition.y;
+                    bool customs = roles[r] == AllyShip.Role.Customs;
+                    float ang = (r * 60f + 30f) * Mathf.Deg2Rad;
+                    Vector3 at = Fortress.Center + new Vector3(Mathf.Cos(ang), 0f, Mathf.Sin(ang)) * (customs ? Relations.GarrisonRadius - 250f : Fortress.safeRadius + 300f); at.y = spawnPosition.y;
                     ShipVariant v = ClassVariant(rc[r]);
-                    ShipController c = ShipFactory.Build((r < 2 ? "Customs " : "Courier ") + (r % 2 + 1), at, r * 90f, materials, v);
+                    ShipController c = ShipFactory.Build((customs ? "Customs " : "Courier ") + (r % 3 + 1), at, r * 60f, materials, v);
                     if (v == targetShip && rc[r] == ShipClass.Cutter) c.transform.localScale = Vector3.one * 0.6f;
                     AllyShip al2 = c.gameObject.AddComponent<AllyShip>(); al2.Setup(c, roles[r], v.mesh, materials.darkWood);
                     if (v != targetShip) al2.SetClass(rc[r]);
@@ -363,10 +365,12 @@ namespace SkyTide
                 Vector3 at = spawnPosition;
                 for (int tries = 0; tries < 12; tries++)
                 {
-                    float a = Random.Range(0f, Mathf.PI * 2f), r = Random.Range(1800f, 3800f);
-                    at = spawnPosition + new Vector3(Mathf.Cos(a) * r, 0f, Mathf.Sin(a) * r);
+                    // Кольцом вокруг крепости со всех сторон, в водах корсаров (владелец 17.11: «заполняй пустоту»).
+                    Vector3 fc = Fortress != null ? Fortress.Center : spawnPosition;
+                    float a = Random.Range(0f, Mathf.PI * 2f), r = Random.Range(Relations.CorsairRadius + 150f, Relations.CorsairRadius + 3200f);
+                    at = new Vector3(fc.x + Mathf.Cos(a) * r, spawnPosition.y, fc.z + Mathf.Sin(a) * r);
                     Waters wt = Relations.At(at);
-                    if (new Vector2(at.x, at.z).magnitude > 3300f || wt == Waters.Garrison || wt == Waters.Safe) { if (tries < 11) continue; at = Relations.CorsairPoint(spawnPosition.y); }
+                    if (new Vector2(at.x, at.z).magnitude > Relations.FieldRadius || wt == Waters.Garrison || wt == Waters.Safe) { if (tries < 11) continue; at = Relations.CorsairPoint(spawnPosition.y); }
                     if ((at - Ship.transform.position).sqrMagnitude > 900f * 900f) break;
                 }
                 SpawnEnemy("Enemy " + (k + 1), at, Random.Range(0f, 360f), ShipClasses.ForEnemy(k), k < 9 ? CurrentShip : null);
@@ -578,7 +582,7 @@ namespace SkyTide
         {
             c.clearFlags = CameraClearFlags.Skybox;
             c.nearClipPlane = 0.5f;
-            c.farClipPlane = 6500f;   // крепость (до 3 км от старта, поле 3.6 км) не должна обрезаться дальней плоскостью
+            c.farClipPlane = 10000f;   // крепость (в 2 км от центра, поле 7,2 км — до 9,2 км от флагмана) не обрезается дальней плоскостью
             c.fieldOfView = 55f;
         }
     }
