@@ -150,6 +150,7 @@ namespace SkyTide
 
             FxSystem fx = GetComponent<FxSystem>();
             if (fx == null) fx = gameObject.AddComponent<FxSystem>();
+            if (Application.isPlaying && GetComponent<ShipWake>() == null) gameObject.AddComponent<ShipWake>();   // след за кормой
             fx.shader = fxShader;
             fx.volumetric = vol;
             fx.deckTop = vol.deckTop;

@@ -275,6 +275,7 @@ namespace SkyTide
                         me.SetPositionAndRotation(at, Quaternion.LookRotation(-back, Vector3.up)); Halt(g); return "флагман у " + pt.name;
                     }
                 case "cam": return Cam(arg, a);
+                case "wake": ShipWake.Enabled = arg != "off" && arg != "0"; return "след " + (ShipWake.Enabled ? "вкл" : "выкл");
                 case "hud": TouchControls.HideHud = arg == "0" || arg == "off"; return "HUD " + (TouchControls.HideHud ? "скрыт" : "виден");
                 case "photo":
                     {
