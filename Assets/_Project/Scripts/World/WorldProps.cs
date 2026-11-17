@@ -81,7 +81,7 @@ namespace SkyTide
             // Сторожевые башни по краю вод гарнизона.
             foreach (float deg in new[] { -70f, -25f, 25f, 70f }) w.Place(byId, "watchtower", Polar(deg, G - 60f), y, F - Polar(deg, G));
             // Склад — за крепостью.
-            w.Place(byId, "depot", fort.Center - outv * (fort.BoundRadius + 140f), y, across);
+            // Склад убран (владелец 17.11: «дом на облаках с уличным фонарём — смотрится дико»).
             // Причальная мачта с дирижаблем — в водах гарнизона, в стороне от точки появления.
             w.Place(byId, "mooringmast", Polar(48f, 1650f), y, Quaternion.Euler(0f, 30f, 0f) * u);
             // Обломки — в нейтральной полосе.

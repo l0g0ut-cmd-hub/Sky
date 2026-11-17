@@ -294,7 +294,7 @@ namespace SkyTide.EditorTools
         {
             const string F = Models + "Props/";
             List<PropAsset> list = new List<PropAsset>();
-            foreach (string id in new[] { "lighthouse", "watchtower", "buoy", "hideout", "wreck", "depot", "mooringmast" })
+            foreach (string id in new[] { "lighthouse", "watchtower", "buoy", "hideout", "wreck", "mooringmast" })
             {
                 string n = F + "Prop_" + id;
                 TextAsset mesh = AssetDatabase.LoadAssetAtPath<TextAsset>(n + ".bytes");
