@@ -18,7 +18,7 @@ Shader "SkyTide/LighthouseBeam"
             #include "UnityCG.cginc"
             fixed4 _Color;
             struct a2v { float4 vertex : POSITION; float2 uv : TEXCOORD0; float3 normal : NORMAL; };
-            struct v2f { float4 pos : SV_POSITION; float2 uv : TEXCOORD0; float camDist : TEXCOORD1; float rim : TEXCOORD2; };
+            struct v2f { float4 pos : SV_POSITION; float2 uv : TEXCOORD0; float camDist : TEXCOORD1; float rim : TEXCOORD2; float side : TEXCOORD3; };
             v2f vert (a2v v)
             {
                 v2f o; o.pos = UnityObjectToClipPos(v.vertex); o.uv = v.uv;
@@ -27,17 +27,20 @@ Shader "SkyTide/LighthouseBeam"
                 float3 n = normalize(UnityObjectToWorldNormal(v.normal));
                 float3 vd = normalize(_WorldSpaceCameraPos - wp);
                 o.rim = abs(dot(n, vd));          // поверхность конуса «лицом» к камере — середина луча, ребром — край
+                float3 axis = normalize(mul((float3x3)unity_ObjectToWorld, float3(0, 0, 1)));
+                float al = abs(dot(axis, vd));    // смотрим вдоль луча — гасим (снимок 17.11: белая полоса на пол-экрана)
+                o.side = 1.0 - al * al * al;
                 return o;
             }
             float hash(float n) { return frac(sin(n) * 43758.5453); }
             fixed4 frag (v2f i) : SV_Target
             {
                 float along = i.uv.y;
-                float fall = pow(saturate(1.0 - along), 1.6);                  // гаснет к концу
-                float core = pow(saturate(i.rim), 2.0);                        // ярче по оси луча
+                float fall = pow(saturate(1.0 - along), 2.2) * smoothstep(0.0, 0.03, along);   // гаснет к концу, мягкое начало у линзы
+                float core = pow(saturate(i.rim), 4.0);                        // мягкие края, ярче по оси
                 float dust = 0.85 + 0.15 * hash(floor(along * 40.0 + _Time.y * 2.0) + floor(i.uv.x * 12.0));
                 float nearCam = saturate((i.camDist - 15.0) / 80.0);
-                float a = fall * core * dust * nearCam * _Color.a;
+                float a = fall * core * dust * nearCam * i.side * 0.45 * _Color.a;
                 return fixed4(_Color.rgb, saturate(a));
             }
             ENDCG

@@ -37,7 +37,7 @@ namespace SkyTide
         {
             switch (id)
             {
-                case "lighthouse": return new Def { shipY = 41f, lantern = 104f, circles = new[] { new Vector3(0f, 0f, 21f) } };
+                case "lighthouse": return new Def { shipY = 41f, lantern = 96f,   /* центр линзы: стекло 90–102 м, 104 — уже карниз крыши (снимок 17.11: луч шёл из крыши) */ circles = new[] { new Vector3(0f, 0f, 21f) } };
                 case "watchtower": return new Def { shipY = 14f, lantern = 46f, circles = new[] { new Vector3(2f, 1.5f, 16.5f), new Vector3(6.9f, 5.2f, 12.5f) } };   // 17.11: баллоны флагмана входили в верх башни (она шире ствола) — круг по верхней площадке
                 case "buoy": return new Def { shipY = 11f, lantern = 21f, circles = new[] { new Vector3(0f, 0f, 4f) } };
                 case "hideout": return new Def { shipY = 42f, lantern = 0f, circles = new[] { new Vector3(0f, 0f, 27f) } };
@@ -174,7 +174,7 @@ namespace SkyTide
 
         // Луч маяка (владелец 17.11, вариант 3): два встречных световых конуса по 420 м, оборот за 8 с, чуть вниз.
         Transform beam;
-        public const float BeamLength = 420f, BeamRadius = 46f, BeamTurnSeconds = 8f;
+        public const float BeamLength = 420f, BeamRadius = 28f, BeamTurnSeconds = 8f;
         Transform Beam(Transform parent, Vector3 at)
         {
             Shader sh = Shader.Find("SkyTide/LighthouseBeam");
@@ -182,7 +182,7 @@ namespace SkyTide
             Transform root = new GameObject("Lighthouse Beam").transform;
             root.SetParent(transform, false);
             root.position = at;
-            Mesh cone = Cone(BeamLength, 1.5f, BeamRadius, 24, 12);
+            Mesh cone = Cone(BeamLength, 3f, BeamRadius, 24, 12);
             Material m = new Material(sh);
             foreach (float yaw in new[] { 0f, 180f })
             {
@@ -323,8 +323,8 @@ namespace SkyTide
                 // Маяк — медленная вспышка раз в ~5,7 с; башни и буи — ровное мерцание.
                 float pulse = l.beacon ? 0.45f + 0.55f * Mathf.Pow(Mathf.Max(0f, Mathf.Sin(t * l.speed)), 6f)
                                        : 0.75f + 0.25f * Mathf.Sin(t * l.speed + i * 1.3f);
-                Color c = l.color; c.a = show ? (l.beacon ? 0.38f : 0.16f) * pulse * Mathf.Clamp01((d - 40f) / 200f) : 0f;
-                Vector3 p = l.pos + (eye - l.pos).normalized * Mathf.Min(d * 0.5f, l.beacon ? 9f : 2.5f);   // перед стеклом фонаря
+                Color c = l.color; c.a = show ? (l.beacon ? 0.38f : 0.16f) * pulse * Mathf.Clamp01((d - 12f) / 40f) : 0f;   // вблизи линза тоже горит
+                Vector3 p = l.pos + (eye - l.pos).normalized * Mathf.Min(d * 0.5f, l.beacon ? 11f : 2.5f);   // перед стеклом фонаря
                 fx.SetLamp(LampSlot0 + i, p, Mathf.Clamp(d * (l.beacon ? 0.03f : 0.014f), l.size, l.beacon ? 110f : 30f), c);
                 if (l.beacon && beaconLight != null) beaconLight.intensity = 0.6f + 2.2f * pulse;
                 lampLog.Append(l.name).Append(' ').Append(Mathf.RoundToInt(l.pos.x)).Append(',').Append(Mathf.RoundToInt(l.pos.y)).Append(',').Append(Mathf.RoundToInt(l.pos.z))
